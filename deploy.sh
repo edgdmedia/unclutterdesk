@@ -1,7 +1,7 @@
 #!/bin/bash
 set -e
 
-TARGET_DIR="/home/unclutter/domains/os.unclutterdesk.com/app"
+TARGET_DIR="/home/unclutter/domains/app.unclutterdesk.com/app"
 
 echo "🚀 Starting Unclutter Desk Production Deployment at $TARGET_DIR..."
 
@@ -42,4 +42,4 @@ fi
 echo "🔄 Reloading PM2 process..."
 pm2 reload ecosystem.config.js --env production || pm2 start ecosystem.config.js --env production
 
-echo "✅ Unclutter Desk API Deployed Successfully on os.unclutterdesk.com!"
+echo "✅ Unclutter Desk API Deployed Successfully on app.unclutterdesk.com!"

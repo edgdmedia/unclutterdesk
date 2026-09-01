@@ -2,7 +2,7 @@ import { randomBytes } from 'crypto';
 
 const IS_PROD = process.env.NODE_ENV === 'production';
 
-// The web app (os.unclutterdesk.com) and API (api.unclutterdesk.com) are
+// The web app (app.unclutterdesk.com) and API (api.unclutterdesk.com) are
 // served from different subdomains (or localhost ports in dev).
 
 const COOKIE_DOMAIN = process.env.COOKIE_DOMAIN || (IS_PROD ? '.unclutterdesk.com' : undefined);

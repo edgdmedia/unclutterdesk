@@ -1,9 +1,9 @@
 module.exports = {
   apps: [
     {
-      name: 'unclutter-os-api',
-      script: './apps/api/dist/main.js',
-      cwd: '/home/unclutter/domains/os.unclutterdesk.com/app',
+      name: 'unclutterdesk-api',
+      script: './apps/api/dist/src/main.js',
+      cwd: '/home/unclutter/domains/app.unclutterdesk.com/app',
       instances: 1,
       exec_mode: 'fork',
       env_production: {

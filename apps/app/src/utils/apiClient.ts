@@ -25,7 +25,7 @@ export function getAppType(): 'admin' | 'app' | 'booking' | 'marketing' {
   const host = window.location.hostname;
   
   if (host === 'admin.unclutterdesk.com' || host === 'admin.localhost') return 'admin';
-  if (host === 'app.unclutterdesk.com' || host === 'os.unclutterdesk.com' || host === 'app.localhost' || host === 'localhost') return 'app';
+  if (host === 'app.unclutterdesk.com' || host === 'app.localhost' || host === 'localhost') return 'app';
   if (host === 'unclutterdesk.com' || host === 'www.unclutterdesk.com') return 'marketing';
   
   return 'booking';
@@ -64,7 +64,7 @@ export function getSubdomainTenantSlug(): string | null {
 export const TENANT_SLUG = import.meta.env.VITE_TENANT_SLUG || getSubdomainTenantSlug() || '';
 
 function resolveAppBase(): string {
-  if (!import.meta.env.DEV || typeof window === 'undefined') return 'https://os.unclutterdesk.com';
+  if (!import.meta.env.DEV || typeof window === 'undefined') return 'https://app.unclutterdesk.com';
   const { hostname, origin, port } = window.location;
   if (hostname === 'localhost' || hostname === 'app.localhost') return origin;
   return `http://localhost${port ? `:${port}` : ''}`;

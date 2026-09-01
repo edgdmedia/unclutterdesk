@@ -26,9 +26,8 @@ export class CalendarController {
   async handleGoogleCallback(@Query('code') code: string, @Query('state') state: string, @Res() res: Response) {
     await this.calendarService.handleCallback(code, state);
     // Redirect back to the frontend settings page
-    const frontendUrl = process.env.NODE_ENV === 'production'
-      ? 'https://os.unclutterdesk.com/portal/settings/availability?google_connected=true'
-      : 'http://localhost:3000/portal/settings/availability?google_connected=true';
+    const frontendBase = (process.env.APP_URL || 'http://localhost:5173').replace(/\/+$/, '');
+    const frontendUrl = `${frontendBase}/dashboard/settings/availability?google_connected=true`;
     res.redirect(frontendUrl);
   }
 

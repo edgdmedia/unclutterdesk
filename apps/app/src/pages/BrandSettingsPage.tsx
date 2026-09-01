@@ -36,7 +36,7 @@ export function BrandSettingsPage(props: BrandSettingsPageProps) {
 
   const bookingUrl = customDomain
     ? (customDomain.startsWith('http') ? customDomain : `https://${customDomain}`)
-    : `https://${TENANT_SLUG || 'practice'}.os.unclutterdesk.com`;
+    : `https://${TENANT_SLUG || 'practice'}.unclutterdesk.com`;
 
   useEffect(() => {
     let cancelled = false;

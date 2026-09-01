@@ -42,7 +42,7 @@ Web (`apps/app`, via `VITE_*` at build time — `apps/app/src/utils/apiClient.ts
 - Run exactly ONE API process (multiple stale processes on `:3001` caused a collision locally — use `ecosystem.config.js` / `deploy.sh`, and confirm only one process is bound to the port).
 - Build & serve the web app (`pnpm --filter @unclutterdesk/app build`); serve `dist/` over HTTPS.
 - Main-app API calls use the `X-Tenant-Slug` header; host-based booking surfaces resolve tenant by subdomain/custom domain.
-- Public booking URLs are host-based: production uses `https://<tenant>.unclutterdesk.com/` (or the tenant custom domain); local dev uses `http://<tenant>.localhost:5173/`.
+- Public booking URLs are host-based: production uses `https://<tenant>.unclutterdesk.com/` (or the tenant custom domain); the main app lives at `https://app.unclutterdesk.com`; local dev uses `http://<tenant>.localhost:5173/`.
 
 ## 5. Telehealth (video room links)
 

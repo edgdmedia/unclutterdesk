@@ -486,7 +486,7 @@ export class ConsultService {
               finalPriceKobo,
               BigInt(splitConfig.platformFeeKobo),
               splitConfig.stripeAccountId,
-              dto.callbackUrl || 'https://app.unclutterdesk.com',
+              dto.callbackUrl || process.env.APP_URL || 'https://app.unclutterdesk.com',
               clientProfile.email,
               slot.service?.title || 'Therapy Session'
             );

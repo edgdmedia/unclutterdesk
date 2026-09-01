@@ -322,7 +322,7 @@ export class AuthService {
           to: profile.email,
           type: 'auth.welcome',
           title: 'Welcome to Unclutter Desk',
-          message: `Your email has been verified and your practice workspace is active. You can now sign in and start booking clients, writing SOAP notes, and more. Get started at os.unclutterdesk.com.`,
+          message: `Your email has been verified and your practice workspace is active. You can now sign in and start booking clients, writing SOAP notes, and more. Get started at app.unclutterdesk.com.`,
           tenantId: profile.tenantId,
           profileId: profile.id,
         });
@@ -390,7 +390,7 @@ export class AuthService {
       process.env.APP_BASE_URL ||
       process.env.VITE_APP_URL ||
       process.env.WEB_BASE_URL ||
-      'https://os.unclutterdesk.com'
+      'https://app.unclutterdesk.com'
     ).replace(/\/+$/, '');
     const resetLink = `${baseUrl}/reset-password/${token}`;
 

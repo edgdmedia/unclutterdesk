@@ -53,7 +53,7 @@ export function DashboardPage(props: DashboardPageProps) {
 
   const bookingUrl = customDomain
     ? (customDomain.startsWith('http') ? customDomain : `https://${customDomain}`)
-    : `https://${TENANT_SLUG}.os.unclutterdesk.com`;
+    : `https://${TENANT_SLUG}.unclutterdesk.com`;
 
   useEffect(() => {
     let cancelled = false;
