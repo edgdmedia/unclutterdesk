@@ -1,0 +1,46 @@
+/* ═══════════════════════════════════════════════
+   UNCLUTTER DESK — ELEVATION, GLASS, MOTION
+   Shadow values unchanged. The three brand-tinted shadows were
+   retinted navy → pine; their geometry and opacity are the same.
+   ═══════════════════════════════════════════════ */
+
+:root {
+  --desk-shadow-xs:     0 1px 2px rgba(15,23,42,.05);
+  --desk-shadow-sm:     0 1px 3px rgba(15,23,42,.06), 0 1px 2px rgba(15,23,42,.04);
+  --desk-shadow-md:     0 4px 16px rgba(15,23,42,.07);
+  --desk-shadow-lg:     0 12px 34px rgba(15,23,42,.09);
+  --desk-shadow-hover:  0 8px 24px rgba(15,23,42,.08);   /* + translateY(-1px) */
+  --desk-shadow-frame:  0 24px 80px rgba(15,23,42,.14);
+  --desk-shadow-phone:  0 24px 70px rgba(15,23,42,.20);
+  --desk-shadow-modal:  0 24px 80px rgba(15,23,42,.24);
+
+  /* Brand-tinted */
+  --desk-shadow-button: 0 6px 18px rgba(20,58,47,.22);   /* pine-tinted */
+  --desk-shadow-tenant: 0 10px 26px var(--brand-ring);   /* any tenant color */
+  --desk-shadow-nav-active:
+      inset 0 0 0 1px rgba(74,151,129,.30),
+      0 8px 24px rgba(20,58,47,.50);
+
+  /* Active sidebar item fill */
+  --desk-nav-active-bg: linear-gradient(90deg, rgba(28,78,63,.92), rgba(46,122,99,.55));
+
+  /* Glass — mobile bottom nav, sticky action bars */
+  --desk-glass-bg:     rgba(255,255,255,.85);
+  --desk-glass-border: #E2E8F0;
+  --desk-glass-blur:   blur(18px) saturate(140%); /* @kind other */
+
+  /* Focus */
+  --desk-focus-ring: 0 0 0 3px var(--brand-ring);
+
+  /* Motion — all easing is ease-out. No bounces, no spring. */
+  --ease:       cubic-bezier(0.16, 1, 0.3, 1); /* @kind other */
+  --dur-color:  160ms; /* @kind other */
+  --dur-lift:   160ms; /* @kind other */
+  --dur-toggle: 200ms; /* @kind other */
+  --dur-bar:    300ms; /* @kind other */
+
+  /* Z-index */
+  --z-nav:   20;  /* @kind other */
+  --z-modal: 50;  /* @kind other */
+  --z-toast: 100; /* @kind other */
+}

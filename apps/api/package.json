@@ -1,15 +1,16 @@
 {
-  "name": "@unclutteros/api",
+  "name": "@unclutterdesk/api",
   "version": "0.1.0",
   "private": true,
-  "description": "UnclutterOS Multi-Tenant NestJS API",
+  "description": "Unclutter Desk Multi-Tenant NestJS API",
   "scripts": {
     "build": "nest build",
     "dev": "nest start --watch",
     "start": "nest start",
     "start:prod": "node dist/main",
     "typecheck": "tsc --noEmit",
-    "prisma:generate": "prisma generate --schema ../../prisma/schema.prisma"
+    "prisma:generate": "prisma generate --schema ../../prisma/schema.prisma",
+    "test": "vitest run"
   },
   "dependencies": {
     "@nestjs/common": "^10.4.0",
@@ -32,6 +33,7 @@
     "passport-jwt": "^4.0.1",
     "reflect-metadata": "^0.2.2",
     "rxjs": "^7.8.1",
+    "stripe": "^22.5.0",
     "web-push": "^3.6.7"
   },
   "devDependencies": {
@@ -46,6 +48,7 @@
     "@types/passport-jwt": "^4.0.1",
     "@types/web-push": "^3.6.4",
     "prisma": "^5.22.0",
-    "typescript": "^5.5.4"
+    "typescript": "^5.5.4",
+    "vitest": "^2.1.9"
   }
 }

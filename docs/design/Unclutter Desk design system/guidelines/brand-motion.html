@@ -1,0 +1,26 @@
+<!-- @dsCard group="Brand" viewport="700x150" name="Motion & interaction" subtitle="All ease-out. No bounces, no spring." -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Motion</title>
+<link rel="stylesheet" href="../styles.css">
+<style>
+  body { background: var(--desk-card); padding: 18px 20px; font-family: var(--font-primary); }
+  .tok { font-family: var(--font-mono); font-size: 9.5px; color: var(--desk-text-subtle); }
+  .lbl { font-size: 9.5px; color: var(--desk-text-subtle); }
+</style>
+</head>
+<body>
+<div style="display:flex;flex-direction:column;gap:10;font-size:12px;color:var(--desk-text-body)">
+  <div style="display:flex;gap:10;align-items:center"><span style="font-family:var(--font-mono);font-size:10px;width:64px;color:var(--desk-text-muted)">140–200ms</span> colour and background</div>
+  <div style="display:flex;gap:10;align-items:center"><span style="font-family:var(--font-mono);font-size:10px;width:64px;color:var(--desk-text-muted)">160ms</span> card hover — translateY(−1px) + shadow-hover</div>
+  <div style="display:flex;gap:10;align-items:center"><span style="font-family:var(--font-mono);font-size:10px;width:64px;color:var(--desk-text-muted)">200ms</span> toggle track and knob</div>
+  <div style="display:flex;gap:10;align-items:center"><span style="font-family:var(--font-mono);font-size:10px;width:64px;color:var(--desk-text-muted)">300ms</span> bar height</div>
+  <div style="height:1px;background:var(--desk-border);margin:2px 0"></div>
+  <div style="display:flex;gap:10;align-items:center"><span style="font-family:var(--font-mono);font-size:10px;width:64px;color:var(--desk-text-muted)">hover</span> primary buttons use filter: brightness(1.08) — works for any tenant hue with no second token</div>
+  <div style="display:flex;gap:10;align-items:center"><span style="font-family:var(--font-mono);font-size:10px;width:64px;color:var(--desk-text-muted)">press</span> translateY(1px). Sidebar items never transform.</div>
+  <div style="display:flex;gap:10;align-items:center"><span style="font-family:var(--font-mono);font-size:10px;width:64px;color:var(--desk-text-muted)">focus</span> box-shadow: 0 0 0 3px var(--brand-ring); inputs also go #F8FAFC → #FFFFFF</div>
+</div>
+</body>
+</html>

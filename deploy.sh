@@ -3,7 +3,7 @@ set -e
 
 TARGET_DIR="/home/unclutter/domains/os.unclutterdesk.com/app"
 
-echo "🚀 Starting UnclutterOS Production Deployment at $TARGET_DIR..."
+echo "🚀 Starting Unclutter Desk Production Deployment at $TARGET_DIR..."
 
 cd $TARGET_DIR
 
@@ -26,7 +26,7 @@ npx prisma generate
 
 # 4. Build NestJS Backend API
 echo "🔨 Building NestJS API..."
-pnpm --filter @unclutteros/api run build
+pnpm --filter @unclutterdesk/api run build
 
 # 5. Run Prisma database migrations
 echo "🗄️ Running Prisma database migrations..."
@@ -42,4 +42,4 @@ fi
 echo "🔄 Reloading PM2 process..."
 pm2 reload ecosystem.config.js --env production || pm2 start ecosystem.config.js --env production
 
-echo "✅ UnclutterOS API Deployed Successfully on os.unclutterdesk.com!"
+echo "✅ Unclutter Desk API Deployed Successfully on os.unclutterdesk.com!"

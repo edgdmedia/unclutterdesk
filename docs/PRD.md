@@ -1,6 +1,6 @@
-# UnclutterOS — Product Requirements Document (PRD)
+# Unclutter Desk — Product Requirements Document (PRD)
 
-**Product Name**: UnclutterOS  
+**Product Name**: Unclutter Desk  
 **Product Category**: B2B Multi-Tenant Practice Management & White-Label Telehealth SaaS  
 **Target Market**: Independent Psychotherapists, Clinical Psychologists, Executive Life Coaches, Group Counseling Practices  
 **Document Version**: 1.0.0  
@@ -9,9 +9,9 @@
 
 ## 1. Executive Summary
 
-**UnclutterOS** is an all-in-one operating system and practice management platform that empowers mental health professionals and clinics to operate their private practice under their own white-labeled brand. 
+**Unclutter Desk** is an all-in-one operating system and practice management platform that empowers mental health professionals and clinics to operate their private practice under their own white-labeled brand. 
 
-Unlike generic practice management tools, UnclutterOS gives therapists a dedicated white-label client portal, custom subdomains (`drjane.unclutteros.com`) or custom domains (`booking.drjanetherapy.com`), customizable brand styling (colors, logos, favicons), automated scheduling, clinical intake questionnaires, WebRTC video telehealth, and split-payout billing.
+Unlike generic practice management tools, Unclutter Desk gives therapists a dedicated white-label client portal, custom subdomains (`drjane.unclutterdesk.com`) or custom domains (`booking.drjanetherapy.com`), customizable brand styling (colors, logos, favicons), automated scheduling, clinical intake questionnaires, WebRTC video telehealth, and split-payout billing.
 
 ---
 
@@ -37,7 +37,7 @@ Unlike generic practice management tools, UnclutterOS gives therapists a dedicat
 ## 3. Product Core Features & Modules
 
 ### 3.1 White-Label Branding & Custom Domains
-* **Custom Subdomain**: Every practice receives a slug (e.g. `dr-smith.unclutteros.com`).
+* **Custom Subdomain**: Every practice receives a slug (e.g. `dr-smith.unclutterdesk.com`).
 * **Custom Domain Support**: CNAME mapping (e.g. `booking.drsmiththerapy.com`) via Cloudflare for SaaS.
 * **Brand Token Engine**: Customize Primary Color, Secondary Color, Accent Color, Logo, Favicon, Welcome Copy, and Custom Cancellation Policy.
 

@@ -1,3 +1,4 @@
+// @ts-nocheck
 import React from 'react';
 
 export type StatusType = 'Confirmed' | 'Active' | 'Pending Intake' | 'Awaiting intake' | 'Inactive' | 'Paused' | 'Danger';

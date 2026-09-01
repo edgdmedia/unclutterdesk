@@ -1,27 +1,58 @@
+// @ts-nocheck
 import React from 'react';
 
-export interface AvatarChipProps {
-  initials: string;
-  src?: string | null;
-  size?: 'sm' | 'md' | 'lg';
-  isOnline?: boolean;
-  className?: string;
-}
+const TONES = {
+  tenant:    { bg: 'var(--brand-fill)',            fg: 'var(--brand-primary)' },
+  secondary: { bg: 'var(--brand-secondary-tint)',  fg: 'var(--brand-secondary)' },
+  pine:      { bg: 'var(--desk-pine-100)',         fg: 'var(--desk-pine-700)' },
+  slate:     { bg: 'var(--desk-pine-700)',         fg: '#FFFFFF' },
+  muted:     { bg: 'var(--desk-surface-muted)',    fg: 'var(--desk-text-muted)' },
+};
 
-export function AvatarChip({ initials, src, size = 'md', isOnline, className = '' }: AvatarChipProps) {
-  let dims = 'h-[38px] w-[38px] rounded-[12px] text-xs';
-  if (size === 'sm') dims = 'h-[32px] w-[32px] rounded-[10px] text-[11px]';
-  if (size === 'lg') dims = 'h-[76px] w-[76px] rounded-[24px] text-[24px]';
-
+/**
+ * Initials in a rounded square. There is no photography anywhere in Desk —
+ * real implementations render an uploaded photo when present and fall back
+ * to these initials.
+ */
+export function AvatarChip({
+  initials = '',
+  size = 38,
+  tone = 'tenant',
+  radius,
+  online = false,
+  ring = false,
+  style,
+  ...rest
+}: any) {
+  const t = TONES[tone] ?? TONES.tenant;
   return (
-    <div className={`relative ${dims} bg-[#0F3A53]/10 text-[#0F3A53] font-extrabold flex items-center justify-center shrink-0 border border-[#0F3A53]/20 ${className}`}>
-      {src ? (
-        <img src={src} alt="Avatar" className="h-full w-full object-cover rounded-inherit" />
-      ) : (
-        initials
-      )}
-      {isOnline && (
-        <span className="absolute -bottom-1 -right-1 h-3.5 w-3.5 rounded-full bg-[#10B981] border-2 border-white" />
+    <div
+      style={{
+        position: 'relative',
+        width: size,
+        height: size,
+        flex: 'none',
+        borderRadius: radius ?? (size >= 70 ? 24 : size >= 44 ? 14 : 12),
+        background: t.bg,
+        color: t.fg,
+        display: 'inline-flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        fontWeight: 800,
+        fontSize: Math.max(11, Math.round(size * 0.32)),
+        letterSpacing: '-0.01em',
+        boxShadow: ring ? '0 0 0 3px var(--brand-ring)' : undefined,
+        ...style,
+      }}
+      {...rest}
+    >
+      {initials}
+      {online && (
+        <span style={{
+          position: 'absolute', bottom: -3, right: -3,
+          width: 24, height: 24, borderRadius: 999,
+          background: 'var(--desk-active-dot)', border: '3px solid #fff',
+        }} />
       )}
     </div>
   );

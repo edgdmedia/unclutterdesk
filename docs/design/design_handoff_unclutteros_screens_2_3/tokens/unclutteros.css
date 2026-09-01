@@ -1,5 +1,5 @@
 /* ─────────────────────────────────────────
-   UnclutterOS — Sub-brand token layer
+   Unclutter Desk — Sub-brand token layer
    B2B Practice Management & Telehealth SaaS
    Scope: apply `data-app="os"` on <html> (or any ancestor).
    Extends colors_and_type.css; does not modify base Unclutter tokens.
@@ -40,7 +40,7 @@
   /* ── WHITE-LABEL SLOTS ──
      Per-tenant overrides. Set these on <html data-tenant="…"> or inline
      via style="--brand-primary:#7C3AED" — every OS component reads them.
-     Defaults fall back to the UnclutterOS brand. */
+     Defaults fall back to the Unclutter Desk brand. */
   --brand-primary:      var(--os-navy);
   --brand-primary-hover:var(--os-navy-700);
   --brand-primary-soft: var(--os-navy-100);
@@ -76,7 +76,7 @@
   --os-glass-blur:      blur(18px) saturate(140%); /* @kind other */
 }
 
-/* App-scope: UnclutterOS remaps the shared semantic tokens */
+/* App-scope: Unclutter Desk remaps the shared semantic tokens */
 [data-app="os"] {
   --primary:              var(--brand-primary);
   --primary-foreground:   var(--brand-on-primary);

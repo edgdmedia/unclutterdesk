@@ -152,7 +152,7 @@ export class NotificationService implements OnModuleInit, OnModuleDestroy {
    * Direct transactional email (e.g. auth verification / welcome / reset).
    * Unlike `notify()` this bypasses channel prefs and tenant caps — a
    * transactional email always goes out. It is pre-tenant capable: when no
-   * tenantId is provided the default (UnclutterOS) branding is used and no
+   * tenantId is provided the default (Unclutter Desk) branding is used and no
    * EmailLog row is written; when a tenantId/profileId are present the tenant's
    * brand is resolved and delivery is recorded in EmailLog.
    */
@@ -298,7 +298,7 @@ export class NotificationService implements OnModuleInit, OnModuleDestroy {
       },
     });
     return {
-      practiceName: tenant?.name ?? 'UnclutterOS',
+      practiceName: tenant?.name ?? 'Unclutter Desk',
       primaryColor: tenant?.primaryColor,
       secondaryColor: tenant?.secondaryColor,
       logoUrl: tenant?.logoUrl,

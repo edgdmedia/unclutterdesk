@@ -4,6 +4,7 @@ import { NotificationService } from '../notifications/notification.service';
 import { DiscountService } from '../discount/discount.service';
 import { BillingService } from '../billing/billing.service';
 import { PaystackService } from '../billing/paystack.service';
+import { StripeService } from '../billing/stripe.service';
 import { CalendarService } from '../calendar/calendar.service';
 
 @Injectable()
@@ -16,6 +17,7 @@ export class ConsultService {
     private readonly discountService: DiscountService,
     private readonly billing: BillingService,
     private readonly paystack: PaystackService,
+    private readonly stripe: StripeService,
     private readonly calendar: CalendarService,
   ) { }
 
@@ -475,25 +477,43 @@ export class ConsultService {
 
       if (finalPriceKobo > 0n) {
         const splitConfig = await this.billing.calculateSplitPayout(tenantId, finalPriceKobo);
-        const reference = `booking-${booking.id}`;
+        const reference = `booking-${booking.id}-${Date.now()}`;
         
         try {
-          const pTx = await this.paystack.initializeTransaction({
-            amount: Number(splitConfig.therapistPayoutKobo) + Number(splitConfig.platformFeeKobo),
-            email: clientProfile.email,
-            reference,
-            subaccount: splitConfig.paystackSubaccountCode || undefined,
-            bearer: 'subaccount',
-            split: splitConfig.tier === 'STARTER' ? 5 : undefined,
-            callback_url: dto.callbackUrl,
-          });
+          if (splitConfig.stripeAccountId) {
+            const { url } = await this.stripe.createCheckoutSession(
+              booking.id,
+              finalPriceKobo,
+              BigInt(splitConfig.platformFeeKobo),
+              splitConfig.stripeAccountId,
+              dto.callbackUrl || 'https://app.unclutterdesk.com',
+              clientProfile.email,
+              slot.service?.title || 'Therapy Session'
+            );
+            paymentUrl = url;
+            
+            await tx.consultBooking.update({
+              where: { id: booking.id },
+              data: { paymentRef: reference },
+            });
+          } else {
+            const pTx = await this.paystack.initializeTransaction({
+              amount: Number(splitConfig.therapistPayoutKobo) + Number(splitConfig.platformFeeKobo),
+              email: clientProfile.email,
+              reference,
+              subaccount: splitConfig.paystackSubaccountCode || undefined,
+              bearer: 'subaccount',
+              split: splitConfig.tier === 'STARTER' ? 5 : undefined,
+              callback_url: dto.callbackUrl,
+            });
 
-          paymentUrl = pTx.authorization_url;
+            paymentUrl = pTx.authorization_url;
 
-          await tx.consultBooking.update({
-            where: { id: booking.id },
-            data: { paymentRef: reference },
-          });
+            await tx.consultBooking.update({
+              where: { id: booking.id },
+              data: { paymentRef: reference },
+            });
+          }
         } catch (e: any) {
           throw new BadRequestException('Failed to initialize payment: ' + (e.message || 'Unknown error'));
         }
@@ -526,17 +546,23 @@ export class ConsultService {
       include: { service: true, client: true },
     });
 
-    if (!booking || !booking.paymentRef) {
+    if (!booking) {
       throw new NotFoundException('Pending payment booking not found');
     }
 
     const splitConfig = await this.billing.calculateSplitPayout(tenantId, BigInt(booking.service?.priceKobo || 0));
-    
+    const reference = `booking-${booking.id}-${Date.now()}`;
+
+    await this.prisma.consultBooking.update({
+      where: { id: booking.id },
+      data: { paymentRef: reference },
+    });
+
     try {
       const pTx = await this.paystack.initializeTransaction({
         amount: Number(splitConfig.therapistPayoutKobo) + Number(splitConfig.platformFeeKobo),
         email: booking.client.email,
-        reference: booking.paymentRef, // Reusing the same reference
+        reference,
         subaccount: splitConfig.paystackSubaccountCode || undefined,
         bearer: 'subaccount',
         split: splitConfig.tier === 'STARTER' ? 5 : undefined,
@@ -792,7 +818,7 @@ export class ConsultService {
 
   private async resolveVideoRoomLink(therapist: any, bookingId: number): Promise<{ roomName: string; roomLink: string }> {
     const provider = (therapist.videoProvider || 'JITSI').toUpperCase();
-    const defaultRoomName = `unclutteros-session-${bookingId}`;
+    const defaultRoomName = `unclutterdesk-session-${bookingId}`;
 
     if (provider === 'DAILY') {
       const apiKey = therapist.dailyApiKey || process.env.DAILY_PLATFORM_API_KEY;

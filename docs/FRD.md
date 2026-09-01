@@ -1,24 +1,24 @@
-# UnclutterOS — Functional Requirements Document (FRD)
+# Unclutter Desk — Functional Requirements Document (FRD)
 
-**Product Name**: UnclutterOS  
+**Product Name**: Unclutter Desk  
 **Document Version**: 1.0.0  
 
 ---
 
 ## 1. System Scope & Functional Architecture
 
-This document defines the exact functional behavior, API endpoint specifications, data flows, and execution contracts for the **UnclutterOS** multi-tenant platform.
+This document defines the exact functional behavior, API endpoint specifications, data flows, and execution contracts for the **Unclutter Desk** multi-tenant platform.
 
 ---
 
 ## 2. Multi-Tenant Resolution & Routing Specs
 
 ### 2.1 Host & Tenant Resolution Workflow
-1. When an HTTP request enters the gateway (or Web UI), the system extracts the `Host` header (e.g. `drjane.unclutteros.com` or `booking.drjanetherapy.com`).
+1. When an HTTP request enters the gateway (or Web UI), the system extracts the `Host` header (e.g. `drjane.unclutterdesk.com` or `booking.drjanetherapy.com`).
 2. The `TenantMiddleware` checks the host against database indexes:
    - Matches `Tenant.slug` (e.g. `drjane`) OR `Tenant.customDomain` (e.g. `booking.drjanetherapy.com`).
 3. If matched, `req.tenantId` and `req.tenant` are attached to the execution context.
-4. If unmatched, the gateway redirects to the primary landing page `unclutteros.com`.
+4. If unmatched, the gateway redirects to the primary landing page `unclutterdesk.com`.
 
 ### 2.2 API Header Fallback
 For mobile applications or API calls, `x-tenant-id` or `x-tenant-slug` header can be passed explicitly in requests.
@@ -45,7 +45,7 @@ For mobile applications or API calls, `x-tenant-id` or `x-tenant-slug` header ca
 ### 3.3 Availability & Booking Engine
 * **Slot Generation**: Therapists define weekly recurring availability blocks (e.g. Mon 9:00 AM - 5:00 PM).
 * **Double-Booking Prevention**: PostgreSQL atomic transactions ensure availability slots cannot be double-booked concurrently.
-* **Video Room Generation**: Upon booking confirmation, a unique room ID (e.g. `unclutteros-session-{bookingId}`) is generated and attached to the booking record.
+* **Video Room Generation**: Upon booking confirmation, a unique room ID (e.g. `unclutterdesk-session-{bookingId}`) is generated and attached to the booking record.
 
 ---
 

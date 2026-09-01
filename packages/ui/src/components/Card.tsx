@@ -1,25 +1,74 @@
+// @ts-nocheck
 import React from 'react';
 
-export interface CardProps {
-  children: React.ReactNode;
-  className?: string;
-  padding?: string;
-}
+const PADS = { none: 0, sm: '18px 20px', md: '22px 24px', lg: '24px 26px' };
 
-export function Card({ children, className = '', padding = 'p-[24px_26px]' }: CardProps) {
+/**
+ * The workspace surface: white, 24px radius, hairline border, shadow-sm.
+ * `hoverable` adds the standard lift — translateY(-1px) + shadow-hover.
+ */
+export function Card({
+  padding = 'lg',
+  radius = 24,
+  hoverable = false,
+  raised = false,
+  dark = false,
+  style,
+  children,
+  ...rest
+}: any) {
+  const [hover, setHover] = React.useState(false);
   return (
-    <div className={`bg-white rounded-[24px] border border-[#E2E8F0] shadow-[0_1px_3px_0_rgba(15,23,42,0.06)] ${padding} ${className}`}>
+    <div
+      onMouseEnter={hoverable ? () => setHover(true) : undefined}
+      onMouseLeave={hoverable ? () => setHover(false) : undefined}
+      style={{
+        background: dark ? 'var(--desk-sidebar)' : 'var(--desk-card)',
+        color: dark ? '#fff' : 'var(--desk-text)',
+        border: dark ? 'none' : '1px solid var(--desk-border)',
+        borderRadius: radius,
+        padding: typeof padding === 'string' ? PADS[padding] ?? padding : padding,
+        boxShadow: hover
+          ? 'var(--desk-shadow-hover)'
+          : raised ? 'var(--desk-shadow-lg)' : 'var(--desk-shadow-sm)',
+        transform: hover ? 'translateY(-1px)' : undefined,
+        transition: 'box-shadow var(--dur-lift) ease-out, transform var(--dur-lift) ease-out',
+        ...style,
+      }}
+      {...rest}
+    >
       {children}
     </div>
   );
 }
 
-export function CardHeader({ title, eyebrow, action }: { title?: string; eyebrow?: string; action?: React.ReactNode }) {
+export function CardHeader({
+  title,
+  eyebrow,
+  action,
+  style,
+  ...rest
+}: any) {
   return (
-    <div className="flex items-center justify-between border-b border-[#E2E8F0] pb-3 mb-4">
+    <div
+      style={{
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        marginBottom: 16,
+        ...style,
+      }}
+      {...rest}
+    >
       <div>
-        {eyebrow && <span className="text-[9px] font-black tracking-[0.22em] uppercase text-[#94A3B8] block">{eyebrow}</span>}
-        {title && <h3 className="text-[15px] font-bold text-[#0F172A]">{title}</h3>}
+        {eyebrow && (
+          <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--desk-text-subtle)', marginBottom: 2 }}>
+            {eyebrow}
+          </div>
+        )}
+        <div style={{ fontSize: 16, fontWeight: 700, color: 'var(--desk-text)' }}>
+          {title}
+        </div>
       </div>
       {action && <div>{action}</div>}
     </div>

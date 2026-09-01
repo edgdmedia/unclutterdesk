@@ -1,0 +1,35 @@
+<!-- @dsCard group="Spacing" viewport="700x150" name="Brand-tinted elevation" subtitle="The three shadows that carry color — retinted navy → pine" -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Brand elevation</title>
+<link rel="stylesheet" href="../styles.css">
+<style>
+  body { background: var(--desk-surface); padding: 18px 20px; font-family: var(--font-primary); }
+  .tok { font-family: var(--font-mono); font-size: 9.5px; color: var(--desk-text-subtle); }
+  .lbl { font-size: 9.5px; color: var(--desk-text-subtle); }
+</style>
+</head>
+<body>
+<div style="display:flex;gap:14;align-items:center">
+  <div style="flex:1;display:flex;flex-direction:column;gap:8;align-items:center">
+    <div style="width:100%;height:44px;border-radius:14px;background:var(--brand-primary);color:#fff;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;box-shadow:var(--desk-shadow-button)">Primary button</div>
+    <div class="tok">--desk-shadow-button</div>
+  </div>
+  <div style="flex:1;display:flex;flex-direction:column;gap:8;align-items:center">
+    <div style="width:100%;height:44px;border-radius:16px;background:var(--brand-primary);color:#fff;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;box-shadow:var(--desk-shadow-tenant)">Tenant CTA</div>
+    <div class="tok">--desk-shadow-tenant</div>
+  </div>
+  <div style="flex:1.2;display:flex;flex-direction:column;gap:8;align-items:center">
+    <div style="width:100%;background:var(--desk-sidebar);border-radius:16px;padding:10px">
+      <div style="position:relative;height:44px;display:flex;align-items:center;gap:11px;padding:0 12px;border-radius:14px;color:#fff;font-size:13.5px;font-weight:600;background:var(--desk-nav-active-bg);box-shadow:var(--desk-shadow-nav-active)">
+        <span style="position:absolute;left:0;top:12px;width:3px;height:20px;border-radius:0 3px 3px 0;background:var(--desk-pine-400)"></span>
+        <span style="width:18px;height:18px;border-radius:5px;border:2px solid var(--desk-pine-400)"></span>Dashboard
+      </div>
+    </div>
+    <div class="tok">--desk-shadow-nav-active</div>
+  </div>
+</div>
+</body>
+</html>

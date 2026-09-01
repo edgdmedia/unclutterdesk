@@ -9,7 +9,7 @@ const SMTP_PORT = Number(process.env.SMTP_PORT || process.env.MAIL_PORT || 465);
 const SMTP_SECURE = process.env.SMTP_SECURE === 'true' || SMTP_PORT === 465;
 const SMTP_USER = process.env.SMTP_USER || process.env.MAIL_USER || '';
 const SMTP_PASS = process.env.SMTP_PASS || process.env.MAIL_PASS || '';
-const SMTP_FROM = process.env.SMTP_FROM || process.env.MAIL_FROM || 'UnclutterOS <no-reply@unclutterdesk.com>';
+const SMTP_FROM = process.env.SMTP_FROM || process.env.MAIL_FROM || 'Unclutter Desk <no-reply@unclutterdesk.com>';
 
 export interface MailSendResult {
   sent: boolean;
@@ -19,7 +19,7 @@ export interface MailSendResult {
 }
 
 export interface SendMailOptions {
-  /** Display name of the sender; defaults to SMTP_FROM_NAME / "UnclutterOS". */
+  /** Display name of the sender; defaults to SMTP_FROM_NAME / "Unclutter Desk". */
   fromName?: string;
   /** Reply-To address (e.g. the practice's public email). Defaults to the sender. */
   replyTo?: string;
@@ -59,7 +59,7 @@ export class MailService {
 
   private buildSender(fromName?: string): string {
     const raw = SMTP_FROM.trim();
-    const name = (fromName || process.env.SMTP_FROM_NAME || 'UnclutterOS').trim().replace(/"/g, '\\"');
+    const name = (fromName || process.env.SMTP_FROM_NAME || 'Unclutter Desk').trim().replace(/"/g, '\\"');
     if (raw.includes('<') && raw.includes('>')) {
       const addr = raw.match(/<([^>]+)>/)?.[1] ?? raw;
       return `"${name}" <${addr}>`;
@@ -79,7 +79,7 @@ export class MailService {
     }
 
     if (!this.transporter) {
-      const fromLabel = options.fromName || 'UnclutterOS';
+      const fromLabel = options.fromName || 'Unclutter Desk';
       this.logger.log(`[MAIL-PREVIEW] From: "${fromLabel}"${options.replyTo ? ` | Reply-To: ${options.replyTo}` : ''}\nTo: ${to}\nSubject: ${subject}\n${text || html.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim()}`);
       return { sent: false, preview: true };
     }

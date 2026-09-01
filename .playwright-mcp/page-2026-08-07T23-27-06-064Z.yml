@@ -49,7 +49,7 @@
         - heading "Good morning, Dr. Smith" [level=1] [ref=f28e178]
       - generic [ref=f28e179]:
         - generic [ref=f28e180]:
-          - textbox [ref=f28e184]: https://unclutteros.com/booking/dr-smith
+          - textbox [ref=f28e184]: https://unclutterdesk.com/booking/dr-smith
           - button [ref=f28e185]
         - button "Copy Booking Link" [ref=f28e189] [cursor=pointer]
         - button [ref=f28e195]

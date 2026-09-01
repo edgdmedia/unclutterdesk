@@ -1,0 +1,36 @@
+<!-- @dsCard group="Colors" viewport="700x170" name="White-label slots" subtitle="Two stored hexes; six derived tints via color-mix" -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Tenant slots</title>
+<link rel="stylesheet" href="../styles.css">
+<style>
+  body { background: var(--desk-card); padding: 18px 20px; font-family: var(--font-primary); }
+  .row { display: flex; gap: 8px; align-items: flex-start; }
+  .sw { flex: 1; display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+  .chip { height: 58px; border-radius: 12px; }
+  .hex { font-family: var(--font-mono); font-size: 10px; font-weight: 600; color: var(--desk-text); }
+  .use { font-size: 9.5px; color: var(--desk-text-subtle); line-height: 1.35; }
+  .tok { font-family: var(--font-mono); font-size: 9.5px; color: var(--desk-text-muted); }
+</style>
+</head>
+<body>
+<div style="display:flex;flex-direction:column;gap:12px">
+  <div class="row">
+    <div class="sw"><div class="chip" style="background:var(--brand-primary)"></div><div class="hex">--brand-primary</div><div class="use">stored</div></div>
+    <div class="sw"><div class="chip" style="background:var(--brand-primary-hover)"></div><div class="hex">--brand-primary-hover</div><div class="use">derived</div></div>
+    <div class="sw"><div class="chip" style="background:var(--brand-primary-soft)"></div><div class="hex">--brand-primary-soft</div><div class="use">derived</div></div>
+    <div class="sw"><div class="chip" style="background:var(--brand-secondary)"></div><div class="hex">--brand-secondary</div><div class="use">stored</div></div>
+    <div class="sw"><div class="chip" style="background:var(--brand-secondary-soft)"></div><div class="hex">--brand-secondary-soft</div><div class="use">derived</div></div>
+  </div>
+  <div class="row">
+    <div class="sw"><div style="height:36px;border-radius:10px;background:var(--brand-ring)"></div><div class="tok">--brand-ring · 20%</div></div>
+    <div class="sw"><div style="height:36px;border-radius:10px;background:var(--brand-fill)"></div><div class="tok">--brand-fill · 9%</div></div>
+    <div class="sw"><div style="height:36px;border-radius:10px;background:var(--brand-tint)"></div><div class="tok">--brand-tint · 8%</div></div>
+    <div class="sw"><div style="height:36px;border-radius:10px;background:var(--brand-dot)"></div><div class="tok">--brand-dot · 40%</div></div>
+    <div class="sw"><div style="height:36px;border-radius:10px;background:var(--brand-bar)"></div><div class="tok">--brand-bar · 18%</div></div>
+  </div>
+</div>
+</body>
+</html>

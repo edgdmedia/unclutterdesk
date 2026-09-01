@@ -1,8 +1,8 @@
 {
-  "name": "@unclutteros/shared",
+  "name": "@unclutterdesk/shared",
   "version": "0.1.0",
   "private": true,
-  "description": "UnclutterOS Shared Types, DTOs & API Services",
+  "description": "Unclutter Desk Shared Types, DTOs & API Services",
   "main": "./src/index.ts",
   "module": "./src/index.ts",
   "types": "./src/index.ts",

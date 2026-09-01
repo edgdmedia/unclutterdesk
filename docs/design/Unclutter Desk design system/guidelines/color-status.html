@@ -1,0 +1,42 @@
+<!-- @dsCard group="Colors" viewport="700x140" name="Status" subtitle="Success and pending retuned for the pine palette; inactive, danger and info unchanged" -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Status</title>
+<link rel="stylesheet" href="../styles.css">
+<style>
+  body { background: var(--desk-card); padding: 18px 20px; font-family: var(--font-primary); }
+  .row { display: flex; gap: 8px; align-items: flex-start; }
+  .sw { flex: 1; display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+  .chip { height: 58px; border-radius: 12px; }
+  .hex { font-family: var(--font-mono); font-size: 10px; font-weight: 600; color: var(--desk-text); }
+  .use { font-size: 9.5px; color: var(--desk-text-subtle); line-height: 1.35; }
+  .tok { font-family: var(--font-mono); font-size: 9.5px; color: var(--desk-text-muted); }
+</style>
+</head>
+<body>
+<div class="row">
+  <div class="sw"><div style="height:58px;border-radius:12px;background:#F0FDF4;border:1px solid #BBF7D0;display:flex;align-items:center;justify-content:center;gap:7px;">
+    <span style="width:8px;height:8px;border-radius:999px;background:#22C55E"></span>
+    <span style="font-size:11.5px;font-weight:700;color:#16A34A">Confirmed</span></div>
+   <div class="hex">16A34A · was 10B981</div></div>
+  <div class="sw"><div style="height:58px;border-radius:12px;background:#FFF7ED;border:1px solid #FED7AA;display:flex;align-items:center;justify-content:center;gap:7px;">
+    <span style="width:8px;height:8px;border-radius:999px;background:#EA580C"></span>
+    <span style="font-size:11.5px;font-weight:700;color:#C2410C">Awaiting intake</span></div>
+   <div class="hex">C2410C · was D97706</div></div>
+  <div class="sw"><div style="height:58px;border-radius:12px;background:#F1F5F9;border:1px solid #E2E8F0;display:flex;align-items:center;justify-content:center;gap:7px;">
+    <span style="width:8px;height:8px;border-radius:999px;background:#64748B"></span>
+    <span style="font-size:11.5px;font-weight:700;color:#64748B">Paused</span></div>
+   <div class="hex">64748B</div></div>
+  <div class="sw"><div style="height:58px;border-radius:12px;background:#FFF1F2;border:1px solid #FECDD3;display:flex;align-items:center;justify-content:center;gap:7px;">
+    <span style="width:8px;height:8px;border-radius:999px;background:#E11D48"></span>
+    <span style="font-size:11.5px;font-weight:700;color:#E11D48">Cancelled</span></div>
+   <div class="hex">E11D48</div></div>
+  <div class="sw"><div style="height:58px;border-radius:12px;background:#F0F9FF;border:1px solid #BAE6FD;display:flex;align-items:center;justify-content:center;gap:7px;">
+    <span style="width:8px;height:8px;border-radius:999px;background:#0284C7"></span>
+    <span style="font-size:11.5px;font-weight:700;color:#0284C7">Rescheduled</span></div>
+   <div class="hex">0284C7</div></div>
+</div>
+</body>
+</html>

@@ -1,4 +1,5 @@
 import { Injectable, BadRequestException, NotFoundException } from '@nestjs/common';
+import { Prisma } from '@prisma/client';
 import { PrismaService } from '../../common/prisma/prisma.service';
 
 type FormField = {
@@ -8,6 +9,17 @@ type FormField = {
   required?: boolean;
   options?: string[];
 };
+
+type DerivedAssessmentPayload = {
+  instrument: 'PHQ_9';
+  totalScore: number;
+  severity: 'Minimal' | 'Mild' | 'Moderate' | 'Moderately severe' | 'Severe';
+  item9Risk: boolean;
+} | {
+  instrument: 'GAD_7';
+  totalScore: number;
+  severity: 'Minimal' | 'Mild' | 'Moderate' | 'Severe';
+} | null;
 
 @Injectable()
 export class IntakeService {
@@ -28,6 +40,8 @@ export class IntakeService {
   private mapForm(form: {
     id: bigint;
     title: string;
+    slug?: string | null;
+    systemKey?: string | null;
     description: string | null;
     targetType: string;
     schemaJson: unknown;
@@ -41,6 +55,8 @@ export class IntakeService {
     return {
       id: form.id.toString(),
       title: form.title,
+      slug: form.slug || null,
+      systemKey: form.systemKey || null,
       description: form.description,
       targetType: form.targetType,
       schemaJson: form.schemaJson,
@@ -96,6 +112,68 @@ export class IntakeService {
         value,
       };
     });
+  }
+
+  private deriveAssessmentPayload(form: { systemKey?: string | null } | null | undefined, answersJson: unknown): DerivedAssessmentPayload {
+    const answers = answersJson && typeof answersJson === 'object' ? (answersJson as Record<string, unknown>) : {};
+    if (form?.systemKey === 'PHQ_9') {
+      const orderedKeys = ['phq9_1', 'phq9_2', 'phq9_3', 'phq9_4', 'phq9_5', 'phq9_6', 'phq9_7', 'phq9_8', 'phq9_9'];
+      const numeric = orderedKeys.map((key) => {
+        const raw = answers[key];
+        if (typeof raw === 'number') return raw;
+        if (typeof raw === 'string') return Number.parseInt(raw, 10);
+        return NaN;
+      });
+
+      if (numeric.some((value) => !Number.isInteger(value) || value < 0 || value > 3)) return null;
+
+      const totalScore = numeric.reduce((sum, value) => sum + value, 0);
+      const severity = totalScore <= 4
+        ? 'Minimal'
+        : totalScore <= 9
+          ? 'Mild'
+          : totalScore <= 14
+            ? 'Moderate'
+            : totalScore <= 19
+              ? 'Moderately severe'
+              : 'Severe';
+
+      return {
+        instrument: 'PHQ_9',
+        totalScore,
+        severity,
+        item9Risk: numeric[8] > 0,
+      };
+    }
+
+    if (form?.systemKey === 'GAD_7') {
+      const orderedKeys = ['gad7_1', 'gad7_2', 'gad7_3', 'gad7_4', 'gad7_5', 'gad7_6', 'gad7_7'];
+      const numeric = orderedKeys.map((key) => {
+        const raw = answers[key];
+        if (typeof raw === 'number') return raw;
+        if (typeof raw === 'string') return Number.parseInt(raw, 10);
+        return NaN;
+      });
+
+      if (numeric.some((value) => !Number.isInteger(value) || value < 0 || value > 3)) return null;
+
+      const totalScore = numeric.reduce((sum, value) => sum + value, 0);
+      const severity = totalScore <= 4
+        ? 'Minimal'
+        : totalScore <= 9
+          ? 'Mild'
+          : totalScore <= 14
+            ? 'Moderate'
+            : 'Severe';
+
+      return {
+        instrument: 'GAD_7',
+        totalScore,
+        severity,
+      };
+    }
+
+    return null;
   }
 
   async getPublicForms(tenantId: bigint, targetType?: string) {
@@ -174,6 +252,20 @@ export class IntakeService {
     const existing = await this.prisma.universalForm.findFirst({ where: { id: formId, tenantId } });
     if (!existing) throw new NotFoundException('Form not found');
 
+    if (existing.systemKey) {
+      const isTryingToEditLockedFields =
+        dto.title !== undefined ||
+        dto.description !== undefined ||
+        dto.targetType !== undefined ||
+        dto.schemaJson !== undefined ||
+        dto.reviewPublicationMode !== undefined ||
+        dto.reviewerDisplayMode !== undefined;
+
+      if (isTryingToEditLockedFields) {
+        throw new BadRequestException('System templates can only be activated or paused; their schema and identity fields are locked.');
+      }
+    }
+
     const targetType = this.normalizeTargetType(dto.targetType || existing.targetType);
     const form = await this.prisma.universalForm.update({
       where: { id: formId },
@@ -241,6 +333,7 @@ export class IntakeService {
 
     const status = form.targetType === 'REVIEW' && form.reviewPublicationMode === 'AUTO' ? 'PUBLISHED' : 'UNREAD';
     const now = new Date();
+    const derived = this.deriveAssessmentPayload(form, dto.answersJson);
 
     const submission = await this.prisma.universalFormSubmission.create({
       data: {
@@ -253,6 +346,7 @@ export class IntakeService {
         reviewedAt: null,
         publishedAt: status === 'PUBLISHED' ? now : null,
         answersJson: dto.answersJson,
+        derivedJson: derived,
       },
     });
 
@@ -262,6 +356,7 @@ export class IntakeService {
       targetType: form.targetType,
       status: submission.status,
       submittedAt: submission.createdAt.toISOString(),
+      derived,
     };
   }
 
@@ -308,6 +403,7 @@ export class IntakeService {
         submittedAt: submission.createdAt.toISOString(),
         reviewedAt: submission.reviewedAt?.toISOString() || null,
         publishedAt: submission.publishedAt?.toISOString() || null,
+        derived: submission.derivedJson as Prisma.JsonValue | null,
         client: {
           id: submission.clientProfileId.toString(),
           firstName: client?.firstName || '',
@@ -376,6 +472,7 @@ export class IntakeService {
       status: submission.status,
       answers: this.formatAnswerEntries(submission.form.schemaJson, submission.answersJson),
       review: this.deriveReviewPayload(submission.form.schemaJson, submission.answersJson),
+      derived: submission.derivedJson as Prisma.JsonValue | null,
       submittedAt: submission.createdAt.toISOString(),
     }));
   }

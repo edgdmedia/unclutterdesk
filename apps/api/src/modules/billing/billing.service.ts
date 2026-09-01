@@ -27,6 +27,7 @@ export class BillingService {
       accountNumber: subaccount.accountNumber,
       accountName: subaccount.accountName,
       paystackCode: subaccount.paystackCode,
+      stripeAccountId: subaccount.stripeAccountId,
       isVerified: subaccount.isVerified,
     };
   }
@@ -37,15 +38,18 @@ export class BillingService {
 
     const tier = (tenant.subscriptionTier || 'STARTER').toUpperCase();
     const amounts: Record<string, string> = {
-      STARTER: '₦0',
-      PRO: '₦25,000',
-      CLINIC: '₦75,000',
+      STARTER: '₦5,000',
+      PRO: '₦15,000',
+      CLINIC: '₦45,000',
     };
+
+    const nextBilling = new Date();
+    nextBilling.setUTCMonth(nextBilling.getUTCMonth() + 1, 1);
 
     return {
       subscriptionTier: tier,
       nextChargeAmount: amounts[tier] || '₦0',
-      nextBillingDate: '01 Sep 2026',
+      nextBillingDate: new Intl.DateTimeFormat('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }).format(nextBilling),
     };
   }
 
@@ -64,6 +68,7 @@ export class BillingService {
           accountNumber: tenant.bankSubaccount.accountNumber,
           accountName: tenant.bankSubaccount.accountName,
           isVerified: tenant.bankSubaccount.isVerified,
+          stripeAccountId: tenant.bankSubaccount.stripeAccountId,
         }
       : null;
 
@@ -245,6 +250,7 @@ export class BillingService {
       platformFeeKobo: platformFeeKobo.toString(),
       therapistPayoutKobo: therapistPayoutKobo.toString(),
       paystackSubaccountCode: tenant?.bankSubaccount?.paystackCode || null,
+      stripeAccountId: tenant?.bankSubaccount?.stripeAccountId || null,
       tier,
     };
   }

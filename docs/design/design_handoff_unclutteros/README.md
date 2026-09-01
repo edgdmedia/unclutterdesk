@@ -1,11 +1,11 @@
-# Handoff: UnclutterOS — Practice Management & White-Label Telehealth
+# Handoff: Unclutter Desk — Practice Management & White-Label Telehealth
 
 ## Overview
 
-UnclutterOS is a B2B SaaS platform with two distinct faces:
+Unclutter Desk is a B2B SaaS platform with two distinct faces:
 
 1. **The therapist workspace** — an internal practice-management app (dashboard, schedule, clients, brand settings, analytics) behind a login.
-2. **The white-label client booking portal** — a public page served on the therapist's own domain, styled entirely in the therapist's brand colors and logo, with no UnclutterOS chrome beyond a small "Booking powered by UnclutterOS" footer line.
+2. **The white-label client booking portal** — a public page served on the therapist's own domain, styled entirely in the therapist's brand colors and logo, with no Unclutter Desk chrome beyond a small "Booking powered by Unclutter Desk" footer line.
 
 The central product idea, and the thing the design is built to demonstrate, is that **a single pair of tenant color tokens drives the entire public-facing experience**. The therapist picks a primary and secondary color in Brand Settings, and every branded element of the booking portal, confirmation screen, and their own workspace accents update from those two values.
 
@@ -31,7 +31,7 @@ Two caveats:
 
 ## Design System Foundation
 
-This design is bound to the **Unclutter Design System**, specifically its **UnclutterOS sub-brand token layer** (`tokens/unclutteros.css` in this bundle). Import it and apply `data-app="os"` on a wrapping element to activate the OS semantic token remapping.
+This design is bound to the **Unclutter Design System**, specifically its **Unclutter Desk sub-brand token layer** (`tokens/unclutterdesk.css` in this bundle). Import it and apply `data-app="os"` on a wrapping element to activate the OS semantic token remapping.
 
 The critical structural idea in that file is the **white-label slot**:
 
@@ -55,7 +55,7 @@ Set these per tenant — on `<html data-tenant="…">` or inline as `style="--br
 |---|---|---|
 | `--os-sidebar` | `#0F172A` | Sidebar background, dark hero cards |
 | `--os-sidebar-hover` | `#1E293B` | Sidebar item hover |
-| `--os-navy` | `#0F3A53` | UnclutterOS primary, link color |
+| `--os-navy` | `#0F3A53` | Unclutter Desk primary, link color |
 | `--os-navy-700` | `#0C2E42` | Primary hover |
 | `--os-navy-500` | `#1B5375` | Avatar chip in sidebar footer |
 | `--os-gold` | `#E3B341` | OS badge, active-nav edge marker + icon, star rating |
@@ -85,7 +85,7 @@ Primary `#007BFF`, secondary `#6F42C1`. The preset swatch pairs offered in Brand
 
 | Name | Primary | Secondary |
 |---|---|---|
-| UnclutterOS navy | `#0F3A53` | `#E3B341` |
+| Unclutter Desk navy | `#0F3A53` | `#E3B341` |
 | Signal blue (default) | `#007BFF` | `#6F42C1` |
 | Calm teal | `#0E7490` | `#F59E0B` |
 | Deep violet | `#7C3AED` | `#EC4899` |
@@ -179,8 +179,8 @@ Full-height flex row. Minimum viewport width **1440px** — the workspace layout
 **Purpose.** Morning check-in: what's earning, who's coming, and one-click access to the booking link the therapist shares with clients.
 
 **Header right cluster:**
-- **Booking link field** — 44px, `#F1F5F9`, `1px solid #E2E8F0`, radius 14px, padding `0 6px 0 14px`, gap 10px. A 15px link icon, a read-only input (238px, transparent, 13px/500 `#334155`) showing `unclutteros.com/booking/dr-smith`, and a 32px white copy button (radius 10px, `0 1px 2px rgba(15,23,42,.08)`, hover `#E2E8F0`).
-- **Copy Booking Link button** — 44px, padding 0 20px, radius 14px, `background: var(--brand-primary)`, white 14px/700, copy icon + label, `box-shadow: 0 6px 18px rgba(15,58,83,.22)`, `white-space: nowrap`. Hover `filter: brightness(1.08)`. On click: copy `https://unclutteros.com/booking/dr-smith`, swap the label to **"Link copied"** for 1600ms, then revert.
+- **Booking link field** — 44px, `#F1F5F9`, `1px solid #E2E8F0`, radius 14px, padding `0 6px 0 14px`, gap 10px. A 15px link icon, a read-only input (238px, transparent, 13px/500 `#334155`) showing `unclutterdesk.com/booking/dr-smith`, and a 32px white copy button (radius 10px, `0 1px 2px rgba(15,23,42,.08)`, hover `#E2E8F0`).
+- **Copy Booking Link button** — 44px, padding 0 20px, radius 14px, `background: var(--brand-primary)`, white 14px/700, copy icon + label, `box-shadow: 0 6px 18px rgba(15,58,83,.22)`, `white-space: nowrap`. Hover `filter: brightness(1.08)`. On click: copy `https://unclutterdesk.com/booking/dr-smith`, swap the label to **"Link copied"** for 1600ms, then revert.
 - A 1px × 28px `#E2E8F0` divider, then a 44px notification button (white, `1px solid #E2E8F0`, radius 14px) with a 7px `#E11D48` dot at top 9px / right 9px, ringed `1.5px solid #fff`.
 
 **Body:** `display:grid; grid-template-columns: minmax(0,1fr) 372px; gap:20px; align-items:start`.
@@ -216,7 +216,7 @@ Full-height flex row. Minimum viewport width **1440px** — the workspace layout
 - Two color fields in a 2-col grid: a 36px native color input (radius 10px, chrome removed via `-webkit-appearance:none` and `::-webkit-color-swatch { border:none; border-radius:10px }`) beside a 11px/700 `#64748B` role label and the uppercase mono hex. Wrapper: padding 10px 12px, `1px solid #E2E8F0`, radius 16px, `#F8FAFC`. Fires on both `change` and `input` for live update.
 - Preset row: label "Presets" 10.5px/700 `#94A3B8`, then five 30px split swatches (radius 10px, two half-width fills, `2px solid` border — `#0F172A` when that preset's primary is current, else `#E2E8F0`). Clicking sets both colors.
 - **Logo uploader**: dashed drop target, `1.5px dashed #CBD5E1`, radius 16px, `#F8FAFC`, padding 12px 14px; hover border `#94A3B8`, background `#F1F5F9`. 40px white logo tile, filename `jane-smith-logo.svg` 13px/700, constraint "SVG or PNG · max 2 MB · replace" 11px `#94A3B8`, and an "Upload" chip at right.
-- **Custom domain (CNAME)**: label + a green "VERIFIED" pill; a 44px field (`#F8FAFC`, `1px solid #E2E8F0`, radius 14px) with globe icon and value `booking.drsmiththerapy.com`; helper 11px `#94A3B8` — "Point a CNAME record at `cname.unclutteros.com`" with the host in a mono chip (`#F1F5F9`, radius 5px, padding 1px 5px, `#0F3A53`).
+- **Custom domain (CNAME)**: label + a green "VERIFIED" pill; a 44px field (`#F8FAFC`, `1px solid #E2E8F0`, radius 14px) with globe icon and value `booking.drsmiththerapy.com`; helper 11px `#94A3B8` — "Point a CNAME record at `cname.unclutterdesk.com`" with the host in a mono chip (`#F1F5F9`, radius 5px, padding 1px 5px, `#0F3A53`).
 - **Save brand settings** — full width, 44px, radius 14px, tenant primary.
 
 ---
@@ -260,7 +260,7 @@ Each step is introduced by a 22px numbered circle in the tenant primary (white 1
 - 1px divider, then "Total" 13px/700 `#475569` and **₦30,000** at 26px/800/−0.035em, with "Paid securely at booking" 11.5px `#94A3B8` beneath.
 - **Confirm & Book Session** — full width, 52px, radius 16px, tenant primary, white 15px/700, right-arrow icon, `box-shadow: 0 10px 26px var(--brand-ring)`, hover `filter: brightness(1.08)`.
 - Below: a padlock line "Free cancellation up to 24 hours before".
-- Footer strip, `#F8FAFC`, `border-top: 1px solid #E2E8F0`, padding 14px 22px: 16px mark at 60% opacity + "Booking powered by UnclutterOS" 10.5px `#94A3B8`. **This is the only UnclutterOS branding on the public page.**
+- Footer strip, `#F8FAFC`, `border-top: 1px solid #E2E8F0`, padding 14px 22px: 16px mark at 60% opacity + "Booking powered by Unclutter Desk" 10.5px `#94A3B8`. **This is the only Unclutter Desk branding on the public page.**
 
 ---
 
@@ -333,12 +333,12 @@ Centered column, padding 52px 40px 56px, `background: linear-gradient(180deg, pr
   - Header row: 46px therapist avatar (tenant soft), name 15.5px/700, "Clinical Psychology · 50-minute Individual Session" 12.5px `#64748B`, and a green **Confirmed** pill.
   - Rows (key column 100px): **Booking ref** `UOS-4C81-2026`, Date, Time, Therapist, Format, **Paid** `₦30,000 · Card ending 4412`.
   - Two 48px buttons, gap 10px: **Add to calendar** (tenant primary) and **Reschedule** (secondary).
-  - Same "Booking powered by UnclutterOS" footer strip.
+  - Same "Booking powered by Unclutter Desk" footer strip.
 - Closing line 12.5px `#94A3B8`: "Free cancellation up to 24 hours before your session."
 
 ---
 
-### Mobile app (`UnclutterOS Mobile.dc.html`)
+### Mobile app (`Unclutter Desk Mobile.dc.html`)
 
 Five screens at **390 × 844** (frames drawn at radius 46px for presentation only — build to the device viewport).
 
@@ -387,7 +387,7 @@ Per-tenant, persisted server-side:
 - `logoUrl`, `avatarUrl` — both capped at **2 MB**; avatar accepts JPG/PNG, logo accepts SVG/PNG
 - `customDomain` + `domainVerified` (CNAME status)
 - `practiceActive` (boolean) — gates the public booking page
-- `bookingSlug` — the `unclutteros.com/booking/:slug` fallback URL
+- `bookingSlug` — the `unclutterdesk.com/booking/:slug` fallback URL
 
 Per-session UI state, client-side:
 - `selectedService`, `selectedDate`, `selectedSlot`, `sessionFormat`
@@ -398,8 +398,8 @@ Data the screens need: monthly revenue series (12 points) and current-month tota
 
 ## Assets
 
-- `assets/unclutteros-mark.svg` — UnclutterOS app mark. Used in the sidebar (30px), the "powered by" footers (16px at 60% opacity), and mobile.
-- `assets/unclutteros-lockup.svg` — full lockup, included for completeness.
+- `assets/unclutterdesk-mark.svg` — Unclutter Desk app mark. Used in the sidebar (30px), the "powered by" footers (16px at 60% opacity), and mobile.
+- `assets/unclutterdesk-lockup.svg` — full lockup, included for completeness.
 - **Outfit** from Google Fonts, weights 300–900.
 - Icons are inline SVG in the mock, drawn in the **Lucide** style — 24×24 viewBox, `stroke-width: 2`, `stroke-linecap`/`linejoin: round`, no fill. In production use `lucide-react` and match sizes: 14–15px inline, 18px nav, 20px mobile nav.
 - No photography anywhere. Avatars are initials placeholders.
@@ -409,10 +409,10 @@ Data the screens need: monthly revenue series (12 points) and current-month tota
 
 | File | Contents |
 |---|---|
-| `UnclutterOS Screens.dc.html` | Spec board — all six desktop/public screens laid out side by side on one canvas. The reference for exact values. |
-| `UnclutterOS Prototype.dc.html` | Clickable desktop app: sidebar navigation across five screens, Brand Settings with a live scaled booking preview, and the booking → confirmation transition. |
-| `UnclutterOS Mobile.dc.html` | Five mobile screens (Today, Schedule, Clients, Brand, client booking). |
-| `tokens/unclutteros.css` | The UnclutterOS sub-brand token layer, including the white-label slots. Import this. |
+| `Unclutter Desk Screens.dc.html` | Spec board — all six desktop/public screens laid out side by side on one canvas. The reference for exact values. |
+| `Unclutter Desk Prototype.dc.html` | Clickable desktop app: sidebar navigation across five screens, Brand Settings with a live scaled booking preview, and the booking → confirmation transition. |
+| `Unclutter Desk Mobile.dc.html` | Five mobile screens (Today, Schedule, Clients, Brand, client booking). |
+| `tokens/unclutterdesk.css` | The Unclutter Desk sub-brand token layer, including the white-label slots. Import this. |
 | `tokens/colors_and_type.css` | Base Unclutter design system tokens that the OS layer extends. |
 | `assets/` | Logo mark and lockup. |
 | `support.js` | Prototype runtime. Required to open the `.dc.html` files locally. **Not a production dependency.** |

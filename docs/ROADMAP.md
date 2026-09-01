@@ -1,6 +1,6 @@
-# UnclutterOS — Execution Roadmap
+# Unclutter Desk — Execution Roadmap
 
-**Product Name**: UnclutterOS  
+**Product Name**: Unclutter Desk  
 **Document Version**: 1.0.0  
 
 ---

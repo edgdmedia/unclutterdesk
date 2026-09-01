@@ -13,8 +13,9 @@ datasource db {
 model Tenant {
   id                BigInt   @id @default(autoincrement())
   name              String   @db.VarChar(100)
-  slug              String   @unique @db.VarChar(50) // e.g., "dr-jane" -> dr-jane.unclutteros.com
+  slug              String   @unique @db.VarChar(50) // e.g., "dr-jane" -> dr-jane.unclutterdesk.com
   customDomain      String?  @unique @db.VarChar(100) // e.g., "booking.drjanetherapy.com"
+  customDomainStatus String   @default("PENDING") @db.VarChar(20) // "PENDING", "ACTIVE", "FAILED"
   
   // White-Label Brand Tokens
   logoUrl           String?
@@ -36,6 +37,10 @@ model Tenant {
   
   subscriptionTier  String   @default("STARTER") // "STARTER", "PRO", "CLINIC"
   isActive          Boolean  @default(true)
+
+  // Stripe Billing
+  stripeCustomerId     String? @unique
+  stripeSubscriptionId String? @unique
 
   // Notification plug-in: which channels this tenant has enabled at all.
   // JSON map, e.g. { "email": true, "in_app": true, "push": true, "sms": false }
@@ -273,6 +278,8 @@ model UniversalForm {
   id          BigInt   @id @default(autoincrement())
   tenantId    BigInt
   title       String
+  slug        String?
+  systemKey   String?
   description String?
   targetType  String   @default("INTAKE") // "INTAKE", "ASSESSMENT", "FEEDBACK", "CONSENT", "REVIEW"
   schemaJson  Json     // Field array: { id, label, type: 'text'|'textarea'|'single_choice'|'multiple_choice'|'scale'|'signature'|'file_upload', required, options }
@@ -298,6 +305,7 @@ model UniversalFormSubmission {
   targetType      String   @default("INTAKE")
   status          String   @default("UNREAD") // "UNREAD", "REVIEWED", "PUBLISHED", "HIDDEN"
   answersJson     Json     // Key-value map of question ID -> answer or signature data
+  derivedJson     Json?
   createdAt       DateTime @default(now())
   updatedAt       DateTime?
   reviewedAt      DateTime?
@@ -345,6 +353,7 @@ model BankSubaccount {
   accountNumber    String
   accountName      String
   paystackCode     String?
+  stripeAccountId  String?  @unique
   isVerified       Boolean  @default(true)
   createdAt        DateTime @default(now())
   updatedAt        DateTime @updatedAt

@@ -1,15 +1,15 @@
-# Handoff: UnclutterOS — Screens Set 04 & Set 05 (Views 21–29)
+# Handoff: Unclutter Desk — Screens Set 04 & Set 05 (Views 21–29)
 
 ## Overview
 
-UnclutterOS is a B2B practice-management and white-label telehealth platform for
+Unclutter Desk is a B2B practice-management and white-label telehealth platform for
 therapists in Nigeria. Therapists run their practice inside the OS (schedule, clients,
 clinical notes, telehealth, billing); their clients book and pay through a booking
 portal branded to the therapist, not to unclutterOS.
 
 This bundle covers **nine screens across two files**:
 
-**Set 04 — `UnclutterOS Screens IV.dc.html`**
+**Set 04 — `Unclutter Desk Screens IV.dc.html`**
 | View | Screen | Route |
 |---|---|---|
 | 21 | Client account portal | `/portal` |
@@ -19,15 +19,15 @@ This bundle covers **nine screens across two files**:
 | 25 | Availability & blocked time | `/settings/availability` |
 | 26 | Empty, error & offline states | — (state spec board) |
 
-**Set 05 — `UnclutterOS Screens V.dc.html`**
+**Set 05 — `Unclutter Desk Screens V.dc.html`**
 | View | Screen | Route |
 |---|---|---|
 | 27 | My profile | `/profile` |
 | 28 | Account & preferences | `/settings/account` |
 | 29 | Notifications centre + header dropdown | `/notifications` |
 
-Views 01–06 ship in `design_handoff_unclutteros`; views 07–20 in
-`design_handoff_unclutteros_screens_2_3`. Tokens are identical across all bundles.
+Views 01–06 ship in `design_handoff_unclutterdesk`; views 07–20 in
+`design_handoff_unclutterdesk_screens_2_3`. Tokens are identical across all bundles.
 
 ## About the Design Files
 
@@ -227,7 +227,7 @@ Left column:
 - **Identity** — dashed-border upload row with a 66px logo tile rendered in the current
   palette, "Practice logo / SVG or PNG, up to 2MB. Falls back to your initials." and
   **Upload logo**; then practice name input and a booking-link field showing
-  `unclutteros.com/booking/` + bold slug; then a welcome-message textarea.
+  `unclutterdesk.com/booking/` + bold slug; then a welcome-message textarea.
 - **Palette** — three 18px-radius swatch cards (large primary block + 44px accent square,
   name, descriptor). Selected: `inset 0 0 0 2px #0F3A53, 0 10px 28px rgba(15,23,42,.1)`;
   unselected `inset 0 0 0 1px #E2E8F0`. Below, read-only Primary and Accent hex fields
@@ -310,7 +310,7 @@ Left column:
 Right column 352px:
 - **Profile strength** — 82%, 8px track filled navy, four checklist rows (20px tinted
   mark chips; done rows green `✓` with `#334155` text, pending row grey `–` with `#94A3B8`).
-- **Public profile** — navy gradient card, gold eyebrow, `unclutteros.com/dr-smith`,
+- **Public profile** — navy gradient card, gold eyebrow, `unclutterdesk.com/dr-smith`,
   "214 visits in the last 30 days, 19 of them booked", ghost **Copy link**.
 - **Session types you offer** — three `#F8FAFC` rows: Individual 50 min ₦35,000,
   Couples 80 min ₦55,000, First consultation 20 min **Free** (green).
@@ -459,9 +459,9 @@ with read state and per-user channel preferences (29).
 
 ## Assets
 
-- `assets/unclutteros-mark.svg` — product mark, used at 14–34px with a 5–10px radius.
-- `assets/unclutteros-lockup.svg` — full lockup (not used in these views, included for reference).
-- `tokens/colors_and_type.css`, `tokens/unclutteros.css` — token stylesheets referenced by
+- `assets/unclutterdesk-mark.svg` — product mark, used at 14–34px with a 5–10px radius.
+- `assets/unclutterdesk-lockup.svg` — full lockup (not used in these views, included for reference).
+- `tokens/colors_and_type.css`, `tokens/unclutterdesk.css` — token stylesheets referenced by
   the prototypes.
 - **Outfit** from Google Fonts, weights 300–900.
 - Icons are inline SVG in the Lucide style: 24×24 viewBox, `stroke-width` 2 (1.8 for
@@ -472,17 +472,17 @@ with read state and per-user channel preferences (29).
 ## Files
 
 ```
-design_handoff_unclutteros_screens_4_5/
+design_handoff_unclutterdesk_screens_4_5/
 ├── README.md
-├── UnclutterOS Screens IV.dc.html     ← views 21–26
-├── UnclutterOS Screens V.dc.html      ← views 27–29
+├── Unclutter Desk Screens IV.dc.html     ← views 21–26
+├── Unclutter Desk Screens V.dc.html      ← views 27–29
 ├── support.js                          ← template runtime (must sit beside the HTML)
 ├── assets/
-│   ├── unclutteros-mark.svg
-│   └── unclutteros-lockup.svg
+│   ├── unclutterdesk-mark.svg
+│   └── unclutterdesk-lockup.svg
 └── tokens/
     ├── colors_and_type.css
-    └── unclutteros.css
+    └── unclutterdesk.css
 ```
 
 Open either `.dc.html` directly in a browser to see all its screens on one canvas.

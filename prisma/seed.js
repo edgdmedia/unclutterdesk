@@ -72,7 +72,7 @@ async function main() {
   const userPlatformAdmin = await prisma.user.create({
     data: {
       id: 3,
-      email: 'admin@unclutteros.com',
+      email: 'admin@unclutterdesk.com',
       username: 'platformadmin',
       password: hashedPassword,
       platformRole: 'SUPER_ADMIN',
@@ -93,6 +93,8 @@ async function main() {
       firstName: 'Jane',
       lastName: 'Smith',
       status: 'active',
+      emailVerified: true,
+      emailVerifiedAt: new Date(),
     }
   });
   const profileNkem = await prisma.profile.create({
@@ -107,6 +109,8 @@ async function main() {
       firstName: 'Nkem',
       lastName: 'Eze',
       status: 'active',
+      emailVerified: true,
+      emailVerifiedAt: new Date(),
     }
   });
   console.log('👤 Created Staff Profiles');
@@ -221,14 +225,18 @@ async function main() {
   console.log('🛠 Created Services');
 
   // 9. Create Availabilities (for Dr. Jane, profileId: 1)
-  // Let's seed slots on Aug 10, 11, 12, 13 (2026)
   const slots = [];
-  const startDays = [10, 11, 12, 13];
   let availId = 1;
-  for (const day of startDays) {
+  const baseDay = new Date();
+  baseDay.setUTCHours(0, 0, 0, 0);
+  for (const offset of [1, 2, 3, 4]) {
+    const day = new Date(baseDay);
+    day.setUTCDate(day.getUTCDate() + offset);
     for (const hour of [9, 11, 14, 16]) {
-      const startsAt = new Date(Date.UTC(2026, 7, day, hour, 0, 0));
-      const endsAt = new Date(Date.UTC(2026, 7, day, hour + 1, 0, 0));
+      const startsAt = new Date(day);
+      startsAt.setUTCHours(hour, 0, 0, 0);
+      const endsAt = new Date(day);
+      endsAt.setUTCHours(hour + 1, 0, 0, 0);
       const av = await prisma.consultAvailability.create({
         data: {
           id: BigInt(availId++),
@@ -244,14 +252,20 @@ async function main() {
       slots.push(av);
     }
   }
+  const pastDay = new Date(baseDay);
+  pastDay.setUTCDate(pastDay.getUTCDate() - 7);
+  const pastStart = new Date(pastDay);
+  pastStart.setUTCHours(9, 0, 0, 0);
+  const pastEnd = new Date(pastDay);
+  pastEnd.setUTCHours(10, 0, 0, 0);
   const pastSlot = await prisma.consultAvailability.create({
     data: {
       id: BigInt(availId++),
       tenantId: 1,
       providerProfileId: 1,
       serviceId: 1,
-      startsAt: new Date(Date.UTC(2026, 7, 3, 9, 0, 0)),
-      endsAt: new Date(Date.UTC(2026, 7, 3, 10, 0, 0)),
+      startsAt: pastStart,
+      endsAt: pastEnd,
       channel: 'VIDEO',
       isActive: false,
     }
@@ -315,15 +329,23 @@ async function main() {
     data: {
       id: 1,
       tenantId: 1,
-      title: 'PHQ-9 & GAD-7 General Intake',
-      description: 'Standard clinical screening for depression and anxiety severity.',
-      targetType: 'INTAKE',
+      title: 'PHQ-9',
+      slug: 'phq-9',
+      systemKey: 'PHQ_9',
+      description: 'Standard depression screening questionnaire.',
+      targetType: 'ASSESSMENT',
       reviewPublicationMode: 'MANUAL',
       reviewerDisplayMode: 'FIRST_NAME',
       schemaJson: [
-        { id: 'q1', label: 'Primary reason for seeking therapy?', type: 'textarea', required: true },
-        { id: 'q2', label: 'Have you attended therapy before?', type: 'single_choice', options: ['Yes', 'No'], required: true },
-        { id: 'q3', label: 'Currently taking any medications?', type: 'text', required: false }
+        { id: 'phq9_1', label: 'Little interest or pleasure in doing things', type: 'single_choice', options: ['0', '1', '2', '3'], required: true },
+        { id: 'phq9_2', label: 'Feeling down, depressed, or hopeless', type: 'single_choice', options: ['0', '1', '2', '3'], required: true },
+        { id: 'phq9_3', label: 'Trouble falling or staying asleep, or sleeping too much', type: 'single_choice', options: ['0', '1', '2', '3'], required: true },
+        { id: 'phq9_4', label: 'Feeling tired or having little energy', type: 'single_choice', options: ['0', '1', '2', '3'], required: true },
+        { id: 'phq9_5', label: 'Poor appetite or overeating', type: 'single_choice', options: ['0', '1', '2', '3'], required: true },
+        { id: 'phq9_6', label: 'Feeling bad about yourself', type: 'single_choice', options: ['0', '1', '2', '3'], required: true },
+        { id: 'phq9_7', label: 'Trouble concentrating on things', type: 'single_choice', options: ['0', '1', '2', '3'], required: true },
+        { id: 'phq9_8', label: 'Moving or speaking slowly or being fidgety', type: 'single_choice', options: ['0', '1', '2', '3'], required: true },
+        { id: 'phq9_9', label: 'Thoughts that you would be better off dead or of hurting yourself', type: 'single_choice', options: ['0', '1', '2', '3'], required: true }
       ],
       isDefault: true,
       isActive: true,
@@ -338,19 +360,82 @@ async function main() {
       formId: form.id,
       bookingId: 1,
       clientProfileId: 3, // Adaeze
-      targetType: 'INTAKE',
+      targetType: 'ASSESSMENT',
       status: 'UNREAD',
       answersJson: {
-        q1: 'Frequent anxiety spikes and difficulty sleeping.',
-        q2: 'Yes',
-        q3: 'None'
-      }
+        phq9_1: '1',
+        phq9_2: '2',
+        phq9_3: '2',
+        phq9_4: '1',
+        phq9_5: '1',
+        phq9_6: '2',
+        phq9_7: '1',
+        phq9_8: '1',
+        phq9_9: '1'
+      },
+      derivedJson: {
+        instrument: 'PHQ_9',
+        totalScore: 12,
+        severity: 'Moderate',
+        item9Risk: true,
+      },
+    }
+  });
+
+  const gad7Form = await prisma.universalForm.create({
+    data: {
+      id: 2,
+      tenantId: 1,
+      title: 'GAD-7',
+      slug: 'gad-7',
+      systemKey: 'GAD_7',
+      description: 'Standard anxiety screening questionnaire.',
+      targetType: 'ASSESSMENT',
+      reviewPublicationMode: 'MANUAL',
+      reviewerDisplayMode: 'FIRST_NAME',
+      schemaJson: [
+        { id: 'gad7_1', label: 'Feeling nervous, anxious, or on edge', type: 'single_choice', options: ['0', '1', '2', '3'], required: true },
+        { id: 'gad7_2', label: 'Not being able to stop or control worrying', type: 'single_choice', options: ['0', '1', '2', '3'], required: true },
+        { id: 'gad7_3', label: 'Worrying too much about different things', type: 'single_choice', options: ['0', '1', '2', '3'], required: true },
+        { id: 'gad7_4', label: 'Trouble relaxing', type: 'single_choice', options: ['0', '1', '2', '3'], required: true },
+        { id: 'gad7_5', label: 'Being so restless that it is hard to sit still', type: 'single_choice', options: ['0', '1', '2', '3'], required: true },
+        { id: 'gad7_6', label: 'Becoming easily annoyed or irritable', type: 'single_choice', options: ['0', '1', '2', '3'], required: true },
+        { id: 'gad7_7', label: 'Feeling afraid as if something awful might happen', type: 'single_choice', options: ['0', '1', '2', '3'], required: true },
+      ],
+      isDefault: true,
+      isActive: true,
+    }
+  });
+
+  await prisma.universalFormSubmission.create({
+    data: {
+      id: 2,
+      tenantId: 1,
+      formId: gad7Form.id,
+      bookingId: 1,
+      clientProfileId: 3,
+      targetType: 'ASSESSMENT',
+      status: 'UNREAD',
+      answersJson: {
+        gad7_1: '2',
+        gad7_2: '2',
+        gad7_3: '1',
+        gad7_4: '1',
+        gad7_5: '1',
+        gad7_6: '1',
+        gad7_7: '1',
+      },
+      derivedJson: {
+        instrument: 'GAD_7',
+        totalScore: 9,
+        severity: 'Mild',
+      },
     }
   });
 
   await prisma.universalForm.create({
     data: {
-      id: 2,
+      id: 3,
       tenantId: 1,
       title: 'Leave a Review',
       description: 'Collect public client testimonials for your practice landing page.',

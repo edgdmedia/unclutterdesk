@@ -1,7 +1,7 @@
-# Handoff: UnclutterOS Marketing Homepage & Pricing Page
+# Handoff: Unclutter Desk Marketing Homepage & Pricing Page
 
 ## Overview
-A single-scroll B2B SaaS marketing page for **UnclutterOS** — a practice-management and white-label telehealth platform for therapists in Nigeria. The page's job is conversion: get a therapist to start a 14-day free trial. It runs from sticky nav → hero → value props → interactive feature showcase → pricing → social proof → final CTA → footer, all on one route with anchor navigation. Pricing lives inline on the homepage (`#pricing`) rather than on a separate route.
+A single-scroll B2B SaaS marketing page for **Unclutter Desk** — a practice-management and white-label telehealth platform for therapists in Nigeria. The page's job is conversion: get a therapist to start a 14-day free trial. It runs from sticky nav → hero → value props → interactive feature showcase → pricing → social proof → final CTA → footer, all on one route with anchor navigation. Pricing lives inline on the homepage (`#pricing`) rather than on a separate route.
 
 ## About the Design Files
 The files in this bundle are **design references created in HTML** — prototypes that show the intended look, layout, and behavior. They are **not production code to copy directly**. The task is to **recreate these designs in the target codebase's existing environment** (React/Next.js, Vue, Astro, etc.) using its established component library, routing, and styling conventions. If no environment exists yet, pick the framework best suited to a marketing site (a static-first React/Next or Astro setup is a reasonable default) and implement the designs there.
@@ -52,7 +52,7 @@ There is one page. Sections are documented in DOM order.
     - **Today's schedule card:** `border-radius:20px; padding:14px; gap:9px`, eyebrow `TODAY'S SCHEDULE`. Rows: `padding:8px 10px; border-radius:12px; background:#F8FAFC`, 3px×22px navy bar + time (`11px/700`, 52px wide) + name (`11px`, `#334155`, flex:1) + tag pill (`9px/800`, `letter-spacing:.1em`, `padding:3px 8px`, `background:rgba(227,179,65,.16)`, `color:#8A6A16`).
       Data: `09:00 · Adaeze O. — Individual · PAID`; `11:00 · Tunde A. — Follow-up · PAID`; `14:00 · Chidinma E. — Intake · NEW`; `16:00 · Group session — CBT · 4 SEATS`.
   - **Phone frame** (`position:absolute; right:-6px; bottom:-52px; width:214px; border-radius:32px; background:#0F172A; padding:9px; box-shadow:0 40px 80px rgba(0,0,0,.55); border:1px solid rgba(255,255,255,.12)`). Screen: `border-radius:25px; background:#FDFCF8; height:400px`.
-    - Title bar: `height:36px; background:#0F3A53; color:#fff; 11px/700` — `Dr. Jane Smith` (demonstrates the white-label surface: no UnclutterOS branding).
+    - Title bar: `height:36px; background:#0F3A53; color:#fff; 11px/700` — `Dr. Jane Smith` (demonstrates the white-label surface: no Unclutter Desk branding).
     - Eyebrow `BOOK A SESSION` (`8.5px/900`, `letter-spacing:.2em`, `#94A3B8`); heading `Choose a time that works for you.` (`15px/700`, `letter-spacing:-.02em`, `line-height:1.25`).
     - Day picker: `repeat(4,1fr)` grid, `gap:5px`, cells `height:34px; border-radius:10px; 9px/700`. Labels `M 8, T 9, W 10, T 11, F 12, S 13, M 15, T 16`. Index 2 (`W 10`) is selected: `background:#0F3A53; color:#fff`; others `background:rgba(15,23,42,.05); color:#334155`.
     - Slot list: `height:32px; border-radius:11px`, unselected `border:1px solid rgba(15,23,42,.1); color:#334155`, selected (`11:00 — 11:50`) `background:#0F3A53; color:#fff; font-weight:600`. Slots: `09:00 — 09:50`, `11:00 — 11:50`, `14:00 — 14:50`.
@@ -153,7 +153,7 @@ There is one page. Sections are documented in DOM order.
 - **Dots:** 7px tall pills, `gap:7px`; active is `26px` wide and `#E3B341`, inactive `7px` and `rgba(15,23,42,.15)`. Clicking a dot jumps to that quote.
 - **Trust badge row** (optional, see tweaks): `gap:40px; opacity:.55`, items `13px/700`, `#475569` — `NPA Registered`, `NDPR Compliant`, `Paystack Verified`, `256-bit Encryption`.
 - **Quotes:**
-  1. “UnclutterOS allowed me to launch my private practice in 10 minutes. My clients book directly on my custom domain and payments land in my account instantly.” — **Dr. Jane Smith**, Clinical Psychologist, Lagos (`JS`)
+  1. “Unclutter Desk allowed me to launch my private practice in 10 minutes. My clients book directly on my custom domain and payments land in my account instantly.” — **Dr. Jane Smith**, Clinical Psychologist, Lagos (`JS`)
   2. “We moved a five-therapist clinic off spreadsheets in a weekend. Role permissions mean my front desk books without ever seeing a clinical note.” — **Dr. Emeka Nwosu**, Clinic Director, Abuja (`EN`)
   3. “Session notes finish themselves while I'm still in the call, and PHQ-9 scores trend automatically. I get an hour of my evening back.” — **Adaeze Okafor**, Psychotherapist, Port Harcourt (`AO`)
 
@@ -166,7 +166,7 @@ There is one page. Sections are documented in DOM order.
 ### 8. Footer
 
 - **Layout:** `background:#0F172A; padding:56px 40px 40px`, inner `max-width:1280px`, column `gap:36px`. Logo lockup at 28px pill / 17px wordmark. Link row separated by `border-top:1px solid rgba(255,255,255,.08); padding-top:24px`, flex, `gap:32px`.
-- **Links:** `Terms`, `Privacy (NDPR Compliance)`, `Contact`, `Support` — `13.5px`, `#94A3B8`, hover `#E3B341`. Copyright pushed right (`margin-left:auto`): `Copyright 2026 UnclutterOS Inc.` — `13px`, `#475569`.
+- **Links:** `Terms`, `Privacy (NDPR Compliance)`, `Contact`, `Support` — `13.5px`, `#94A3B8`, hover `#E3B341`. Copyright pushed right (`margin-left:auto`): `Copyright 2026 Unclutter Desk Inc.` — `13px`, `#475569`.
 
 ---
 
@@ -262,13 +262,13 @@ Content (tabs, quotes, plans, mock dashboard rows) is static and defined as modu
 - **Glyph placeholders:** `▶` (demo button), `“`, `←`, `→`, `✓` are text glyphs in the prototype — swap for Lucide `Play`, `ChevronLeft`, `ChevronRight`, `Check` and a typographic quote mark.
 - **No photography or illustration.** The hero product mocks are pure HTML/CSS — rebuild them as components, or replace with real product screenshots if the app ships before this page.
 - **Logo:** the `OS` gold pill + wordmark is type-only, no image asset. The Unclutter lotus mark (`assets/logo-full.svg` in the design system) is *not* used on this page.
-- **Design system:** this page is built against the bound Unclutter Design System (`_ds/unclutter-design-system-.../colors_and_type.css`, `unclutteros.css`). Use the codebase's existing token layer where it overlaps rather than re-declaring these hex values.
+- **Design system:** this page is built against the bound Unclutter Design System (`_ds/unclutter-design-system-.../colors_and_type.css`, `unclutterdesk.css`). Use the codebase's existing token layer where it overlaps rather than re-declaring these hex values.
 
 ## Files
 
 | File | What it is |
 |---|---|
-| `UnclutterOS Marketing Site.dc.html` | The full design — template markup plus a logic class holding the tab/quote/plan state and all content arrays. This is the source of truth for every value in this README. |
+| `Unclutter Desk Marketing Site.dc.html` | The full design — template markup plus a logic class holding the tab/quote/plan state and all content arrays. This is the source of truth for every value in this README. |
 | `support.js` | Runtime that renders the prototype file in a browser. Not part of the design; do not port. |
 
-Open `UnclutterOS Marketing Site.dc.html` directly in a browser to interact with the prototype (tabs, pricing selection, carousel). Note the design system CSS is referenced at a project-relative `_ds/…` path that is not included in this bundle — the page still renders, since all styling is inline.
+Open `Unclutter Desk Marketing Site.dc.html` directly in a browser to interact with the prototype (tabs, pricing selection, carousel). Note the design system CSS is referenced at a project-relative `_ds/…` path that is not included in this bundle — the page still renders, since all styling is inline.

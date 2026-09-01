@@ -1,0 +1,29 @@
+<!-- @dsCard group="Workspace" viewport="1440x860" -->
+<!-- @startingPoint section="Workspace" subtitle="Therapist practice-management shell — five screens" viewport="1440x900" -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Unclutter Desk — Workspace</title>
+<link rel="stylesheet" href="../../styles.css">
+<script crossorigin src="https://unpkg.com/react@18/umd/react.development.js"></script>
+<script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+<script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+<script src="../_shared/load-components.js"></script>
+<style>
+  html, body { height: 100%; }
+  body { background: var(--desk-surface); overflow: hidden; }
+  #root { height: 100vh; }
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script>
+  loadDeskComponents('../../')
+    .then(() => loadDeskScreens([
+      'icons.jsx', 'Dashboard.jsx', 'Schedule.jsx', 'Clients.jsx',
+      'BrandSettings.jsx', 'Analytics.jsx', 'app.jsx',
+    ]));
+</script>
+</body>
+</html>

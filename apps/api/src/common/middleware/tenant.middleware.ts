@@ -40,7 +40,7 @@ export class TenantMiddleware implements NestMiddleware {
         where: { customDomain: domain },
       });
 
-      // Otherwise check subdomain (e.g. "drjane.unclutteros.com" -> "drjane")
+      // Otherwise check subdomain (e.g. "drjane.unclutterdesk.com" -> "drjane")
       if (!tenant && domain.includes('.')) {
         const parts = domain.split('.');
         if (parts.length >= 3) {

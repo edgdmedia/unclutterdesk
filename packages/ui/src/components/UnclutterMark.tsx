@@ -1,3 +1,4 @@
+// @ts-nocheck
 import React from 'react';
 
 interface UnclutterMarkProps {
@@ -6,7 +7,7 @@ interface UnclutterMarkProps {
 }
 
 /**
- * Official UnclutterOS Mark
+ * Official Unclutter Desk Mark
  * Geometric crystal/lotus SVG icon in deep navy (#0F3A53) with gold OS badge overlay.
  */
 export function UnclutterMark({ size = 32, className = '' }: UnclutterMarkProps) {

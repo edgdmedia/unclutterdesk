@@ -1,0 +1,24 @@
+<!-- @dsCard group="Mobile" viewport="2200x960" -->
+<!-- @startingPoint section="Mobile" subtitle="Five companion-app screens at 390 × 844" viewport="2200x960" -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Unclutter Desk — Mobile</title>
+<link rel="stylesheet" href="../../styles.css">
+<script crossorigin src="https://unpkg.com/react@18/umd/react.development.js"></script>
+<script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+<script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+<script src="../_shared/load-components.js"></script>
+<style>
+  body { background: var(--desk-canvas); margin: 0; }
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script>
+  loadDeskComponents('../../')
+    .then(() => loadDeskScreens(['../workspace/icons.jsx', 'Screens.jsx', 'app.jsx']));
+</script>
+</body>
+</html>

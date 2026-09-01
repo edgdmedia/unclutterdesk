@@ -1,13 +1,13 @@
-# Claude Design Prompt — UnclutterOS Screens Set 06 (Marketing Landing)
+# Claude Design Prompt — Unclutter Desk Screens Set 06 (Marketing Landing)
 
 Paste this into Claude Design (claude.ai/design) to generate a new spec board
-named `UnclutterOS Marketing Landing.dc.html` with **three views**, matching the
-existing UnclutterOS handoff conventions (`design_handoff_unclutteros`,
-`design_handoff_unclutteros_screens_2_3`).
+named `Unclutter Desk Marketing Landing.dc.html` with **three views**, matching the
+existing Unclutter Desk handoff conventions (`design_handoff_unclutterdesk`,
+`design_handoff_unclutterdesk_screens_2_3`).
 
 ---
 
-Design the public marketing landing page for UnclutterOS, a B2B practice-management
+Design the public marketing landing page for Unclutter Desk, a B2B practice-management
 and white-label telehealth platform for therapists and clinics in Nigeria. This is
 the guest-facing site served at `os.unclutterdesk.com/` — it sits **before** the
 login and uses its own marketing chrome (top nav, hero, sections, footer), NOT the
@@ -15,7 +15,7 @@ slate app sidebar. Its jobs: explain the product, sell the white-label idea, pre
 pricing, and convert visitors to the 14-day free trial (`/register`) or login
 (`/login`).
 
-Recreate the existing UnclutterOS design system exactly: Outfit font (weights
+Recreate the existing Unclutter Desk design system exactly: Outfit font (weights
 300–900), deep navy `#0F3A53` (hover `#0C2E42`), warm gold `#E3B341`, surface
 `#F8FAFC`, white cards radius 24px, 9px/900/0.22em uppercase eyebrows (`#94A3B8`),
 `#E2E8F0` borders, `#475569`/`#64748B`/`#94A3B8` text hierarchy. **No
@@ -28,7 +28,7 @@ rendered inside a 390px-wide phone frame (46px radius, shadow
 `0 24px 70px rgba(15,23,42,.20)`). Each section shows the frame and an interaction
 annotation in a 12px `#64748B` caption above it. Use the same `<sc-for>`,
 `<sc-if>`, `{{ value }}` and `Component` logic-class conventions as the other
-UnclutterOS `.dc.html` boards so it renders with `support.js`.
+Unclutter Desk `.dc.html` boards so it renders with `support.js`.
 
 ## View 30 — Marketing Landing (Desktop)
 
@@ -54,7 +54,7 @@ Background `#F8FAFC`, padding `72px 40px 0`, centered column
   "WHITE-LABEL PRACTICE OS FOR THERAPISTS & CLINICS".
 - H1 (30px/800/−0.035em `#0F172A`, can scale to 46px at 800): **Run your therapy
   practice on your own brand.**
-- Sub (16.5px `#64748B`, max-width 600px): "UnclutterOS gives Nigerian therapists
+- Sub (16.5px `#64748B`, max-width 600px): "Unclutter Desk gives Nigerian therapists
   and clinics a white-label booking page, telehealth, clinical notes and Paystack
   payouts — live in minutes, no code."
 - CTA row (gap 12px, centered): primary **Start your free 14-day trial** (52px,
@@ -66,7 +66,7 @@ Background `#F8FAFC`, padding `72px 40px 0`, centered column
 
 ### Product mockup (hero visual)
 Below the copy, a scaled-down recreation of the **White-Label Client Booking
-Portal** (reference View 2 of `UnclutterOS Screens.dc.html`) in a browser frame:
+Portal** (reference View 2 of `Unclutter Desk Screens.dc.html`) in a browser frame:
 1180px→980px wide, radius 24px, `overflow:hidden`,
 `box-shadow:0 24px 80px rgba(15,23,42,.14)`, background `#fff`.
 
@@ -89,7 +89,7 @@ Portal** (reference View 2 of `UnclutterOS Screens.dc.html`) in a browser frame:
   text); and the **Your details** step with two 46px inputs ("Adaeze Okonkwo",
   "adaeze@email.com").
 - Caption beneath the frame, 12px `#64748B`: "The client-facing booking page —
-  entirely in your brand. No UnclutterOS chrome."
+  entirely in your brand. No Unclutter Desk chrome."
 
 ### Social proof strip
 `padding:40px; background:#fff; border-top:1px solid #E2E8F0;
@@ -112,7 +112,7 @@ cards (radius 24px, `1px solid #E2E8F0`, padding 28px, text-left,
 - 44px icon tile (radius 14px, `#EFF6FB` with navy icon) + eyebrow + title
   17px/700 + body 13.5px `#64748B`:
   1. **WHITE-LABEL BOOKING PAGE** · "Your clients book on a page in your name and
-     colours — no UnclutterOS branding on it, ever."
+     colours — no Unclutter Desk branding on it, ever."
   2. **TELEHEALTH ROOMS** · "One-tap Jitsi video with live SOAP notes in the same
      room, so you document as you go."
   3. **CLINICAL SOAP NOTES** · "Structured, compliant notes with templates —
@@ -145,15 +145,15 @@ Two-column grid `minmax(0,1fr) 460px; gap:48px; align-items:center`.
   `#F8FAFC` **Your brand everywhere your clients are.**, body 15px `#94A3B8`
   "Pick two colours in Brand Settings and the entire client experience — booking
   page, confirmation screen, client portal — updates live. Your clients never see
-  'UnclutterOS'." Then a mini card (white, radius 20px, padding 18px, 13.5px
+  'Unclutter Desk'." Then a mini card (white, radius 20px, padding 18px, 13.5px
   `#0F172A`) with a green VERIFIED pill: "Point your CNAME at
-  `cname.unclutteros.com` to run the whole thing on
+  `cname.unclutterdesk.com` to run the whole thing on
   `booking.yourpractice.com`."
 - Right: **five preset swatch cards**, each showing a recolored mini booking
   header (a 56px logo tile + 2 fake bars, gradient `{{ primaryTint }} →
   {{ secondaryTint }}`) plus the two hex chips (11px mono uppercase, radius 8px,
   `#F1F5F9`/`#334155`). Presets (from the design system):
-  UnclutterOS navy `#0F3A53`/`#E3B341`, Signal blue `#007BFF`/`#6F42C1`,
+  Unclutter Desk navy `#0F3A53`/`#E3B341`, Signal blue `#007BFF`/`#6F42C1`,
   Calm teal `#0E7490`/`#F59E0B`, Deep violet `#7C3AED`/`#EC4899`,
   Forest `#15803D`/`#B45309`.
 
@@ -229,7 +229,7 @@ then three link columns 13.5px `#CBD5E1` (title 11px/800/0.12em uppercase
 `#94A3B8`): **Product** (Features, Pricing, Booking page, Security), **Company**
 (About, Careers, Contact, Partner with us), **Legal** (Terms, Privacy, Data
 protection, NDPR compliance). Bottom bar (`border-top:1px solid rgba(255,255,255,.08)`,
-12px `#64748B`): "© 2026 UnclutterOS · Lagos, Nigeria · Made with care in WAT".
+12px `#64748B`): "© 2026 Unclutter Desk · Lagos, Nigeria · Made with care in WAT".
 
 ## View 32 — Marketing Landing (Mobile)
 
@@ -250,7 +250,7 @@ FAQ accordions and footer stack into single columns.
   `{{ primary }}`/`{{ secondary }}` on click and recolor all four mock headers;
   booking mockup slots are selectable.
 - View 31: **Start free trial** → `/register`; **Talk to sales** opens a
-  `mailto:hello@unclutteros.com` annotation; FAQ accordions expand/collapse
+  `mailto:hello@unclutterdesk.com` annotation; FAQ accordions expand/collapse
   independently (chevron rotates); pricing cards are clickable and show a "CURRENT
   PLAN" annotation when selected.
 - View 32: hamburger toggles the nav sheet; everything else mirrors View 30/31.
@@ -262,4 +262,4 @@ FAQ accordions and footer stack into single columns.
 - View 32: `mobileNavOpen`, `faqOpen`.
 
 Use the same `<sc-if>`, `{{ value }}` and `Component` logic class conventions as
-the other UnclutterOS `.dc.html` spec boards so it renders with `support.js`.
+the other Unclutter Desk `.dc.html` spec boards so it renders with `support.js`.

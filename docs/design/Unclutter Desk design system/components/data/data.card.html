@@ -1,0 +1,69 @@
+<!-- @dsCard group="Components" viewport="700x280" name="Data" subtitle="StatTile, BarChart, ProgressRow" -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<link rel="stylesheet" href="../../styles.css">
+<script crossorigin src="https://unpkg.com/react@18/umd/react.development.js"></script>
+<script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+<script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+<script src="../../ui_kits/_shared/load-components.js"></script>
+<style>
+  body { background: var(--desk-card); padding: 22px 24px; }
+  .lbl { font-size: 9px; font-weight: 900; text-transform: uppercase; letter-spacing: .22em; color: var(--desk-text-subtle); }
+  .grp { display: flex; flex-direction: column; gap: 9px; }
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/plain" id="demo">
+
+/* Primitives are bound when the loader resolves. */
+let StatTile, BarChart, ProgressRow;
+
+const months = [
+  {label:'S',value:238},{label:'O',value:262},{label:'N',value:251},{label:'D',value:305},
+  {label:'J',value:288},{label:'F',value:331},{label:'M',value:318},{label:'A',value:372},
+  {label:'M',value:355},{label:'J',value:401},{label:'J',value:380},{label:'A',value:450,current:true},
+];
+
+function Demo() {
+  ({ StatTile, BarChart, ProgressRow } = window.DESK);
+  return (
+    <div style={{display:'flex', flexDirection:'column', gap:18}}>
+      <div className="grp">
+        <div className="lbl">Stat tile</div>
+        <div style={{display:'flex', gap:14, flexWrap:'wrap'}}>
+          <StatTile label="Revenue · 12 mo" value="₦4.28M" delta="+31.4%" style={{flex:1, minWidth:150}} />
+          <StatTile label="Sessions delivered" value="618" delta="+12.9%" style={{flex:1, minWidth:150}} />
+          <StatTile label="No-show rate" value="6%" delta="−2.3 pts" style={{flex:1, minWidth:150}} />
+          <StatTile compact label="Avg. per session" value="₦7,258" />
+        </div>
+      </div>
+      <div className="grp">
+        <div className="lbl">Bar chart — current month in tenant primary</div>
+        <BarChart data={months} height={80} />
+      </div>
+      <div className="grp">
+        <div className="lbl">Progress row</div>
+        <div style={{display:'flex', flexDirection:'column', gap:12}}>
+          <ProgressRow label="Individual · 50 min" meta="412 sessions" percent={67} />
+          <ProgressRow label="Couples · 80 min" meta="128 sessions" percent={21} tone="secondary" />
+          <ProgressRow label="Intake consults" meta="78 sessions" percent={12} tone="muted" />
+        </div>
+      </div>
+    </div>
+  );
+}
+ReactDOM.createRoot(document.getElementById('root')).render(<Demo/>);
+</script>
+<script>
+  /* Babel's script-tag transformer doesn't execute here, so compile the demo
+     ourselves once the primitives are loaded. */
+  loadDeskComponents('../../').then(() => {
+    const src = document.getElementById('demo').textContent;
+    (0, eval)(Babel.transform(src, { presets: [['react', { runtime: 'classic' }]] }).code);
+  });
+</script>
+</body>
+</html>

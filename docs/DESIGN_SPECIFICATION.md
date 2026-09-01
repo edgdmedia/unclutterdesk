@@ -1,4 +1,4 @@
-# UnclutterOS — Design Specification (Claude Design Systems Layer)
+# Unclutter Desk — Design Specification (Claude Design Systems Layer)
 
 **Design Token Layer**: Unclutter Design System OS Token Layer  
 **Primary Palette**: Deep Navy (`#0F3A53`), Slate Sidebar (`#0F172A`), Warm Gold Accent (`#E3B341`), Soft Surface (`#F8FAFC`).  
@@ -10,7 +10,7 @@
 
 ## 1. Design Artifact Files & Layout Architecture
 
-### A. Desktop Spec Board (`UnclutterOS Screens.dc.html`)
+### A. Desktop Spec Board (`Unclutter Desk Screens.dc.html`)
 Six complete screens arranged on a single specification canvas:
 1. **Therapist Dashboard**: Top header with `Copy Booking Link` action + 1-click clipboard button, revenue summary widget, upcoming sessions.
 2. **White-Label Client Booking Portal**: Dynamic brand logo, practitioner bio, service selection cards, interactive date picker, time slot pills, intake details form, sticky confirm bar.
@@ -19,14 +19,14 @@ Six complete screens arranged on a single specification canvas:
 5. **Analytics**: 12-month revenue performance chart, session mix breakdown (50-min, 60-min, Couples), and booking sources.
 6. **Booking Confirmed**: Client session confirmation screen with calendar sync buttons (.ics, Google Calendar) and 1-click video join link.
 
-### B. Interactive Desktop Prototype (`UnclutterOS Prototype.dc.html`)
+### B. Interactive Desktop Prototype (`Unclutter Desk Prototype.dc.html`)
 * **Shell & Layout**: Left vertical slate sidebar (`#0F172A`) navigating all 5 workspace screens. Shell min-width `1440px`.
 * **Brand Settings Page**:
   * Left Panel: Customizer controls (Logo uploader, Primary Color picker, Secondary Color picker, Custom Domain input).
   * Right Panel: Live `1180px` booking page scaled into an interactive preview pane with a *Booking page / Confirmation* toggle.
 * **Layout Safeguards**: Revenue stat row configured to wrap cleanly; Schedule & Clients roster cards set to `flex: none` to prevent lower row clipping.
 
-### C. Mobile Design Specification (`UnclutterOS Mobile.dc.html`)
+### C. Mobile Design Specification (`Unclutter Desk Mobile.dc.html`)
 Five mobile screens featuring a frosted bottom navigation bar (`backdrop-blur-md`):
 1. **Today**: Dark revenue hero card, next upcoming session card.
 2. **Schedule**: Horizontal day strip + daily timeline.
@@ -36,7 +36,7 @@ Five mobile screens featuring a frosted bottom navigation bar (`backdrop-blur-md
 
 ---
 
-## 2. Component Token Mapping (`@unclutteros/ui`)
+## 2. Component Token Mapping (`@unclutterdesk/ui`)
 
 ```css
 :root {

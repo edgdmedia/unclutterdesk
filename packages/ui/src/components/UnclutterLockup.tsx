@@ -1,3 +1,4 @@
+// @ts-nocheck
 import React from 'react';
 import { UnclutterMark } from './UnclutterMark';
 
@@ -9,7 +10,7 @@ interface UnclutterLockupProps {
 }
 
 /**
- * Official UnclutterOS Full Lockup Component
+ * Official Unclutter Desk Full Lockup Component
  * Renders the official geometric crystal mark + bold unclutter typography + gold OS pill badge.
  */
 export function UnclutterLockup({

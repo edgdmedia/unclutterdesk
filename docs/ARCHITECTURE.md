@@ -1,13 +1,13 @@
-# UnclutterOS — Technical Architecture & Security Specifications
+# Unclutter Desk — Technical Architecture & Security Specifications
 
-**Product Name**: UnclutterOS  
+**Product Name**: Unclutter Desk  
 **Document Version**: 1.0.0  
 
 ---
 
 ## 1. System Architecture Overview
 
-UnclutterOS uses a modern, high-performance **Monorepo Architecture** powered by `pnpm`, `NestJS`, `Next.js 14 / Vite React`, and `Prisma ORM` with PostgreSQL.
+Unclutter Desk uses a modern, high-performance **Monorepo Architecture** powered by `pnpm`, `NestJS`, `Next.js 14 / Vite React`, and `Prisma ORM` with PostgreSQL.
 
 ```
 /Users/olalekan/Projects/unclutter-os/

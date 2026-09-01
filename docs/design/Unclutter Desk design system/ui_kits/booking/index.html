@@ -1,0 +1,29 @@
+<!-- @dsCard group="Booking portal" viewport="1180x900" -->
+<!-- @startingPoint section="Booking" subtitle="White-label public booking flow and confirmation" viewport="1180x1030" -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Dr. Jane Smith Therapy — Book a session</title>
+<link rel="stylesheet" href="../../styles.css">
+<script crossorigin src="https://unpkg.com/react@18/umd/react.development.js"></script>
+<script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+<script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+<script src="../_shared/load-components.js"></script>
+<style>
+  body { background: var(--desk-canvas); margin: 0; }
+  .chrome { height: 44px; display: flex; align-items: center; gap: 8px; padding: 0 14px;
+            background: #fff; border-bottom: 1px solid var(--desk-border); }
+  .dot { width: 11px; height: 11px; border-radius: 999px; }
+  body[data-embed="1"] { background: #fff; }
+  body[data-embed="1"] .chrome { display: none; }
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script>
+  loadDeskComponents('../../')
+    .then(() => loadDeskScreens(['../workspace/icons.jsx', 'Booking.jsx', 'app.jsx']));
+</script>
+</body>
+</html>

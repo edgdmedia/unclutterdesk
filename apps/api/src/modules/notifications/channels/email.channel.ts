@@ -46,7 +46,7 @@ export class EmailChannel implements NotificationChannel {
     const accent = brand?.secondaryColor || '#E3B341';
     const logo = brand?.logoUrl
       ? `<img src="${brand.logoUrl}" alt="${brand.practiceName}" style="height:36px;margin-bottom:16px;" />`
-      : `<div style="font-size:18px;font-weight:700;">${brand?.practiceName || 'UnclutterOS'}</div>`;
+      : `<div style="font-size:18px;font-weight:700;">${brand?.practiceName || 'Unclutter Desk'}</div>`;
     const code = payload.code
       ? `<div style="margin:22px 0 4px;padding:20px;border-radius:14px;background:#F8FAFC;text-align:center;">
           <div style="font-size:12px;letter-spacing:0.12em;color:#64748B;">VERIFICATION CODE</div>
@@ -59,7 +59,7 @@ export class EmailChannel implements NotificationChannel {
     const footer = [
       brand?.publicEmail ? brand.publicEmail : null,
       brand?.publicPhone ? brand.publicPhone : null,
-      brand?.practiceName ? `${brand.practiceName}` : 'UnclutterOS',
+      brand?.practiceName ? `${brand.practiceName}` : 'Unclutter Desk',
     ]
       .filter(Boolean)
       .join(' · ');

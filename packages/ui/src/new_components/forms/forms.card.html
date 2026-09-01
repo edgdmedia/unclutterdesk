@@ -1,0 +1,96 @@
+<!-- @dsCard group="Components" viewport="700x360" name="Forms" subtitle="Input, Textarea, SegmentedControl, Toggle, ColorField, presets" -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<link rel="stylesheet" href="../../styles.css">
+<script crossorigin src="https://unpkg.com/react@18/umd/react.development.js"></script>
+<script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+<script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+<script src="../../ui_kits/_shared/load-components.js"></script>
+<style>
+  body { background: var(--desk-card); padding: 22px 24px; }
+  .lbl { font-size: 9px; font-weight: 900; text-transform: uppercase; letter-spacing: .22em; color: var(--desk-text-subtle); }
+  .grp { display: flex; flex-direction: column; gap: 9px; }
+  .row { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 12px; }
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/plain" id="demo">
+
+/* Primitives are bound when the loader resolves. */
+let Input, Textarea, SegmentedControl, Toggle, ColorField, PresetSwatches, IconButton;
+
+const I = ({d, s=15}) => (
+  <svg width={s} height={s} viewBox="0 0 24 24" fill="none" stroke="currentColor"
+       strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d={d}/></svg>
+);
+const search = "M11 3a8 8 0 1 0 0 16 8 8 0 0 0 0-16zM21 21l-4.3-4.3";
+const link = "M10 13a5 5 0 0 0 7 0l3-3a5 5 0 0 0-7-7l-1 1M14 11a5 5 0 0 0-7 0l-3 3a5 5 0 0 0 7 7l1-1";
+const copyd = "M8 4h10a2 2 0 0 1 2 2v10M16 8H6a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V10a2 2 0 0 0-2-2z";
+
+function Demo() {
+  ({ Input, Textarea, SegmentedControl, Toggle, ColorField, PresetSwatches, IconButton } = window.DESK);
+  const [view, setView] = React.useState('Week');
+  const [fmt, setFmt] = React.useState('Online');
+  const [on, setOn] = React.useState(true);
+  const [p1, setP1] = React.useState('#24614F');
+  const [p2, setP2] = React.useState('#8A5A3C');
+
+  return (
+    <div className="desk-tenant" style={{display:'flex', flexDirection:'column', gap:18,
+                 '--brand-primary': p1, '--brand-secondary': p2}}>
+      <div className="grp">
+        <div className="lbl">Input</div>
+        <div className="row">
+          <Input label="Full name" placeholder="Adaeze Okonkwo" wrapperStyle={{flex:1, minWidth:170}} />
+          <Input label="Search" muted height={40} icon={<I d={search}/>} placeholder="Search clients" wrapperStyle={{width:200}} />
+          <Input label="Booking link" muted readOnly mono height={44} icon={<I d={link}/>}
+                 defaultValue="unclutterdesk.com/booking/dr-smith"
+                 trailing={<IconButton size={32} variant="plain" aria-label="Copy"><I d={copyd} s={14}/></IconButton>}
+                 wrapperStyle={{flex:1, minWidth:250}} />
+        </div>
+      </div>
+
+      <div className="grp">
+        <div className="lbl">Textarea</div>
+        <Textarea label="Share concerns" optionalLabel="(optional)" rows={2}
+          placeholder="Anything you'd like Dr. Smith to know before your first session." />
+      </div>
+
+      <div className="grp">
+        <div className="lbl">Segmented control · toggle</div>
+        <div className="row" style={{alignItems:'center'}}>
+          <SegmentedControl options={['Week','Day','Month']} value={view} onChange={setView} />
+          <SegmentedControl options={['Online','In-person']} value={fmt} onChange={setFmt} height={46} />
+          <div style={{display:'flex', alignItems:'center', gap:10, marginLeft:'auto'}}>
+            <span style={{fontSize:13, fontWeight:600, color:'var(--desk-text-muted)'}}>{on ? 'Active practice' : 'Inactive practice'}</span>
+            <Toggle checked={on} onChange={setOn} />
+          </div>
+        </div>
+      </div>
+
+      <div className="grp">
+        <div className="lbl">Brand settings — tenant slots</div>
+        <div className="row" style={{alignItems:'center'}}>
+          <ColorField label="Primary" value={p1} onChange={setP1} style={{flex:1, minWidth:160}} />
+          <ColorField label="Secondary" value={p2} onChange={setP2} style={{flex:1, minWidth:160}} />
+          <PresetSwatches value={p1} onPick={p => { setP1(p.primary); setP2(p.secondary); }} />
+        </div>
+      </div>
+    </div>
+  );
+}
+ReactDOM.createRoot(document.getElementById('root')).render(<Demo/>);
+</script>
+<script>
+  /* Babel's script-tag transformer doesn't execute here, so compile the demo
+     ourselves once the primitives are loaded. */
+  loadDeskComponents('../../').then(() => {
+    const src = document.getElementById('demo').textContent;
+    (0, eval)(Babel.transform(src, { presets: [['react', { runtime: 'classic' }]] }).code);
+  });
+</script>
+</body>
+</html>

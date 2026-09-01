@@ -15,7 +15,7 @@ export interface TenantBrandConfig {
 }
 
 const DEFAULT_BRAND: TenantBrandConfig = {
-  name: 'UnclutterOS',
+  name: 'Unclutter Desk',
   slug: 'default',
   primaryColor: '#0F3A53',
   secondaryColor: '#E3B341',

@@ -6,6 +6,47 @@ import { PrismaService } from '../../common/prisma/prisma.service';
 export class TenantService {
   constructor(private readonly prisma: PrismaService) {}
 
+  private normalizeCustomDomain(input?: string | null) {
+    return input?.toLowerCase().trim() || null;
+  }
+
+  private validateCustomDomain(input?: string | null) {
+    const value = this.normalizeCustomDomain(input);
+    if (!value) return null;
+
+    if (value.startsWith('http://') || value.startsWith('https://')) {
+      throw new BadRequestException('Enter a hostname only, without http:// or https://');
+    }
+
+    if (value.includes('/')) {
+      throw new BadRequestException('Custom domain must be a hostname only, without any path');
+    }
+
+    if (value.includes('?') || value.includes('#')) {
+      throw new BadRequestException('Custom domain must not include query strings or fragments');
+    }
+
+    const reserved = new Set([
+      'unclutterdesk.com',
+      'www.unclutterdesk.com',
+      'api.unclutterdesk.com',
+      'app.unclutterdesk.com',
+      'admin.unclutterdesk.com',
+      'localhost',
+    ]);
+
+    if (reserved.has(value)) {
+      throw new BadRequestException('That domain cannot be used as a practice custom domain.');
+    }
+
+    const hostnamePattern = /^(?=.{1,100}$)(?!-)(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,}$/;
+    if (!hostnamePattern.test(value)) {
+      throw new BadRequestException('Enter a valid domain like booking.yourpractice.com');
+    }
+
+    return value;
+  }
+
   async createTenant(dto: {
     name: string;
     slug: string;
@@ -25,7 +66,8 @@ export class TenantService {
       data: {
         name: dto.name.trim(),
         slug,
-        customDomain: dto.customDomain?.toLowerCase().trim() || null,
+        customDomain: this.validateCustomDomain(dto.customDomain),
+        customDomainStatus: 'PENDING',
         logoUrl: dto.logoUrl,
         primaryColor: dto.primaryColor || '#0F3A53',
         secondaryColor: dto.secondaryColor || '#E3B341',
@@ -64,6 +106,7 @@ export class TenantService {
         name: true,
         slug: true,
         customDomain: true,
+        customDomainStatus: true,
         logoUrl: true,
         faviconUrl: true,
         primaryColor: true,
@@ -123,7 +166,12 @@ export class TenantService {
       ...(dto.faviconUrl !== undefined ? { faviconUrl: dto.faviconUrl } : {}),
       ...(dto.primaryColor ? { primaryColor: dto.primaryColor } : {}),
       ...(dto.secondaryColor ? { secondaryColor: dto.secondaryColor } : {}),
-      ...(dto.customDomain !== undefined ? { customDomain: dto.customDomain?.toLowerCase().trim() || null } : {}),
+      ...(dto.customDomain !== undefined
+        ? {
+            customDomain: this.validateCustomDomain(dto.customDomain),
+            customDomainStatus: 'PENDING',
+          }
+        : {}),
       ...(dto.cancellationHours !== undefined ? { cancellationHours: dto.cancellationHours } : {}),
       ...(dto.welcomeTitle !== undefined ? { welcomeTitle: dto.welcomeTitle } : {}),
       ...(dto.welcomeMessage !== undefined ? { welcomeMessage: dto.welcomeMessage } : {}),
@@ -158,6 +206,7 @@ export class TenantService {
         primaryColor: true,
         secondaryColor: true,
         customDomain: true,
+        customDomainStatus: true,
         cancellationHours: true,
         welcomeTitle: true,
         welcomeMessage: true,
@@ -171,6 +220,31 @@ export class TenantService {
 
     if (!tenant) throw new NotFoundException('Practice tenant not found');
     return { ...tenant, id: tenant.id.toString() };
+  }
+
+  async verifyCustomDomain(tenantId: bigint) {
+    const tenant = await this.prisma.tenant.findUnique({
+      where: { id: tenantId },
+      select: { id: true, customDomain: true },
+    });
+
+    if (!tenant) throw new NotFoundException('Practice tenant not found');
+    if (!tenant.customDomain) {
+      throw new BadRequestException('No custom domain has been configured for this practice.');
+    }
+
+    const normalized = this.validateCustomDomain(tenant.customDomain);
+    const updated = await this.prisma.tenant.update({
+      where: { id: tenantId },
+      data: { customDomain: normalized, customDomainStatus: 'ACTIVE' },
+      select: { id: true, customDomain: true, customDomainStatus: true },
+    });
+
+    return {
+      id: updated.id.toString(),
+      customDomain: updated.customDomain,
+      customDomainStatus: updated.customDomainStatus,
+    };
   }
 
   async getNotifications(tenantId: bigint) {
@@ -317,13 +391,33 @@ export class TenantService {
       role: invite.role,
       claimToken: invite.claimToken,
       expiresAt: invite.expiresAt.toISOString(),
-      inviteUrl: `${process.env.APP_URL || 'https://unclutteros.com'}/invite/claim?token=${claimToken}`,
+      inviteUrl: `${process.env.APP_URL || 'https://unclutterdesk.com'}/invite/claim?token=${claimToken}`,
     };
   }
 
-  async updateStaffRole(tenantId: bigint, profileId: bigint, role: 'OWNER' | 'ADMIN' | 'RECEPTIONIST' | 'THERAPIST') {
+  async updateStaffRole(
+    tenantId: bigint,
+    actorProfileId: bigint,
+    profileId: bigint,
+    role: 'OWNER' | 'ADMIN' | 'RECEPTIONIST' | 'THERAPIST',
+  ) {
+    const actor = await this.prisma.profile.findFirst({
+      where: { id: actorProfileId, tenantId },
+    });
+    if (!actor || !['OWNER', 'ADMIN'].includes(actor.role)) {
+      throw new ForbiddenException('Only owners and admins can change staff roles');
+    }
+    if (role === 'OWNER' && actor.role !== 'OWNER') {
+      throw new ForbiddenException('Only the owner can assign the owner role');
+    }
+
+    const target = await this.prisma.profile.findFirst({
+      where: { id: profileId, tenantId, role: { not: 'CLIENT' } },
+    });
+    if (!target) throw new NotFoundException('Staff member not found');
+
     const updated = await this.prisma.profile.update({
-      where: { id: profileId },
+      where: { id: target.id },
       data: { role },
     });
 
@@ -431,6 +525,25 @@ export class TenantService {
       }
     });
 
+    const latestDerived = intakeResponses[0]?.derivedJson as
+      | {
+          instrument?: string;
+          totalScore?: number;
+          severity?: string;
+          item9Risk?: boolean;
+        }
+      | null
+      | undefined;
+
+    const intakeSummary = latestDerived?.instrument === 'PHQ_9' || latestDerived?.instrument === 'GAD_7'
+      ? {
+          instrument: latestDerived.instrument,
+          totalScore: latestDerived.totalScore ?? 0,
+          severity: latestDerived.severity ?? 'Unknown',
+          item9Risk: latestDerived.instrument === 'PHQ_9' ? Boolean(latestDerived.item9Risk) : false,
+        }
+      : null;
+
     return {
       id: client.id.toString(),
       name: `${client.firstName || ''} ${client.lastName || ''}`.trim() || client.email,
@@ -465,6 +578,7 @@ export class TenantService {
         plan: n.plan || '',
       })),
       intake,
+      intakeSummary,
     };
   }
 

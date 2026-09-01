@@ -53,7 +53,7 @@ export class TenantController {
         id: req.tenant.id.toString(),
       };
     }
-    return { name: 'UnclutterOS', slug: 'default', primaryColor: '#0F3A53', secondaryColor: '#E3B341' };
+    return { name: 'Unclutter Desk', slug: 'default', primaryColor: '#0F3A53', secondaryColor: '#E3B341' };
   }
 
   @Patch('brand')
@@ -70,6 +70,14 @@ export class TenantController {
   @ApiOperation({ summary: 'Get current practice profile + brand configuration' })
   getBrand(@Req() req: any) {
     return this.tenantService.getTenantBrand(authenticatedTenantId(req));
+  }
+
+  @Post('brand/custom-domain/verify')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth('access-token')
+  @ApiOperation({ summary: 'Verify the currently configured custom domain for this practice' })
+  verifyCustomDomain(@Req() req: any) {
+    return this.tenantService.verifyCustomDomain(authenticatedTenantId(req));
   }
 
   @Get('notifications')
@@ -107,7 +115,12 @@ export class TenantController {
     @Param('profileId') profileId: string,
     @Body() dto: { role: 'OWNER' | 'ADMIN' | 'RECEPTIONIST' | 'THERAPIST' },
   ) {
-    return this.tenantService.updateStaffRole(authenticatedTenantId(req), BigInt(profileId), dto.role);
+    return this.tenantService.updateStaffRole(
+      authenticatedTenantId(req),
+      BigInt(req.user.profileId),
+      BigInt(profileId),
+      dto.role,
+    );
   }
 
   // ── Client (Patient) Endpoints ────────────────────────────────────────────

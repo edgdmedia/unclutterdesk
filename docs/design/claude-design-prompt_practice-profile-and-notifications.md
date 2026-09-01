@@ -1,14 +1,14 @@
-# Claude Design Prompt — UnclutterOS Screens Set 04 (Views 21–22)
+# Claude Design Prompt — Unclutter Desk Screens Set 04 (Views 21–22)
 
 Paste this into Claude Design (claude.ai/design) to generate a new spec board
-named `UnclutterOS Screens IV.dc.html` with **two views**, matching the existing
-UnclutterOS handoff conventions (`design_handoff_unclutteros_screens_2_3`).
+named `Unclutter Desk Screens IV.dc.html` with **two views**, matching the existing
+Unclutter Desk handoff conventions (`design_handoff_unclutterdesk_screens_2_3`).
 
 ---
 
-Design two new screens for UnclutterOS, a B2B practice-management and
+Design two new screens for Unclutter Desk, a B2B practice-management and
 white-label telehealth platform for therapists in Nigeria. Recreate the
-existing UnclutterOS design system exactly: Outfit font, slate sidebar
+existing Unclutter Desk design system exactly: Outfit font, slate sidebar
 `#0F172A`, deep navy `#0F3A53`, warm gold `#E3B341`, surface `#F8FAFC`,
 white cards radius 24px, 9px/900/.22em uppercase eyebrows, `#E2E8F0` borders,
 `#475569`/`#64748B`/`#94A3B8` text hierarchy. No photography — avatars are
@@ -146,4 +146,4 @@ Body: two-column grid `grid-template-columns: minmax(0,1fr) 372px; gap:20px`.
 - View 22: `read: {id[]}`, `prefs: { bookings, payments, intake, reminders, product }`.
 
 Use the same `<sc-if>`, `{{ value }}` and `Component` logic class conventions
-as the other UnclutterOS `.dc.html` spec boards so it renders with `support.js`.
+as the other Unclutter Desk `.dc.html` spec boards so it renders with `support.js`.

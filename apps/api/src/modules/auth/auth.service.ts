@@ -179,7 +179,7 @@ export class AuthService {
           to: profile.email,
           type: 'auth.email_verification',
           title: 'Verify your email address',
-          message: `Welcome to UnclutterOS! Enter this code in the app to activate your account. It expires in 30 minutes.`,
+          message: `Welcome to Unclutter Desk! Enter this code in the app to activate your account. It expires in 30 minutes.`,
           code,
           tenantId: profile.tenantId,
           profileId: profile.id,
@@ -321,7 +321,7 @@ export class AuthService {
         await this.notifications.sendEmail({
           to: profile.email,
           type: 'auth.welcome',
-          title: 'Welcome to UnclutterOS',
+          title: 'Welcome to Unclutter Desk',
           message: `Your email has been verified and your practice workspace is active. You can now sign in and start booking clients, writing SOAP notes, and more. Get started at os.unclutterdesk.com.`,
           tenantId: profile.tenantId,
           profileId: profile.id,
@@ -354,7 +354,7 @@ export class AuthService {
         to: email,
         type: 'auth.email_verification',
         title: 'Verify your email address',
-        message: `Welcome to UnclutterOS! Enter this code in the app to activate your account. It expires in 30 minutes.`,
+        message: `Welcome to Unclutter Desk! Enter this code in the app to activate your account. It expires in 30 minutes.`,
         code,
         tenantId: profile.tenantId,
         profileId: profile.id,
@@ -372,7 +372,7 @@ export class AuthService {
     const user = await this.prisma.user.findUnique({ where: { email } });
 
     // Always answer the same way so the endpoint can't be used to enumerate
-    // which emails have UnclutterOS accounts.
+    // which emails have Unclutter Desk accounts.
     const generic = {
       message: 'If an account exists for this email, a reset link has been sent.',
       success: true,
@@ -400,7 +400,7 @@ export class AuthService {
         to: email,
         type: 'auth.password_reset',
         title: 'Reset your password',
-        message: `We received a request to reset the password for your UnclutterOS account. Click the button below to choose a new one. This link expires in 1 hour.`,
+        message: `We received a request to reset the password for your Unclutter Desk account. Click the button below to choose a new one. This link expires in 1 hour.`,
         link: resetLink,
         actionLabel: 'Reset password',
         tenantId: profile?.tenantId ?? null,

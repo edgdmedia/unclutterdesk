@@ -1,11 +1,7 @@
-import { config } from 'dotenv';
-import * as path from 'path';
-
-// Load root .env (repo root relative to dist/main.js) and any cwd .env so SMTP,
-// secrets, etc. work in local dev. Existing process env wins (dotenv never
-// overrides already-set variables).
-config({ path: path.resolve(__dirname, '../../..', '.env'), quiet: true });
-config({ path: path.resolve(process.cwd(), '.env'), quiet: true });
+// Keep as the first import: it loads the repo-root .env before any module that
+// reads process.env at import time (auth.config, Prisma). TS compiles imports to
+// requires in declaration order, so body-level dotenv calls in main.ts run too late.
+import './env';
 
 import { NestFactory } from '@nestjs/core';
 import { ValidationPipe } from '@nestjs/common';
@@ -20,6 +16,7 @@ import { AppModule } from './app.module';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
+  const isProduction = process.env.NODE_ENV === 'production';
 
   app.use(cookieParser());
 
@@ -47,18 +44,29 @@ async function bootstrap() {
   );
 
   const config = new DocumentBuilder()
-    .setTitle('UnclutterOS Multi-Tenant API')
+    .setTitle('Unclutter Desk Multi-Tenant API')
     .setDescription('B2B Practice Management & White-Label Telehealth API')
     .setVersion('1.0.0')
     .addBearerAuth({ type: 'http', scheme: 'bearer', bearerFormat: 'JWT' }, 'access-token')
     .build();
 
-  const document = SwaggerModule.createDocument(app, config);
-  SwaggerModule.setup('api/docs', app, document);
+  if (!isProduction) {
+    const document = SwaggerModule.createDocument(app, config);
+    SwaggerModule.setup('docs', app, document);
+  }
+
+  app.getHttpAdapter().get('/', (_req: unknown, res: { json: (body: unknown) => void }) => {
+    res.json({
+      name: 'Unclutter Desk API',
+      status: 'ok',
+      version: '1.0.0',
+      ...(isProduction ? {} : { docs: '/docs' }),
+    });
+  });
 
   const port = process.env.PORT || 3050;
   await app.listen(port);
-  console.log(`🚀 UnclutterOS API running on port ${port}`);
+  console.log(`🚀 Unclutter Desk API running on port ${port}`);
 }
 
 bootstrap();

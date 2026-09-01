@@ -1,15 +1,15 @@
-# Handoff: UnclutterOS — Screens Set 02 & Set 03 (Views 07–20)
+# Handoff: Unclutter Desk — Screens Set 02 & Set 03 (Views 07–20)
 
 ## Overview
 
-UnclutterOS is a B2B practice-management and white-label telehealth platform for
+Unclutter Desk is a B2B practice-management and white-label telehealth platform for
 therapists in Nigeria. Therapists run their practice inside the OS (schedule,
 clients, clinical notes, telehealth, billing); their clients book and pay through a
 booking portal branded to the therapist, not to unclutterOS.
 
 This bundle covers **fourteen screens across two files**:
 
-**Set 02 — `UnclutterOS Screens II.dc.html`**
+**Set 02 — `Unclutter Desk Screens II.dc.html`**
 | View | Screen | Route |
 |---|---|---|
 | 07 | Telehealth video session room | `/session/:id` |
@@ -19,7 +19,7 @@ This bundle covers **fourteen screens across two files**:
 | 11 | Staff email invite claim | `/invite/claim` |
 | 12 | First-time therapist onboarding wizard | `/onboarding` |
 
-**Set 03 — `UnclutterOS Screens III.dc.html`**
+**Set 03 — `Unclutter Desk Screens III.dc.html`**
 | View | Screen | Route |
 |---|---|---|
 | 13 | Form & assessment templates manager | `/settings/forms` |
@@ -33,7 +33,7 @@ This bundle covers **fourteen screens across two files**:
 
 Sets 01 (dashboard, booking portal, schedule, clients, analytics, booking confirmed),
 the desktop prototype and the mobile screens ship in a separate bundle
-(`design_handoff_unclutteros`).
+(`design_handoff_unclutterdesk`).
 
 ## About the Design Files
 
@@ -323,7 +323,7 @@ active or complete.
 *Step 1 — Practice brand.* 920px panel, radius 26px. Eyebrow `STEP ONE`, heading
 "Let's make it yours." 27px/700, sub "Your clients only ever see your name and colours.
 unclutterOS stays out of the way." Left: Practice name (`Smith Therapy`), booking link
-row (`unclutteros.com/booking/` faint + `dr-smith` bold + green `AVAILABLE` pill),
+row (`unclutterdesk.com/booking/` faint + `dr-smith` bold + green `AVAILABLE` pill),
 Brand colour `#0F3A53` and Accent `#E3B341` swatch rows. Right 328px: a live booking-page
 preview — 96px navy gradient header (`BOOK A SESSION` gold eyebrow + practice name),
 skeleton lines, two buttons and a gold CTA bar. Footer: "You can change all of this
@@ -548,8 +548,8 @@ reset-token and verification-status calls (16–20).
 
 ## Assets
 
-- `assets/unclutteros-mark.svg` — product mark, used at 18–34px with a 6–10px radius.
-- `assets/unclutteros-lockup.svg` — horizontal lockup (not used in these views;
+- `assets/unclutterdesk-mark.svg` — product mark, used at 18–34px with a 6–10px radius.
+- `assets/unclutterdesk-lockup.svg` — horizontal lockup (not used in these views;
   included for completeness).
 - Icons are inline Lucide-style SVGs: 2px stroke, `round` caps and joins,
   `currentColor`. Use the real [Lucide](https://lucide.dev) set in implementation —
@@ -563,13 +563,13 @@ reset-token and verification-status calls (16–20).
 ## Files
 
 ```
-UnclutterOS Screens II.dc.html    Views 07–12
-UnclutterOS Screens III.dc.html   Views 13–20
+Unclutter Desk Screens II.dc.html    Views 07–12
+Unclutter Desk Screens III.dc.html   Views 13–20
 support.js                        runtime the two HTML files need to open in a browser
-assets/unclutteros-mark.svg
-assets/unclutteros-lockup.svg
+assets/unclutterdesk-mark.svg
+assets/unclutterdesk-lockup.svg
 tokens/colors_and_type.css        Unclutter design-system tokens
-tokens/unclutteros.css            OS-layer tokens (slate/navy/gold chrome)
+tokens/unclutterdesk.css            OS-layer tokens (slate/navy/gold chrome)
 ```
 
 Open either `.dc.html` directly in a browser with `support.js` beside it. Each screen
