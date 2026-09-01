@@ -1,7 +1,7 @@
 #!/bin/bash
 set -e
 
-TARGET_DIR="/home/unclutter/domains/app.unclutterdesk.com/app"
+TARGET_DIR="/home/unclutterdesk/app"
 
 echo "🚀 Starting Unclutter Desk Production Deployment at $TARGET_DIR..."
 
