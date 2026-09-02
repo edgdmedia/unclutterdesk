@@ -592,7 +592,7 @@ export function App() {
               fetcher: (key: string) => api.get(key),
               revalidateOnFocus: false,
               dedupingInterval: 60_000,
-              errorRetryCount: 2,
+              errorRetryCount: 1,
             }}
           >
             <Suspense fallback={<PageFallback />}>
@@ -616,14 +616,14 @@ export function App() {
   return (
     <BrowserRouter>
       <AuthProvider>
-        <SWRConfig
-          value={{
-            fetcher: (key: string) => api.get(key),
-            revalidateOnFocus: false,
-            dedupingInterval: 60_000,
-            errorRetryCount: 2,
-          }}
-        >
+          <SWRConfig
+            value={{
+              fetcher: (key: string) => api.get(key),
+              revalidateOnFocus: false,
+              dedupingInterval: 60_000,
+              errorRetryCount: 1,
+            }}
+          >
           <AppLayout />
         </SWRConfig>
       </AuthProvider>
