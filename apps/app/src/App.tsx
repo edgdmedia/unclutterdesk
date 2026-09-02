@@ -393,7 +393,6 @@ function AppLayout() {
     location.pathname === '/portal' ||
     location.pathname === '/login' ||
     location.pathname === '/register' ||
-    location.pathname === '/' ||
     location.pathname === '/forgot-password' ||
     location.pathname.startsWith('/reset-password') ||
     location.pathname === '/verify-email';
