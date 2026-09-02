@@ -17,23 +17,33 @@ import { AppModule } from './app.module';
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
   const isProduction = process.env.NODE_ENV === 'production';
+  const configuredOrigins = (process.env.CORS_ORIGINS || '')
+    .split(',')
+    .map((value) => value.trim())
+    .filter(Boolean);
 
   app.use(cookieParser());
 
   app.enableCors({
     origin: (origin, callback) => {
-      if (
+      const allowed =
         !origin ||
-        origin.endsWith('unclutterdesk.com') ||
-        origin.endsWith('pages.dev') ||
-        origin.includes('localhost')
-      ) {
+        configuredOrigins.includes(origin) ||
+        origin.endsWith('.unclutterdesk.com') ||
+        origin === 'https://unclutterdesk.com' ||
+        origin.endsWith('.pages.dev') ||
+        origin.includes('localhost');
+
+      if (allowed) {
         callback(null, true);
       } else {
-        callback(null, true);
+        callback(new Error(`Origin ${origin} is not allowed by CORS`), false);
       }
     },
     credentials: true,
+    methods: ['GET', 'HEAD', 'PUT', 'PATCH', 'POST', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'X-CSRF-Token', 'X-Tenant-Slug', 'X-Tenant-Id'],
+    optionsSuccessStatus: 204,
   });
 
   app.useGlobalPipes(
