@@ -79,11 +79,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       .get<AuthProfile>('/v1/auth/status')
       .then((p) => {
         if (!active) return;
+        console.log('[auth/status] success', p);
         setProfile(p);
         cacheProfile(p);
       })
       .catch(() => {
         if (!active) return;
+        console.log('[auth/status] unauthenticated');
         setProfile(null);
         cacheProfile(null);
       })
