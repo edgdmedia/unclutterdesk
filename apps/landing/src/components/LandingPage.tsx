@@ -119,8 +119,11 @@ export function LandingPage() {
     setFaqOpen(prev => ({ ...prev, [i]: !prev[i] }));
   };
 
-  const loginUrl = "http://app.localhost:5173/login"; // Hardcoded for demo
-  const registerUrl = "http://app.localhost:5173/register"; // Added for pricing CTAs
+  const appBaseUrl = import.meta.env.DEV
+    ? "http://app.localhost:5173"
+    : "https://app.unclutterdesk.com";
+  const loginUrl = `${appBaseUrl}/login`;
+  const registerUrl = `${appBaseUrl}/register`;
 
   return (
     <div className="min-h-screen bg-[#F8FAFC] font-sans text-[#0F172A]">
