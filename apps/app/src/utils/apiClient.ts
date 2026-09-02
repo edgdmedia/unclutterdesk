@@ -100,6 +100,13 @@ const AUTH_PUBLIC_PATHS = new Set([
   '/v1/auth/resend-verification',
 ]);
 
+const PUBLIC_TENANT_PATH_PREFIXES = [
+  '/v1/tenant/public/',
+  '/v1/consult/public/',
+  '/v1/intake/public/',
+  '/v1/discount/validate',
+];
+
 type SessionExpiredHandler = () => void;
 let onSessionExpired: SessionExpiredHandler | null = null;
 
@@ -196,7 +203,8 @@ export async function apiRequest<T = unknown>(
   const method = rest.method || 'GET';
   const headers = buildHeaders(extraHeaders as Record<string, string> | undefined, method);
 
-  if (!('X-Tenant-Slug' in headers) && !AUTH_PUBLIC_PATHS.has(path)) {
+  const isPublicTenantPath = PUBLIC_TENANT_PATH_PREFIXES.some((prefix) => path.startsWith(prefix));
+  if (!('X-Tenant-Slug' in headers) && !AUTH_PUBLIC_PATHS.has(path) && !isPublicTenantPath && TENANT_SLUG) {
     headers['X-Tenant-Slug'] = TENANT_SLUG;
   }
 
