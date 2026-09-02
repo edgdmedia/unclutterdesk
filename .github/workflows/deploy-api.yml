@@ -35,5 +35,6 @@ jobs:
           envs: SEED_DB
           script: |
             cd /home/unclutterdesk/app
+            git pull origin main
             chmod +x deploy.sh
             ./deploy.sh
