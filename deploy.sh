@@ -28,9 +28,9 @@ npx prisma generate
 echo "🔨 Building NestJS API..."
 pnpm --filter @unclutterdesk/api run build
 
-# 5. Run Prisma database migrations
-echo "🗄️ Running Prisma database migrations..."
-npx prisma migrate deploy
+# 5. Sync Prisma schema
+echo "🗄️ Syncing Prisma schema..."
+npx prisma db push
 
 # Only seed if explicitly requested via SEED_DB=true
 if [ "$SEED_DB" = "true" ]; then
