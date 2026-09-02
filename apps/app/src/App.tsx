@@ -564,19 +564,39 @@ function AdminShell() {
 }
 
 function RootRedirect() {
-  const { profile } = useAuth();
+  const { profile, isAuthenticated, isLoading } = useAuth();
   const appType = getAppType();
-  
-  if (appType === 'admin') return <Navigate to="/admin" replace />;
-  if (appType === 'booking') return <PublicProfilePage />; // Renders profile on the root of the subdomain
+
+  console.log('[root-redirect]', {
+    appType,
+    isLoading,
+    isAuthenticated,
+    profileType: profile?.type ?? null,
+  });
+
+  if (isLoading) return <PageFallback />;
+
+  if (appType === 'admin') {
+    console.log('[root-redirect] -> /admin');
+    return <Navigate to="/admin" replace />;
+  }
+  if (appType === 'booking') {
+    console.log('[root-redirect] -> booking root');
+    return <PublicProfilePage />;
+  }
   if (appType === 'marketing') {
-    // Should typically not be reached if marketing site is separately deployed,
-    // but redirect to the actual marketing site url or login just in case.
+    console.log('[root-redirect] -> /login (marketing fallback)');
     return <Navigate to="/login" replace />;
   }
-  
-  // App type is 'app'
-  return <Navigate to={profile?.type === 'platform_admin' ? '/admin' : '/dashboard'} replace />;
+
+  if (!isAuthenticated || !profile) {
+    console.log('[root-redirect] -> /login (unauthenticated)');
+    return <Navigate to="/login" replace />;
+  }
+
+  const destination = profile.type === 'platform_admin' ? '/admin' : profile.type === 'user' ? '/portal' : '/dashboard';
+  console.log('[root-redirect] ->', destination);
+  return <Navigate to={destination} replace />;
 }
 
 export function App() {
