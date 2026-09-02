@@ -189,7 +189,7 @@ export function FormsManagerPage() {
 
                   <div className="pt-3 border-t border-[#F1F5F9] flex items-center justify-between gap-3">
                     <Link
-                      to={`/portal/settings/forms/${template.id}`}
+                      to={`/dashboard/settings/forms/${template.id}`}
                       className="h-9 px-3 rounded-[12px] bg-[#F1F5F9] text-[#0F172A] text-xs font-bold hover:bg-slate-200 inline-flex items-center gap-1.5"
                     >
                       <Edit2 className="h-3.5 w-3.5" />

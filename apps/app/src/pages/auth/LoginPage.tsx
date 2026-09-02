@@ -61,7 +61,7 @@ export function LoginPage() {
         return;
       }
 
-      navigate('/dashboard');
+      navigate('/portal');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Login failed. Check your credentials.');
     }

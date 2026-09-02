@@ -729,7 +729,7 @@ export function SchedulePage({ sessions, setSessions, clients, tenantSlug }: Sch
               <button
                 onClick={() => {
                   if (sessionCompleteEvent.clientId) {
-                    navigate(`/portal/clients/${sessionCompleteEvent.clientId}?tab=notes&booking=${sessionCompleteEvent.id}`);
+                    navigate(`/dashboard/clients/${sessionCompleteEvent.clientId}?tab=notes&booking=${sessionCompleteEvent.id}`);
                   }
                   setSessionCompleteEvent(null);
                 }}

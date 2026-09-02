@@ -158,7 +158,7 @@ export function ClientsPage({ clients, setClients, onRefresh }: ClientsPageProps
             {filteredClients.map((c) => (
               <Link
                 key={c.id}
-                to={`/portal/clients/${c.id}`}
+                to={`/dashboard/clients/${c.id}`}
                 className="px-[22px] py-[14px] grid grid-cols-[2.2fr_1fr_0.7fr_1.1fr_0.9fr_90px] gap-4 items-center hover:bg-[#FCFDFE] transition-colors"
               >
                 <div className="flex items-center gap-3">
@@ -336,4 +336,3 @@ export function ClientsPage({ clients, setClients, onRefresh }: ClientsPageProps
     </div>
   );
 }
-
