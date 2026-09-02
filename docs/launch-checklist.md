@@ -26,7 +26,7 @@ Web (`apps/app`, via `VITE_*` at build time — `apps/app/src/utils/apiClient.ts
 
 ## 2. Database
 
-- Run `pnpm db:push` (uses `prisma/schema.prisma`) against the target `DATABASE_URL` before first boot.
+- Run `pnpm db:push` (uses `prisma/schema.prisma`) against the target `DATABASE_URL` before first boot. The current production deploy path also uses `prisma db push` because the live database has not been baselined for Prisma Migrate yet.
 - Run the seed once with `pnpm db:seed` — it creates the demo tenant, provider profile, services, availability, forms (PHQ-9/GAD-7 system templates) and a seeded completed booking used by the smoke test. Seeded staff logins are pre-verified (`emailVerified: true`).
 - Keep schema changes gated; do not regenerate the DB in place once real bookings exist.
 
