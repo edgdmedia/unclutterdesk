@@ -164,7 +164,7 @@ export function ClientPortalPage() {
                     navigate('/login', {
                       state: {
                         email: lookupEmail,
-                        returnTo: '/dashboard',
+                        returnTo: '/portal',
                       },
                     });
                     return;

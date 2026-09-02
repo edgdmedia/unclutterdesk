@@ -390,7 +390,7 @@ function AppLayout() {
     location.pathname.startsWith('/auth') ||
     location.pathname.startsWith('/invite') ||
     location.pathname.startsWith('/client/') ||
-    location.pathname === '/dashboard' ||
+    location.pathname === '/portal' ||
     location.pathname === '/login' ||
     location.pathname === '/register' ||
     location.pathname === '/' ||
@@ -405,7 +405,7 @@ function AppLayout() {
           <Routes>
             <Route path="/session/:id/prep" element={<SessionPrepPage />} />
             <Route path="/session/:id" element={<TelehealthVideoRoomPage />} />
-            <Route path="/dashboard" element={<ClientPortalPage />} />
+            <Route path="/portal" element={<ClientPortalPage />} />
             <Route path="/onboarding" element={<OnboardingWizardPage />} />
             <Route path="/booking/confirmed" element={<BookingConfirmedPage />} />
             <Route path="/booking/inactive" element={<InactivePracticePage />} />
