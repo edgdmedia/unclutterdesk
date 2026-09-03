@@ -136,6 +136,17 @@ model Profile {
   avatarUrl       String?
   emailVerified   Boolean   @default(false)
   emailVerifiedAt DateTime?
+
+  // How dates, times and numbers are shown to this person. Display only —
+  // clients are always billed in the practice's own currency, so there is
+  // deliberately no display-currency override here.
+  locale          String    @default("en-NG")
+  timezone        String    @default("Africa/Lagos")
+  dateFormat      String    @default("DD/MM/YYYY")
+  timeFormat      String    @default("24-hour")
+  weekStartsOn    String    @default("Monday")
+  numberFormat    String    @default("1,234.56")
+
   createdAt       DateTime  @default(now())
   updatedAt       DateTime  @updatedAt
 

@@ -253,6 +253,8 @@ export const api = {
   get: <T>(path: string) => apiRequest<T>(path, { method: 'GET' }),
   post: <T>(path: string, body: unknown, headers?: Record<string, string>) =>
     apiRequest<T>(path, { method: 'POST', body, headers }),
+  put: <T>(path: string, body: unknown, headers?: Record<string, string>) =>
+    apiRequest<T>(path, { method: 'PUT', body, headers }),
   patch: <T>(path: string, body: unknown, headers?: Record<string, string>) =>
     apiRequest<T>(path, { method: 'PATCH', body, headers }),
   delete: <T>(path: string) => apiRequest<T>(path, { method: 'DELETE' }),

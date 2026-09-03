@@ -1,4 +1,4 @@
-import { Controller, Post, Get, Body, Req, Res, UseGuards, UnauthorizedException } from '@nestjs/common';
+import { Controller, Post, Get, Put, Body, Req, Res, UseGuards, UnauthorizedException } from '@nestjs/common';
 import { Throttle } from '@nestjs/throttler';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { Response } from 'express';
@@ -16,6 +16,7 @@ import {
   csrfCookieOptions,
 } from '../../common/auth.config';
 import { RolesGuard } from '../../common/roles.guard';
+import { authenticatedProfileId, authenticatedTenantId } from '../../common/authenticated-tenant';
 import { AnyAuthenticated } from '../../common/roles';
 
 @ApiTags('Auth')
@@ -104,6 +105,44 @@ export class AuthController {
     res.clearCookie(REFRESH_COOKIE, { ...cookieOptions(0), path: '/v1/auth/refresh' });
     res.clearCookie(CSRF_COOKIE, { ...csrfCookieOptions(), maxAge: 0 });
     return { success: true };
+  }
+
+  @AnyAuthenticated()
+  @Get('preferences')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @ApiBearerAuth('access-token')
+  @ApiOperation({ summary: 'Display preferences for the signed-in account' })
+  getPreferences(@Req() req: any) {
+    return this.authService.getPreferences(
+      authenticatedTenantId(req),
+      authenticatedProfileId(req),
+    );
+  }
+
+  @AnyAuthenticated()
+  @Put('preferences')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @ApiBearerAuth('access-token')
+  @ApiOperation({ summary: 'Update display preferences for the signed-in account' })
+  updatePreferences(@Req() req: any, @Body() dto: Record<string, unknown>) {
+    return this.authService.updatePreferences(
+      authenticatedTenantId(req),
+      authenticatedProfileId(req),
+      dto,
+    );
+  }
+
+  @AnyAuthenticated()
+  @Post('change-password')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Throttle({ default: { limit: 5, ttl: 60000 } })
+  @ApiBearerAuth('access-token')
+  @ApiOperation({ summary: 'Change the password of the signed-in account' })
+  changePassword(
+    @Req() req: any,
+    @Body() dto: { currentPassword: string; newPassword: string },
+  ) {
+    return this.authService.changePassword(authenticatedProfileId(req), dto);
   }
 
   @AnyAuthenticated()

@@ -724,6 +724,110 @@ export class AuthService {
     };
   }
 
+  /**
+   * Only values the UI actually offers are accepted. Anything else is dropped
+   * rather than stored, so a malformed locale cannot come back out and break
+   * Intl.DateTimeFormat on every page that formats a date.
+   */
+  private static readonly ALLOWED_PREFERENCES: Record<string, readonly string[]> = {
+    locale: ['en-NG', 'en-GB', 'en-US', 'fr-FR'],
+    timezone: ['Africa/Lagos', 'Europe/London', 'Africa/Nairobi', 'Africa/Accra'],
+    dateFormat: ['DD/MM/YYYY', 'MM/DD/YYYY', 'YYYY-MM-DD', 'D MMM YYYY'],
+    timeFormat: ['24-hour', '12-hour'],
+    weekStartsOn: ['Monday', 'Sunday'],
+    numberFormat: ['1,234.56', '1.234,56'],
+  };
+
+  private static readonly PREFERENCE_FIELDS = {
+    locale: true,
+    timezone: true,
+    dateFormat: true,
+    timeFormat: true,
+    weekStartsOn: true,
+    numberFormat: true,
+  } as const;
+
+  async getPreferences(tenantId: bigint, profileId: bigint) {
+    const profile = await this.prisma.profile.findFirst({
+      where: { id: profileId, tenantId },
+      select: {
+        email: true,
+        emailVerified: true,
+        ...AuthService.PREFERENCE_FIELDS,
+      },
+    });
+
+    if (!profile) throw new NotFoundException('Profile not found');
+    return profile;
+  }
+
+  async updatePreferences(
+    tenantId: bigint,
+    profileId: bigint,
+    dto: Record<string, unknown>,
+  ) {
+    const data: Record<string, string> = {};
+
+    for (const [field, allowed] of Object.entries(AuthService.ALLOWED_PREFERENCES)) {
+      const value = dto?.[field];
+      if (value === undefined) continue;
+      if (typeof value !== 'string' || !allowed.includes(value)) {
+        throw new BadRequestException(`${field} must be one of: ${allowed.join(', ')}`);
+      }
+      data[field] = value;
+    }
+
+    if (Object.keys(data).length === 0) {
+      throw new BadRequestException('No preferences to update');
+    }
+
+    // updateMany so the tenant stays in the WHERE: update() takes a unique
+    // where, which would leave this addressable by profile id alone.
+    const updated = await this.prisma.profile.updateMany({
+      where: { id: profileId, tenantId },
+      data,
+    });
+    if (updated.count === 0) throw new NotFoundException('Profile not found');
+
+    return this.getPreferences(tenantId, profileId);
+  }
+
+  /**
+   * Changing a password from inside a session.
+   *
+   * The current password is required: a session left open on a shared machine
+   * should not be enough to lock the real owner out of their account.
+   */
+  async changePassword(profileId: bigint, dto: { currentPassword: string; newPassword: string }) {
+    if (!dto?.currentPassword || !dto?.newPassword) {
+      throw new BadRequestException('Both your current and new password are required');
+    }
+    if (dto.newPassword.length < 8) {
+      throw new BadRequestException('Choose a new password of at least 8 characters');
+    }
+    if (dto.newPassword === dto.currentPassword) {
+      throw new BadRequestException('That is the password you are already using');
+    }
+
+    const profile = await this.prisma.profile.findUnique({
+      where: { id: profileId },
+      include: { user: true },
+    });
+
+    if (!profile?.user) throw new NotFoundException('Account not found');
+
+    const matches = await bcrypt.compare(dto.currentPassword, profile.user.password);
+    if (!matches) throw new BadRequestException('Your current password is not correct');
+
+    await this.prisma.user.update({
+      where: { id: profile.user.id },
+      data: { password: await bcrypt.hash(dto.newPassword, 10) },
+    });
+
+    this.logger.log(`Password changed for user ${profile.user.id}`);
+    return { success: true };
+  }
+
   async getPlatformAdminStatus(userId: bigint) {
     const user = await this.prisma.user.findUnique({ where: { id: userId } });
     if (!user || !user.platformRole) throw new NotFoundException('Session profile not found');
