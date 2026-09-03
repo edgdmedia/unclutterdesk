@@ -118,7 +118,28 @@ if [ "${SEED_DB:-}" = "true" ]; then
 fi
 
 # 7. Reload PM2 process
+# PM2 writes to ./logs but will not create the directory, and fails to start the
+# process if it is missing.
+mkdir -p logs
+
 echo "🔄 Reloading PM2 process..."
 pm2 reload ecosystem.config.js --env production || pm2 start ecosystem.config.js --env production
+
+# pm2 reload returns before the process has proved it can boot, so a crash on
+# startup would otherwise look like a successful deploy. Wait for the health
+# endpoint to answer.
+echo "🩺 Waiting for the API to report healthy..."
+for attempt in $(seq 1 15); do
+    if curl -fsS "http://127.0.0.1:${PORT:-3050}/health" >/dev/null 2>&1; then
+        echo "   ✓ API healthy after ${attempt} attempt(s)"
+        break
+    fi
+    if [ "$attempt" = "15" ]; then
+        echo "❌ API did not become healthy. Recent logs:"
+        pm2 logs unclutterdesk-api --lines 40 --nostream --err || true
+        exit 1
+    fi
+    sleep 2
+done
 
 echo "✅ Unclutter Desk API Deployed Successfully on app.unclutterdesk.com!"
