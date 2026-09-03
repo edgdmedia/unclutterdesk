@@ -115,6 +115,10 @@ DEMO_PASSWORD='use-a-private-12-plus-character-secret' pnpm exec node scripts/pr
 Never commit or publish that password. Private pages do not contain an embedded
 copy of this data and do not fall back to it when an API request fails.
 
+If the first live attempt failed after the backup completed, use
+`npx prisma migrate resolve --rolled-back 20260903230000_demo_workspace` once on
+the server before rerunning `./deploy.sh`. Confirm the backup file exists first.
+
 **Exit:** a fresh tenant never sees another tenant's or fictional private data;
 refreshing after every supported mutation preserves the result; every visible
 primary action either works or is removed; branding and links pass a scripted
