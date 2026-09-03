@@ -177,13 +177,17 @@ export function LandingPage() {
         <div className="max-w-[980px] w-full mx-auto mt-12 rounded-[24px] overflow-hidden bg-white shadow-[0_24px_80px_rgba(15,23,42,0.14)] hidden md:block group cursor-pointer relative transition-all duration-300 hover:shadow-[0_30px_90px_rgba(15,23,42,0.20)] hover:-translate-y-1">
           <div className="absolute inset-0 z-10 pointer-events-none rounded-[24px] ring-2 ring-transparent group-hover:ring-[#24614F] transition-all"></div>
           
+          <span className="absolute top-[52px] right-4 z-20 h-[22px] px-2.5 rounded-full bg-[#0F172A]/80 text-white text-[10px] font-[800] tracking-[0.12em] inline-flex items-center">
+            EXAMPLE
+          </span>
+
           <div className="h-11 bg-[#F1F5F9] border-b border-[#E2E8F0] flex items-center px-4 gap-[7px]">
             <span className="w-[11px] h-[11px] rounded-full bg-[#FB7185]"></span>
             <span className="w-[11px] h-[11px] rounded-full bg-[#FCD34D]"></span>
             <span className="w-[11px] h-[11px] rounded-full bg-[#6EE7B7]"></span>
             <div className="mx-auto h-[26px] px-3.5 rounded-full bg-white border border-[#E2E8F0] flex items-center gap-[7px] text-[11.5px] text-[#64748B]">
               <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#16A34A" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><rect x="4" y="10" width="16" height="11" rx="2.5"></rect><path d="M8 10V7a4 4 0 0 1 8 0v3"></path></svg>
-              booking.smiththerapy.ng
+              booking.yourpractice.ng
             </div>
           </div>
 
@@ -195,16 +199,16 @@ export function LandingPage() {
               className="w-[82px] h-[82px] rounded-[26px] bg-white text-[26px] font-[800] flex items-center justify-center shadow-[0_10px_26px_rgba(15,23,42,0.1)] transition-colors duration-500"
               style={{ color: primary }}
             >
-              JS
+              ST
             </div>
             <div className="text-[11px] font-[900] tracking-[0.2em] transition-colors duration-500" style={{ color: primary }}>
-              DR. JANE SMITH THERAPY
+              SAMPLE THERAPY PRACTICE
             </div>
             <div className="h-[22px] px-2.5 rounded-full text-white text-[11px] font-[800] tracking-[0.06em] inline-flex items-center transition-colors duration-500" style={{ backgroundColor: secondary }}>
               CLINICAL PSYCHOLOGY
             </div>
             <h2 className="mt-0.5 mb-0 text-[30px] font-[800] tracking-[-0.03em] text-[#0F172A]">
-              Book a session with Dr. Jane Smith
+              Book a session with your therapist
             </h2>
             <div className="flex gap-2.5 pt-1">
               <span className="h-[30px] px-3.5 rounded-full bg-white/75 text-[12px] font-[600] text-[#334155] inline-flex items-center">

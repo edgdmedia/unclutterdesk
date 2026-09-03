@@ -4,6 +4,7 @@ import { Video, Calendar, Check } from 'lucide-react';
 import { useBrand } from '@unclutterdesk/ui';
 import { api, getBookingUrl, TENANT_SLUG } from '../utils/apiClient';
 import { RescheduleDialog } from '../components/RescheduleDialog';
+import { initialsOf } from '../utils/initials';
 import { useAuth } from '../context/AuthContext';
 
 type PortalTab = 'upcoming' | 'past' | 'payments' | 'settings';
@@ -186,11 +187,7 @@ export function ClientPortalPage() {
   // notice period — which is why the button opens the dialog rather than
   // deciding here whether the move is allowed.
   const canReschedule = (session: PortalSession) => session.status !== 'CANCELLED';
-  const initials = (portal.clientName || 'Client')
-    .split(' ')
-    .slice(0, 2)
-    .map((part) => part.charAt(0).toUpperCase())
-    .join('') || 'CL';
+  const initials = initialsOf(portal.clientName, 'CL');
 
   const tabs: Array<{ key: PortalTab; label: string }> = [
     { key: 'upcoming', label: 'Upcoming' },
@@ -203,7 +200,7 @@ export function ClientPortalPage() {
     <div className="min-h-screen bg-[#F6F8FA] text-[#0F172A] font-outfit flex flex-col">
       <header className="h-[72px] shrink-0 flex items-center px-8 gap-3" style={{ backgroundColor: primary }}>
         <div className="h-[34px] w-[34px] rounded-[11px] bg-[#E3B341] text-[#0F172A] font-extrabold text-[13px] flex items-center justify-center">
-          JS
+          {initialsOf(brand.name, 'UD')}
         </div>
         <span className="text-[16.5px] font-semibold text-white">{brand.name}</span>
         <div className="ml-auto flex items-center gap-4">

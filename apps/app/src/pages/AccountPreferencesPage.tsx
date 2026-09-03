@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
+import { useAuth } from '../context/AuthContext';
 import { Save, Download, Trash2, Monitor, Smartphone, Info } from 'lucide-react';
 import { Eyebrow } from '@unclutterdesk/ui';
 
@@ -74,7 +75,14 @@ function ChipGroup<T extends string>({ value, options, onSelect }: { value: T; o
 }
 
 export function AccountPreferencesPage() {
-  const [email, setEmail] = useState('adaeze@okonkwotherapy.ng');
+  // This is the signed-in account's own address. It used to be seeded with a
+  // fabricated one, so every user was shown a stranger's email as theirs.
+  const { profile } = useAuth();
+  const [email, setEmail] = useState(profile?.email ?? '');
+
+  useEffect(() => {
+    if (profile?.email) setEmail(profile.email);
+  }, [profile?.email]);
   const [language, setLanguage] = useState('English (Nigeria)');
   const [country, setCountry] = useState('Nigeria');
   const [timezone, setTimezone] = useState('GMT+1 Lagos');

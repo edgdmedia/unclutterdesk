@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { initialsOf } from '../utils/initials';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { Check, Copy, ArrowRight, ArrowLeft, Loader2, Sparkles, Building2, Calendar, ShieldCheck, ExternalLink, Palette, Image, Mail, Phone, MapPin, Info, Globe, Upload, Settings } from 'lucide-react';
 import { UnclutterLockup, Eyebrow } from '@unclutterdesk/ui';
@@ -452,12 +453,9 @@ export function OnboardingWizardPage() {
   const rateValue = Number(rate.replace(/[^0-9]/g, '') || 0);
   const monthlyEstimate = weeklySlots * rateValue * 4;
 
-  const initials = (practiceName || 'Okonkwo Therapy')
-    .split(' ')
-    .map((n) => n[0])
-    .join('')
-    .slice(0, 2)
-    .toUpperCase();
+  // Before the practice is named there are no initials to show, so the badge
+  // holds the product's own mark rather than someone else's practice.
+  const initials = initialsOf(practiceName, 'UD');
 
   const inputCls = "w-full h-[48px] px-4 rounded-[14px] bg-[#F8FAFC] border border-[#E2E8F0] text-[14px] font-semibold text-[#0F172A] outline-none focus:bg-white focus:border-[#0F3A53] transition-all placeholder:text-[#CBD5E1]";
   const labelCls = "text-[12px] font-bold text-[#475569] block mb-1.5";
@@ -998,7 +996,7 @@ export function OnboardingWizardPage() {
                         type="text"
                         value={accountName}
                         onChange={(e) => setAccountName(e.target.value)}
-                        placeholder={practiceName || 'Dr. Adaeze Okonkwo / Practice Name'}
+                        placeholder={practiceName || 'Your name or practice name'}
                         className={`${inputCls} h-[50px] ${accountResolved ? 'bg-emerald-50/50 border-emerald-200 text-emerald-900 focus:bg-emerald-50/50' : ''}`}
                         readOnly={accountResolved}
                       />

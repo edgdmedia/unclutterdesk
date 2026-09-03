@@ -156,7 +156,7 @@ export function SignupPage() {
             required
             value={practiceName}
             onChange={(e) => setPracticeName(e.target.value)}
-            placeholder="e.g. Smith Therapy"
+            placeholder="e.g. Okonkwo Wellness"
             className={authInputCls}
           />
         </AuthField>
@@ -184,7 +184,7 @@ export function SignupPage() {
             required
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-            placeholder="adaeze@okonkwotherapy.ng"
+            placeholder="you@yourpractice.ng"
             className={authInputCls}
           />
         </AuthField>

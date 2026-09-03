@@ -3,6 +3,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { AlertCircle, Check, Loader2, Lock } from 'lucide-react';
 import { UnclutterMark } from '../../components/UnclutterMark';
 import { api, getBookingUrl } from '../../utils/apiClient';
+import { initialsOf } from '../../utils/initials';
 import { useAuth } from '../../context/AuthContext';
 
 const inviteInputCls =
@@ -28,18 +29,6 @@ const ROLE_LABELS: Record<string, string> = {
   THERAPIST: 'Therapist',
   RECEPTIONIST: 'Receptionist',
 };
-
-/** Initials for the practice badge, e.g. "Smith Therapy Ltd" -> "ST". */
-function initialsOf(name: string): string {
-  return (
-    name
-      .split(/\s+/)
-      .filter(Boolean)
-      .slice(0, 2)
-      .map((w) => w[0]?.toUpperCase() ?? '')
-      .join('') || 'UD'
-  );
-}
 
 function expiresIn(iso: string): string {
   const days = Math.ceil((new Date(iso).getTime() - Date.now()) / 86400000);
@@ -189,7 +178,7 @@ export function InvitePage() {
 
         <div className="flex items-center gap-3 relative z-[2]">
           <div className="w-10 h-10 rounded-[13px] bg-[#E3B341] text-[#0F172A] text-base font-extrabold flex items-center justify-center">
-            {initialsOf(invite.practiceName)}
+            {initialsOf(invite.practiceName, 'UD')}
           </div>
           <div className="leading-[1.3]">
             <div className="text-white text-base font-bold tracking-[-0.01em]">

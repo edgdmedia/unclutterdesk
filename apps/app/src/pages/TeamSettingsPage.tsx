@@ -227,7 +227,7 @@ export function TeamSettingsPage({ staff, setStaff, onRefresh }: TeamSettingsPag
                 <input
                   type="email"
                   required
-                  placeholder="name@smiththerapy.ng"
+                  placeholder="name@yourpractice.ng"
                   value={inviteEmail}
                   onChange={(e) => setInviteEmail(e.target.value)}
                   className="w-full h-[46px] px-3.5 rounded-[14px] bg-[#F8FAFC] border border-[#E2E8F0] text-[14px] font-medium text-[#0F172A] outline-none"

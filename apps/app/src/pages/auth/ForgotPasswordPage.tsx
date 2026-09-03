@@ -79,7 +79,7 @@ export function ForgotPasswordPage() {
                 required
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                placeholder="adaeze@okonkwotherapy.ng"
+                placeholder="you@yourpractice.ng"
                 className={authInputCls}
               />
             </AuthField>
