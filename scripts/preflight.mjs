@@ -96,6 +96,32 @@ try {
   failed('pg_dump present', 'not on PATH — deploy.sh aborts rather than deploy without a backup');
 }
 
+/**
+ * Prisma accepts connection-string parameters libpq rejects outright — a URL
+ * ending `?schema=public` makes pg_dump fail with "invalid URI query
+ * parameter", writing a zero-byte file. Strip those and surface any schema as a
+ * flag instead. Mirrors libpq_url()/pg_schema_of() in deploy.sh.
+ */
+const PRISMA_ONLY_PARAMS = new Set([
+  'schema', 'connection_limit', 'pool_timeout', 'pgbouncer',
+  'socket_timeout', 'statement_cache_size', 'sslidentity', 'sslpassword',
+]);
+
+function libpqUrl(raw) {
+  const q = raw.indexOf('?');
+  if (q === -1) return { url: raw, schema: undefined };
+  const base = raw.slice(0, q);
+  const kept = [];
+  let schema;
+  for (const pair of raw.slice(q + 1).split('&')) {
+    if (!pair) continue;
+    const key = pair.split('=')[0];
+    if (key === 'schema') schema = pair.slice(pair.indexOf('=') + 1);
+    if (!PRISMA_ONLY_PARAMS.has(key)) kept.push(pair);
+  }
+  return { url: kept.length ? `${base}?${kept.join('&')}` : base, schema };
+}
+
 // ── 2. Required configuration ────────────────────────────────────────────────
 for (const key of ['DATABASE_URL', 'JWT_SECRET', 'REFRESH_SECRET']) {
   env[key] ? pass(`${key} set`) : failed(`${key} set`, 'missing');
@@ -129,6 +155,21 @@ if (skipDb) {
 } else if (!env.DATABASE_URL) {
   failed('Database checks', 'skipped — DATABASE_URL is not set');
 } else {
+  // Can a backup actually be taken? deploy.sh refuses to change a schema
+  // without one, so a URL pg_dump cannot parse blocks the whole deploy.
+  const { url: pgUrl, schema: pgSchema } = libpqUrl(env.DATABASE_URL);
+  try {
+    sh('pg_dump', [
+      '--schema-only', '--no-owner', '--no-acl',
+      ...(pgSchema ? [`--schema=${pgSchema}`] : []),
+      '--file=/dev/null', pgUrl,
+    ]);
+    pass('Backup connectivity', 'pg_dump can read the database');
+  } catch (e) {
+    const msg = String(e.stderr || e.message).trim().split('\n')[0];
+    failed('Backup connectivity', `pg_dump failed: ${msg}`);
+  }
+
   // Migration state first: it decides how to read the drift check below.
   //
   // The distinction that matters is whether 0_init is still pending. Applying

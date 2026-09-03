@@ -132,6 +132,11 @@ existing database until the initial migration is recorded as already applied.
 ```bash
 export DATABASE_URL="$(grep -E '^[[:space:]]*DATABASE_URL=' .env | tail -n 1 | cut -d= -f2- | sed -e 's/^"//' -e 's/"$//')"
 
+# Prisma accepts ?schema=public; libpq does not, and pg_dump/psql fail on it
+# with "invalid URI query parameter", leaving a zero-byte file. Strip it for
+# the Postgres tools only — Prisma keeps using DATABASE_URL as-is.
+export PG_URL="${DATABASE_URL%%\?*}"
+
 # a. Confirm the live schema matches main's schema.prisma
 npx prisma migrate diff \
   --from-url "$DATABASE_URL" \
@@ -150,7 +155,9 @@ builds on that lie.
 mkdir -p "$HOME/backups/unclutterdesk"
 pg_dump --format=custom --no-owner --no-acl \
   --file="$HOME/backups/unclutterdesk/pre-baseline-$(date +%Y%m%d-%H%M%S).dump" \
-  "$DATABASE_URL"
+  "$PG_URL"
+
+# Confirm it is not empty — a failed dump still leaves a 0-byte file behind
 ls -lh "$HOME/backups/unclutterdesk/"
 
 # c. Record the baseline — writes one row, runs no DDL
@@ -170,8 +177,8 @@ The `paystack_subscriptions` migration drops three columns. They should be
 unused, but the DROPs are irreversible, so check:
 
 ```bash
-psql "$DATABASE_URL" -c 'SELECT count(*) FROM "Tenant" WHERE "stripeCustomerId" IS NOT NULL OR "stripeSubscriptionId" IS NOT NULL;'
-psql "$DATABASE_URL" -c 'SELECT count(*) FROM "BankSubaccount" WHERE "stripeAccountId" IS NOT NULL;'
+psql "$PG_URL" -c 'SELECT count(*) FROM "Tenant" WHERE "stripeCustomerId" IS NOT NULL OR "stripeSubscriptionId" IS NOT NULL;'
+psql "$PG_URL" -c 'SELECT count(*) FROM "BankSubaccount" WHERE "stripeAccountId" IS NOT NULL;'
 ```
 
 Both must be `0`. If either is not, stop — there is billing state to migrate.

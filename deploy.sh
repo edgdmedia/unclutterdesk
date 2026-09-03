@@ -30,6 +30,35 @@ if [ -z "${DATABASE_URL:-}" ]; then
     exit 1
 fi
 
+# Prisma accepts connection-string parameters that libpq does not, and pg_dump
+# fails outright on them ("invalid URI query parameter: schema"). Strip the
+# Prisma-only ones and pass any schema through as a proper pg_dump flag.
+libpq_url() {
+    local url="$1" base query kept kv
+    base="${url%%\?*}"
+    query="${url#*\?}"
+    [ "$query" = "$url" ] && query=""
+    kept=""
+    local IFS='&'
+    for kv in $query; do
+        case "${kv%%=*}" in
+            schema|connection_limit|pool_timeout|pgbouncer|socket_timeout|statement_cache_size|sslidentity|sslpassword) ;;
+            "") ;;
+            *) kept="${kept:+$kept&}$kv" ;;
+        esac
+    done
+    printf '%s%s' "$base" "${kept:+?$kept}"
+}
+
+pg_schema_of() {
+    case "$1" in
+        *[?\&]schema=*) local rest="${1##*schema=}"; printf '%s' "${rest%%&*}" ;;
+    esac
+}
+
+PG_URL="$(libpq_url "$DATABASE_URL")"
+PG_SCHEMA="$(pg_schema_of "$DATABASE_URL")"
+
 # 1. Pull latest changes from git
 echo "📥 Pulling latest git updates..."
 git pull origin main
@@ -59,7 +88,9 @@ mkdir -p "$BACKUP_DIR"
 BACKUP_FILE="$BACKUP_DIR/pre-deploy-$(date +%Y%m%d-%H%M%S).dump"
 
 # Custom format (-Fc) so single tables can be restored with pg_restore.
-if ! pg_dump --format=custom --no-owner --no-acl --file="$BACKUP_FILE" "$DATABASE_URL"; then
+if ! pg_dump --format=custom --no-owner --no-acl \
+        ${PG_SCHEMA:+--schema="$PG_SCHEMA"} \
+        --file="$BACKUP_FILE" "$PG_URL"; then
     echo "❌ Database backup failed. Aborting before any schema change."
     rm -f "$BACKUP_FILE"
     exit 1
