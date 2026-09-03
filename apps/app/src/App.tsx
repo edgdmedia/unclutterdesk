@@ -566,35 +566,23 @@ function RootRedirect() {
   const { profile, isAuthenticated, isLoading } = useAuth();
   const appType = getAppType();
 
-  console.log('[root-redirect]', {
-    appType,
-    isLoading,
-    isAuthenticated,
-    profileType: profile?.type ?? null,
-  });
-
   if (isLoading) return <PageFallback />;
 
   if (appType === 'admin') {
-    console.log('[root-redirect] -> /admin');
     return <Navigate to="/admin" replace />;
   }
   if (appType === 'booking') {
-    console.log('[root-redirect] -> booking root');
     return <PublicProfilePage />;
   }
   if (appType === 'marketing') {
-    console.log('[root-redirect] -> /login (marketing fallback)');
     return <Navigate to="/login" replace />;
   }
 
   if (!isAuthenticated || !profile) {
-    console.log('[root-redirect] -> /login (unauthenticated)');
     return <Navigate to="/login" replace />;
   }
 
   const destination = profile.type === 'platform_admin' ? '/admin' : profile.type === 'user' ? '/portal' : '/dashboard';
-  console.log('[root-redirect] ->', destination);
   return <Navigate to={destination} replace />;
 }
 

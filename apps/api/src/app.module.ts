@@ -2,6 +2,7 @@ import { Module, NestModule, MiddlewareConsumer, RequestMethod } from '@nestjs/c
 import { APP_GUARD } from '@nestjs/core';
 import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
 import { PrismaService } from './common/prisma/prisma.service';
+import { HealthController } from './common/health.controller';
 import { TenantMiddleware } from './common/middleware/tenant.middleware';
 import { TenantModule } from './modules/tenant/tenant.module';
 import { AuthModule } from './modules/auth/auth.module';
@@ -41,6 +42,7 @@ import { CalendarModule } from './modules/calendar/calendar.module';
     DiscountModule,
     CalendarModule,
   ],
+  controllers: [HealthController],
   providers: [
     PrismaService,
     {
@@ -53,6 +55,10 @@ export class AppModule implements NestModule {
   configure(consumer: MiddlewareConsumer) {
     consumer
       .apply(TenantMiddleware)
+      // /health must not depend on a tenant lookup: the middleware queries the
+      // database, so leaving it in would make the probe fail in the middleware
+      // and report 500 instead of the controller's 503.
+      .exclude({ path: 'health', method: RequestMethod.ALL })
       .forRoutes({ path: '*', method: RequestMethod.ALL });
   }
 }

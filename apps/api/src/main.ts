@@ -12,6 +12,7 @@ import { NestExpressApplication } from '@nestjs/platform-express';
 import { AppModule } from './app.module';
 import { PrismaService } from './common/prisma/prisma.service';
 import { createCorsOriginHandler } from './common/cors';
+import { AllExceptionsFilter } from './common/all-exceptions.filter';
 
 // Global BigInt JSON serialization fallback (prevents "Do not know how to serialize a BigInt" error)
 (BigInt.prototype as any).toJSON = function () {
@@ -56,6 +57,8 @@ async function bootstrap() {
     allowedHeaders: ['Content-Type', 'Authorization', 'X-CSRF-Token', 'X-Tenant-Slug', 'X-Tenant-Id'],
     optionsSuccessStatus: 204,
   });
+
+  app.useGlobalFilters(new AllExceptionsFilter());
 
   app.useGlobalPipes(
     new ValidationPipe({

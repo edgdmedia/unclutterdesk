@@ -4,7 +4,7 @@
 
 ## Status of this audit
 
-Findings 1, 2, 4, 5, 6 and 10 have been **fixed on branch `dev`** (see the commit accompanying this report); everything else remains open. The fixes are not live until `dev` is merged to `main` and deployed.
+Findings 1, 2, 4, 5, 6, 10, 12, 13 and 16 have been **fixed on branch `dev`** (9 partly) (see the commit accompanying this report); everything else remains open. The fixes are not live until `dev` is merged to `main` and deployed.
 
 ## Is it released to the public?
 
@@ -110,13 +110,13 @@ Ten requests exhausted the quota for **every therapist and client on the platfor
 
 8. **Rejected CORS origins return HTTP 500.** The rejection callback throws an unhandled `Error` rather than returning `callback(null, false)`. Noisy, and it surfaces as a server error.
 
-9. **No error monitoring or structured logging.** No Sentry, no pino/winston, only ad-hoc `Logger` calls. Production failures will be discovered by therapists, not by you. `apps/api/src/modules/auth/auth.service.ts:24` also defines an `authDebug` helper that JSON-dumps auth detail into logs — audit what it receives before it is used.
+9. **No error monitoring or structured logging.** *(Partly fixed on `dev`: a global exception filter now logs every 5xx with a stack and a reference id while returning only a generic body, so an unhandled Prisma error can no longer quote clinical values back to the caller. An external error tracker such as Sentry is still not wired up.)* No Sentry, no pino/winston, only ad-hoc `Logger` calls. Production failures will be discovered by therapists, not by you. `apps/api/src/modules/auth/auth.service.ts:24` also defines an `authDebug` helper that JSON-dumps auth detail into logs — audit what it receives before it is used.
 
 10. **No CI quality gate.** *(Fixed on `dev`: a `verify` job now runs recursive typecheck plus API and app tests, and all three deploy jobs `needs: verify`.)* All three workflows deploy on push to `main` with no typecheck, no lint and no tests. `pnpm typecheck` and vitest both exist and are never run. Add them as required steps before the deploy job.
 
-11. **Test coverage is six files** *(17 CORS and 13 tenant-router regression tests added on `dev`; 46 tests now pass across the repo)* for the entire product (`tenant.service.spec.ts`, `intake.service.spec.ts`, `apiClient.test.ts`, one autosave test). Nothing covers authentication, cross-tenant isolation, billing, or bookings — the four areas where a bug is a breach.
+11. **Test coverage is eight files** *(17 CORS, 13 tenant-router and 8 exception-filter regression tests added on `dev`; 54 tests now pass across the repo)* for the entire product (`tenant.service.spec.ts`, `intake.service.spec.ts`, `apiClient.test.ts`, one autosave test). Nothing covers authentication, cross-tenant isolation, billing, or bookings — the four areas where a bug is a breach.
 
-12. **PM2 runs a single fork-mode process** (`ecosystem.config.js`) with no health check. One unhandled rejection takes the whole API down until someone notices. Add `instances: 2` / cluster mode, `max_restarts`, and an uptime monitor on `GET /`.
+12. **PM2 runs a single fork-mode process** *(Fixed on `dev`: restart policy, memory ceiling, graceful-reload timeouts and log files added, plus a real `GET /health` probe that queries the database and returns 503 when it is unreachable. Deliberately still one instance — see the note below.)* (`ecosystem.config.js`) with no health check. One unhandled rejection takes the whole API down until someone notices. Add `instances: 2` / cluster mode, `max_restarts`, and an uptime monitor on `GET /`.
 
 ---
 
@@ -128,7 +128,7 @@ Ten requests exhausted the quota for **every therapist and client on the platfor
 
 15. **No sitemap.** `/sitemap.xml` and `/sitemap-index.xml` return the landing page HTML with 200. Add `@astrojs/sitemap` and reference it from `robots.txt`.
 
-16. **Debug commits sit on `dev`, unmerged.** `effb5ae` adds `console.log('[auth/status] success', p)` — the full user profile printed to the browser console in production — and `bab1e58` adds seven `[root-redirect]` logs. Strip both before merging to `main`.
+16. **Debug commits sit on `dev`, unmerged.** *(Fixed on `dev`: all 8 `console.log` calls removed; the routing fix they were wrapped around is kept. No `console.log` remains in `apps/app/src`.)* `effb5ae` adds `console.log('[auth/status] success', p)` — the full user profile printed to the browser console in production — and `bab1e58` adds seven `[root-redirect]` logs. Strip both before merging to `main`.
 
 17. **Secrets live in a working-tree `.env`.** Not tracked by git (verified), but `apps/api/.env` and the root `.env` hold live Stripe, Paystack, Google OAuth, JWT and SMTP credentials on a laptop, and `deploy.sh:11` copies one to the other on the server. Rotate anything that has been on a developer machine and move production secrets to the host's secret store.
 
