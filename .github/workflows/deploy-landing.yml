@@ -10,10 +10,22 @@ on:
       - 'package.json'
       - 'pnpm-lock.yaml'
       - '.github/workflows/deploy-landing.yml'
+  # Also on PRs, so `verify` reports a check before the merge rather
+  # than after the deploy has already started.
+  pull_request:
+    branches:
+      - main
+    paths:
+      - 'apps/landing/**'
+      - 'packages/ui/**'
+      - 'package.json'
+      - 'pnpm-lock.yaml'
+      - '.github/workflows/deploy-landing.yml'
 
 concurrency:
-  group: deploy-landing
-  cancel-in-progress: false
+  group: deploy-landing-${{ github.ref }}
+  # Never interrupt a deploy in flight; a superseded PR check is fine to drop.
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   verify:
@@ -47,6 +59,7 @@ jobs:
 
   deploy:
     needs: verify
+    if: github.event_name == 'push'
     name: Deploy Landing To Cloudflare Pages
     runs-on: ubuntu-latest
     permissions:
