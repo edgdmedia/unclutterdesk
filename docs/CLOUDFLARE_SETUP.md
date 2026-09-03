@@ -47,32 +47,82 @@ to the project.
 
 Reasonable only as a stopgap, and only if you are confident about the ceiling.
 
-### Option B — put a Worker in front (recommended)
+### Option B — put a Worker in front (recommended, and now built)
 
-1. Proxied wildcard DNS record: `CNAME  *  →  <app-project>.pages.dev`, **Proxied**.
-   (Or an originless `AAAA * 100::` — the Worker answers before the origin is used.)
-2. A Worker on route `*.unclutterdesk.com/*` that serves the app bundle.
+Implemented in `apps/tenant-router/`. It sits on `*.unclutterdesk.com/*`, rewrites
+the request onto the app's Pages origin, and streams the response back. No
+per-tenant registration, no ceiling on tenant count.
 
-Two ways to build the Worker:
+Behaviour (see `src/router.ts`, 13 tests in `src/router.spec.ts`):
 
-- **Proxy to the existing Pages deployment** — roughly twenty lines: rewrite the
-  request to `<app-project>.pages.dev` and stream the response back. Keeps the
-  current Pages deploy pipeline exactly as it is.
-- **Migrate the app to Workers static assets** — Workers support wildcard routes
-  natively, so the Worker *is* the site. This is the direction Cloudflare is
-  steering static hosting, and it removes the Pages custom-domain limit
-  permanently.
+| Host | Result |
+| --- | --- |
+| `dr-smith.unclutterdesk.com` | serves the app bundle |
+| `app.unclutterdesk.com` | serves the app bundle — identical assets, so this is correct |
+| `booking.drjane.com` (custom domain via Cloudflare for SaaS) | serves the app bundle |
+| `www.unclutterdesk.com` | 301 to the apex |
+| `api.unclutterdesk.com` | **404, deliberately** — see step 4 |
+| `a.b.unclutterdesk.com` | 404 |
 
-Either way there is no tenant ceiling and one thing to configure.
+The Worker does not check whether the slug is a real tenant. That would cost a
+lookup on every request; instead an unknown slug loads the SPA, which asks the
+API and gets a 404 back. Same outcome, no added latency.
 
-**Option B also solves item 5.** Cloudflare for SaaS routes customer custom
-hostnames (`booking.drjane.com`) to a *fallback origin*, and this Worker is a
-natural fallback origin — so wildcard subdomains and customer domains end up on
-one code path.
+#### Deploying it
 
-**Recommendation:** Option B. Decide between proxy-Worker and the Workers
-static-assets migration based on appetite; the proxy-Worker ships faster and can
-be swapped later.
+1. **Check `ORIGIN_HOST`.** `wrangler.jsonc` assumes the app project is
+   `unclutterdesk-app.pages.dev`. Confirm against the actual project name (the
+   `CLOUDFLARE_PAGES_APP_PROJECT` secret used by `deploy-app.yml`) and correct it
+   if it differs — everything else depends on this being right.
+
+2. **Deploy.** `.github/workflows/deploy-tenant-router.yml` deploys on pushes to
+   `main` touching `apps/tenant-router/**`, using the existing
+   `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID` secrets. The token needs
+   the *Workers Scripts: Edit* permission — the current token may only have Pages
+   permissions, so check before the first run. To deploy by hand:
+
+   ```bash
+   pnpm --filter @unclutterdesk/tenant-router deploy
+   ```
+
+3. **Add the wildcard DNS record.** A Worker route only fires on a proxied
+   record, so this must exist and be orange-clouded:
+
+   | Type | Name | Target | Proxy |
+   | --- | --- | --- | --- |
+   | CNAME | `*` | `unclutterdesk-app.pages.dev` | **Proxied** |
+
+   The Worker answers before the origin is consulted, so the target is mostly a
+   formality — an originless `AAAA * 100::` works equally well.
+
+4. **Exclude the API host — do this at the same time as proxying the API**
+   (item 2 below). While `api.unclutterdesk.com` stays DNS-only, Worker routes
+   do not apply to it and nothing is needed. The moment it is proxied, the
+   wildcard route would capture it, so add a more specific route
+   `api.unclutterdesk.com/*` with **Worker = None**; more specific routes win.
+   Until that exclusion exists the Worker returns a 404 for `api` rather than
+   serving the SPA, so a missed step fails loudly instead of corrupting API
+   traffic.
+
+5. **Add the explicit `www` record**, or `www` falls into the wildcard. The
+   Worker 301s `www` to the apex either way, but an explicit record is clearer.
+
+6. **Verify** — all three should serve the app, and `api` should still be JSON:
+
+   ```bash
+   curl -sI https://demo.unclutterdesk.com | head -1
+   curl -sI https://app.unclutterdesk.com | head -1
+   curl -s  https://api.unclutterdesk.com | head -c 80
+   ```
+
+#### If you would rather not run a proxy Worker
+
+Migrating `apps/app` from Pages to **Workers static assets** gets wildcard routes
+natively, with the Worker serving assets directly instead of proxying. It is the
+direction Cloudflare is steering static hosting and removes the Pages custom-domain
+limit permanently. It is a larger change — new build output config and a rewritten
+deploy workflow — so the proxy Worker above ships first and can be swapped later
+without touching DNS.
 
 ### Also: `www`
 
@@ -201,7 +251,8 @@ Worth doing, but only meaningful after item 2:
 1. `www` record — minutes, no risk.
 2. Origin certificate → Full (strict) → proxy the API → nginx real IP → origin
    firewall (item 2). Highest security payoff.
-3. Tenant subdomains, Option B (item 1). The actual launch blocker.
+3. Tenant subdomains (item 1) — the Worker is written and tested; this is the
+   DNS record, the route exclusion, and a deploy. The actual launch blocker.
 4. HSTS at 6 months (item 3).
 5. Cloudflare for SaaS (item 5), when custom domains are actually marketed.
 6. WAF and edge rate limiting (item 6).

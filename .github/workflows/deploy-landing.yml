@@ -43,7 +43,7 @@ jobs:
         run: pnpm --recursive run typecheck
 
       - name: Test
-        run: pnpm --filter @unclutterdesk/api test && pnpm --filter @unclutterdesk/app test
+        run: pnpm --filter @unclutterdesk/api test && pnpm --filter @unclutterdesk/app test && pnpm --filter @unclutterdesk/tenant-router test
 
   deploy:
     needs: verify

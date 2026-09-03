@@ -1,20 +1,16 @@
-name: Deploy API
+name: Deploy Tenant Router
 
 on:
   push:
     branches:
       - main
     paths:
-      - 'apps/api/**'
-      - 'prisma/**'
-      - 'deploy.sh'
-      - 'ecosystem.config.js'
-      - 'package.json'
+      - 'apps/tenant-router/**'
       - 'pnpm-lock.yaml'
-      - '.github/workflows/deploy-api.yml'
+      - '.github/workflows/deploy-tenant-router.yml'
 
 concurrency:
-  group: deploy-api
+  group: deploy-tenant-router
   cancel-in-progress: false
 
 jobs:
@@ -49,22 +45,28 @@ jobs:
 
   deploy:
     needs: verify
-    name: Deploy API To Server
+    name: Deploy Tenant Router To Cloudflare
     runs-on: ubuntu-latest
     permissions:
       contents: read
     steps:
-      - name: Deploy API over SSH
-        uses: appleboy/ssh-action@v1.2.0
-        env:
-          SEED_DB: "false"
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
         with:
-          host: ${{ secrets.PROD_SSH_HOST }}
-          username: ${{ secrets.PROD_SSH_USER }}
-          key: ${{ secrets.PROD_SSH_KEY }}
-          envs: SEED_DB
-          script: |
-            cd /home/unclutterdesk/app
-            git pull origin main
-            chmod +x deploy.sh
-            ./deploy.sh
+          node-version: 22
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Deploy Worker
+        working-directory: apps/tenant-router
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: pnpm exec wrangler deploy

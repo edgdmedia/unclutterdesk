@@ -1,0 +1,22 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "unclutterdesk-tenant-router",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-09-01",
+  "observability": { "enabled": true },
+
+  // Serves every tenant booking surface. NOTE: this pattern also matches
+  // api.unclutterdesk.com once that record is proxied, so add a more specific
+  // route for it in Cloudflare with Worker = None (more specific routes win).
+  // Until then the Worker answers `api` with a 404 rather than the SPA.
+  "routes": [
+    { "pattern": "*.unclutterdesk.com/*", "zone_name": "unclutterdesk.com" }
+  ],
+
+  "vars": {
+    "APEX_HOST": "unclutterdesk.com",
+    // The app Pages project's .pages.dev hostname. Verify this matches the
+    // CLOUDFLARE_PAGES_APP_PROJECT secret used by .github/workflows/deploy-app.yml.
+    "ORIGIN_HOST": "unclutterdesk-app.pages.dev"
+  }
+}

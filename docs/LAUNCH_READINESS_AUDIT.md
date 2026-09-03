@@ -61,7 +61,7 @@ No wildcard record, no Cloudflare for SaaS custom-hostname setup. Every therapis
 
 **Correction to the fix I first gave:** a wildcard CNAME to the Pages project is *not* sufficient. Cloudflare Pages cannot serve a wildcard custom domain at all — per Cloudflare's Pages known-issues page, "It is currently not possible to add a custom domain with a wildcard" — and Pages matches the `Host` header against explicitly registered domains, so a wildcard record returns a Pages not-found.
 
-This needs either per-tenant Pages custom domains registered at signup (capped at 100/250/500 domains by plan, i.e. a cap on tenants) or a Worker in front of the wildcard. Options, trade-offs and a recommendation are in `docs/CLOUDFLARE_SETUP.md` §1. `www` is a separate, trivial record.
+This needs either per-tenant Pages custom domains registered at signup (capped at 100/250/500 domains by plan, i.e. a cap on tenants) or a Worker in front of the wildcard. **The Worker is now built and tested** — `apps/tenant-router/`, 13 tests — leaving a wildcard DNS record, a route exclusion for the API host, and a deploy. Steps in `docs/CLOUDFLARE_SETUP.md` §1. `www` is a separate, trivial record.
 
 Mitigating factor: the app resolves the tenant client-side from `window.location.hostname`, so every tenant host serves identical assets — there is no per-tenant build to worry about.
 
@@ -114,7 +114,7 @@ Ten requests exhausted the quota for **every therapist and client on the platfor
 
 10. **No CI quality gate.** *(Fixed on `dev`: a `verify` job now runs recursive typecheck plus API and app tests, and all three deploy jobs `needs: verify`.)* All three workflows deploy on push to `main` with no typecheck, no lint and no tests. `pnpm typecheck` and vitest both exist and are never run. Add them as required steps before the deploy job.
 
-11. **Test coverage is five files** *(17 CORS regression tests added on `dev`; 28 API tests now pass)* for the entire product (`tenant.service.spec.ts`, `intake.service.spec.ts`, `apiClient.test.ts`, one autosave test). Nothing covers authentication, cross-tenant isolation, billing, or bookings — the four areas where a bug is a breach.
+11. **Test coverage is six files** *(17 CORS and 13 tenant-router regression tests added on `dev`; 46 tests now pass across the repo)* for the entire product (`tenant.service.spec.ts`, `intake.service.spec.ts`, `apiClient.test.ts`, one autosave test). Nothing covers authentication, cross-tenant isolation, billing, or bookings — the four areas where a bug is a breach.
 
 12. **PM2 runs a single fork-mode process** (`ecosystem.config.js`) with no health check. One unhandled rejection takes the whole API down until someone notices. Add `instances: 2` / cluster mode, `max_restarts`, and an uptime monitor on `GET /`.
 
