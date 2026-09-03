@@ -7,7 +7,11 @@ import { NestFactory } from '@nestjs/core';
 import { ValidationPipe } from '@nestjs/common';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import * as cookieParser from 'cookie-parser';
+import helmet from 'helmet';
+import { NestExpressApplication } from '@nestjs/platform-express';
 import { AppModule } from './app.module';
+import { PrismaService } from './common/prisma/prisma.service';
+import { createCorsOriginHandler } from './common/cors';
 
 // Global BigInt JSON serialization fallback (prevents "Do not know how to serialize a BigInt" error)
 (BigInt.prototype as any).toJSON = function () {
@@ -15,31 +19,38 @@ import { AppModule } from './app.module';
 };
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule);
+  // rawBody is required to verify Stripe webhook signatures against the exact
+  // bytes Stripe signed — the parsed body is not byte-identical.
+  const app = await NestFactory.create<NestExpressApplication>(AppModule, { rawBody: true });
   const isProduction = process.env.NODE_ENV === 'production';
   const configuredOrigins = (process.env.CORS_ORIGINS || '')
     .split(',')
     .map((value) => value.trim())
     .filter(Boolean);
 
+  // The API sits behind nginx (and, once proxied, Cloudflare). Without this,
+  // req.ip is the proxy's own socket address for every request, so the rate
+  // limiter buckets the entire internet together. Requires nginx to send
+  // `proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for`.
+  app.set('trust proxy', 1);
+
   app.use(cookieParser());
 
-  app.enableCors({
-    origin: (origin, callback) => {
-      const allowed =
-        !origin ||
-        configuredOrigins.includes(origin) ||
-        origin.endsWith('.unclutterdesk.com') ||
-        origin === 'https://unclutterdesk.com' ||
-        origin.endsWith('.pages.dev') ||
-        origin.includes('localhost');
+  app.use(
+    helmet({
+      // The API serves JSON, not documents; the Swagger UI (dev only) needs inline
+      // styles and scripts, so the document policy is left to the front ends.
+      contentSecurityPolicy: false,
+      crossOriginResourcePolicy: { policy: 'cross-origin' },
+      hsts: { maxAge: 63072000, includeSubDomains: true, preload: true },
+    }),
+  );
 
-      if (allowed) {
-        callback(null, true);
-      } else {
-        callback(new Error(`Origin ${origin} is not allowed by CORS`), false);
-      }
-    },
+  app.enableCors({
+    origin: createCorsOriginHandler(app.get(PrismaService), {
+      isProduction,
+      configuredOrigins,
+    }),
     credentials: true,
     methods: ['GET', 'HEAD', 'PUT', 'PATCH', 'POST', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization', 'X-CSRF-Token', 'X-Tenant-Slug', 'X-Tenant-Id'],

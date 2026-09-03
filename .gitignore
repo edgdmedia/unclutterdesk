@@ -22,3 +22,7 @@ Thumbs.db
 
 # Playwright MCP artifacts
 .playwright-mcp/
+
+# Local V8/Node compile caches
+node-compile-cache/
+v8-compile-cache-*/

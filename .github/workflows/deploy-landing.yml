@@ -16,7 +16,37 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  verify:
+    name: Typecheck & Test
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Generate Prisma Client
+        run: pnpm dlx prisma generate --schema prisma/schema.prisma
+
+      - name: Typecheck
+        run: pnpm --recursive run typecheck
+
+      - name: Test
+        run: pnpm --filter @unclutterdesk/api test && pnpm --filter @unclutterdesk/app test
+
   deploy:
+    needs: verify
     name: Deploy Landing To Cloudflare Pages
     runs-on: ubuntu-latest
     permissions:

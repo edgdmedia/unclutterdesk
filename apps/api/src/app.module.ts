@@ -18,16 +18,16 @@ import { CalendarModule } from './modules/calendar/calendar.module';
 @Module({
   imports: [
     ScheduleModule.forRoot(),
+    // ONE global tier only. ThrottlerGuard enforces *every* named throttler on
+    // *every* route (it ANDs the results), so a second "strict" tier defined here
+    // would cap the whole API at the strict limit rather than only sensitive
+    // routes. Sensitive endpoints opt into a tighter limit with @Throttle(...),
+    // which overrides this tier per-route — see auth.controller.ts.
     ThrottlerModule.forRoot([
       {
         name: 'default',
         ttl: 60000, // 60 seconds
-        limit: 100, // 100 requests per minute globally
-      },
-      {
-        name: 'strict',
-        ttl: 60000, // 60 seconds
-        limit: 10, // 10 requests per minute for sensitive endpoints
+        limit: 200, // per client IP; a dashboard load fans out to many calls
       },
     ]),
     TenantModule,

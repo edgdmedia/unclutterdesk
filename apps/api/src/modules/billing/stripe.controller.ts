@@ -1,4 +1,16 @@
-import { Controller, Post, Body, Req, UseGuards, Headers, BadRequestException } from '@nestjs/common';
+import {
+  Controller,
+  Post,
+  Body,
+  Req,
+  UseGuards,
+  Headers,
+  BadRequestException,
+  ServiceUnavailableException,
+  Logger,
+  RawBodyRequest,
+} from '@nestjs/common';
+import { Request } from 'express';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { StripeService } from './stripe.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
@@ -8,6 +20,7 @@ import Stripe = require('stripe');
 @ApiTags('Stripe')
 @Controller('v1/stripe')
 export class StripeController {
+  private readonly logger = new Logger(StripeController.name);
   private stripe: Stripe;
 
   constructor(private readonly stripeService: StripeService) {
@@ -38,17 +51,27 @@ export class StripeController {
 
   @Post('webhook')
   @ApiOperation({ summary: 'Stripe Webhook endpoint' })
-  async stripeWebhook(@Headers('stripe-signature') signature: string, @Body() payload: any) {
-    // In production, we should use raw body to verify signature:
-    // const endpointSecret = process.env.STRIPE_WEBHOOK_SECRET;
-    // let event;
-    // try {
-    //   event = this.stripe.webhooks.constructEvent(req.rawBody, signature, endpointSecret);
-    // } catch (err) {
-    //   throw new BadRequestException(`Webhook Error: ${err.message}`);
-    // }
-    
-    const event = payload; // Assuming payload is already parsed JSON for now
+  async stripeWebhook(@Headers('stripe-signature') signature: string, @Req() req: RawBodyRequest<Request>) {
+    // This endpoint is unauthenticated and mutates booking payment state, so the
+    // signature is the only thing standing between it and forged payment events.
+    const endpointSecret = process.env.STRIPE_WEBHOOK_SECRET;
+    if (!endpointSecret) {
+      this.logger.error('STRIPE_WEBHOOK_SECRET is not set — refusing to process webhook');
+      throw new ServiceUnavailableException('Webhook processing is not configured');
+    }
+
+    if (!signature || !req.rawBody) {
+      throw new BadRequestException('Missing Stripe signature or request body');
+    }
+
+    let event: Stripe.Event;
+    try {
+      event = this.stripe.webhooks.constructEvent(req.rawBody, signature, endpointSecret);
+    } catch (err) {
+      this.logger.warn(`Rejected Stripe webhook: ${(err as Error).message}`);
+      throw new BadRequestException('Invalid Stripe webhook signature');
+    }
+
     await this.stripeService.handleWebhook(event);
 
     return { received: true };
