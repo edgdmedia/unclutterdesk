@@ -621,18 +621,18 @@ export class ConsultService {
     }));
   }
 
-  async getPublicClientPortal(tenantId: bigint, email: string) {
-    const normalizedEmail = email?.toLowerCase().trim();
-    if (!normalizedEmail) {
-      throw new BadRequestException('Email is required');
-    }
-
+  /**
+   * A client's own sessions.
+   *
+   * Takes the caller's profile id from their token rather than an email in the
+   * query string. The previous version was reachable without any session and
+   * looked the client up by email alone, so anyone who knew or guessed an
+   * address could read that person's appointment history — and the response
+   * carries Jitsi join links, which are themselves unauthenticated.
+   */
+  async getClientPortal(tenantId: bigint, profileId: bigint) {
     const client = await this.prisma.profile.findFirst({
-      where: {
-        tenantId,
-        email: normalizedEmail,
-        role: 'CLIENT',
-      },
+      where: { id: profileId, tenantId },
     });
 
     if (!client) {

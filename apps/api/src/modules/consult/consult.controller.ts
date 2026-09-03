@@ -3,7 +3,7 @@ import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { ConsultService } from './consult.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { RolesGuard } from '../../common/roles.guard';
-import { CLINICAL, PRACTICE_ADMIN, Roles, STAFF } from '../../common/roles';
+import { AnyAuthenticated, CLINICAL, PRACTICE_ADMIN, Roles, STAFF } from '../../common/roles';
 import { TenantRequest } from '../../common/middleware/tenant.middleware';
 import { authenticatedProfileId, authenticatedTenantId } from '../../common/authenticated-tenant';
 
@@ -164,11 +164,18 @@ export class ConsultController {
     return this.consultService.getBookingPaymentUrl(req.tenantId, BigInt(bookingId), dto.email);
   }
 
-  @Get('public/client-portal')
-  @ApiOperation({ summary: 'Lookup client portal session history by booking email' })
-  getPublicClientPortal(@Req() req: TenantRequest, @Query('email') email: string) {
-    if (!req.tenantId) throw new Error('Practice tenant context required');
-    return this.consultService.getPublicClientPortal(req.tenantId, email);
+  @AnyAuthenticated()
+  @Get('portal')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @ApiBearerAuth('access-token')
+  @ApiOperation({ summary: "The signed-in client's own sessions" })
+  getClientPortal(@Req() req: any) {
+    // Identity comes from the token. The old route took ?email= with no guard,
+    // which let anyone read another person's sessions and video links.
+    return this.consultService.getClientPortal(
+      authenticatedTenantId(req),
+      authenticatedProfileId(req),
+    );
   }
 
   @Roles(...STAFF)

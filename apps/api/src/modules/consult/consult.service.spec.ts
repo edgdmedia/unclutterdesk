@@ -22,6 +22,7 @@ function makeService() {
       updateMany: vi.fn().mockResolvedValue({ count: 1 }),
     },
     consultTherapistProfile: { updateMany: vi.fn().mockResolvedValue({ count: 1 }) },
+    consultBooking: { findMany: vi.fn().mockResolvedValue([]) },
   };
   const service = new ConsultService(
     prisma, {} as any, {} as any, {} as any, {} as any, {} as any,
@@ -108,5 +109,50 @@ describe('ConsultService.adminUpdateTherapistStatus', () => {
   it('does not change visibility when reactivating', async () => {
     await service.adminUpdateTherapistStatus(TENANT, ACTOR, TARGET, 'active');
     expect(prisma.consultTherapistProfile.updateMany).not.toHaveBeenCalled();
+  });
+});
+
+/**
+ * The portal used to be `GET /v1/consult/public/client-portal?email=...` with no
+ * guard, so anyone who knew or guessed an email could read that person's
+ * appointment history — and the response carries Jitsi join links, which are
+ * themselves unauthenticated. It now identifies the client from their session.
+ */
+describe('ConsultService.getClientPortal', () => {
+  let service: ConsultService;
+  let prisma: any;
+
+  beforeEach(() => {
+    ({ service, prisma } = makeService());
+  });
+
+  it('looks the client up by profile id and tenant, never by email', async () => {
+    prisma.profile.findFirst.mockResolvedValue({ id: 9n, firstName: 'Ada', lastName: 'Obi' });
+    await service.getClientPortal(1n, 9n);
+
+    const where = prisma.profile.findFirst.mock.calls[0][0].where;
+    expect(where).toMatchObject({ id: 9n, tenantId: 1n });
+    expect(where).not.toHaveProperty('email');
+  });
+
+  it('scopes the booking query to the tenant and that client', async () => {
+    prisma.profile.findFirst.mockResolvedValue({ id: 9n });
+    await service.getClientPortal(1n, 9n);
+    expect(prisma.consultBooking.findMany.mock.calls[0][0].where).toMatchObject({
+      tenantId: 1n,
+      clientProfileId: 9n,
+    });
+  });
+
+  it('returns nothing for a profile outside the tenant', async () => {
+    prisma.profile.findFirst.mockResolvedValue(null);
+    const result = await service.getClientPortal(1n, 9n);
+    expect(result).toMatchObject({ clientName: '', upcoming: [], past: [] });
+    expect(prisma.consultBooking.findMany).not.toHaveBeenCalled();
+  });
+
+  it('takes no email argument at all', () => {
+    // A signature that still accepted one would invite the old call site back.
+    expect(service.getClientPortal.length).toBe(2);
   });
 });

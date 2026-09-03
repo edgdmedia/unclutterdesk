@@ -4,8 +4,9 @@
 **Branch:** `dev`  
 **Verdict:** **NO-GO for real clinical users**
 
-> **Update 2026-09-03, later:** P0 #1 (role authorization) is fixed — see that
-> section. P0 #2-#6 remain open. The verdict stands until they are closed.
+> **Update 2026-09-03, later:** P0 #1 (role authorization) and #2 (client
+> portal) are fixed — see those sections. P0 #3-#6 remain open. The verdict
+> stands until they are closed.
 
 The repository builds and its automated tests pass, but the current authorization and privacy model is not safe for production use with real client records, clinical notes, or therapy-session links.
 
@@ -49,7 +50,7 @@ reach them. `apps/api/src/roles.spec.ts` fails the build if any authenticated
 route lacks a role declaration, so a new endpoint cannot inherit the old
 "any authenticated user" behaviour.
 
-### 2. Public client portal is email-only
+### 2. Public client portal is email-only — **FIXED**
 
 `GET /v1/consult/public/client-portal?email=...` accepts an email address as the lookup credential and returns session history and video links.
 
@@ -59,6 +60,13 @@ Evidence:
 - `apps/api/src/modules/consult/consult.service.ts:624-688`
 
 Impact: anyone who knows or guesses an email can access appointment information and potentially join an unauthenticated Jitsi room.
+
+**Resolved.** The route is replaced by `GET /v1/consult/portal`, behind
+`JwtAuthGuard` and `RolesGuard`, which identifies the client from their session
+rather than a query parameter — `getClientPortal(tenantId, profileId)` takes no
+email at all. The client-side email box that let a visitor type any address is
+gone; unauthenticated visitors now see a prompt to sign in with the address they
+booked under, which the app already directs them to do at account setup.
 
 ### 3. Google OAuth state is forgeable
 

@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Video, Calendar, Check, Search } from 'lucide-react';
+import { Video, Calendar, Check } from 'lucide-react';
 import { useBrand } from '@unclutterdesk/ui';
 import { api, getBookingUrl, TENANT_SLUG } from '../utils/apiClient';
 import { useAuth } from '../context/AuthContext';
@@ -63,7 +63,6 @@ export function ClientPortalPage() {
   const primary = brand.primaryColor || '#0F3A53';
 
   const [tab, setTab] = useState<PortalTab>('upcoming');
-  const [email, setEmail] = useState('');
   const [lookupEmail, setLookupEmail] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -89,18 +88,19 @@ export function ClientPortalPage() {
   }, []);
 
   useEffect(() => {
-    if (isAuthenticated && profile?.type === 'user' && profile.email) {
-      setEmail(profile.email);
+    if (isAuthenticated && profile?.email) {
       setLookupEmail(profile.email);
-      void loadPortal(profile.email);
+      void loadPortal();
     }
-  }, [isAuthenticated, profile?.type, profile?.email]);
+  }, [isAuthenticated, profile?.email]);
 
-  async function loadPortal(targetEmail: string) {
+  // The server identifies the client from the session. It used to accept any
+  // email in the query string, which meant anyone could read anyone's sessions.
+  async function loadPortal() {
     setLoading(true);
     setError(null);
     try {
-      const payload = await api.get<PortalPayload>(`/v1/consult/public/client-portal?email=${encodeURIComponent(targetEmail)}`);
+      const payload = await api.get<PortalPayload>('/v1/consult/portal');
       setPortal(payload);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Unable to load portal');
@@ -185,31 +185,24 @@ export function ClientPortalPage() {
             </div>
           )}
 
-          <div className="rounded-[22px] bg-white border border-[#E2E8F0] p-5 flex items-end gap-4">
-            <div className="flex-1 space-y-1.5">
-              <label className="text-[11.5px] font-bold text-[#475569]">Email you used to book</label>
-              <input
-                type="email"
-                value={email}
-                onChange={(event) => setEmail(event.target.value)}
-                disabled={isAuthenticated && profile?.type === 'user'}
-                className="w-full h-[46px] px-3.5 rounded-[14px] bg-[#F8FAFC] border border-[#E2E8F0] text-[14px] font-medium text-[#0F172A] outline-none focus:bg-white focus:border-[#94A3B8]"
-              />
+          {!isAuthenticated ? (
+            <div className="rounded-[22px] bg-white border border-[#E2E8F0] p-5 space-y-3">
+              <div className="space-y-1">
+                <h3 className="text-[15px] font-bold text-[#0F172A]">Sign in to see your sessions</h3>
+                <p className="text-[13px] text-[#64748B] leading-relaxed">
+                  Use the email address you booked with. Your sessions and join links
+                  are private, so they are only shown once you are signed in.
+                </p>
+              </div>
+              <a
+                href="/login"
+                className="inline-flex h-[46px] px-5 rounded-[14px] text-white text-[13px] font-bold items-center"
+                style={{ backgroundColor: primary }}
+              >
+                Sign in
+              </a>
             </div>
-            <button
-              type="button"
-              onClick={() => {
-                setLookupEmail(email);
-                void loadPortal(email);
-              }}
-              disabled={isAuthenticated && profile?.type === 'user'}
-              className="h-[46px] px-5 rounded-[14px] text-white text-[13px] font-bold flex items-center gap-2"
-              style={{ backgroundColor: primary }}
-            >
-              <Search className="h-4 w-4" />
-              Load portal
-            </button>
-          </div>
+          ) : null}
 
           {error ? <div className="rounded-[18px] border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-medium text-rose-700">{error}</div> : null}
 

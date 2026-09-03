@@ -20,7 +20,7 @@ Move from a technically deployable demo to a safe, supportable launch for a smal
 2. ~~Define the permission matrix for `OWNER`, `ADMIN`, `THERAPIST`, `RECEPTIONIST`, and `CLIENT`.~~ **Done** — applied across 56 routes; `STAFF`, `CLINICAL` and `PRACTICE_ADMIN` role sets, with `roles.spec.ts` failing the build on an unannotated authenticated route.
 3. ~~Deny clients from staff dashboards, client lists, notes, submissions, billing, scheduling, staff management, tenant settings, and therapist administration.~~ **Done** — clinical routes are OWNER/ADMIN/THERAPIST only; receptionists are excluded from anything returning SOAP notes or assessment answers.
 4. Add runtime integration tests for every role and every PHI-bearing route, including cross-tenant attempts.
-5. Replace email-only client portal lookup with a short-lived, single-use signed access token or authenticated client session. Do not return video links without authorization.
+5. ~~Replace email-only client portal lookup with a short-lived, single-use signed access token or authenticated client session. Do not return video links without authorization.~~ **Done** — `GET /v1/consult/portal` derives the client from their session; the public email lookup is removed.
 6. Add expiry, revocation, and replay tests for portal access.
 
 **Exit:** unauthorized requests return `401/403`, no client can reach staff APIs, and portal data is accessible only with a valid scoped credential.
