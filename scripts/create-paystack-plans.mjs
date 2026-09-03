@@ -13,6 +13,12 @@
  *
  *   node scripts/create-paystack-plans.mjs            # dry run, shows the plan
  *   node scripts/create-paystack-plans.mjs --create   # actually creates them
+ *   node scripts/create-paystack-plans.mjs --verify   # check configured codes
+ *
+ * --verify reads the PAYSTACK_PLAN_* variables already set and confirms each
+ * one points at a plan whose amount matches what the application charges.
+ * Paystack plan codes are opaque, so a code pasted into the wrong variable
+ * looks perfectly valid and simply bills the wrong amount.
  */
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
@@ -67,6 +73,7 @@ if (!secret) fail('PAYSTACK_SECRET_KEY is not set (checked the environment and .
 
 const isLiveKey = secret.startsWith('sk_live_');
 const create = process.argv.includes('--create');
+const verify = process.argv.includes('--verify');
 
 console.log('\nUnclutter Desk — Paystack subscription plans');
 console.log(`Key: ${isLiveKey ? 'LIVE' : 'test'} (sk_${isLiveKey ? 'live' : 'test'}_…)\n`);
@@ -75,13 +82,16 @@ for (const p of plans) {
   console.log(`  ${p.paystackName.padEnd(28)} ₦${(p.amountKobo / 100).toLocaleString('en-NG')}/month  → ${p.envVar}`);
 }
 
-if (!create) {
-  console.log('\nDry run. Nothing was created.');
-  console.log('Re-run with --create to create these in Paystack.\n');
-  process.exit(0);
+// ── Paystack API ─────────────────────────────────────────────────────────────
+async function paystackSafe(method, path) {
+  const response = await fetch(`https://api.paystack.co${path}`, {
+    headers: { Authorization: `Bearer ${secret}` },
+    method,
+  });
+  const payload = await response.json().catch(() => null);
+  return response.ok && payload?.status ? payload.data : null;
 }
 
-// ── Paystack API ─────────────────────────────────────────────────────────────
 async function paystack(method, path, body) {
   const response = await fetch(`https://api.paystack.co${path}`, {
     method,
@@ -97,6 +107,65 @@ async function paystack(method, path, body) {
     fail(`Paystack ${method} ${path} failed: ${payload?.message || response.status}`);
   }
   return payload.data;
+}
+
+if (verify) {
+  console.log('\nVerifying the configured plan codes…\n');
+  let problems = 0;
+
+  for (const p of plans) {
+    const code = process.env[p.envVar];
+    if (!code) {
+      console.log(`  ✗ ${p.envVar} is not set`);
+      problems += 1;
+      continue;
+    }
+
+    let plan;
+    try {
+      plan = await paystackSafe('GET', `/plan/${code}`);
+    } catch {
+      plan = null;
+    }
+
+    if (!plan) {
+      console.log(`  ✗ ${p.envVar}=${code} — not found with this ${isLiveKey ? 'live' : 'test'} key`);
+      problems += 1;
+      continue;
+    }
+
+    const expected = p.amountKobo;
+    if (plan.amount !== expected) {
+      console.log(
+        `  ✗ ${p.envVar} points at "${plan.name}" at ₦${(plan.amount / 100).toLocaleString('en-NG')}, ` +
+          `but the app charges ₦${(expected / 100).toLocaleString('en-NG')} for ${p.tier}`,
+      );
+      problems += 1;
+      continue;
+    }
+
+    if (plan.interval !== 'monthly') {
+      console.log(`  ✗ ${p.envVar} points at a ${plan.interval} plan; it must be monthly`);
+      problems += 1;
+      continue;
+    }
+
+    console.log(`  ✓ ${p.envVar.padEnd(22)} "${plan.name}" ₦${(plan.amount / 100).toLocaleString('en-NG')}/${plan.interval}`);
+  }
+
+  console.log(
+    problems === 0
+      ? '\nAll three plan codes match what the application charges.\n'
+      : `\n${problems} problem(s) found. Fix these before taking payments.\n`,
+  );
+  process.exit(problems === 0 ? 0 : 1);
+}
+
+if (!create) {
+  console.log('\nDry run. Nothing was created.');
+  console.log('Re-run with --create to create these in Paystack, or --verify to check');
+  console.log('plan codes you have already configured.\n');
+  process.exit(0);
 }
 
 console.log('\nChecking for existing plans…');

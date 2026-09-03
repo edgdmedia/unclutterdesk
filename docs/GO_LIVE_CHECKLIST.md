@@ -33,6 +33,21 @@ Each of these will break the first deploy if skipped.
       the test key and once with the live key — plan codes differ between
       them.
 
+      The live plans already exist. Set these on the host:
+
+          PAYSTACK_PLAN_STARTER=PLN_an5ij398kgugwr4   # ₦5,000
+          PAYSTACK_PLAN_PRO=PLN_f4ncmm3xmcy7b90       # ₦15,000
+          PAYSTACK_PLAN_CLINIC=PLN_leght05vpcu41ad    # ₦45,000
+
+- [ ] **[you] Confirm the plan mapping on the host**, with the live key loaded:
+
+          node scripts/create-paystack-plans.mjs --verify
+
+      This fetches each code and checks its amount and interval against what
+      the application charges. Plan codes are opaque, so a code in the wrong
+      variable looks valid and simply bills the wrong tier — this is the only
+      check that catches it. It exits non-zero on any mismatch.
+
 - [ ] **[you] Add the subscription events to the Paystack webhook**:
       `subscription.create`, `subscription.disable`, `subscription.not_renew`
       and `invoice.payment_failed`, alongside the `charge.success` you already
