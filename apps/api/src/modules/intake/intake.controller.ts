@@ -2,6 +2,8 @@ import { Controller, Get, Post, Patch, Body, Param, Query, Req, UseGuards } from
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { IntakeService } from './intake.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { RolesGuard } from '../../common/roles.guard';
+import { CLINICAL, Roles, STAFF } from '../../common/roles';
 import { TenantRequest } from '../../common/middleware/tenant.middleware';
 import { authenticatedTenantId } from '../../common/authenticated-tenant';
 
@@ -24,32 +26,36 @@ export class IntakeController {
     return this.intakeService.getPublishedReviews(req.tenantId);
   }
 
+  @Roles(...STAFF)
   @Get('forms')
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard)
   @ApiBearerAuth('access-token')
   @ApiOperation({ summary: 'List forms for the current tenant' })
   getForms(@Req() req: any) {
     return this.intakeService.getForms(authenticatedTenantId(req));
   }
 
+  @Roles(...STAFF)
   @Get('forms/:formId')
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard)
   @ApiBearerAuth('access-token')
   @ApiOperation({ summary: 'Get a single form for editing' })
   getFormById(@Req() req: any, @Param('formId') formId: string) {
     return this.intakeService.getFormById(authenticatedTenantId(req), BigInt(formId));
   }
 
+  @Roles(...CLINICAL)
   @Post('forms')
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard)
   @ApiBearerAuth('access-token')
   @ApiOperation({ summary: 'Create custom clinical questionnaire (Admin/Therapist)' })
   createForm(@Req() req: any, @Body() dto: any) {
     return this.intakeService.createCustomForm(authenticatedTenantId(req), dto);
   }
 
+  @Roles(...CLINICAL)
   @Patch('forms/:formId')
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard)
   @ApiBearerAuth('access-token')
   @ApiOperation({ summary: 'Update an existing form' })
   updateForm(@Req() req: any, @Param('formId') formId: string, @Body() dto: any) {
@@ -67,8 +73,9 @@ export class IntakeController {
     return this.intakeService.submitIntakeAnswers(req.tenantId, dto);
   }
 
+  @Roles(...CLINICAL)
   @Get('submissions')
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard)
   @ApiBearerAuth('access-token')
   @ApiOperation({ summary: 'List all submissions for the current tenant' })
   getTenantSubmissions(@Req() req: any, @Query('targetType') targetType?: string) {
@@ -78,8 +85,9 @@ export class IntakeController {
     );
   }
 
+  @Roles(...CLINICAL)
   @Patch('submissions/:submissionId/status')
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard)
   @ApiBearerAuth('access-token')
   @ApiOperation({ summary: 'Update a submission status for queue + review publishing' })
   updateSubmissionStatus(@Req() req: any, @Param('submissionId') submissionId: string, @Body() dto: any) {
@@ -90,8 +98,9 @@ export class IntakeController {
     );
   }
 
+  @Roles(...CLINICAL)
   @Get('submissions/booking/:bookingId')
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard)
   @ApiBearerAuth('access-token')
   @ApiOperation({ summary: 'Therapist view client submitted intake responses' })
   getBookingSubmissions(@Req() req: any, @Param('bookingId') bookingId: string) {

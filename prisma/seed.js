@@ -5,6 +5,7 @@ const prisma = new PrismaClient();
 
 async function main() {
   console.log('🌱 Starting database seeding...');
+  console.log('⚠️  This creates the synthetic Dr. Jane Smith demo tenant. Never run against production.');
 
   // 1. Clear existing data in reverse order of dependencies
   await prisma.token.deleteMany();

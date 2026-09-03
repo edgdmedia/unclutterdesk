@@ -2,6 +2,8 @@ import { Controller, Get, Query, Req, Res, Param, UseGuards } from '@nestjs/comm
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { CalendarService } from './calendar.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { RolesGuard } from '../../common/roles.guard';
+import { CLINICAL, Roles } from '../../common/roles';
 import { authenticatedProfileId, authenticatedTenantId } from '../../common/authenticated-tenant';
 import { Response } from 'express';
 
@@ -10,8 +12,9 @@ import { Response } from 'express';
 export class CalendarController {
   constructor(private readonly calendarService: CalendarService) {}
 
+  @Roles(...CLINICAL)
   @Get('google/auth')
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard)
   @ApiBearerAuth('access-token')
   @ApiOperation({ summary: 'Get Google OAuth URL for therapist' })
   getGoogleAuthUrl(@Req() req: any) {

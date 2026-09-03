@@ -14,6 +14,8 @@ import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { BillingService } from './billing.service';
 import { PaystackService } from './paystack.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { RolesGuard } from '../../common/roles.guard';
+import { PRACTICE_ADMIN, Roles } from '../../common/roles';
 import { authenticatedTenantId } from '../../common/authenticated-tenant';
 
 @ApiTags('Billing')
@@ -24,16 +26,18 @@ export class BillingController {
     private readonly paystackService: PaystackService,
   ) {}
 
+  @Roles(...PRACTICE_ADMIN)
   @Get('bank-subaccount')
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard)
   @ApiBearerAuth('access-token')
   @ApiOperation({ summary: 'Get saved Paystack bank subaccount status' })
   getSubaccount(@Req() req: any) {
     return this.billingService.getBankSubaccount(authenticatedTenantId(req));
   }
 
+  @Roles(...PRACTICE_ADMIN)
   @Get('resolve-account')
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard)
   @ApiBearerAuth('access-token')
   @ApiOperation({ summary: 'Resolve Nigerian bank account name via Paystack' })
   async resolveAccount(@Req() req: any) {
@@ -44,32 +48,36 @@ export class BillingController {
     return this.paystackService.resolveAccountNumber(accountNumber, bankCode);
   }
 
+  @Roles(...PRACTICE_ADMIN)
   @Get('subscription')
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard)
   @ApiBearerAuth('access-token')
   @ApiOperation({ summary: 'Get current subscription tier summary' })
   getSubscription(@Req() req: any) {
     return this.billingService.getSubscription(authenticatedTenantId(req));
   }
 
+  @Roles(...PRACTICE_ADMIN)
   @Get('summary')
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard)
   @ApiBearerAuth('access-token')
   @ApiOperation({ summary: 'Get combined billing summary + derived history' })
   getSummary(@Req() req: any) {
     return this.billingService.getBillingSummary(authenticatedTenantId(req));
   }
 
+  @Roles(...PRACTICE_ADMIN)
   @Post('bank-subaccount')
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard)
   @ApiBearerAuth('access-token')
   @ApiOperation({ summary: 'Save bank subaccount details for split payouts' })
   saveSubaccount(@Req() req: any, @Body() dto: any) {
     return this.billingService.saveBankSubaccount(authenticatedTenantId(req), dto);
   }
 
+  @Roles(...PRACTICE_ADMIN)
   @Post('subscribe')
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard)
   @ApiBearerAuth('access-token')
   @ApiOperation({
     summary: 'Start a Paystack checkout for a subscription plan',

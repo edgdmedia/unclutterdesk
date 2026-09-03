@@ -15,6 +15,8 @@ import {
   cookieOptions,
   csrfCookieOptions,
 } from '../../common/auth.config';
+import { RolesGuard } from '../../common/roles.guard';
+import { AnyAuthenticated } from '../../common/roles';
 
 @ApiTags('Auth')
 @Controller('v1/auth')
@@ -92,8 +94,9 @@ export class AuthController {
     return { success: true };
   }
 
+  @AnyAuthenticated()
   @Get('status')
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard)
   @ApiBearerAuth('access-token')
   @ApiOperation({ summary: 'Get current session profile status' })
   async getStatus(@Req() req: any) {

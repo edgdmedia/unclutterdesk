@@ -2,10 +2,16 @@ import { Controller, Get, Post, Patch, Body, Param, Req, UseGuards } from '@nest
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { NotesService } from './notes.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { RolesGuard } from '../../common/roles.guard';
+import { Roles, CLINICAL } from '../../common/roles';
 import { authenticatedProfileId, authenticatedTenantId } from '../../common/authenticated-tenant';
 
 @ApiTags('Notes')
-@UseGuards(JwtAuthGuard)
+// Clinical notes are the most sensitive records in the product. Before the role
+// guard existed this controller carried only JwtAuthGuard, so any signed-in
+// client could read another client's SOAP notes by id.
+@UseGuards(JwtAuthGuard, RolesGuard)
+@Roles(...CLINICAL)
 @ApiBearerAuth('access-token')
 @Controller('v1/notes')
 export class NotesController {

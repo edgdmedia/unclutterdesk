@@ -2,6 +2,8 @@ import { Controller, Get, Post, Patch, Body, Param, Query, Req, UseGuards } from
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { ConsultService } from './consult.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { RolesGuard } from '../../common/roles.guard';
+import { CLINICAL, PRACTICE_ADMIN, Roles, STAFF } from '../../common/roles';
 import { TenantRequest } from '../../common/middleware/tenant.middleware';
 import { authenticatedProfileId, authenticatedTenantId } from '../../common/authenticated-tenant';
 
@@ -17,8 +19,9 @@ export class ConsultController {
     return this.consultService.getPublicTherapists(req.tenantId);
   }
 
+  @Roles(...CLINICAL)
   @Get('therapist/profile')
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard)
   @ApiBearerAuth('access-token')
   @ApiOperation({ summary: 'Get practitioner profile' })
   getProfile(@Req() req: any) {
@@ -28,16 +31,18 @@ export class ConsultController {
     );
   }
 
+  @Roles(...STAFF)
   @Get('dashboard/summary')
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard)
   @ApiBearerAuth('access-token')
   @ApiOperation({ summary: 'Get real-time practice dashboard metrics and upcoming sessions' })
   getDashboardSummary(@Req() req: any) {
     return this.consultService.getDashboardSummary(authenticatedTenantId(req));
   }
 
+  @Roles(...CLINICAL)
   @Post('therapist/profile')
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard)
   @ApiBearerAuth('access-token')
   @ApiOperation({ summary: 'Update practitioner profile text data' })
   updateProfile(@Req() req: any, @Body() dto: any) {
@@ -48,8 +53,9 @@ export class ConsultController {
     );
   }
 
+  @Roles(...CLINICAL)
   @Post('therapist/profile/avatar')
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard)
   @ApiBearerAuth('access-token')
   @ApiOperation({ summary: 'Dedicated profile photo upload endpoint (Max 2MB)' })
   uploadAvatar(@Req() req: any, @Body() dto: { avatarUrl: string }) {
@@ -60,8 +66,9 @@ export class ConsultController {
     );
   }
 
+  @Roles(...PRACTICE_ADMIN)
   @Patch('admin/therapists/:profileId/status')
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard)
   @ApiBearerAuth('access-token')
   @ApiOperation({ summary: 'Admin toggle practitioner active vs inactive status' })
   adminUpdateStatus(
@@ -86,8 +93,9 @@ export class ConsultController {
     return this.consultService.getPublicServices(req.tenantId);
   }
 
+  @Roles(...PRACTICE_ADMIN)
   @Post('services')
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard)
   @ApiBearerAuth('access-token')
   @ApiOperation({ summary: 'Create new therapy session service' })
   createService(@Req() req: any, @Body() dto: any) {
@@ -104,8 +112,9 @@ export class ConsultController {
     return this.consultService.getPublicAvailability(req.tenantId);
   }
 
+  @Roles(...CLINICAL)
   @Post('therapist/availability')
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard)
   @ApiBearerAuth('access-token')
   @ApiOperation({ summary: 'Add availability slot or block-out dates' })
   createAvailability(@Req() req: any, @Body() dto: any) {
@@ -116,8 +125,9 @@ export class ConsultController {
     );
   }
 
+  @Roles(...CLINICAL)
   @Get('therapist/availability')
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard)
   @ApiBearerAuth('access-token')
   @ApiOperation({ summary: 'Get therapist future availability slots' })
   getTherapistAvailability(@Req() req: any) {
@@ -127,8 +137,9 @@ export class ConsultController {
     );
   }
 
+  @Roles(...CLINICAL)
   @Patch('therapist/availability')
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard)
   @ApiBearerAuth('access-token')
   @ApiOperation({ summary: 'Replace therapist recurring availability windows' })
   replaceTherapistAvailability(@Req() req: any, @Body() dto: any) {
@@ -160,8 +171,9 @@ export class ConsultController {
     return this.consultService.getPublicClientPortal(req.tenantId, email);
   }
 
+  @Roles(...STAFF)
   @Get('therapist/bookings')
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard)
   @ApiBearerAuth('access-token')
   @ApiOperation({ summary: 'Get therapist upcoming client session bookings' })
   getTherapistBookings(@Req() req: any) {
@@ -171,8 +183,9 @@ export class ConsultController {
     );
   }
 
+  @Roles(...STAFF)
   @Patch('therapist/bookings/:bookingId/status')
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard)
   @ApiBearerAuth('access-token')
   @ApiOperation({ summary: 'Update therapist booking status' })
   updateTherapistBookingStatus(@Req() req: any, @Param('bookingId') bookingId: string, @Body() dto: { status: 'CONFIRMED' | 'COMPLETED' | 'CANCELLED' }) {
@@ -184,8 +197,9 @@ export class ConsultController {
     );
   }
 
+  @Roles(...CLINICAL)
   @Get('therapist/bookings/:bookingId/prep')
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard)
   @ApiBearerAuth('access-token')
   @ApiOperation({ summary: 'Get session prep context for a booking' })
   getBookingPrep(@Req() req: any, @Param('bookingId') bookingId: string) {

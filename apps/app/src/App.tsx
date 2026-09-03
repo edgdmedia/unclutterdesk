@@ -110,17 +110,6 @@ export interface StaffMember {
   pending?: boolean;
 }
 
-export interface BillingInfo {
-  plan: 'starter' | 'pro' | 'clinic';
-  nextBillingDate: string;
-  nextChargeAmount: string;
-  payoutsActive: boolean;
-  bankName: string;
-  accountNumber: string;
-  accountName: string;
-  invoiceHistory: Array<{ date: string; desc: string; amount: string; status: string }>;
-}
-
 // ── Booking shape returned by API ─────────────────────────────────────────────
 interface ApiBooking {
   id: string;
@@ -186,69 +175,6 @@ function apiStaffToMember(s: ApiStaff): StaffMember {
   };
 }
 
-// ── Fallback data (used if API is unreachable) ────────────────────────────────
-const FALLBACK_CLIENTS: Client[] = [
-  {
-    id: '1',
-    name: 'Adaeze Okonkwo',
-    email: 'adaeze@email.com',
-    care: 'Individual Therapy',
-    sessions: '14',
-    next: 'Thu, 7 Aug · 14:00',
-    status: 'Active',
-    initials: 'AO',
-    phone: '0802 345 6789',
-    since: 'Mar 2026',
-    emergency: 'Chidi Okoye · Brother · 0803 552 8814',
-    notes: [
-      {
-        id: 'n1',
-        date: '31 Jul 2026',
-        time: '14:00',
-        title: 'Individual Therapy Session #7',
-        status: 'COMPLETED',
-        note: 'NOTE SIGNED',
-        subjective: 'Client reports panic attack frequency reduced over past 14 days.',
-        objective: 'Grooming intact, affect congruent. GAD-7 score: 9.',
-        assessment: 'Good response to CBT protocol. Anxiety decreasing.',
-        plan: 'Continue bi-weekly 50-minute sessions. Practice 4-7-8 breathing daily.',
-      },
-    ],
-    intake: [
-      { q: 'Primary reason for seeking therapy?', a: 'Frequent anxiety spikes and difficulty sleeping.' },
-      { q: 'Have you attended therapy before?', a: 'Yes, 2 years ago for 6 months.' },
-      { q: 'Currently taking any medications?', a: 'None.' },
-    ],
-    intakeSummary: { instrument: 'PHQ_9', totalScore: 12, severity: 'Moderate', item9Risk: false },
-  },
-  {
-    id: '2',
-    name: 'Tunde Bello',
-    email: 'tunde@email.com',
-    care: 'Individual Therapy',
-    sessions: '8',
-    next: 'Thu, 7 Aug · 15:30',
-    status: 'Active',
-    initials: 'TB',
-    phone: '0805 123 4567',
-    since: 'May 2026',
-    emergency: 'Kemi Bello · Wife · 0805 998 1234',
-    notes: [],
-    intake: [],
-    intakeSummary: null,
-  },
-];
-
-const FALLBACK_SESSIONS: CalendarEvent[] = [
-  { id: '1', title: 'Adaeze Okonkwo', type: 'Individual Therapy', startsAt: '2026-08-07T09:00:00.000Z', endsAt: '2026-08-07T09:50:00.000Z', category: 'individual' },
-  { id: '2', title: 'Tunde Bello', type: 'Individual Therapy', startsAt: '2026-08-07T10:30:00.000Z', endsAt: '2026-08-07T11:20:00.000Z', category: 'individual' },
-];
-
-const FALLBACK_STAFF: StaffMember[] = [
-  { id: '1', name: 'Dr. Adaeze Okonkwo', title: 'Clinical director', email: 'dr.adaeze@okonkwotherapy.ng', role: 'OWNER', status: 'Active', initials: 'AO' },
-  { id: '2', name: 'Nkem Eze', title: 'Counselling psychologist', email: 'nkem@okonkwotherapy.ng', role: 'THERAPIST', status: 'Active', initials: 'NE' },
-];
-
 // ── SWR data fetchers ─────────────────────────────────────────────────────────
 const fetchBookings = async (url: string): Promise<CalendarEvent[]> => {
   const bookings = await api.get<ApiBooking[]>(url);
@@ -288,23 +214,7 @@ function AppLayout() {
     });
   };
 
-  const [billingInfo, setBillingInfo] = useState<BillingInfo>({
-    plan: 'pro',
-    nextBillingDate: '1 September 2026',
-    nextChargeAmount: '₦25,000',
-    payoutsActive: true,
-    bankName: 'Access Bank',
-    accountNumber: '1023456789',
-    accountName: 'Dr. Adaeze Okonkwo Practice',
-    invoiceHistory: [
-      { date: '1 Aug 2026', desc: 'Pro Solo — Monthly Plan', amount: '₦25,000', status: 'PAID' },
-      { date: '1 Jul 2026', desc: 'Pro Solo — Monthly Plan', amount: '₦25,000', status: 'PAID' },
-      { date: '1 Jun 2026', desc: 'Pro Solo — Monthly Plan', amount: '₦25,000', status: 'RETRIED' },
-      { date: '1 May 2026', desc: 'Starter → Pro Upgrade', amount: '₦25,000', status: 'PAID' },
-    ],
-  });
-
-  // API-backed state with graceful fallback to mock data on error.
+  // Private workspace data comes only from the authenticated API.
   // Keys are null until a tenant session is active: anonymous visitors on the
   // login screen, and platform admins (no tenant workspace) don't fetch.
   const location = useLocation();
@@ -318,23 +228,24 @@ function AppLayout() {
 
   const {
     data: clients,
+    error: clientsError,
     mutate: mutateClients,
-  } = useSWR<Client[]>(clientsKey, { fallbackData: FALLBACK_CLIENTS });
+  } = useSWR<Client[]>(clientsKey);
 
   const {
     data: sessions,
+    error: sessionsError,
     mutate: mutateSessions,
   } = useSWR<CalendarEvent[]>(bookingsKey, {
     fetcher: fetchBookings,
-    fallbackData: FALLBACK_SESSIONS,
   });
 
   const {
     data: staff,
+    error: staffError,
     mutate: mutateStaff,
   } = useSWR<StaffMember[]>(staffKey, {
     fetcher: fetchStaff,
-    fallbackData: FALLBACK_STAFF,
   });
 
   // Local-only setters (optimistic updates, no network revalidation)
@@ -370,6 +281,7 @@ function AppLayout() {
   const resolvedClients = useMemo(() => clients ?? [], [clients]);
   const resolvedSessions = useMemo(() => sessions ?? [], [sessions]);
   const resolvedStaff = useMemo(() => staff ?? [], [staff]);
+  const privateDataError = clientsError || sessionsError || staffError;
 
   const practiceBrand = useMemo(() => ({
     name: profile?.practiceName || (profile?.firstName ? `${profile.firstName}'s Practice` : 'Unclutter Desk Practice'),
@@ -450,16 +362,20 @@ function AppLayout() {
         {/* Desktop Sidebar (hidden on mobile) */}
         <div className="hidden md:flex flex-none">
           <Sidebar 
-            plan={billingInfo?.plan} 
-            isCollapsed={isSidebarCollapsed} 
+             isCollapsed={isSidebarCollapsed}
             onToggleCollapse={handleToggleCollapse} 
           />
         </div>
         
         {/* Mobile Off-canvas Sidebar Backdrop removed as per mobile-first redesign. Mobile uses BottomNav only. */}
 
-        <div className="flex-1 flex flex-col min-w-0 pb-[92px] md:pb-0">
-          <Suspense fallback={<PageFallback />}>
+         <div className="flex-1 flex flex-col min-w-0 pb-[92px] md:pb-0">
+           {privateDataError ? (
+             <div role="alert" className="mx-4 mt-4 rounded-[14px] border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-medium text-rose-700 md:mx-[26px]">
+               We could not load the latest workspace data. Refresh the page or try again shortly.
+             </div>
+           ) : null}
+           <Suspense fallback={<PageFallback />}>
             <Routes>
               <Route
                 path="/dashboard"
