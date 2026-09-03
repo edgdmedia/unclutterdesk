@@ -9,6 +9,7 @@ import { AuthProvider, useAuth } from './context/AuthContext';
 import { api, getSubdomainTenantSlug, getAppType } from './utils/apiClient';
 
 // ── Lazy-loaded pages (code-split per route) ──────────────────────────────────
+const NotFoundPage = lazy(() => import('./pages/NotFoundPage').then((m) => ({ default: m.NotFoundPage })));
 const DashboardPage = lazy(() => import('./pages/DashboardPage').then((m) => ({ default: m.DashboardPage })));
 const SchedulePage = lazy(() => import('./pages/SchedulePage').then((m) => ({ default: m.SchedulePage })));
 const ClientsPage = lazy(() => import('./pages/ClientsPage').then((m) => ({ default: m.ClientsPage })));
@@ -426,6 +427,7 @@ function AppLayout() {
             <Route path="/auth/invite/claim" element={<InvitePage />} />
             <Route path="/invite/claim" element={<InvitePage />} />
             <Route path="/client/create-account" element={<ClientAccountSetupPage />} />
+            <Route path="*" element={<NotFoundPage homeHref="/login" />} />
           </Routes>
         </Suspense>
       </BrandProvider>
@@ -504,6 +506,7 @@ function AppLayout() {
               <Route path="/dashboard/settings/forms/:id" element={<FormEditorPage />} />
               <Route path="/dashboard/settings/discounts" element={<DiscountSettingsPage />} />
               <Route path="/" element={<RootRedirect />} />
+              <Route path="*" element={<NotFoundPage />} />
             </Routes>
           </Suspense>
         </div>
@@ -556,6 +559,7 @@ function AdminShell() {
           <Route path="/admin" element={<AdminOverviewPage />} />
           <Route path="/admin/tenants" element={<AdminTenantsPage />} />
           <Route path="/admin/tenants/:id" element={<AdminTenantDetailPage />} />
+          <Route path="*" element={<NotFoundPage homeHref="/admin" />} />
         </Route>
       </Routes>
     </Suspense>
@@ -611,7 +615,7 @@ export function App() {
                 <Route path="/booking/inactive" element={<InactivePracticePage />} />
                 <Route path="/privacy" element={<PrivacyPolicyPage />} />
                 <Route path="/terms" element={<TermsOfServicePage />} />
-                <Route path="*" element={<Navigate to="/" replace />} />
+                <Route path="*" element={<NotFoundPage />} />
               </Routes>
             </Suspense>
           </SWRConfig>

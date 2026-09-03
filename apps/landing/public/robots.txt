@@ -1,0 +1,9 @@
+# Unclutter Desk — marketing site
+#
+# The application at app.unclutterdesk.com and the per-practice booking
+# subdomains are served by a different project and are not covered here.
+
+User-agent: *
+Allow: /
+
+Sitemap: https://unclutterdesk.com/sitemap-index.xml

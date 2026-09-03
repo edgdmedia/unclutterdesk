@@ -7,21 +7,33 @@ const config: RouterConfig = {
 };
 
 describe('decide', () => {
-  it('serves a tenant booking subdomain', () => {
-    expect(decide('dr-smith.unclutterdesk.com', config)).toEqual({ kind: 'serve' });
-    expect(decide('demo.unclutterdesk.com', config)).toEqual({ kind: 'serve' });
+  it('serves a tenant booking subdomain, indexable', () => {
+    expect(decide('dr-smith.unclutterdesk.com', config)).toEqual({ kind: 'serve', indexable: true });
+    expect(decide('demo.unclutterdesk.com', config)).toEqual({ kind: 'serve', indexable: true });
   });
 
   it('serves the main app, which uses the same bundle as tenant hosts', () => {
-    expect(decide('app.unclutterdesk.com', config)).toEqual({ kind: 'serve' });
+    expect(decide('app.unclutterdesk.com', config)).toMatchObject({ kind: 'serve' });
   });
 
-  it('serves a tenant custom domain arriving via Cloudflare for SaaS', () => {
-    expect(decide('booking.drjanetherapy.com', config)).toEqual({ kind: 'serve' });
+  it('serves a tenant custom domain arriving via Cloudflare for SaaS, indexable', () => {
+    expect(decide('booking.drjanetherapy.com', config)).toEqual({ kind: 'serve', indexable: true });
   });
 
   it('is case-insensitive about the host', () => {
-    expect(decide('DR-Smith.UnclutterDesk.com', config)).toEqual({ kind: 'serve' });
+    expect(decide('DR-Smith.UnclutterDesk.com', config)).toEqual({ kind: 'serve', indexable: true });
+  });
+
+  // The signed-in app has no public content; letting it into search results
+  // would compete with the practice booking pages meant to rank.
+  it('marks the application shell hosts as not indexable', () => {
+    expect(decide('app.unclutterdesk.com', config)).toEqual({ kind: 'serve', indexable: false });
+    expect(decide('admin.unclutterdesk.com', config)).toEqual({ kind: 'serve', indexable: false });
+  });
+
+  it('does not let a tenant slug that merely contains "app" become non-indexable', () => {
+    expect(decide('apple-therapy.unclutterdesk.com', config)).toEqual({ kind: 'serve', indexable: true });
+    expect(decide('app-therapy.unclutterdesk.com', config)).toEqual({ kind: 'serve', indexable: true });
   });
 
   it('redirects www to the marketing site', () => {
@@ -54,8 +66,8 @@ describe('decide', () => {
 
   it('does not treat a lookalike domain as our zone', () => {
     // Must not be parsed as the "evil" tenant of unclutterdesk.com.
-    expect(decide('unclutterdesk.com.evil.io', config)).toEqual({ kind: 'serve' });
-    expect(decide('evil-unclutterdesk.com', config)).toEqual({ kind: 'serve' });
+    expect(decide('unclutterdesk.com.evil.io', config)).toEqual({ kind: 'serve', indexable: true });
+    expect(decide('evil-unclutterdesk.com', config)).toEqual({ kind: 'serve', indexable: true });
   });
 });
 

@@ -52,9 +52,21 @@ export default {
           redirect: 'manual',
         });
 
-        // Response headers (including the _headers security policy) pass through
-        // as-is; the body is streamed, not buffered.
-        return response;
+        if (decision.indexable) {
+          // Response headers (including the _headers security policy) pass
+          // through as-is; the body is streamed, not buffered.
+          return response;
+        }
+
+        // Headers are immutable on a fetch response, so clone to add the tag.
+        // Streams through: the body is passed by reference, not read here.
+        const headers = new Headers(response.headers);
+        headers.set('X-Robots-Tag', 'noindex, nofollow');
+        return new Response(response.body, {
+          status: response.status,
+          statusText: response.statusText,
+          headers,
+        });
       }
     }
   },

@@ -7,9 +7,20 @@ export interface RouterConfig {
   originHost: string;
 }
 
+/**
+ * Hosts that serve the application shell rather than a public booking surface.
+ * They are still served, but must not be indexed: the signed-in app has no
+ * public content, and letting it into search results competes with the
+ * practice booking pages that are meant to rank.
+ */
+const NON_PUBLIC_LABELS = new Set(['app', 'admin']);
+
 export type Decision =
-  /** Serve the app bundle for this host (a tenant booking surface, or the app itself). */
-  | { kind: 'serve' }
+  /**
+   * Serve the app bundle for this host. `indexable` is false for the
+   * application shell, which is returned with X-Robots-Tag: noindex.
+   */
+  | { kind: 'serve'; indexable: boolean }
   /** Send www to the marketing site at the apex. */
   | { kind: 'redirect'; to: string }
   /**
@@ -36,8 +47,8 @@ export function decide(hostname: string, config: RouterConfig): Decision {
 
   if (!host.endsWith(`.${apexHost}`)) {
     // Not our zone at all. A custom domain arriving via Cloudflare for SaaS is
-    // a real tenant surface, so serve it.
-    return { kind: 'serve' };
+    // a real tenant surface, so serve it — and it should be indexable.
+    return { kind: 'serve', indexable: true };
   }
 
   const label = host.slice(0, -(apexHost.length + 1));
@@ -49,7 +60,7 @@ export function decide(hostname: string, config: RouterConfig): Decision {
   if (label === 'www') return { kind: 'redirect', to: `https://${apexHost}/` };
   if (FOREIGN_ORIGIN_LABELS.has(label)) return { kind: 'misrouted', host };
 
-  return { kind: 'serve' };
+  return { kind: 'serve', indexable: !NON_PUBLIC_LABELS.has(label) };
 }
 
 /**

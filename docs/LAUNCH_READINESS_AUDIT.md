@@ -4,7 +4,7 @@
 
 ## Status of this audit
 
-Findings 1, 2, 4, 5, 6, 10, 12, 13 and 16 have been **fixed on branch `dev`** (9 partly) (see the commit accompanying this report); everything else remains open. The fixes are not live until `dev` is merged to `main` and deployed.
+Findings 1, 2, 4, 5, 6, 10, 12, 13, 14, 15 and 16 have been **fixed on branch `dev`** (9 partly) (see the commit accompanying this report); everything else remains open. The fixes are not live until `dev` is merged to `main` and deployed.
 
 ## Is it released to the public?
 
@@ -124,9 +124,9 @@ Ten requests exhausted the quota for **every therapist and client on the platfor
 
 13. **No Privacy Policy, Terms of Service, or DPA.** `apps/landing/src/pages/` contains only `index.astro`; `/privacy` and `/terms` return the landing page with a 200. Handling client mental-health data without a published privacy policy is a legal exposure in every jurisdiction you operate in, and both Stripe and Paystack require live policy URLs for account review. *(Drafts now live at `/privacy` and `/terms` on `dev`, with the four footer links wired up — they pointed at `#pricing`. They carry ~25 highlighted placeholders (entity name and RC number, registered address, contact addresses, refund policy, support hours, at-rest encryption status) and need a lawyer's review before an effective date is set. A separate DPA for practices is still outstanding.)*
 
-14. **Soft 404s everywhere.** Every unknown path on both the landing site and the app returns 200 with HTML. Broken links stay invisible and Google indexes garbage. Return a real 404.
+14. **Soft 404s everywhere.** *(Fixed on `dev`: the marketing site now ships a real `404.astro`, which Astro emits as `404.html` and Cloudflare Pages serves with a genuine 404 status. The app is a SPA with an index.html fallback, so its status is unavoidably 200 — instead it now renders a proper 404 page (previously: a silent redirect to `/` on the booking tree, and a blank screen on the other three route trees, none of which had a catch-all) and sets `noindex` while mounted. The Worker additionally sends `X-Robots-Tag: noindex` for the app and admin hosts, keeping tenant booking pages indexable.)* Every unknown path on both the landing site and the app returns 200 with HTML. Broken links stay invisible and Google indexes garbage. Return a real 404.
 
-15. **No sitemap.** `/sitemap.xml` and `/sitemap-index.xml` return the landing page HTML with 200. Add `@astrojs/sitemap` and reference it from `robots.txt`.
+15. **No sitemap.** *(Fixed on `dev`: `@astrojs/sitemap` added with `site` configured, emitting `sitemap-index.xml` and `sitemap-0.xml` covering home, privacy and terms. A repo-owned `robots.txt` now references it — previously the live one was Cloudflare's default, which the repo did not control.)* `/sitemap.xml` and `/sitemap-index.xml` return the landing page HTML with 200. Add `@astrojs/sitemap` and reference it from `robots.txt`.
 
 16. **Debug commits sit on `dev`, unmerged.** *(Fixed on `dev`: all 8 `console.log` calls removed; the routing fix they were wrapped around is kept. No `console.log` remains in `apps/app/src`.)* `effb5ae` adds `console.log('[auth/status] success', p)` — the full user profile printed to the browser console in production — and `bab1e58` adds seven `[root-redirect]` logs. Strip both before merging to `main`.
 
