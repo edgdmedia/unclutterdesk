@@ -29,8 +29,8 @@ Move from a technically deployable demo to a safe, supportable launch for a smal
 
 1. Make slot reservation atomic with a database-enforced uniqueness strategy or conditional update inside the transaction.
 2. Add concurrency tests proving one slot produces at most one active booking.
-3. Replace OAuth state with a cryptographically random, signed or server-stored state tied to tenant, profile, browser/session, expiry, and one-time use.
-4. Validate OAuth callback ownership before storing refresh tokens.
+3. ~~Replace OAuth state with a cryptographically random, signed or server-stored state tied to tenant, profile, browser/session, expiry, and one-time use.~~ **Done** — signed payload with a stored, single-use nonce and a 10-minute expiry.
+4. ~~Validate OAuth callback ownership before storing refresh tokens.~~ **Done** — the write is scoped by tenant and profile, and fails if the practitioner is not in the state's tenant.
 5. Restrict checkout redirects to known application origins and fixed route patterns; reject arbitrary URLs.
 6. Remove sensitive auth logging and add a test that reset tokens, passwords, hashes, cookies, and request bodies never reach logs.
 

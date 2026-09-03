@@ -1,5 +1,5 @@
 import { Injectable, Logger, BadRequestException, NotFoundException } from '@nestjs/common';
-import { createHmac, timingSafeEqual } from 'crypto';
+import { createHmac, timingSafeEqual, randomBytes, randomUUID, createHash } from 'crypto';
 import { JWT_SECRET } from '../../common/auth.config';
 import { google } from 'googleapis';
 import { PrismaService } from '../../common/prisma/prisma.service';
@@ -19,35 +19,116 @@ export class CalendarService {
     );
   }
 
-  generateAuthUrl(tenantId: string, profileId: string): string {
-    const scopes = ['https://www.googleapis.com/auth/calendar.events'];
+  private static readonly OAUTH_STATE_TYPE = 'google_oauth_state';
+  private static readonly OAUTH_STATE_TTL_MS = 10 * 60 * 1000;
+
+  private static hash(value: string): string {
+    return createHash('sha256').update(value).digest('hex');
+  }
+
+  private static sign(payload: string): string {
+    return createHmac('sha256', JWT_SECRET).update(payload).digest('base64url');
+  }
+
+  /**
+   * Builds the Google consent URL with a state parameter that cannot be forged.
+   *
+   * The state used to be `${tenantId}_${profileId}` — entirely predictable from
+   * two sequential ids. Anyone could start a consent flow with their own Google
+   * account, put a victim's ids in the state, and have their refresh token
+   * written onto that therapist's profile; from then on the practice's bookings
+   * would be pushed to the attacker's calendar.
+   *
+   * The state is now a signed payload carrying tenant, profile, a random nonce
+   * and an expiry. The nonce is also stored so the callback can consume it
+   * exactly once, which stops a captured state being replayed.
+   */
+  async generateAuthUrl(tenantId: string, profileId: string, userId: string): Promise<string> {
+    const nonce = randomBytes(32).toString('hex');
+    const expiresAt = new Date(Date.now() + CalendarService.OAUTH_STATE_TTL_MS);
+
+    await this.prisma.token.create({
+      data: {
+        id: randomUUID(),
+        userId: BigInt(userId),
+        type: CalendarService.OAUTH_STATE_TYPE,
+        tokenHash: CalendarService.hash(nonce),
+        expiresAt,
+      },
+    });
+
+    const payload = Buffer.from(
+      JSON.stringify({ t: tenantId, p: profileId, n: nonce, e: expiresAt.getTime() }),
+    ).toString('base64url');
+
     return this.oauth2Client.generateAuthUrl({
       access_type: 'offline',
       prompt: 'consent', // Force to get refresh token
-      scope: scopes,
-      state: `${tenantId}_${profileId}`,
+      scope: ['https://www.googleapis.com/auth/calendar.events'],
+      state: `${payload}.${CalendarService.sign(payload)}`,
     });
   }
 
   async handleCallback(code: string, state: string) {
     if (!state) throw new BadRequestException('State missing from callback');
-    const [tenantIdStr, profileIdStr] = state.split('_');
-    const tenantId = BigInt(tenantIdStr);
-    const profileId = BigInt(profileIdStr);
 
+    const [payload, signature] = state.split('.');
+    if (!payload || !signature) throw new BadRequestException('Malformed state');
+
+    const expected = Buffer.from(CalendarService.sign(payload), 'utf8');
+    const provided = Buffer.from(signature, 'utf8');
+    if (expected.length !== provided.length || !timingSafeEqual(expected, provided)) {
+      this.logger.warn('Rejected Google OAuth callback: state signature mismatch');
+      throw new BadRequestException('Invalid state');
+    }
+
+    let decoded: { t: string; p: string; n: string; e: number };
     try {
-      const { tokens } = await this.oauth2Client.getToken(code);
-      if (tokens.refresh_token) {
-        await this.prisma.consultTherapistProfile.update({
-          where: { profileId },
-          data: { googleRefreshToken: tokens.refresh_token },
-        });
-        this.logger.log(`Google Calendar connected for therapist ${profileId}`);
-      }
+      decoded = JSON.parse(Buffer.from(payload, 'base64url').toString('utf8'));
+    } catch {
+      throw new BadRequestException('Malformed state');
+    }
+
+    if (!decoded?.t || !decoded?.p || !decoded?.n || Date.now() > decoded.e) {
+      throw new BadRequestException('State has expired — start the connection again');
+    }
+
+    // Consume the nonce. deleteMany returning 0 means it was never issued or has
+    // already been used, so a captured state cannot be replayed.
+    const consumed = await this.prisma.token.deleteMany({
+      where: { tokenHash: CalendarService.hash(decoded.n), type: CalendarService.OAUTH_STATE_TYPE },
+    });
+    if (consumed.count === 0) {
+      this.logger.warn('Rejected Google OAuth callback: state already used or unknown');
+      throw new BadRequestException('Invalid state');
+    }
+
+    const tenantId = BigInt(decoded.t);
+    const profileId = BigInt(decoded.p);
+
+    let tokens;
+    try {
+      ({ tokens } = await this.oauth2Client.getToken(code));
     } catch (error) {
-      this.logger.error('Failed to get Google OAuth tokens', error);
+      this.logger.error('Failed to get Google OAuth tokens', error as Error);
       throw new BadRequestException('Failed to authenticate with Google');
     }
+
+    if (!tokens?.refresh_token) return;
+
+    // Scoped by tenant as well as profile: the previous update matched on
+    // profileId alone, so a forged state could write a refresh token onto a
+    // profile in another practice.
+    const updated = await this.prisma.consultTherapistProfile.updateMany({
+      where: { tenantId, profileId },
+      data: { googleRefreshToken: tokens.refresh_token },
+    });
+
+    if (updated.count === 0) {
+      throw new BadRequestException('Practitioner not found in this practice');
+    }
+
+    this.logger.log(`Google Calendar connected for therapist ${profileId}`);
   }
 
   private getVideoRoomLink(videoRoomName: string | null): string {

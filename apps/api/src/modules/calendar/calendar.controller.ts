@@ -17,21 +17,29 @@ export class CalendarController {
   @UseGuards(JwtAuthGuard, RolesGuard)
   @ApiBearerAuth('access-token')
   @ApiOperation({ summary: 'Get Google OAuth URL for therapist' })
-  getGoogleAuthUrl(@Req() req: any) {
-    const tenantId = authenticatedTenantId(req).toString();
-    const profileId = authenticatedProfileId(req).toString();
-    const url = this.calendarService.generateAuthUrl(tenantId, profileId);
+  async getGoogleAuthUrl(@Req() req: any) {
+    const url = await this.calendarService.generateAuthUrl(
+      authenticatedTenantId(req).toString(),
+      authenticatedProfileId(req).toString(),
+      String(req.user.userId),
+    );
     return { url };
   }
 
   @Get('google/callback')
   @ApiOperation({ summary: 'Google OAuth callback handler' })
   async handleGoogleCallback(@Query('code') code: string, @Query('state') state: string, @Res() res: Response) {
-    await this.calendarService.handleCallback(code, state);
-    // Redirect back to the frontend settings page
     const frontendBase = (process.env.APP_URL || 'http://localhost:5173').replace(/\/+$/, '');
-    const frontendUrl = `${frontendBase}/dashboard/settings/availability?google_connected=true`;
-    res.redirect(frontendUrl);
+    try {
+      await this.calendarService.handleCallback(code, state);
+    } catch {
+      // The browser lands here from Google, so an error page would be a dead
+      // end. Send them back to settings with the failure marked instead, and
+      // say nothing about why — the reason is in the server log.
+      res.redirect(`${frontendBase}/dashboard/settings/availability?google_connected=false`);
+      return;
+    }
+    res.redirect(`${frontendBase}/dashboard/settings/availability?google_connected=true`);
   }
 
   @Get('bookings/:bookingId/ical')

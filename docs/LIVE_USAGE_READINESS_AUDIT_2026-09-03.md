@@ -4,9 +4,9 @@
 **Branch:** `dev`  
 **Verdict:** **NO-GO for real clinical users**
 
-> **Update 2026-09-03, later:** P0 #1 (role authorization) and #2 (client
-> portal) are fixed — see those sections. P0 #3-#6 remain open. The verdict
-> stands until they are closed.
+> **Update 2026-09-03, later:** P0 #1 (role authorization), #2 (client portal)
+> and #3 (OAuth state) are fixed — see those sections. P0 #4-#6 remain open.
+> The verdict stands until they are closed.
 
 The repository builds and its automated tests pass, but the current authorization and privacy model is not safe for production use with real client records, clinical notes, or therapy-session links.
 
@@ -68,13 +68,27 @@ email at all. The client-side email box that let a visitor type any address is
 gone; unauthenticated visitors now see a prompt to sign in with the address they
 booked under, which the app already directs them to do at account setup.
 
-### 3. Google OAuth state is forgeable
+### 3. Google OAuth state is forgeable — **FIXED**
 
 The OAuth state is the predictable string `${tenantId}_${profileId}` and the callback updates a profile by `profileId` without validating an initiating session or tenant ownership.
 
 Evidence: `apps/api/src/modules/calendar/calendar.service.ts:22-49`.
 
 Impact: account-linking CSRF and possible cross-tenant token writes.
+
+**Resolved.** The state is now a signed payload carrying tenant, profile, a
+random 32-byte nonce and a 10-minute expiry, verified with a timing-safe
+comparison before the authorization code is exchanged. The nonce is stored and
+consumed with a `deleteMany` on callback, so a captured state cannot be
+replayed. The refresh-token write is scoped by tenant as well as profile — it
+previously matched on `profileId` alone, which is what made the cross-tenant
+write possible.
+
+Worth recording precisely, because it is worse than "CSRF": with a predictable
+state an attacker could complete a consent flow using **their own** Google
+account while naming a victim's ids, writing their refresh token onto that
+therapist's profile. The practice's bookings would then be pushed to the
+attacker's calendar and Meet links created in the attacker's account.
 
 ### 4. Booking availability is not reserved atomically
 
