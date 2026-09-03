@@ -1,4 +1,4 @@
-import { Injectable, BadRequestException, NotFoundException, Logger } from '@nestjs/common';
+import { Injectable, BadRequestException, NotFoundException, ForbiddenException, Logger } from '@nestjs/common';
 import { PrismaService } from '../../common/prisma/prisma.service';
 import { NotificationService } from '../notifications/notification.service';
 import { DiscountService } from '../discount/discount.service';
@@ -150,11 +150,37 @@ export class ConsultService {
     return { success: true, avatarUrl };
   }
 
-  async adminUpdateTherapistStatus(tenantId: bigint, profileId: bigint, status: 'active' | 'inactive') {
-    const updated = await this.prisma.profile.update({
-      where: { id: profileId },
+  async adminUpdateTherapistStatus(
+    tenantId: bigint,
+    actorProfileId: bigint,
+    profileId: bigint,
+    status: 'active' | 'inactive',
+  ) {
+    // The route carried only JwtAuthGuard, so any signed-in account — including
+    // a client — could reach this. Deactivating a practitioner takes them out
+    // of service, so it is an owner/admin action.
+    const actor = await this.prisma.profile.findFirst({
+      where: { id: actorProfileId, tenantId },
+      select: { role: true },
+    });
+    if (!actor || !['OWNER', 'ADMIN'].includes(actor.role)) {
+      throw new ForbiddenException('Only a practice owner or admin can change practitioner status');
+    }
+
+    // Previously `update({ where: { id: profileId } })` — tenantId was accepted
+    // and never used, so any profile on the platform could be deactivated by
+    // id. updateMany is used because `update` requires a unique where clause
+    // and so cannot carry a tenant filter.
+    const result = await this.prisma.profile.updateMany({
+      where: { id: profileId, tenantId },
       data: { status },
     });
+
+    if (result.count === 0) {
+      // Identical whether the profile is absent or belongs to another practice.
+      throw new NotFoundException('Practitioner not found in this practice');
+    }
+    const updated = { id: profileId, status };
 
     // If status is inactive, also set isPublic to false
     if (status === 'inactive') {
@@ -507,6 +533,9 @@ export class ConsultService {
 
       return {
         bookingId: booking.id.toString(),
+        // Lets the confirmation page build the .ics link without a session —
+        // the client may not have an account yet.
+        icalToken: CalendarService.icalToken(booking.id),
         status: finalPriceKobo > 0n ? 'PENDING_PAYMENT' : 'CONFIRMED',
         serviceTitle: slot.service?.title || 'Therapy Session',
         startsAt: slot.startsAt.toISOString(),
@@ -633,6 +662,7 @@ export class ConsultService {
     const now = new Date();
     const mapped = bookings.map((booking) => ({
       id: booking.id.toString(),
+      icalToken: CalendarService.icalToken(booking.id),
       serviceTitle: booking.service.title,
       startsAt: booking.availability.startsAt.toISOString(),
       endsAt: booking.availability.endsAt.toISOString(),

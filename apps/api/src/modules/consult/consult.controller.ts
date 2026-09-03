@@ -71,6 +71,7 @@ export class ConsultController {
   ) {
     return this.consultService.adminUpdateTherapistStatus(
       authenticatedTenantId(req),
+      authenticatedProfileId(req),
       BigInt(profileId),
       dto.status,
     );

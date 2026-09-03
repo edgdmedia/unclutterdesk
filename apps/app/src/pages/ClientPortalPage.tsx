@@ -8,6 +8,7 @@ import { useAuth } from '../context/AuthContext';
 type PortalTab = 'upcoming' | 'past' | 'payments' | 'settings';
 
 type PortalSession = {
+  icalToken?: string;
   id: string;
   serviceTitle: string;
   startsAt: string;
@@ -227,7 +228,7 @@ export function ClientPortalPage() {
                   Reschedule
                 </button>
                 <a 
-                  href={`${import.meta.env.VITE_API_URL || 'http://localhost:3001'}/v1/calendar/bookings/${nextSession.id}/ical`}
+                  href={`${import.meta.env.VITE_API_URL || 'http://localhost:3001'}/v1/calendar/bookings/${nextSession.id}/ical?token=${nextSession.icalToken ?? ''}`}
                   download
                   className="h-[48px] px-5 rounded-[16px] bg-transparent border border-[rgba(255,255,255,0.22)] text-white text-[13.5px] font-bold flex items-center gap-2 hover:bg-white/10 cursor-pointer"
                 >

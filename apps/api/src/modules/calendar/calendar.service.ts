@@ -1,4 +1,6 @@
 import { Injectable, Logger, BadRequestException, NotFoundException } from '@nestjs/common';
+import { createHmac, timingSafeEqual } from 'crypto';
+import { JWT_SECRET } from '../../common/auth.config';
 import { google } from 'googleapis';
 import { PrismaService } from '../../common/prisma/prisma.service';
 
@@ -133,7 +135,35 @@ export class CalendarService {
     }
   }
 
-  async generateIcal(bookingId: bigint): Promise<string> {
+  /**
+   * Unguessable token for a booking's .ics link.
+   *
+   * The calendar download has to work for a client who booked without creating
+   * an account, so it cannot sit behind the session guard — but booking ids are
+   * sequential, and the file contains the client's name, the therapist's name,
+   * the appointment time and the video join link. Jitsi rooms are
+   * unauthenticated, so that link alone lets a stranger walk into a therapy
+   * session. The token makes the URL unguessable without adding a login.
+   */
+  static icalToken(bookingId: bigint): string {
+    return createHmac('sha256', JWT_SECRET)
+      .update(`ical:${bookingId}`)
+      .digest('hex')
+      .slice(0, 32);
+  }
+
+  async generateIcal(bookingId: bigint, token: string): Promise<string> {
+    const expected = CalendarService.icalToken(bookingId);
+    const provided = typeof token === 'string' ? token : '';
+    const a = Buffer.from(expected, 'utf8');
+    const b = Buffer.from(provided, 'utf8');
+
+    // Not found rather than forbidden, and the same for a wrong token as for a
+    // missing booking, so ids cannot be probed.
+    if (a.length !== b.length || !timingSafeEqual(a, b)) {
+      throw new NotFoundException('Booking not found');
+    }
+
     const booking = await this.prisma.consultBooking.findUnique({
       where: { id: bookingId },
       include: {

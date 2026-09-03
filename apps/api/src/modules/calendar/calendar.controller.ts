@@ -33,8 +33,12 @@ export class CalendarController {
 
   @Get('bookings/:bookingId/ical')
   @ApiOperation({ summary: 'Download .ics calendar file for a booking' })
-  async downloadIcal(@Param('bookingId') bookingId: string, @Res() res: Response) {
-    const icsContent = await this.calendarService.generateIcal(BigInt(bookingId));
+  async downloadIcal(
+    @Param('bookingId') bookingId: string,
+    @Query('token') token: string,
+    @Res() res: Response,
+  ) {
+    const icsContent = await this.calendarService.generateIcal(BigInt(bookingId), token);
     res.setHeader('Content-Type', 'text/calendar; charset=utf-8');
     res.setHeader('Content-Disposition', `attachment; filename="booking-${bookingId}.ics"`);
     res.send(icsContent);
