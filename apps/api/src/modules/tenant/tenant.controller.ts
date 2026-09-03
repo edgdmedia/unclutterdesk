@@ -5,6 +5,8 @@ import { SkipThrottle } from '@nestjs/throttler';
 import { TenantService } from './tenant.service';
 import { TenantRequest } from '../../common/middleware/tenant.middleware';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { RolesGuard } from '../../common/roles.guard';
+import { AnyAuthenticated, CLINICAL, PRACTICE_ADMIN, Roles, STAFF } from '../../common/roles';
 import { authenticatedTenantId } from '../../common/authenticated-tenant';
 
 @ApiTags('Tenant')
@@ -46,8 +48,9 @@ export class TenantController {
     return result;
   }
 
+  @AnyAuthenticated()
   @Get('check-slug/:slug')
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard)
   @ApiBearerAuth('access-token')
   @ApiOperation({ summary: 'Check if a practice subdomain handle is available' })
   checkSlug(@Req() req: any, @Param('slug') slug: string) {
@@ -72,32 +75,36 @@ export class TenantController {
     return { name: 'Unclutter Desk', slug: 'default', primaryColor: '#0F3A53', secondaryColor: '#E3B341' };
   }
 
+  @Roles(...PRACTICE_ADMIN)
   @Patch('brand')
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard)
   @ApiBearerAuth('access-token')
   @ApiOperation({ summary: 'Update practice brand configuration (Admin)' })
   updateBrand(@Req() req: any, @Body() dto: any) {
     return this.tenantService.updateTenantBrand(authenticatedTenantId(req), dto);
   }
 
+  @Roles(...STAFF)
   @Get('brand')
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard)
   @ApiBearerAuth('access-token')
   @ApiOperation({ summary: 'Get current practice profile + brand configuration' })
   getBrand(@Req() req: any) {
     return this.tenantService.getTenantBrand(authenticatedTenantId(req));
   }
 
+  @Roles(...PRACTICE_ADMIN)
   @Post('brand/custom-domain/verify')
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard)
   @ApiBearerAuth('access-token')
   @ApiOperation({ summary: 'Verify the currently configured custom domain for this practice' })
   verifyCustomDomain(@Req() req: any) {
     return this.tenantService.verifyCustomDomain(authenticatedTenantId(req));
   }
 
+  @Roles(...STAFF)
   @Get('notifications')
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard)
   @ApiBearerAuth('access-token')
   @ApiOperation({ summary: 'Get tenant inbox notifications derived from live activity' })
   getNotifications(@Req() req: any) {
@@ -106,24 +113,27 @@ export class TenantController {
 
   // ── Group Clinic Staff Management Endpoints ───────────────────────────────
 
+  @Roles(...STAFF)
   @Get('staff')
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard)
   @ApiBearerAuth('access-token')
   @ApiOperation({ summary: 'List practice team members & receptionists' })
   getStaff(@Req() req: any) {
     return this.tenantService.getClinicStaff(authenticatedTenantId(req));
   }
 
+  @Roles(...PRACTICE_ADMIN)
   @Post('staff/invite')
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard)
   @ApiBearerAuth('access-token')
   @ApiOperation({ summary: 'Invite a new therapist, receptionist, or admin staff member' })
   inviteStaff(@Req() req: any, @Body() dto: { email: string; role: 'ADMIN' | 'RECEPTIONIST' | 'THERAPIST' }) {
     return this.tenantService.inviteStaffMember(authenticatedTenantId(req), dto);
   }
 
+  @Roles(...PRACTICE_ADMIN)
   @Patch('staff/:profileId/role')
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard)
   @ApiBearerAuth('access-token')
   @ApiOperation({ summary: 'Update staff member role & permissions' })
   updateRole(
@@ -141,24 +151,27 @@ export class TenantController {
 
   // ── Client (Patient) Endpoints ────────────────────────────────────────────
 
+  @Roles(...STAFF)
   @Get('clients')
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard)
   @ApiBearerAuth('access-token')
   @ApiOperation({ summary: 'List all client (patient) profiles for the practice' })
   getClients(@Req() req: any) {
     return this.tenantService.getClients(authenticatedTenantId(req));
   }
 
+  @Roles(...CLINICAL)
   @Get('clients/:profileId')
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard)
   @ApiBearerAuth('access-token')
   @ApiOperation({ summary: 'Get a single client with bookings, notes, and intake' })
   getClientById(@Req() req: any, @Param('profileId') profileId: string) {
     return this.tenantService.getClientById(authenticatedTenantId(req), BigInt(profileId));
   }
 
+  @Roles(...STAFF)
   @Post('clients')
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, RolesGuard)
   @ApiBearerAuth('access-token')
   @ApiOperation({ summary: 'Create a new client (patient) profile' })
   createClient(

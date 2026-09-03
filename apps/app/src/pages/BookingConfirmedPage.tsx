@@ -6,6 +6,7 @@ import { useBrand } from '@unclutterdesk/ui';
 type BookingState = {
   booking?: {
     bookingId: string;
+    icalToken?: string;
     startsAt: string;
     endsAt: string;
     serviceTitle: string;
@@ -48,7 +49,7 @@ export function BookingConfirmedPage() {
           <div className="p-[0_24px_24px] grid grid-cols-1 gap-3 pt-2">
             <button onClick={() => navigate('/client/create-account', { state: { fullName: state.fullName, email: state.email } })} className="os-brand-btn h-[48px] rounded-[16px] font-bold text-sm flex items-center justify-center gap-2 cursor-pointer" style={{ backgroundColor: primaryColor }}><User className="h-4 w-4" /><span>Create client account</span></button>
             <Link to="/login" state={{ email: state.email }} className="h-[48px] rounded-[16px] bg-[#F1F5F9] text-[#475569] font-bold text-sm hover:bg-[#E2E8F0] flex items-center justify-center gap-2 cursor-pointer"><ArrowLeft className="h-4 w-4" /><span>Already have an account? Sign in</span></Link>
-            <a href={`${import.meta.env.VITE_API_URL || 'http://localhost:3001'}/v1/calendar/bookings/${booking.bookingId}/ical`} download className="h-[48px] rounded-[16px] bg-white border border-[#E2E8F0] text-[#334155] font-bold text-sm flex items-center justify-center gap-2 cursor-pointer"><svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg><span>Add to Calendar</span></a>
+            <a href={`${import.meta.env.VITE_API_URL || 'http://localhost:3001'}/v1/calendar/bookings/${booking.bookingId}/ical?token=${booking.icalToken ?? ''}`} download className="h-[48px] rounded-[16px] bg-white border border-[#E2E8F0] text-[#334155] font-bold text-sm flex items-center justify-center gap-2 cursor-pointer"><svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg><span>Add to Calendar</span></a>
             <a href={booking.videoRoomLink} target="_blank" rel="noreferrer" className="h-[48px] rounded-[16px] bg-white border border-[#E2E8F0] text-[#334155] font-bold text-sm flex items-center justify-center gap-2 cursor-pointer"><Video className="h-4 w-4" /><span>Join session</span></a>
           </div>
         </div>

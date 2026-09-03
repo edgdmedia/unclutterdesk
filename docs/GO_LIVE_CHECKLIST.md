@@ -113,12 +113,12 @@ which is what `deploy.sh` applies.
       needs API access. The permissive `.pages.dev` and `localhost` matching is
       gone.
 
-- [x] **[you] Confirm the seeded demo account is absent from production.**
-      `docs/launch-checklist.md` §6 documents
-      `dr.jane@smiththerapy.ng / password123`. CI sets `SEED_DB=false`, and live
-      probes of `dr-smith` and `demo` return 404, which is consistent with the
-      seed never having run — but that is not proof. Check the database directly
-      and delete if present.
+- [ ] **[you] Verify the persistent demo workspace is isolated in production.**
+      The demo data migration creates only the marked `demo` tenant and synthetic
+      records. Confirm `Tenant.isDemo = true`, confirm no real tenant is marked
+      demo, and provision the demo password only through the server secret store
+      using `scripts/provision-demo-account.mjs`. Never run `pnpm db:seed` on the
+      production database; it clears all tables.
 
 ---
 
@@ -192,8 +192,11 @@ takes the API down. Detail in `docs/CLOUDFLARE_SETUP.md` §2.
       `/privacy` and `/terms`. Search `class="todo"`. Includes one engineering
       question: **are the database and backups encrypted at rest?** I would not
       claim it without knowing.
-- [ ] **[you] Schedule an off-host nightly `pg_dump`** and run one restore
-      drill. `deploy.sh` only backs up at deploy time, to the same server.
+- [ ] **[you] Schedule the nightly backup and run one restore drill.**
+      `scripts/backup-database.sh` is written and tested; it needs a cron entry
+      and an off-host target. Until an S3-compatible bucket is configured the
+      backups sit on the same disk as the database, so a disk failure loses
+      both. Steps — including R2 setup — in `docs/DATABASE_MIGRATION_RUNBOOK.md`.
 - [ ] **[you] Rotate any secret that has lived on a developer laptop** —
       Paystack, Google OAuth, JWT, SMTP — and move production secrets to the
       host's secret store.

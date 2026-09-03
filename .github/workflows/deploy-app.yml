@@ -11,10 +11,23 @@ on:
       - 'package.json'
       - 'pnpm-lock.yaml'
       - '.github/workflows/deploy-app.yml'
+  # Also on PRs, so `verify` reports a check before the merge rather
+  # than after the deploy has already started.
+  pull_request:
+    branches:
+      - main
+    paths:
+      - 'apps/app/**'
+      - 'packages/shared/**'
+      - 'packages/ui/**'
+      - 'package.json'
+      - 'pnpm-lock.yaml'
+      - '.github/workflows/deploy-app.yml'
 
 concurrency:
-  group: deploy-app
-  cancel-in-progress: false
+  group: deploy-app-${{ github.ref }}
+  # Never interrupt a deploy in flight; a superseded PR check is fine to drop.
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   verify:
@@ -48,6 +61,7 @@ jobs:
 
   deploy:
     needs: verify
+    if: github.event_name == 'push'
     name: Deploy App To Cloudflare Pages
     runs-on: ubuntu-latest
     permissions:

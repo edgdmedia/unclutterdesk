@@ -5,11 +5,13 @@ import { PrivacyService } from './privacy.service';
 import { PracticeClosureService } from './practice-closure.service';
 import { PlatformAdminGuard } from '../admin/platform-admin.guard';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { RolesGuard } from '../../common/roles.guard';
+import { PRACTICE_ADMIN, Roles } from '../../common/roles';
 import { authenticatedTenantId, authenticatedProfileId } from '../../common/authenticated-tenant';
 
 @ApiTags('Privacy')
 @Controller('v1/privacy')
-@UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard, RolesGuard)
 @ApiBearerAuth('access-token')
 export class PrivacyController {
   constructor(
@@ -21,6 +23,7 @@ export class PrivacyController {
    * Irreversible. Rate limited hard because there is no undo: a compromised
    * admin session should not be able to erase a client list in a burst.
    */
+  @Roles(...PRACTICE_ADMIN)
   @Post('clients/:profileId/erase')
   @Throttle({ default: { limit: 5, ttl: 60000 } })
   @HttpCode(200)
@@ -39,6 +42,7 @@ export class PrivacyController {
    * Closes the practice: deactivates it and starts the retention window.
    * Reversible — nothing is deleted until the purge below.
    */
+  @Roles('OWNER')
   @Post('practice/close')
   @Throttle({ default: { limit: 3, ttl: 60000 } })
   @HttpCode(200)
