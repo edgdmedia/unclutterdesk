@@ -73,10 +73,12 @@ Complete this before onboarding real users:
    mockups.
 3. Wire invite claiming to the backend, validate the token, persist the profile,
    and redirect only after success. Use the invited tenant's name and email.
-4. Persist schedule creation, cancellation, and status changes through the API;
-   re-fetch after mutation and show loading/failure states.
+4. ~~Persist schedule creation, cancellation, and status changes through the API;
+   re-fetch after mutation and show loading/failure states.~~ **Done.**
 5. Wire or remove every visible action: Notes, notifications, reschedule,
    payment history, profile upload, practice status, and settings shortcuts.
+   **Mostly done** — Notes wired, reschedule and payment history removed,
+   brand settings route corrected. Dashboard notification button still unwired.
 6. Add a route/link audit for every `Link`, `href`, and button in the primary
    signup, onboarding, booking, portal, and workspace flows.
 7. Replace all user-visible and generated “Unclutter OS”, “unclutterOS”, and

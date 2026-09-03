@@ -5,7 +5,7 @@ import { useBrand } from '@unclutterdesk/ui';
 import { api, getBookingUrl, TENANT_SLUG } from '../utils/apiClient';
 import { useAuth } from '../context/AuthContext';
 
-type PortalTab = 'upcoming' | 'past' | 'payments' | 'settings';
+type PortalTab = 'upcoming' | 'past' | 'settings';
 
 type PortalSession = {
   icalToken?: string;
@@ -119,7 +119,6 @@ export function ClientPortalPage() {
   const tabs: Array<{ key: PortalTab; label: string }> = [
     { key: 'upcoming', label: 'Upcoming' },
     { key: 'past', label: 'Past sessions' },
-    { key: 'payments', label: 'Payments' },
     { key: 'settings', label: 'Preferences' },
   ];
 
@@ -217,9 +216,6 @@ export function ClientPortalPage() {
                 <p className="mt-1 text-[13.5px] font-medium text-[#CBD5E1]">{nextSession.serviceTitle} · with {nextSession.therapistName}</p>
               </div>
               <div className="flex gap-3 shrink-0">
-                <button className="h-[48px] px-5 rounded-[16px] bg-transparent border border-[rgba(255,255,255,0.22)] text-white text-[13.5px] font-bold hover:bg-white/10 cursor-pointer">
-                  Reschedule
-                </button>
                 <a 
                   href={`${import.meta.env.VITE_API_URL || 'http://localhost:3001'}/v1/calendar/bookings/${nextSession.id}/ical?token=${nextSession.icalToken ?? ''}`}
                   download
@@ -317,11 +313,6 @@ export function ClientPortalPage() {
             </div>
           )}
 
-          {tab === 'payments' && (
-            <div className="rounded-[22px] border border-dashed border-[#CBD5E1] bg-white px-6 py-10 text-sm font-medium text-[#64748B]">
-              Payment history is not wired yet. Sessions above are now pulled from real bookings.
-            </div>
-          )}
 
           {tab === 'settings' && (
             <div className="bg-white rounded-[24px] border border-[#E2E8F0] p-[24px_26px]">

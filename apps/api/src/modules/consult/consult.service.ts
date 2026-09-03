@@ -326,6 +326,38 @@ export class ConsultService {
     };
   }
 
+  /**
+   * Removes an availability slot the practitioner owns.
+   *
+   * There was no endpoint for this at all: the schedule's delete button only
+   * filtered the row out of local React state, so the slot reappeared on
+   * refresh. Scoped to the tenant and the owning practitioner, and refuses a
+   * slot that already has a booking — cancelling an appointment is a different
+   * operation with a client on the other end of it.
+   */
+  async deleteAvailabilitySlot(tenantId: bigint, providerProfileId: bigint, slotId: bigint) {
+    const booked = await this.prisma.consultBooking.count({
+      where: { tenantId, availabilityId: slotId, status: { not: 'CANCELLED' } },
+    });
+
+    if (booked > 0) {
+      throw new BadRequestException(
+        'This slot has a booking. Cancel the session instead of deleting the slot.',
+      );
+    }
+
+    const deleted = await this.prisma.consultAvailability.deleteMany({
+      where: { id: slotId, tenantId, providerProfileId },
+    });
+
+    if (deleted.count === 0) {
+      // Same answer whether it never existed or belongs to another practitioner.
+      throw new NotFoundException('Availability slot not found');
+    }
+
+    return { id: slotId.toString(), deleted: true };
+  }
+
   async replaceTherapistAvailability(tenantId: bigint, providerProfileId: bigint, dto: {
     days: Array<{ day: number; enabled: boolean; windows: Array<{ start: string; end: string }> }>;
     sessionLengthMinutes: number;
