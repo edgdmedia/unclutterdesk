@@ -13,6 +13,8 @@ Legend: **[you]** needs credentials, a dashboard, or production access.
 
 ## Phase 0 — before merging `dev` to `main`
 
+**Exact copy-pasteable commands for the server: `docs/VPS_PREPARATION.md`.**
+
 Each of these will break the first deploy if skipped.
 
 Most of them are checked by one read-only command **on the production host** —
