@@ -17,6 +17,16 @@ export class NotesService {
     const clientProfileId = BigInt(dto.clientProfileId);
     const bookingId = dto.bookingId ? BigInt(dto.bookingId) : null;
 
+    // ClinicalNote.clientProfileId is a plain column with no foreign key, so
+    // nothing else stops a note being filed against another practice's client.
+    const client = await this.prisma.profile.findFirst({
+      where: { id: clientProfileId, tenantId },
+      select: { id: true },
+    });
+    if (!client) {
+      throw new NotFoundException('Client not found in this practice');
+    }
+
     // Check if an existing unlocked note exists for this booking
     let note = bookingId
       ? await this.prisma.clinicalNote.findFirst({
@@ -87,11 +97,21 @@ export class NotesService {
   }
 
   async lockNote(tenantId: bigint, noteId: bigint) {
-    const note = await this.prisma.clinicalNote.update({
-      where: { id: noteId },
+    // updateMany rather than update: `update` needs a unique where clause, so
+    // it cannot carry tenantId, and without it any signed-in therapist could
+    // lock any clinical note on the platform by id — ids are sequential, and a
+    // locked note can no longer be edited by the practice that owns it.
+    const result = await this.prisma.clinicalNote.updateMany({
+      where: { id: noteId, tenantId },
       data: { isLocked: true },
     });
 
-    return { id: note.id.toString(), isLocked: note.isLocked };
+    if (result.count === 0) {
+      // Same response whether the note is missing or belongs to someone else,
+      // so this cannot be used to discover which ids exist.
+      throw new NotFoundException('Clinical note not found');
+    }
+
+    return { id: noteId.toString(), isLocked: true };
   }
 }

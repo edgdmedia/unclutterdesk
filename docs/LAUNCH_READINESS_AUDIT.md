@@ -114,7 +114,7 @@ Ten requests exhausted the quota for **every therapist and client on the platfor
 
 10. **No CI quality gate.** *(Fixed on `dev`: a `verify` job now runs recursive typecheck plus API and app tests, and all three deploy jobs `needs: verify`.)* All three workflows deploy on push to `main` with no typecheck, no lint and no tests. `pnpm typecheck` and vitest both exist and are never run. Add them as required steps before the deploy job.
 
-11. **Test coverage is fourteen files** *(regression suites added on `dev` for CORS, the tenant router, the exception filter, client erasure and the CSRF guard; 124 tests now pass across the repo)* for the entire product (`tenant.service.spec.ts`, `intake.service.spec.ts`, `apiClient.test.ts`, one autosave test). Nothing covers authentication, cross-tenant isolation, billing, or bookings — the four areas where a bug is a breach.
+11. **Test coverage is fifteen files** *(regression suites added on `dev` for CORS, the tenant router, the exception filter, client erasure and the CSRF guard; 124 tests now pass across the repo)* for the entire product (`tenant.service.spec.ts`, `intake.service.spec.ts`, `apiClient.test.ts`, one autosave test). Nothing covers authentication, cross-tenant isolation, billing, or bookings — the four areas where a bug is a breach.
 
 12. **PM2 runs a single fork-mode process** *(Fixed on `dev`: restart policy, memory ceiling, graceful-reload timeouts and log files added, plus a real `GET /health` probe that queries the database and returns 503 when it is unreachable. Deliberately still one instance — see the note below.)* (`ecosystem.config.js`) with no health check. One unhandled rejection takes the whole API down until someone notices. Add `instances: 2` / cluster mode, `max_restarts`, and an uptime monitor on `GET /`.
 
@@ -140,6 +140,10 @@ Ten requests exhausted the quota for **every therapist and client on the platfor
 ---
 
 21. **Practice-account closure still has no code path.** *(Fixed on `dev`: a two-step flow — the owner closes the practice, which deactivates it and starts a 30-day retention window without deleting anything; platform staff purge afterwards, deleting in dependency order inside one transaction rather than relying on a cascade that the booking→profile restriction can abort part-way.)* Client-level erasure now exists (`POST /v1/privacy/clients/:profileId/erase`), but erasing a whole tenant does not. `Tenant` cascades to 24 relations, and `ConsultBooking.client` restricts deletion of any client with a booking, so a naive `tenant.delete()` will either fail or cascade further than intended. Needs its own design, with an export step first.
+
+22. **`lockNote` ignored the tenant — cross-tenant write on clinical records.** *(Fixed.)* `NotesService.lockNote(tenantId, noteId)` accepted a tenant and never used it: `prisma.clinicalNote.update({ where: { id: noteId } })`. Any signed-in therapist could permanently lock any clinical note on the platform by id, and ids are sequential BigInts. A locked note cannot be edited by the practice that owns it, so this was a denial-of-service against other practices' clinical records. Now an `updateMany` scoped to `{ id, tenantId }`, returning the same not-found response whether the note is missing or belongs to someone else, so ids cannot be enumerated.
+
+23. **SOAP notes could be filed against another practice's client.** *(Fixed.)* `saveSOAPNote` never checked that `dto.clientProfileId` belonged to the caller's tenant, and `ClinicalNote.clientProfileId` is a plain column with no foreign key, so the database accepted it silently. Now verified against the tenant before any write.
 
 ## Things that are already right
 
