@@ -15,6 +15,7 @@ import { NotificationsModule } from './modules/notifications/notification.module
 import { DiscountModule } from './modules/discount/discount.module';
 import { ScheduleModule } from '@nestjs/schedule';
 import { CalendarModule } from './modules/calendar/calendar.module';
+import { PrivacyModule } from './modules/privacy/privacy.module';
 
 @Module({
   imports: [
@@ -41,6 +42,7 @@ import { CalendarModule } from './modules/calendar/calendar.module';
     NotificationsModule,
     DiscountModule,
     CalendarModule,
+    PrivacyModule,
   ],
   controllers: [HealthController],
   providers: [
