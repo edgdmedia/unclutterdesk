@@ -15,6 +15,16 @@ Legend: **[you]** needs credentials, a dashboard, or production access.
 
 Each of these will break the first deploy if skipped.
 
+Most of them are checked by one read-only command on the host — it creates,
+changes and deletes nothing:
+
+    node scripts/preflight.mjs
+
+It reports Node and `pg_dump` availability, the required environment variables,
+schema drift against `schema.prisma`, migration baseline state, whether the
+seeded demo account is present, and leftover Stripe config. It exits non-zero
+on anything blocking. The items below are the fixes for what it reports.
+
 - [ ] **[you] Create the three Paystack subscription plans** and set
       `PAYSTACK_PLAN_STARTER`, `PAYSTACK_PLAN_PRO` and `PAYSTACK_PLAN_CLINIC` to
       their `PLN_` codes on the host. Without them `POST /v1/billing/subscribe`
@@ -48,10 +58,10 @@ Each of these will break the first deploy if skipped.
       variable looks valid and simply bills the wrong tier — this is the only
       check that catches it. It exits non-zero on any mismatch.
 
-- [ ] **[you] Add the subscription events to the Paystack webhook**:
+- [x] **[you] Add the subscription events to the Paystack webhook**:
       `subscription.create`, `subscription.disable`, `subscription.not_renew`
       and `invoice.payment_failed`, alongside the `charge.success` you already
-      receive.
+      receive. — done
 
 - [ ] **[you] Install `postgresql-client` on the host** (`pg_dump` must be on
       `PATH`). `deploy.sh` aborts deliberately if it cannot take a backup.
