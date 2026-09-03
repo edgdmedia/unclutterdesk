@@ -114,7 +114,7 @@ Ten requests exhausted the quota for **every therapist and client on the platfor
 
 10. **No CI quality gate.** *(Fixed on `dev`: a `verify` job now runs recursive typecheck plus API and app tests, and all three deploy jobs `needs: verify`.)* All three workflows deploy on push to `main` with no typecheck, no lint and no tests. `pnpm typecheck` and vitest both exist and are never run. Add them as required steps before the deploy job.
 
-11. **Test coverage is seventeen files** *(regression suites added on `dev` for CORS, the tenant router, the exception filter, client erasure and the CSRF guard; 124 tests now pass across the repo)* for the entire product (`tenant.service.spec.ts`, `intake.service.spec.ts`, `apiClient.test.ts`, one autosave test). Nothing covers authentication, cross-tenant isolation, billing, or bookings — the four areas where a bug is a breach.
+11. **Test coverage is eighteen files** *(regression suites added on `dev` for CORS, the tenant router, the exception filter, client erasure and the CSRF guard; 124 tests now pass across the repo)* for the entire product (`tenant.service.spec.ts`, `intake.service.spec.ts`, `apiClient.test.ts`, one autosave test). Nothing covers authentication, cross-tenant isolation, billing, or bookings — the four areas where a bug is a breach.
 
 12. **PM2 runs a single fork-mode process** *(Fixed on `dev`: restart policy, memory ceiling, graceful-reload timeouts and log files added, plus a real `GET /health` probe that queries the database and returns 503 when it is unreachable. Deliberately still one instance — see the note below.)* (`ecosystem.config.js`) with no health check. One unhandled rejection takes the whole API down until someone notices. Add `instances: 2` / cluster mode, `max_restarts`, and an uptime monitor on `GET /`.
 
@@ -150,6 +150,8 @@ Ten requests exhausted the quota for **every therapist and client on the platfor
     Requiring a session would have broken a real flow — clients who book without creating an account download the file from the confirmation page — so the link now carries an HMAC token derived from `JWT_SECRET`, issued in the booking confirmation and client portal responses. A wrong token and a missing booking return the same 404, and the token is checked before the database is touched, so ids cannot be probed by response or by timing.
 
 25. **`adminUpdateTherapistStatus` ignored the tenant and had no role check.** *(Fixed.)* `PATCH /v1/consult/admin/therapists/:profileId/status` carried only `JwtAuthGuard`, so any signed-in account — including a client — could reach it, and the query was `profile.update({ where: { id: profileId } })` with `tenantId` accepted and unused. Any practitioner on the platform could be deactivated by id, which removes them from service and hides them from booking pages. Now restricted to the practice's own OWNER or ADMIN and scoped with `updateMany`.
+
+26. **Structural guard against the whole bug class.** *(Added.)* Three separate methods accepted `tenantId` and never used it (`lockNote`, `adminUpdateTherapistStatus`, `uploadTherapistAvatar`), all for the same reason: Prisma's `update()` requires a unique `where` and so cannot carry a tenant filter, which makes the parameter quietly vestigial while the compiler stays happy. `src/tenant-isolation.spec.ts` now parses every service and fails if any method takes a tenant and ignores it — covering methods nobody has written a unit test for, which is how all three shipped. Verified it fires by injecting a violation.
 
 ## Things that are already right
 

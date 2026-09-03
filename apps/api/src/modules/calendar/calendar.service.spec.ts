@@ -12,7 +12,7 @@ import { CalendarService } from './calendar.service';
  */
 function makeService() {
   const prisma: any = { consultBooking: { findUnique: vi.fn() } };
-  return { service: new CalendarService(prisma, {} as any), prisma };
+  return { service: new CalendarService(prisma), prisma };
 }
 
 const booking = {

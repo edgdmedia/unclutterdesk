@@ -141,11 +141,17 @@ export class ConsultService {
       throw new BadRequestException('Valid avatar URL or data is required');
     }
 
-    // Update avatar on both Profile and ConsultTherapistProfile
-    await this.prisma.profile.update({
-      where: { id: profileId },
+    // profileId comes from the caller's own token, so this was not reachable
+    // across tenants — but scoping it here enforces the invariant in the query
+    // rather than relying on every future caller passing the right thing.
+    const result = await this.prisma.profile.updateMany({
+      where: { id: profileId, tenantId },
       data: { avatarUrl },
     });
+
+    if (result.count === 0) {
+      throw new NotFoundException('Profile not found in this practice');
+    }
 
     return { success: true, avatarUrl };
   }
