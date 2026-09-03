@@ -75,7 +75,7 @@ describe('CORS origin handler', () => {
     await expect(allows('http://localhost:5173', { isProduction: false })).resolves.toBe(true);
     await expect(allows('http://dr-smith.localhost:5173', { isProduction: false })).resolves.toBe(true);
     await expect(
-      allows('https://preview.unclutterdesk-app.pages.dev', { isProduction: false }),
+      allows('https://preview.app-unclutterdesk.pages.dev', { isProduction: false }),
     ).resolves.toBe(true);
   });
 

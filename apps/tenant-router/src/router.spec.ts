@@ -3,7 +3,7 @@ import { decide, originRequest, type RouterConfig } from './router';
 
 const config: RouterConfig = {
   apexHost: 'unclutterdesk.com',
-  originHost: 'unclutterdesk-app.pages.dev',
+  originHost: 'app-unclutterdesk.pages.dev',
 };
 
 describe('decide', () => {
@@ -66,7 +66,7 @@ describe('originRequest', () => {
       config,
     );
     const url = new URL(req.url);
-    expect(url.hostname).toBe('unclutterdesk-app.pages.dev');
+    expect(url.hostname).toBe('app-unclutterdesk.pages.dev');
     expect(url.protocol).toBe('https:');
     expect(url.pathname).toBe('/book');
     expect(url.search).toBe('?service=42');

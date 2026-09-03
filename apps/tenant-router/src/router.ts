@@ -3,7 +3,7 @@
 export interface RouterConfig {
   /** The zone apex, e.g. "unclutterdesk.com". */
   apexHost: string;
-  /** Where the app bundle actually lives, e.g. "unclutterdesk-app.pages.dev". */
+  /** Where the app bundle actually lives, e.g. "app-unclutterdesk.pages.dev". */
   originHost: string;
 }
 

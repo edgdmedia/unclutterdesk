@@ -17,6 +17,6 @@
     "APEX_HOST": "unclutterdesk.com",
     // The app Pages project's .pages.dev hostname. Verify this matches the
     // CLOUDFLARE_PAGES_APP_PROJECT secret used by .github/workflows/deploy-app.yml.
-    "ORIGIN_HOST": "unclutterdesk-app.pages.dev"
+    "ORIGIN_HOST": "app-unclutterdesk.pages.dev"
   }
 }

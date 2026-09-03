@@ -70,10 +70,10 @@ API and gets a 404 back. Same outcome, no added latency.
 
 #### Deploying it
 
-1. **Check `ORIGIN_HOST`.** `wrangler.jsonc` assumes the app project is
-   `unclutterdesk-app.pages.dev`. Confirm against the actual project name (the
-   `CLOUDFLARE_PAGES_APP_PROJECT` secret used by `deploy-app.yml`) and correct it
-   if it differs — everything else depends on this being right.
+1. **`ORIGIN_HOST` is confirmed.** `wrangler.jsonc` points at
+   `app-unclutterdesk.pages.dev`, verified 2026-09-03 to serve the app bundle
+   (including the SPA fallback on arbitrary paths). No action needed unless the
+   Pages project is renamed.
 
 2. **Deploy.** `.github/workflows/deploy-tenant-router.yml` deploys on pushes to
    `main` touching `apps/tenant-router/**`, using the existing
@@ -90,7 +90,7 @@ API and gets a 404 back. Same outcome, no added latency.
 
    | Type | Name | Target | Proxy |
    | --- | --- | --- | --- |
-   | CNAME | `*` | `unclutterdesk-app.pages.dev` | **Proxied** |
+   | CNAME | `*` | `app-unclutterdesk.pages.dev` | **Proxied** |
 
    The Worker answers before the origin is consulted, so the target is mostly a
    formality — an originless `AAAA * 100::` works equally well.
