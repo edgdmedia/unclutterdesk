@@ -1,7 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { readFileSync, readdirSync, statSync } from 'node:fs';
-import { resolve, dirname, join } from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { resolve, join } from 'node:path';
 
 /**
  * A structural guard against the bug that appeared three times in this codebase:
@@ -20,7 +19,10 @@ import { fileURLToPath } from 'node:url';
  * methods nobody has written a unit test for — which is the point, since all
  * three of the above had no tests when they shipped.
  */
-const MODULES_DIR = resolve(dirname(fileURLToPath(import.meta.url)), 'modules');
+// __dirname rather than import.meta.url: this package compiles to CommonJS,
+// and tsc rejects import.meta under that module setting even though vitest
+// accepts it.
+const MODULES_DIR = resolve(__dirname, 'modules');
 
 function serviceFiles(dir: string): string[] {
   const out: string[] = [];
