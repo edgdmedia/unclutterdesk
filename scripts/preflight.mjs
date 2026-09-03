@@ -145,6 +145,10 @@ for (const key of ['PAYSTACK_SECRET_KEY', 'PAYSTACK_PLAN_STARTER', 'PAYSTACK_PLA
   env[key] ? pass(`${key} set`) : failed(`${key} set`, 'missing — subscriptions return 503 without it');
 }
 
+env.SENTRY_DSN
+  ? pass('SENTRY_DSN set', 'errors reported to Sentry')
+  : warn('SENTRY_DSN', 'unset — 5xx are logged to PM2 only, nothing aggregates or alerts');
+
 if (env.PAYSTACK_SECRET_KEY?.startsWith('sk_test_')) {
   warn('Paystack key mode', 'test key — live plan codes will not resolve against it');
 }

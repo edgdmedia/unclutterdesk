@@ -199,9 +199,13 @@ takes the API down. Detail in `docs/CLOUDFLARE_SETUP.md` §2.
       (owner, slug confirmation) deactivates and starts a 30-day window;
       `POST /v1/admin/privacy/practices/:tenantId/purge` (platform admin) erases
       irreversibly once it elapses.
-- [ ] **[me] Error monitoring (Sentry)** — blocked on a DSN from you. The
-      exception filter logs 5xx with a reference id, but nothing aggregates or
-      alerts. Until then, production failures surface only in PM2 logs.
+- [x] **[me] Error monitoring (Sentry)** — built and inert until you add a DSN.
+      Set `SENTRY_DSN` in `/home/unclutterdesk/app/.env` and restart:
+      `pm2 restart unclutterdesk-api --update-env`. Optionally
+      `SENTRY_TRACES_SAMPLE_RATE` (default 0 — errors only; tracing is billed
+      per request). Only 5xx are reported, tagged with the same reference id the
+      caller is shown. Request bodies, cookies, query strings and non-allowlisted
+      headers are stripped before anything leaves the process.
 - [ ] **[me] Cluster mode** needs a shared throttler store (Redis) first. PM2 is
       pinned to one instance because the in-memory limiter would otherwise
       multiply every limit per worker.

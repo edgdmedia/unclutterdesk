@@ -8,6 +8,7 @@ import {
 } from '@nestjs/common';
 import { Request, Response } from 'express';
 import { randomUUID } from 'crypto';
+import * as Sentry from '@sentry/nestjs';
 
 /**
  * Catches everything that reaches the top of the request pipeline.
@@ -45,6 +46,17 @@ export class AllExceptionsFilter implements ExceptionFilter {
         `[${reference}] ${where} -> ${status}`,
         exception instanceof Error ? exception.stack : String(exception),
       );
+
+      // Reported here rather than via Sentry's own global filter or the
+      // @SentryExceptionCaptured decorator, both of which would also send every
+      // 401 and 404 — noise that buries the failures worth looking at.
+      // Inert when SENTRY_DSN is unset.
+      Sentry.withScope((scope) => {
+        // The same id the caller is given, so a quoted reference finds the event.
+        scope.setTag('reference', reference);
+        scope.setTag('route', where);
+        Sentry.captureException(exception);
+      });
 
       return response.status(status).json({
         statusCode: status,

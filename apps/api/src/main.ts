@@ -3,6 +3,10 @@
 // requires in declaration order, so body-level dotenv calls in main.ts run too late.
 import './env';
 
+// Must come before any module the SDK instruments (http, express, Postgres).
+// It reads SENTRY_DSN, so it has to follow './env' — and is inert without it.
+import './instrument';
+
 import { NestFactory } from '@nestjs/core';
 import { ValidationPipe } from '@nestjs/common';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';

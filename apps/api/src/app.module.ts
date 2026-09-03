@@ -1,6 +1,7 @@
 import { Module, NestModule, MiddlewareConsumer, RequestMethod } from '@nestjs/common';
 import { APP_GUARD } from '@nestjs/core';
 import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
+import { SentryModule } from '@sentry/nestjs/setup';
 import { PrismaService } from './common/prisma/prisma.service';
 import { HealthController } from './common/health.controller';
 import { TenantMiddleware } from './common/middleware/tenant.middleware';
@@ -19,6 +20,8 @@ import { PrivacyModule } from './modules/privacy/privacy.module';
 
 @Module({
   imports: [
+    // Inert unless SENTRY_DSN is set — see src/instrument.ts.
+    SentryModule.forRoot(),
     ScheduleModule.forRoot(),
     // ONE global tier only. ThrottlerGuard enforces *every* named throttler on
     // *every* route (it ANDs the results), so a second "strict" tier defined here
