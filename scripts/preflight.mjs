@@ -23,15 +23,61 @@ const pass = (name, detail = '') => results.push({ level: 'pass', name, detail }
 const warn = (name, detail) => results.push({ level: 'warn', name, detail });
 const failed = (name, detail) => results.push({ level: 'fail', name, detail });
 
-// Load .env without exporting it, so the checks see what the API will see.
-const env = { ...process.env };
-try {
-  for (const line of readFileSync(resolve(root, '.env'), 'utf8').split('\n')) {
-    const m = line.match(/^\s*([A-Z0-9_]+)=(.*)$/);
-    if (m && !env[m[1]]) env[m[1]] = m[2].trim().replace(/^["']|["']$/g, '');
+// Load .env the way the API does.
+//
+// apps/api/src/env.ts tries the repo root first, then apps/api/.env, and dotenv
+// does not overwrite a value it has already set — so the root file wins. And
+// deploy.sh copies apps/api/.env to the root only when the root file is absent,
+// so the two drift apart silently. Editing the wrong one changes nothing.
+const ENV_CANDIDATES = ['.env', 'apps/api/.env'];
+
+function parseEnvFile(relPath) {
+  try {
+    const raw = readFileSync(resolve(root, relPath), 'utf8');
+    const out = {};
+    for (const line of raw.split(/\r?\n/)) {
+      const m = line.match(/^\s*(?:export\s+)?([A-Za-z_][A-Za-z0-9_]*)\s*=\s*(.*)$/);
+      if (m) out[m[1]] = m[2].trim().replace(/^["']|["']$/g, '');
+    }
+    return out;
+  } catch {
+    return null;
   }
-} catch {
-  warn('.env', 'not found — relying on the process environment alone');
+}
+
+const envFiles = ENV_CANDIDATES.map((p) => ({ path: p, values: parseEnvFile(p) })).filter(
+  (f) => f.values,
+);
+
+const env = { ...process.env };
+for (const file of envFiles) {
+  for (const [k, v] of Object.entries(file.values)) if (!env[k]) env[k] = v;
+}
+
+if (envFiles.length === 0) {
+  warn('.env', 'none found — relying on the process environment alone');
+} else {
+  pass('Env file', `${envFiles[0].path} (loaded first, so it wins)`);
+}
+
+// A second file whose values disagree is the likeliest reason a change appears
+// to have no effect.
+if (envFiles.length > 1) {
+  const [primary, ...rest] = envFiles;
+  const conflicts = [];
+  for (const other of rest) {
+    for (const [k, v] of Object.entries(other.values)) {
+      if (primary.values[k] !== undefined && primary.values[k] !== v) conflicts.push(k);
+      if (primary.values[k] === undefined) conflicts.push(`${k} (only in ${other.path})`);
+    }
+  }
+  conflicts.length
+    ? failed(
+        'Conflicting env files',
+        `${primary.path} and ${rest.map((r) => r.path).join(', ')} disagree on: ` +
+          `${[...new Set(conflicts)].join(', ')}. ${primary.path} is the one that takes effect.`,
+      )
+    : warn('Multiple env files', `${envFiles.map((f) => f.path).join(', ')} — values agree`);
 }
 
 const sh = (cmd, args, opts = {}) =>

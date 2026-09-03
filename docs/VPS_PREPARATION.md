@@ -70,8 +70,31 @@ pg_dump --version
 
 ## 4. Environment variables
 
-Edit `/home/unclutterdesk/app/.env` — that is the one the API loads, since PM2
-runs with this directory as its working directory.
+**There may be two env files, and only one takes effect.**
+`apps/api/src/env.ts` loads the repo root `.env` first, then `apps/api/.env`,
+and dotenv never overwrites a value it has already set — so the root file wins.
+`deploy.sh` copies `apps/api/.env` to the root *only when the root file is
+absent*, so once both exist they drift apart silently and editing the wrong one
+changes nothing.
+
+Check which is which before editing (secrets truncated):
+
+```bash
+cd /home/unclutterdesk/app
+for f in .env apps/api/.env; do
+  echo "=== $f ==="
+  if [ -f "$f" ]; then
+    grep -E '^[[:space:]]*(PAYSTACK_SECRET_KEY|PAYSTACK_PLAN_|NODE_ENV|DATABASE_URL)=' "$f" \
+      | sed -E 's/(KEY=|URL=)(.{10}).*/\1\2…/'
+  else
+    echo "  (absent)"
+  fi
+done
+```
+
+`preflight.mjs` reports which file it loaded and fails if the two disagree.
+
+Edit `/home/unclutterdesk/app/.env` — the one that wins.
 
 ```bash
 # Paystack subscription plans (live-mode codes)
