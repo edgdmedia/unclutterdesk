@@ -97,11 +97,10 @@ which is what `deploy.sh` applies.
       If the drift check prints real SQL, **stop** — baselining a drifted
       database records a history that lies about the live state.
 
-- [ ] **[you] Add `proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;`
-      to the nginx site.** The API now sets `trust proxy`. Without the header,
-      `req.ip` is nginx's own address and the rate limiter buckets every user on
-      the platform together — the bug that capped the whole API at 10 requests a
-      minute.
+- [x] **nginx forwarded-for headers** — already present in
+      `/etc/nginx/conf.d/api-unclutterdesk.com.conf`, inside the `location`
+      block. No change needed. Revisit at Phase 3, when Cloudflare adds a second
+      proxy hop.
 
 - [ ] **[you] Set `CORS_ORIGINS`** if any origin outside `*.unclutterdesk.com`
       needs API access. The permissive `.pages.dev` and `localhost` matching is

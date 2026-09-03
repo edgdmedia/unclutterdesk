@@ -183,50 +183,31 @@ psql "$PG_URL" -c 'SELECT count(*) FROM "BankSubaccount" WHERE "stripeAccountId"
 
 Both must be `0`. If either is not, stop — there is billing state to migrate.
 
-## 7. nginx: pass the real client IP
+## 7. nginx — already correct, verify only
 
-The API now sets `trust proxy`. Without these headers it sees nginx's own
-address for every request, and the rate limiter buckets every user on the
-platform into one counter — the bug that capped the whole API at ten requests a
-minute.
-
-```bash
-cd /home/unclutterdesk/app
-
-# Show what would change; writes nothing
-node scripts/nginx-proxy-headers.mjs
-
-# Apply: backs up, edits, runs nginx -t, reloads
-sudo node scripts/nginx-proxy-headers.mjs --apply --sse
-```
-
-It finds the site by `server_name`, adds only the directives that are missing,
-and puts them **inside the `location` block** rather than at server level —
-nginx does not merge `proxy_set_header` across levels, so a location with even
-one of its own silently discards every inherited one.
-
-If `nginx -t` rejects the result, the script restores the backup and reloads
-nothing. Re-running it when everything is already present reports "Nothing to
-change".
-
-`--sse` also sets `proxy_buffering off` and a long read timeout, which
-`/v1/notifications/stream` needs; without them events arrive in batches or not
-at all.
-
-To do it by hand instead, inside the `location` block that has `proxy_pass`:
-
-```nginx
-proxy_set_header Host              $host;
-proxy_set_header X-Real-IP         $remote_addr;
-proxy_set_header X-Forwarded-For   $proxy_add_x_forwarded_for;
-proxy_set_header X-Forwarded-Proto $scheme;
-```
+The API sets `trust proxy`, which needs nginx to forward the real client
+address. `/etc/nginx/conf.d/api-unclutterdesk.com.conf` already does, inside the
+`location` block, so **no change is required**. Confirm with:
 
 ```bash
-sudo nginx -t && sudo systemctl reload nginx
+sudo grep -E "proxy_set_header (Host|X-Real-IP|X-Forwarded-)" \
+  /etc/nginx/conf.d/api-unclutterdesk.com.conf
 ```
 
-Safe to do now: the current code ignores these headers, the new code needs them.
+Expect `Host`, `X-Real-IP`, `X-Forwarded-For $proxy_add_x_forwarded_for` and
+`X-Forwarded-Proto`. All four must be in the same block as `proxy_pass`: nginx
+replaces inherited `proxy_set_header` directives rather than merging them, so a
+`location` with any of its own ignores every server-level one — silently, and
+with a passing `nginx -t`.
+
+Buffering needs no change either. `/v1/notifications/stream` sets
+`X-Accel-Buffering: no` on the response, which nginx honours per-response, so
+`proxy_buffering off` is unnecessary.
+
+One thing to revisit at Phase 3: once Cloudflare proxies the API there are two
+hops rather than one, and `trust proxy: 1` would read Cloudflare's address.
+`docs/CLOUDFLARE_SETUP.md` §2 covers the `real_ip_header CF-Connecting-IP`
+change that goes with it.
 
 ## 8. Re-check
 
