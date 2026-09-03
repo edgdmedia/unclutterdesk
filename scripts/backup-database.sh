@@ -57,6 +57,15 @@ command -v pg_dump >/dev/null 2>&1 || fail "pg_dump not found — install postgr
 UPLOAD_CONFIGURED=false
 if [ -n "${BACKUP_S3_BUCKET:-}" ] && command -v aws >/dev/null 2>&1; then
     UPLOAD_CONFIGURED=true
+
+    # R2 uses the region "auto", and the aws CLI refuses to run without one.
+    export AWS_DEFAULT_REGION="${AWS_DEFAULT_REGION:-auto}"
+
+    # aws-cli 2.23+ sends a CRC32 full-object checksum by default. R2 supports
+    # CRC32 only as a composite checksum (CRC64NVME is its full-object one), so
+    # the default makes uploads fail. Sending a checksum only when the API
+    # requires one avoids the mismatch.
+    export AWS_REQUEST_CHECKSUM_CALCULATION="${AWS_REQUEST_CHECKSUM_CALCULATION:-when_required}"
 fi
 
 if [ "$CHECK_ONLY" = true ]; then
