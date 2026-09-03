@@ -83,7 +83,34 @@ if (skipDb) {
 } else if (!env.DATABASE_URL) {
   failed('Database checks', 'skipped — DATABASE_URL is not set');
 } else {
-  // Drift: the live schema must match schema.prisma before baselining.
+  // Migration state first: it decides how to read the drift check below.
+  let baselined = false;
+  try {
+    const status = sh('npx', ['prisma', 'migrate', 'status'], {
+      env: { ...process.env, ...env },
+    });
+    if (/up to date/i.test(status)) {
+      baselined = true;
+      pass('Migration state', 'baseline applied, no pending migrations');
+    } else {
+      warn('Migration state', 'baselined, with migrations still to apply — deploy.sh will apply them');
+      baselined = true;
+    }
+  } catch (e) {
+    const out = String(e.stdout || e.stderr || '');
+    if (/P3005|not empty/i.test(out)) {
+      warn('Migration state', 'not baselined yet — see docs/DATABASE_MIGRATION_RUNBOOK.md');
+    } else if (/following migrations have not yet been applied/i.test(out)) {
+      baselined = true;
+      warn('Migration state', 'pending migrations — deploy.sh will apply them');
+    } else {
+      warn('Migration state', out.trim().split('\n')[0] || 'could not read');
+    }
+  }
+
+  // Drift matters only until the baseline exists. Once it does, migrations are
+  // *expected* to differ from the live schema — that is what applying them
+  // fixes — so treating that as a failure would block every future deploy.
   try {
     const diff = sh(
       'npx',
@@ -91,35 +118,27 @@ if (skipDb) {
        '--to-schema-datamodel', 'prisma/schema.prisma', '--script'],
       { env: { ...process.env, ...env } },
     );
-    const empty = /empty migration/i.test(diff);
-    if (empty) {
+
+    if (/empty migration/i.test(diff)) {
       pass('Schema drift', 'live database matches schema.prisma');
     } else {
       const destructive = /DROP\s+(TABLE|COLUMN)/i.test(diff);
       const lines = diff.split('\n').filter((l) => l.trim() && !l.startsWith('--')).length;
-      failed(
-        'Schema drift',
-        `${lines} statement(s) differ${destructive ? ', INCLUDING DROPs — data loss risk' : ''}. ` +
-          'Reconcile before baselining; see docs/DATABASE_MIGRATION_RUNBOOK.md',
-      );
+      const detail =
+        `${lines} statement(s) differ${destructive ? ', INCLUDING DROPs' : ''}`;
+
+      if (baselined) {
+        warn('Schema drift', `${detail} — expected if migrations are pending`);
+      } else {
+        failed(
+          'Schema drift',
+          `${detail}. Baselining a drifted database records a history that lies ` +
+            'about the live state — see docs/DATABASE_MIGRATION_RUNBOOK.md',
+        );
+      }
     }
   } catch (e) {
     failed('Schema drift', `could not compare: ${String(e.stderr || e.message).trim().split('\n')[0]}`);
-  }
-
-  // Migration baseline state.
-  try {
-    const status = sh('npx', ['prisma', 'migrate', 'status'], {
-      env: { ...process.env, ...env },
-    });
-    /up to date/i.test(status)
-      ? pass('Migration state', 'baseline applied')
-      : warn('Migration state', 'not baselined yet — run migrate resolve --applied 0_init');
-  } catch (e) {
-    const out = String(e.stdout || e.stderr || '');
-    /not yet been applied|following migration/i.test(out)
-      ? warn('Migration state', 'pending migrations — expected before the first deploy')
-      : warn('Migration state', out.trim().split('\n')[0] || 'could not read');
   }
 
   // Seeded demo account must not exist in production.

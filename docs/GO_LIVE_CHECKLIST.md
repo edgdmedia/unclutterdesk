@@ -15,15 +15,30 @@ Legend: **[you]** needs credentials, a dashboard, or production access.
 
 Each of these will break the first deploy if skipped.
 
-Most of them are checked by one read-only command on the host — it creates,
-changes and deletes nothing:
+Most of them are checked by one read-only command **on the production host** —
+it creates, changes and deletes nothing.
+
+The script lives on `dev`, which the host does not have yet, so fetch just the
+scripts directory. Do **not** check out `dev`'s `prisma/schema.prisma`: the
+drift check compares the live database against whatever schema is in the working
+tree, and it must be `main`'s for the answer to mean anything.
+
+    ssh <PROD_SSH_USER>@<PROD_SSH_HOST>
+    cd /home/unclutterdesk/app
+
+    git fetch origin dev
+    git checkout origin/dev -- scripts/     # scripts only, not the schema
 
     node scripts/preflight.mjs
 
 It reports Node and `pg_dump` availability, the required environment variables,
-schema drift against `schema.prisma`, migration baseline state, whether the
-seeded demo account is present, and leftover Stripe config. It exits non-zero
-on anything blocking. The items below are the fixes for what it reports.
+migration baseline state, schema drift, whether the seeded demo account is
+present, and leftover Stripe config. It exits non-zero on anything blocking.
+The items below are the fixes for what it reports.
+
+Run it again after the merge: drift is only a blocking failure *before* the
+baseline exists. Once baselined, a difference just means migrations are pending,
+which is what `deploy.sh` applies.
 
 - [ ] **[you] Create the three Paystack subscription plans** and set
       `PAYSTACK_PLAN_STARTER`, `PAYSTACK_PLAN_PRO` and `PAYSTACK_PLAN_CLINIC` to
