@@ -31,6 +31,8 @@ const EXEMPT_ROUTES = new Set([
   'POST /v1/auth/resend-verification',
   'POST /v1/auth/forgot-password',
   'POST /v1/auth/reset-password',
+  // Runs before the claimant has any session; the invite token is the credential.
+  'POST /v1/auth/invite/claim',
   'POST /v1/auth/refresh',
   'POST /v1/admin/auth/login',
   'POST /v1/tenant/register',

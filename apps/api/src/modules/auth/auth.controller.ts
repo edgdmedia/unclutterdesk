@@ -62,6 +62,18 @@ export class AuthController {
     return this.authService.resetPassword(dto);
   }
 
+  @Post('invite/claim')
+  @Throttle({ default: { limit: 5, ttl: 60000 } })
+  @ApiOperation({ summary: 'Accept a staff invitation and sign in' })
+  async claimInvite(
+    @Body() dto: { token: string; password: string; firstName?: string; lastName?: string },
+    @Res({ passthrough: true }) res: Response,
+  ) {
+    const result = await this.authService.claimInvite(dto);
+    const csrfToken = this.setSessionCookies(res, result.accessToken, result.refreshToken);
+    return { profile: result.profile, csrfToken };
+  }
+
   @Post('login')
   @Throttle({ default: { limit: 5, ttl: 60000, blockDuration: 300000 } })
   @ApiOperation({ summary: 'Login with email and password' })

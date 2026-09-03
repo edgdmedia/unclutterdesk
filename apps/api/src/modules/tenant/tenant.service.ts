@@ -1,5 +1,6 @@
 import { Injectable, BadRequestException, ConflictException, NotFoundException, ForbiddenException } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
+import { randomBytes } from 'crypto';
 import { PrismaService } from '../../common/prisma/prisma.service';
 
 @Injectable()
@@ -362,6 +363,30 @@ export class TenantService {
     }));
   }
 
+  /**
+   * What the claim page needs to render, for someone with a token and no
+   * account yet. Returns the practice name, the invited address and the role —
+   * and nothing else, since this is reachable without a session.
+   */
+  async getInviteByToken(claimToken: string) {
+    const invite = await this.prisma.consultPendingInvite.findUnique({
+      where: { claimToken },
+      include: { tenant: { select: { name: true, slug: true } } },
+    });
+
+    if (!invite || invite.expiresAt < new Date()) {
+      throw new NotFoundException('This invitation is no longer valid');
+    }
+
+    return {
+      email: invite.email,
+      role: invite.role,
+      practiceName: invite.tenant.name,
+      practiceSlug: invite.tenant.slug,
+      expiresAt: invite.expiresAt.toISOString(),
+    };
+  }
+
   async inviteStaffMember(tenantId: bigint, dto: { email: string; role: 'ADMIN' | 'RECEPTIONIST' | 'THERAPIST' }) {
     const tenant = await this.prisma.tenant.findUnique({ where: { id: tenantId } });
     if (!tenant) throw new NotFoundException('Practice tenant not found');
@@ -383,7 +408,10 @@ export class TenantService {
     }
 
     const email = dto.email.toLowerCase().trim();
-    const claimToken = `invite-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
+    // Math.random() is not cryptographic and Date.now() is predictable, so the
+    // previous token could be guessed — and claiming an invite grants a role in
+    // someone else's practice, with access to their clinical records.
+    const claimToken = randomBytes(32).toString('hex');
     const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000); // 7 days
 
     const invite = await this.prisma.consultPendingInvite.upsert({

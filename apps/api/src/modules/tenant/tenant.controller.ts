@@ -48,6 +48,14 @@ export class TenantController {
     return result;
   }
 
+  @Get('public/invite/:claimToken')
+  @ApiOperation({ summary: 'Details of a pending staff invitation, for the claim page' })
+  getInvite(@Param('claimToken') claimToken: string) {
+    // Public by necessity: the invitee has no account until they claim it. The
+    // token is the credential, so it is 32 random bytes.
+    return this.tenantService.getInviteByToken(claimToken);
+  }
+
   @AnyAuthenticated()
   @Get('check-slug/:slug')
   @UseGuards(JwtAuthGuard, RolesGuard)

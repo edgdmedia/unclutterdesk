@@ -615,6 +615,115 @@ export class AuthService {
     };
   }
 
+  /**
+   * Turns an invitation into a staff account and signs the person in.
+   *
+   * The claim page previously called nothing at all — it navigated to
+   * /dashboard, so an invited colleague ended up with no profile and no
+   * practice. The whole exchange happens in one transaction: consume the
+   * invite, create or attach the login, create the profile with the role the
+   * inviter chose. A half-completed claim would leave a token that looks unused
+   * against an account that already exists.
+   */
+  async claimInvite(dto: {
+    token: string;
+    password: string;
+    firstName?: string;
+    lastName?: string;
+  }) {
+    if (!dto?.token) throw new BadRequestException('Invitation token is required');
+    if (!dto.password || dto.password.length < 8) {
+      throw new BadRequestException('Choose a password of at least 8 characters');
+    }
+
+    const invite = await this.prisma.consultPendingInvite.findUnique({
+      where: { claimToken: dto.token },
+    });
+
+    if (!invite || invite.expiresAt < new Date()) {
+      // Identical for an unknown token and an expired one, so the endpoint
+      // cannot be used to tell which invitations exist.
+      throw new BadRequestException('This invitation is no longer valid');
+    }
+
+    const email = invite.email.toLowerCase().trim();
+
+    const existingProfile = await this.prisma.profile.findFirst({
+      where: { tenantId: invite.tenantId, email },
+    });
+    if (existingProfile) {
+      throw new BadRequestException('That address already has a profile in this practice');
+    }
+
+    const passwordHash = await bcrypt.hash(dto.password, 10);
+
+    const { profile } = await this.prisma.$transaction(async (tx) => {
+      // Consume the invite first. deleteMany returning zero means another
+      // request claimed it in the meantime, and this one loses cleanly.
+      const consumed = await tx.consultPendingInvite.deleteMany({
+        where: { id: invite.id },
+      });
+      if (consumed.count === 0) {
+        throw new BadRequestException('This invitation has already been used');
+      }
+
+      // The address may already have a login from another practice.
+      let user = await tx.user.findUnique({ where: { email } });
+      if (!user) {
+        user = await tx.user.create({
+          data: {
+            email,
+            username: email.split('@')[0] + '-' + invite.tenantId.toString(),
+            password: passwordHash,
+          },
+        });
+      }
+
+      const created = await tx.profile.create({
+        data: {
+          tenantId: invite.tenantId,
+          userId: user.id,
+          email,
+          username: email.split('@')[0],
+          type: 'staff',
+          role: invite.role,
+          firstName: dto.firstName?.trim() || null,
+          lastName: dto.lastName?.trim() || null,
+          status: 'active',
+          // The invitation was sent to this address, so reaching it proves control.
+          emailVerified: true,
+          emailVerifiedAt: new Date(),
+        },
+      });
+
+      return { user, profile: created };
+    });
+
+    const { accessToken, refreshToken } = this.generateTokens(
+      profile.userId!,
+      profile.id,
+      profile.tenantId,
+      profile.type,
+    );
+
+    this.logger.log(`Invite claimed: profile ${profile.id} joined tenant ${profile.tenantId} as ${profile.role}`);
+
+    return {
+      accessToken,
+      refreshToken,
+      profile: {
+        id: profile.id.toString(),
+        email: profile.email,
+        username: profile.username,
+        firstName: profile.firstName,
+        lastName: profile.lastName,
+        type: profile.type,
+        status: profile.status,
+        avatarUrl: profile.avatarUrl,
+      },
+    };
+  }
+
   async getPlatformAdminStatus(userId: bigint) {
     const user = await this.prisma.user.findUnique({ where: { id: userId } });
     if (!user || !user.platformRole) throw new NotFoundException('Session profile not found');
