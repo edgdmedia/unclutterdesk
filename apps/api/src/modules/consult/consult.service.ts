@@ -676,6 +676,196 @@ export class ConsultService {
    * address could read that person's appointment history — and the response
    * carries Jitsi join links, which are themselves unauthenticated.
    */
+  /**
+   * The booking a client is allowed to move, with the reason if they are not.
+   *
+   * Shared by the options list and the reschedule itself, so the two can never
+   * disagree about what is movable — offering a slot the write then refuses is
+   * the failure mode this exists to prevent.
+   */
+  private async loadReschedulable(tenantId: bigint, clientProfileId: bigint, bookingId: bigint) {
+    const booking = await this.prisma.consultBooking.findFirst({
+      // Scoped by client as well as tenant: without clientProfileId any signed-in
+      // client could move a stranger's appointment by guessing a booking id.
+      where: { id: bookingId, tenantId, clientProfileId },
+      include: { availability: true, service: true },
+    });
+
+    if (!booking) throw new NotFoundException('Booking not found');
+
+    if (booking.status === 'CANCELLED' || booking.status === 'COMPLETED') {
+      throw new BadRequestException(`A ${booking.status.toLowerCase()} session cannot be moved`);
+    }
+
+    const tenant = await this.prisma.tenant.findUnique({
+      where: { id: tenantId },
+      select: { cancellationHours: true },
+    });
+    const noticeHours = tenant?.cancellationHours ?? 24;
+    const deadline = new Date(
+      booking.availability.startsAt.getTime() - noticeHours * 60 * 60 * 1000,
+    );
+
+    if (new Date() > deadline) {
+      throw new BadRequestException(
+        `This session can no longer be moved online — it starts within ${noticeHours} hours. Please contact the practice.`,
+      );
+    }
+
+    return { booking, noticeHours };
+  }
+
+  /**
+   * Slots this booking could move to: same practitioner, same service, still
+   * open, still in the future.
+   *
+   * Keeping the practitioner fixed is deliberate — the payout split, the
+   * practitioner's prep and their calendar are all tied to who is seeing the
+   * client, so switching therapist is a new booking, not a reschedule.
+   */
+  async getRescheduleOptions(tenantId: bigint, clientProfileId: bigint, bookingId: bigint) {
+    const { booking, noticeHours } = await this.loadReschedulable(
+      tenantId,
+      clientProfileId,
+      bookingId,
+    );
+
+    const slots = await this.prisma.consultAvailability.findMany({
+      where: {
+        tenantId,
+        providerProfileId: booking.availability.providerProfileId,
+        serviceId: booking.serviceId,
+        isActive: true,
+        // A slot that starts sooner than the notice window would be unmovable
+        // the moment it was booked, so it is not worth offering.
+        startsAt: { gte: new Date(Date.now() + noticeHours * 60 * 60 * 1000) },
+        id: { not: booking.availabilityId },
+      },
+      orderBy: { startsAt: 'asc' },
+      take: 60,
+    });
+
+    return {
+      bookingId: booking.id.toString(),
+      serviceTitle: booking.service.title,
+      currentStartsAt: booking.availability.startsAt.toISOString(),
+      noticeHours,
+      slots: slots.map((slot) => ({
+        id: slot.id.toString(),
+        startsAt: slot.startsAt.toISOString(),
+        endsAt: slot.endsAt.toISOString(),
+        channel: slot.channel,
+      })),
+    };
+  }
+
+  /**
+   * Move a booking to another open slot.
+   *
+   * The new slot is claimed with the same conditional `updateMany` the original
+   * booking uses: the WHERE still requires `isActive: true`, so Postgres holds
+   * the row lock while evaluating it and a second request matches nothing
+   * rather than double-booking the time. Releasing the old slot and repointing
+   * the booking happen in that same transaction, so a failure part-way cannot
+   * leave the client holding two slots or none.
+   */
+  async rescheduleBooking(
+    tenantId: bigint,
+    clientProfileId: bigint,
+    bookingId: bigint,
+    newAvailabilityId: bigint,
+  ) {
+    const { booking } = await this.loadReschedulable(tenantId, clientProfileId, bookingId);
+
+    if (newAvailabilityId === booking.availabilityId) {
+      throw new BadRequestException('That is the time this session is already booked for');
+    }
+
+    const target = await this.prisma.consultAvailability.findFirst({
+      where: { id: newAvailabilityId, tenantId },
+    });
+
+    if (!target || !target.isActive) {
+      throw new BadRequestException('That time is no longer available');
+    }
+    if (target.startsAt <= new Date()) {
+      throw new BadRequestException('That time is in the past');
+    }
+    if (target.providerProfileId !== booking.availability.providerProfileId) {
+      throw new BadRequestException(
+        'That time belongs to a different practitioner. Book a new session instead.',
+      );
+    }
+    if (target.serviceId !== booking.serviceId) {
+      throw new BadRequestException('That time is not open for this service');
+    }
+
+    const updated = await this.prisma.$transaction(async (tx) => {
+      const claimed = await tx.consultAvailability.updateMany({
+        where: { id: target.id, tenantId, isActive: true },
+        data: { isActive: false },
+      });
+      if (claimed.count === 0) {
+        throw new BadRequestException('That time was taken while you were choosing it');
+      }
+
+      // Only now is the old slot safe to give back.
+      await tx.consultAvailability.updateMany({
+        where: { id: booking.availabilityId, tenantId },
+        data: { isActive: true },
+      });
+
+      const moved = await tx.consultBooking.updateMany({
+        where: { id: booking.id, tenantId, clientProfileId },
+        data: { availabilityId: target.id, updatedAt: new Date() },
+      });
+      if (moved.count === 0) {
+        throw new BadRequestException('Booking not found');
+      }
+
+      return tx.consultBooking.findFirst({
+        where: { id: booking.id, tenantId },
+        include: { availability: true, service: true, client: true },
+      });
+    });
+
+    if (!updated) throw new NotFoundException('Booking not found');
+
+    const clientName =
+      `${updated.client.firstName || ''} ${updated.client.lastName || ''}`.trim() ||
+      updated.client.email;
+    const when = updated.availability.startsAt.toISOString();
+
+    // Best effort from here: the booking has already moved, and a failed
+    // notification must not roll that back or surface as an error to the client.
+    try {
+      await this.notifications.notify({
+        tenantId,
+        profileIds: [updated.availability.providerProfileId],
+        type: 'consult.booking_rescheduled',
+        title: 'Session moved',
+        message: `${clientName} moved their ${updated.service.title} session to ${when}.`,
+        link: `/portal/clients/${updated.clientProfileId}`,
+        preferenceCategory: 'reminders',
+      });
+    } catch (err) {
+      this.logger.warn(`Reschedule notice failed for booking ${bookingId}: ${err}`);
+    }
+
+    try {
+      await this.calendar.pushBookingToGoogle(updated.id);
+    } catch (err) {
+      this.logger.warn(`Google calendar update failed for booking ${bookingId}: ${err}`);
+    }
+
+    return {
+      id: updated.id.toString(),
+      startsAt: updated.availability.startsAt.toISOString(),
+      endsAt: updated.availability.endsAt.toISOString(),
+      status: updated.status,
+    };
+  }
+
   async getClientPortal(tenantId: bigint, profileId: bigint) {
     const client = await this.prisma.profile.findFirst({
       where: { id: profileId, tenantId },

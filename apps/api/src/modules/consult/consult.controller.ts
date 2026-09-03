@@ -191,6 +191,37 @@ export class ConsultController {
     );
   }
 
+  @AnyAuthenticated()
+  @Get('portal/bookings/:bookingId/reschedule-options')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @ApiBearerAuth('access-token')
+  @ApiOperation({ summary: 'Open slots the signed-in client could move this session to' })
+  getRescheduleOptions(@Req() req: any, @Param('bookingId') bookingId: string) {
+    return this.consultService.getRescheduleOptions(
+      authenticatedTenantId(req),
+      authenticatedProfileId(req),
+      BigInt(bookingId),
+    );
+  }
+
+  @AnyAuthenticated()
+  @Post('portal/bookings/:bookingId/reschedule')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @ApiBearerAuth('access-token')
+  @ApiOperation({ summary: 'Move the signed-in client own session to another open slot' })
+  rescheduleBooking(
+    @Req() req: any,
+    @Param('bookingId') bookingId: string,
+    @Body() dto: { availabilityId: string },
+  ) {
+    return this.consultService.rescheduleBooking(
+      authenticatedTenantId(req),
+      authenticatedProfileId(req),
+      BigInt(bookingId),
+      BigInt(dto.availabilityId),
+    );
+  }
+
   @Roles(...STAFF)
   @Get('therapist/bookings')
   @UseGuards(JwtAuthGuard, RolesGuard)

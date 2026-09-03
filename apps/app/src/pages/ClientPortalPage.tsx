@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Video, Calendar, Check } from 'lucide-react';
 import { useBrand } from '@unclutterdesk/ui';
 import { api, getBookingUrl, TENANT_SLUG } from '../utils/apiClient';
+import { RescheduleDialog } from '../components/RescheduleDialog';
 import { useAuth } from '../context/AuthContext';
 
 type PortalTab = 'upcoming' | 'past' | 'settings';
@@ -68,6 +69,8 @@ export function ClientPortalPage() {
   const [error, setError] = useState<string | null>(null);
   const [hasReviewForm, setHasReviewForm] = useState(false);
   const [portal, setPortal] = useState<PortalPayload>({ clientName: '', upcoming: [], past: [] });
+  const [reschedulingId, setReschedulingId] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -110,6 +113,12 @@ export function ClientPortalPage() {
   }
 
   const nextSession = portal.upcoming[0] || null;
+
+  // A session already paid for or awaiting payment can still be moved; a
+  // cancelled one cannot, and the server refuses one inside the practice's
+  // notice period — which is why the button opens the dialog rather than
+  // deciding here whether the move is allowed.
+  const canReschedule = (session: PortalSession) => session.status !== 'CANCELLED';
   const initials = (portal.clientName || 'Client')
     .split(' ')
     .slice(0, 2)
@@ -203,6 +212,8 @@ export function ClientPortalPage() {
             </div>
           ) : null}
 
+          {notice ? <div role="status" className="rounded-[18px] border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-medium text-emerald-800">{notice}</div> : null}
+
           {error ? <div className="rounded-[18px] border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-medium text-rose-700">{error}</div> : null}
 
           {loading ? (
@@ -226,6 +237,15 @@ export function ClientPortalPage() {
                   </svg>
                   Add to Calendar
                 </a>
+                {canReschedule(nextSession) ? (
+                  <button
+                    type="button"
+                    onClick={() => setReschedulingId(nextSession.id)}
+                    className="h-[48px] px-5 rounded-[16px] bg-transparent border border-[rgba(255,255,255,0.22)] text-white text-[13.5px] font-bold flex items-center gap-2 hover:bg-white/10 cursor-pointer"
+                  >
+                    Reschedule
+                  </button>
+                ) : null}
                 {nextSession.videoRoomLink ? (
                   <a href={nextSession.videoRoomLink} target="_blank" rel="noreferrer" className="h-[48px] px-5 rounded-[16px] bg-[#E3B341] text-[#0F172A] text-[13.5px] font-extrabold flex items-center gap-2 shadow-[0_8px_22px_rgba(227,179,65,0.35)] hover:brightness-105 cursor-pointer">
                     <Video className="h-4 w-4" />
@@ -275,6 +295,15 @@ export function ClientPortalPage() {
                       <div className="text-[13.5px] font-extrabold text-[#0F172A]">{formatMoney(session.priceKobo)}</div>
                       <div className="text-[11px] text-[#94A3B8] font-medium">{session.status}</div>
                     </div>
+                    {canReschedule(session) ? (
+                      <button
+                        type="button"
+                        onClick={() => setReschedulingId(session.id)}
+                        className="h-[34px] px-3 rounded-[10px] border border-[#E2E8F0] text-[12px] font-bold text-[#475569] hover:bg-[#F8FAFC] cursor-pointer"
+                      >
+                        Reschedule
+                      </button>
+                    ) : null}
                   </div>
                 ))
               )}
@@ -344,6 +373,21 @@ export function ClientPortalPage() {
           )}
         </div>
       </main>
+
+      {reschedulingId ? (
+        <RescheduleDialog
+          bookingId={reschedulingId}
+          primaryColor={primary}
+          onClose={() => setReschedulingId(null)}
+          onRescheduled={() => {
+            setReschedulingId(null);
+            setNotice('Your session has been moved. The new time is below.');
+            // Re-read rather than patching local state: the move also frees the
+            // old slot and can change what else is bookable.
+            void loadPortal();
+          }}
+        />
+      ) : null}
     </div>
   );
 }
