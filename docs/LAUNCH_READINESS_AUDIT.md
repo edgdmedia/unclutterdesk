@@ -48,7 +48,7 @@ Cookies are `sameSite: 'none'` (`auth.config.ts:52`), so they ride along on cros
 
 **Fix:** exact allow-list from `CORS_ORIGINS`, plus a strict `^https://[a-z0-9-]+\.unclutterdesk\.com$` regex, plus verified custom domains from the DB. Drop the `.pages.dev` and `localhost` substring rules; gate any dev origin behind `NODE_ENV !== 'production'`.
 
-### 3. Tenant booking subdomains do not resolve — the public booking surface is offline
+### 3. Tenant booking subdomains do not resolve — the public booking surface is offline (worse than a missing DNS record)
 `docs/launch-checklist.md` §4 states public booking lives at `https://<tenant>.unclutterdesk.com/`. DNS says otherwise:
 
 ```
@@ -59,7 +59,11 @@ www.unclutterdesk.com           NXDOMAIN
 
 No wildcard record, no Cloudflare for SaaS custom-hostname setup. Every therapist who signs up gets a booking link that 404s at DNS level. This is the product's core promise.
 
-**Fix:** wildcard `*.unclutterdesk.com` CNAME to the app Pages project, and add `www`. Custom domains need Cloudflare for SaaS (see `docs/CUSTOM_DOMAIN_PLAN.md`, still open).
+**Correction to the fix I first gave:** a wildcard CNAME to the Pages project is *not* sufficient. Cloudflare Pages cannot serve a wildcard custom domain at all — per Cloudflare's Pages known-issues page, "It is currently not possible to add a custom domain with a wildcard" — and Pages matches the `Host` header against explicitly registered domains, so a wildcard record returns a Pages not-found.
+
+This needs either per-tenant Pages custom domains registered at signup (capped at 100/250/500 domains by plan, i.e. a cap on tenants) or a Worker in front of the wildcard. Options, trade-offs and a recommendation are in `docs/CLOUDFLARE_SETUP.md` §1. `www` is a separate, trivial record.
+
+Mitigating factor: the app resolves the tenant client-side from `window.location.hostname`, so every tenant host serves identical assets — there is no per-tenant build to worry about.
 
 ### 4. Production schema is managed by `prisma db push`, with no migrations and no backup — FIXED on `dev`, needs a one-time baseline on the host
 `deploy.sh:34` runs `npx prisma db push` on **every** API deploy. `prisma/` has no `migrations/` directory. `db push` resolves drift by dropping columns/tables without a prompt in non-interactive mode. There is no `pg_dump` step anywhere in the deploy path.
@@ -100,9 +104,9 @@ Ten requests exhausted the quota for **every therapist and client on the platfor
 
 5. *(Corrected — see P0.5 above. The original finding said auth had no rate limit; the truth is the whole API is limited to 10 req/min shared across all users.)*
 
-6. **Zero security headers.** *(API side fixed on `dev` via helmet; the two Pages projects still need `_headers`.)* No `helmet` in `main.ts`. Live checks return `null` for HSTS, CSP, X-Frame-Options and X-Content-Type-Options on the API, and no HSTS/CSP on the app or landing. Add helmet to the API; add a `_headers` file to both Pages projects; enable Strict Transport Security in Cloudflare.
+6. **Zero security headers.** *(Fixed on `dev`: helmet on the API, plus `_headers` for both Pages projects. CSP ships as Report-Only first — see `docs/CLOUDFLARE_SETUP.md` §4. Zone-level HSTS is still a dashboard change.)* No `helmet` in `main.ts`. Live checks return `null` for HSTS, CSP, X-Frame-Options and X-Content-Type-Options on the API, and no HSTS/CSP on the app or landing. Add helmet to the API; add a `_headers` file to both Pages projects; enable Strict Transport Security in Cloudflare.
 
-7. **API origin is not behind Cloudflare.** `api.unclutterdesk.com` resolves straight to `169.58.3.186` with `server: nginx/1.24.0 (Ubuntu)` — no WAF, no DDoS protection, no bot rules, and the origin IP is published. Proxy it (orange-cloud) and firewall the origin to Cloudflare ranges only.
+7. **API origin is not behind Cloudflare.** *(Sequenced walkthrough in `docs/CLOUDFLARE_SETUP.md` §2 — order matters; proxying before Full (strict) breaks it.)* `api.unclutterdesk.com` resolves straight to `169.58.3.186` with `server: nginx/1.24.0 (Ubuntu)` — no WAF, no DDoS protection, no bot rules, and the origin IP is published. Proxy it (orange-cloud) and firewall the origin to Cloudflare ranges only.
 
 8. **Rejected CORS origins return HTTP 500.** The rejection callback throws an unhandled `Error` rather than returning `callback(null, false)`. Noisy, and it surfaces as a server error.
 

@@ -26,3 +26,6 @@ Thumbs.db
 # Local V8/Node compile caches
 node-compile-cache/
 v8-compile-cache-*/
+
+# Stray vite-plugin-pwa scratch output (hashed dirs at repo root)
+/[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]*/
