@@ -192,8 +192,11 @@ takes the API down. Detail in `docs/CLOUDFLARE_SETUP.md` §2.
       `/privacy` and `/terms`. Search `class="todo"`. Includes one engineering
       question: **are the database and backups encrypted at rest?** I would not
       claim it without knowing.
-- [ ] **[you] Schedule an off-host nightly `pg_dump`** and run one restore
-      drill. `deploy.sh` only backs up at deploy time, to the same server.
+- [ ] **[you] Schedule the nightly backup and run one restore drill.**
+      `scripts/backup-database.sh` is written and tested; it needs a cron entry
+      and an off-host target. Until an S3-compatible bucket is configured the
+      backups sit on the same disk as the database, so a disk failure loses
+      both. Steps — including R2 setup — in `docs/DATABASE_MIGRATION_RUNBOOK.md`.
 - [ ] **[you] Rotate any secret that has lived on a developer laptop** —
       Paystack, Google OAuth, JWT, SMTP — and move production secrets to the
       host's secret store.

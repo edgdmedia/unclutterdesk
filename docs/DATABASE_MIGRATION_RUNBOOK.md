@@ -134,9 +134,80 @@ pm2 start unclutterdesk-api
 database once and confirm the row counts look right — before you need it in
 anger.
 
-## Still outstanding
+## Nightly off-host backups
 
-`deploy.sh` only backs up at deploy time. A database holding clinical records
-also needs a scheduled backup independent of deploys — a nightly `pg_dump` cron
-writing off-host (object storage, not the same server), with the restore drill
-above run against it periodically.
+`deploy.sh` backs up before a schema change, but only at deploy time and only to
+this server — so a disk failure takes the database and every backup with it.
+`scripts/backup-database.sh` writes a second copy somewhere else.
+
+```bash
+cd /home/unclutterdesk/app
+
+# Report configuration without writing anything. Probes the database rather
+# than assuming: a URL being set says nothing about whether pg_dump can read it.
+./scripts/backup-database.sh --check
+
+# Run one now
+./scripts/backup-database.sh
+```
+
+It dumps, refuses to keep a dump it cannot read back with `pg_restore --list`,
+uploads off-host if configured, and prunes: 14 days locally, 90 days remote.
+
+### Sending backups off the box
+
+Any S3-compatible store works. Cloudflare R2 is the obvious one here, since the
+account already exists:
+
+1. Cloudflare dashboard → **R2** → create a bucket, e.g. `unclutterdesk-backups`.
+2. **Manage R2 API Tokens** → create a token with **Object Read & Write** on
+   that bucket only.
+3. Install the CLI: `sudo apt-get install -y awscli`
+4. Add to `/home/unclutterdesk/app/.env`:
+
+       BACKUP_S3_BUCKET=unclutterdesk-backups
+       BACKUP_S3_ENDPOINT=https://<account-id>.r2.cloudflarestorage.com
+       AWS_ACCESS_KEY_ID=<r2 access key>
+       AWS_SECRET_ACCESS_KEY=<r2 secret key>
+
+5. Confirm: `./scripts/backup-database.sh --check` should report the bucket
+   rather than "NOT CONFIGURED".
+
+Until that is done the script still runs and still verifies, but it says plainly
+that the backups are on the same machine as the database.
+
+### Schedule it
+
+```bash
+crontab -e
+```
+
+```cron
+# Nightly at 02:15 UTC
+15 2 * * * cd /home/unclutterdesk/app && ./scripts/backup-database.sh >> /home/unclutterdesk/app/logs/backup.log 2>&1
+```
+
+`mkdir -p /home/unclutterdesk/app/logs` first if it does not exist.
+
+Cron mails output on failure only if a mail transport is configured, which it
+probably is not — so check the log occasionally, or point an uptime monitor at a
+heartbeat if you want to be told.
+
+### Restore drill
+
+**A backup you have never restored is not a backup.** Do this once, now, while
+nothing is wrong:
+
+```bash
+createdb unclutterdesk_restore_test
+pg_restore --dbname=unclutterdesk_restore_test --no-owner --no-acl \
+  "$HOME/backups/unclutterdesk/$(ls -t "$HOME/backups/unclutterdesk" | head -1)"
+
+psql unclutterdesk_restore_test -c 'SELECT count(*) FROM "Tenant";'
+psql unclutterdesk_restore_test -c 'SELECT count(*) FROM "ClinicalNote";'
+
+dropdb unclutterdesk_restore_test
+```
+
+The counts should match production. If `pg_restore` errors, the backups have
+been failing quietly and now is a much better time to find out.
