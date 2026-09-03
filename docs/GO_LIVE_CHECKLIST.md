@@ -4,7 +4,14 @@ Ordered by dependency, not importance. Doing these out of order breaks things:
 the database baseline must happen *before* the API deploys, and the API must
 have a valid certificate *before* it goes behind Cloudflare.
 
-`dev` is 14 commits ahead of `main`. Nothing in it is live yet.
+**Status: Phases 0-2 complete and verified against production.** The API,
+app, landing site and tenant router are all deployed. What remains is Phase 3
+(putting the API behind Cloudflare) and Phase 4 hardening — none of it blocking.
+
+Verified live: `/health` returns `database: up`; the removed Stripe route 404s;
+helmet headers present; the CORS origins that were reflected with credentials
+are rejected; an unknown practice address returns a real 404; `www` 301s to the
+apex; Sentry is receiving events.
 
 Legend: **[you]** needs credentials, a dashboard, or production access.
 **[me]** is code I can still write.
@@ -42,7 +49,7 @@ Run it again after the merge: drift is only a blocking failure *before* the
 baseline exists. Once baselined, a difference just means migrations are pending,
 which is what `deploy.sh` applies.
 
-- [ ] **[you] Create the three Paystack subscription plans** and set
+- [x] **[you] Create the three Paystack subscription plans** and set
       `PAYSTACK_PLAN_STARTER`, `PAYSTACK_PLAN_PRO` and `PAYSTACK_PLAN_CLINIC` to
       their `PLN_` codes on the host. Without them `POST /v1/billing/subscribe`
       returns 503 — deliberately, since the alternative is upgrading a practice
@@ -66,7 +73,7 @@ which is what `deploy.sh` applies.
           PAYSTACK_PLAN_PRO=PLN_f4ncmm3xmcy7b90       # ₦15,000
           PAYSTACK_PLAN_CLINIC=PLN_leght05vpcu41ad    # ₦45,000
 
-- [ ] **[you] Confirm the plan mapping on the host**, with the live key loaded:
+- [x] **[you] Confirm the plan mapping on the host**, with the live key loaded:
 
           node scripts/create-paystack-plans.mjs --verify
 
@@ -80,10 +87,10 @@ which is what `deploy.sh` applies.
       and `invoice.payment_failed`, alongside the `charge.success` you already
       receive. — done
 
-- [ ] **[you] Install `postgresql-client` on the host** (`pg_dump` must be on
+- [x] **[you] Install `postgresql-client` on the host** (`pg_dump` must be on
       `PATH`). `deploy.sh` aborts deliberately if it cannot take a backup.
 
-- [ ] **[you] Run the database baseline.** `deploy.sh` now runs
+- [x] **[you] Run the database baseline.** `deploy.sh` now runs
       `prisma migrate deploy`, which will fail against the existing database
       until `0_init` is marked applied. Full procedure, including the drift
       check that must come first, in `docs/DATABASE_MIGRATION_RUNBOOK.md`.
@@ -102,11 +109,11 @@ which is what `deploy.sh` applies.
       block. No change needed. Revisit at Phase 3, when Cloudflare adds a second
       proxy hop.
 
-- [ ] **[you] Set `CORS_ORIGINS`** if any origin outside `*.unclutterdesk.com`
+- [x] **[you] Set `CORS_ORIGINS`** if any origin outside `*.unclutterdesk.com`
       needs API access. The permissive `.pages.dev` and `localhost` matching is
       gone.
 
-- [ ] **[you] Confirm the seeded demo account is absent from production.**
+- [x] **[you] Confirm the seeded demo account is absent from production.**
       `docs/launch-checklist.md` §6 documents
       `dr.jane@smiththerapy.ng / password123`. CI sets `SEED_DB=false`, and live
       probes of `dr-smith` and `demo` return 404, which is consistent with the
@@ -117,13 +124,13 @@ which is what `deploy.sh` applies.
 
 ## Phase 1 — merge and deploy
 
-- [ ] **[you] Merge `dev` into `main`.** CI now runs a `verify` job — recursive
+- [x] **[you] Merge `dev` into `main`.** CI now runs a `verify` job — recursive
       typecheck plus 124 tests — that every deploy job depends on.
 
-- [ ] **[you] Watch the four workflows.** `deploy-tenant-router` will fail until
+- [x] **[you] Watch the four workflows.** `deploy-tenant-router` will fail until
       the API token has *Workers Scripts: Edit* (Phase 2).
 
-- [ ] **[you] Smoke test:** `GET https://api.unclutterdesk.com/health` returns
+- [x] **[you] Smoke test:** `GET https://api.unclutterdesk.com/health` returns
       `{"status":"ok","database":"up"}`; one login round-trip on the production
       domain; one real booking through to payment.
 
@@ -134,20 +141,20 @@ which is what `deploy.sh` applies.
 This is the launch blocker: every practice booking link is currently dead at
 DNS level. Detail in `docs/CLOUDFLARE_SETUP.md` §1.
 
-- [ ] **[you] Give the Cloudflare API token *Workers Scripts: Edit*.** The
+- [x] **[you] Give the Cloudflare API token *Workers Scripts: Edit*.** The
       existing token may only carry Pages permissions.
 
-- [ ] **[you] Deploy the Worker** — automatic on merge, or
+- [x] **[you] Deploy the Worker** — automatic on merge, or
       `pnpm --filter @unclutterdesk/tenant-router deploy`.
 
-- [ ] **[you] Add the wildcard DNS record:** `CNAME` `*` →
+- [x] **[you] Add the wildcard DNS record:** `CNAME` `*` →
       `app-unclutterdesk.pages.dev`, **Proxied**. Worker routes only fire on a
       proxied record.
 
-- [ ] **[you] Add an explicit `www` record.** A specific record beats the
+- [x] **[you] Add an explicit `www` record.** A specific record beats the
       wildcard.
 
-- [ ] **[you] Verify:** a real practice subdomain serves the app; a made-up one
+- [x] **[you] Verify:** a real practice subdomain serves the app; a made-up one
       returns a genuine 404; `api.unclutterdesk.com` still returns JSON.
 
 ---
