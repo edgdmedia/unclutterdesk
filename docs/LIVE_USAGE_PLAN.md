@@ -27,8 +27,8 @@ Move from a technically deployable demo to a safe, supportable launch for a smal
 
 ## Phase 2: Data integrity and integration security
 
-1. Make slot reservation atomic with a database-enforced uniqueness strategy or conditional update inside the transaction.
-2. Add concurrency tests proving one slot produces at most one active booking.
+1. ~~Make slot reservation atomic with a database-enforced uniqueness strategy or conditional update inside the transaction.~~ **Done** — conditional `updateMany` claims the slot before anything is written.
+2. ~~Add concurrency tests proving one slot produces at most one active booking.~~ **Done** — `booking-concurrency.spec.ts`; a lost race writes no booking and consumes no discount code.
 3. ~~Replace OAuth state with a cryptographically random, signed or server-stored state tied to tenant, profile, browser/session, expiry, and one-time use.~~ **Done** — signed payload with a stored, single-use nonce and a 10-minute expiry.
 4. ~~Validate OAuth callback ownership before storing refresh tokens.~~ **Done** — the write is scoped by tenant and profile, and fails if the practitioner is not in the state's tenant.
 5. Restrict checkout redirects to known application origins and fixed route patterns; reject arbitrary URLs.

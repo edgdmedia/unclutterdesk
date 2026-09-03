@@ -5,9 +5,9 @@
 **Verdict:** **NO-GO for real clinical users**
 
 > **Update 2026-09-03, later:** P0 #1 (role authorization), #2 (client portal),
-> #3 (OAuth state) and #5 (demo fallback data) are fixed — see those sections.
-> P0 #4 (booking concurrency) and #6 (non-functional controls) remain open.
-> The verdict stands until they are closed.
+> #3 (OAuth state), #4 (booking concurrency) and #5 (demo fallback data) are
+> fixed — see those sections. P0 #6 (non-functional controls) remains open.
+> The verdict stands until it is closed.
 
 The repository builds and its automated tests pass, but the current authorization and privacy model is not safe for production use with real client records, clinical notes, or therapy-session links.
 
@@ -91,13 +91,28 @@ account while naming a victim's ids, writing their refresh token onto that
 therapist's profile. The practice's bookings would then be pushed to the
 attacker's calendar and Meet links created in the attacker's account.
 
-### 4. Booking availability is not reserved atomically
+### 4. Booking availability is not reserved atomically — **FIXED**
 
 Availability is checked before the transaction and then deactivated with an unconditional update. Concurrent requests can both create bookings for one slot.
 
 Evidence: `apps/api/src/modules/consult/consult.service.ts:412-491`.
 
 Impact: double bookings, duplicate payment attempts, and unreliable clinical scheduling.
+
+**Resolved.** The slot is claimed at the top of the transaction with an
+`updateMany` whose WHERE still requires `isActive: true`. Postgres evaluates
+that predicate while holding the row lock, so a second concurrent transaction
+waits for the first to commit, then matches nothing and rolls back before any
+booking, discount usage or payment reference is written. The unconditional
+`update` that let both racers win is gone.
+
+**Also fixed alongside it: video room names were guessable.** The room was
+`unclutterdesk-session-${Date.now()}` — a millisecond timestamp. Jitsi rooms are
+unauthenticated and are created when someone joins, so a stranger could sweep a
+range of timestamps, or simply infer the scheme from one link, and be waiting
+inside a therapy session before the therapist arrived. Names now carry 128 bits
+of randomness. This is the same class as the `.ics` and client-portal findings:
+three separate routes to an unauthenticated video room.
 
 ### 5. Frontend can present demo records as real practice data — **FIXED**
 
