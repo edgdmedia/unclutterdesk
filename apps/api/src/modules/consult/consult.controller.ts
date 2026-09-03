@@ -192,6 +192,18 @@ export class ConsultController {
   }
 
   @AnyAuthenticated()
+  @Get('portal/payments')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @ApiBearerAuth('access-token')
+  @ApiOperation({ summary: "The signed-in client's own payment history" })
+  getClientPayments(@Req() req: any) {
+    return this.consultService.getClientPayments(
+      authenticatedTenantId(req),
+      authenticatedProfileId(req),
+    );
+  }
+
+  @AnyAuthenticated()
   @Get('portal/bookings/:bookingId/reschedule-options')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @ApiBearerAuth('access-token')

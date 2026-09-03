@@ -524,6 +524,16 @@ export class ConsultService {
         bookingId,
       );
 
+      // Settle the price before writing the row. The amount charged is not
+      // recoverable from the service afterwards: a discount changes it, and the
+      // practice may reprice the service at any time.
+      const finalPriceKobo = discountResult
+        ? BigInt(discountResult.finalKobo)
+        : BigInt(slot.service?.priceKobo || 0);
+      const discountCodeUsed = discountResult
+        ? dto.discountCode!.toUpperCase().trim()
+        : null;
+
       const booking = await tx.consultBooking.create({
         data: {
           tenantId,
@@ -533,6 +543,8 @@ export class ConsultService {
           status: 'PENDING_PAYMENT',
           notes: dto.notes,
           videoRoomName,
+          amountKobo: finalPriceKobo,
+          discountCodeUsed,
         },
       });
 
@@ -545,11 +557,6 @@ export class ConsultService {
       }
 
       let paymentUrl = null;
-      let finalPriceKobo = BigInt(slot.service?.priceKobo || 0);
-
-      if (discountResult) {
-        finalPriceKobo = BigInt(discountResult.finalKobo);
-      }
 
       if (finalPriceKobo > 0n) {
         const splitConfig = await this.billing.calculateSplitPayout(tenantId, finalPriceKobo);
@@ -611,7 +618,11 @@ export class ConsultService {
       throw new NotFoundException('Pending payment booking not found');
     }
 
-    const splitConfig = await this.billing.calculateSplitPayout(tenantId, BigInt(booking.service?.priceKobo || 0));
+    // The amount agreed when the booking was made, not the service's price
+    // today: paying from the portal used to re-price at full list, so anyone who
+    // booked with a discount code and paid later was charged the full amount.
+    const chargeKobo = booking.amountKobo ?? BigInt(booking.service?.priceKobo || 0);
+    const splitConfig = await this.billing.calculateSplitPayout(tenantId, chargeKobo);
     const reference = `booking-${booking.id}-${Date.now()}`;
 
     await this.prisma.consultBooking.update({
@@ -676,6 +687,57 @@ export class ConsultService {
    * address could read that person's appointment history — and the response
    * carries Jitsi join links, which are themselves unauthenticated.
    */
+  /**
+   * What the signed-in client has been charged, and what is still owed.
+   *
+   * The portal's payments tab was a placeholder reading "payment history is not
+   * wired yet". Amounts come from the booking's own amountKobo — the figure
+   * agreed at booking time — not from the service's price today, which moves
+   * when the practice reprices and is simply wrong for a discounted booking.
+   */
+  async getClientPayments(tenantId: bigint, clientProfileId: bigint) {
+    const bookings = await this.prisma.consultBooking.findMany({
+      // Scoped to the client in the session. This is billing history, so it must
+      // never be addressable by anything the caller supplies.
+      where: { tenantId, clientProfileId },
+      include: {
+        service: { select: { title: true, priceKobo: true } },
+        availability: { select: { startsAt: true } },
+      },
+      orderBy: { createdAt: 'desc' },
+      take: 200,
+    });
+
+    const payments = bookings.map((booking) => ({
+      bookingId: booking.id.toString(),
+      serviceTitle: booking.service.title,
+      sessionAt: booking.availability.startsAt.toISOString(),
+      // Rows written before amountKobo existed fall back to the service price,
+      // which is exactly right for every booking made without a discount.
+      amountKobo: (booking.amountKobo ?? booking.service.priceKobo).toString(),
+      discountCode: booking.discountCodeUsed,
+      status: booking.status,
+      paidAt: booking.paidAt ? booking.paidAt.toISOString() : null,
+      // Enough of the Paystack reference to match against a bank statement
+      // without printing the whole thing back over the wire.
+      reference: booking.paymentRef,
+      bookedAt: booking.createdAt.toISOString(),
+    }));
+
+    const paidKobo = payments
+      .filter((p) => p.paidAt)
+      .reduce((total, p) => total + BigInt(p.amountKobo), 0n);
+    const outstandingKobo = payments
+      .filter((p) => p.status === 'PENDING_PAYMENT')
+      .reduce((total, p) => total + BigInt(p.amountKobo), 0n);
+
+    return {
+      payments,
+      totalPaidKobo: paidKobo.toString(),
+      outstandingKobo: outstandingKobo.toString(),
+    };
+  }
+
   /**
    * The booking a client is allowed to move, with the reason if they are not.
    *

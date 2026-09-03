@@ -235,6 +235,11 @@ model ConsultBooking {
   status          String    @default("PENDING_PAYMENT") // "PENDING_PAYMENT", "CONFIRMED", "COMPLETED", "CANCELLED"
   paymentRef      String?   @unique
   paidAt          DateTime?
+  // What was actually charged, after any discount. The service price is not a
+  // substitute: it moves when the practice reprices, and it is simply wrong for
+  // a discounted booking.
+  amountKobo      BigInt?
+  discountCodeUsed String?
   notes           String?
   videoRoomName   String?
   createdAt       DateTime  @default(now())
