@@ -15,12 +15,17 @@ Legend: **[you]** needs credentials, a dashboard, or production access.
 
 Each of these will break the first deploy if skipped.
 
-- [ ] **[you] Decide what happens to Stripe.** Stripe does not support signup
-      from Nigeria, so the integration is being paused. Leaving
-      `STRIPE_WEBHOOK_SECRET` unset is now the *correct* state: the webhook
-      fails closed and returns 503 rather than accepting unsigned events. But
-      the integration is still wired in and still referenced publicly — see
-      "Pausing Stripe" below for what that touches.
+- [ ] **[you] Create the three Paystack subscription plans** (Starter ₦5,000,
+      Pro ₦15,000, Clinic ₦45,000, monthly) in the Paystack dashboard and set
+      `PAYSTACK_PLAN_STARTER`, `PAYSTACK_PLAN_PRO` and `PAYSTACK_PLAN_CLINIC` to
+      their `PLN_` codes on the host. Without them `POST /v1/billing/subscribe`
+      returns 503 — deliberately, since the alternative is upgrading a practice
+      without charging it.
+
+- [ ] **[you] Add the subscription events to the Paystack webhook**:
+      `subscription.create`, `subscription.disable`, `subscription.not_renew`
+      and `invoice.payment_failed`, alongside the `charge.success` you already
+      receive.
 
 - [ ] **[you] Install `postgresql-client` on the host** (`pg_dump` must be on
       `PATH`). `deploy.sh` aborts deliberately if it cannot take a backup.
@@ -112,7 +117,7 @@ takes the API down. Detail in `docs/CLOUDFLARE_SETUP.md` §2.
 - [ ] **[you]** Add a Worker route `api.unclutterdesk.com/*` with **Worker =
       None**. Until then the Worker returns 404 for that host rather than
       serving the SPA, so a missed step fails loudly.
-- [ ] **[you]** Re-verify Stripe and Paystack webhooks still arrive, and that
+- [ ] **[you]** Re-verify Paystack webhooks still arrive, and that
       `GET /v1/notifications/stream` is not buffered.
 
 ---
@@ -130,7 +135,7 @@ takes the API down. Detail in `docs/CLOUDFLARE_SETUP.md` §2.
       claim it without knowing.
 - [ ] **[you] Schedule an off-host nightly `pg_dump`** and run one restore
       drill. `deploy.sh` only backs up at deploy time, to the same server.
-- [ ] **[you] Rotate any secret that has lived on a developer laptop** — Stripe,
+- [ ] **[you] Rotate any secret that has lived on a developer laptop** —
       Paystack, Google OAuth, JWT, SMTP — and move production secrets to the
       host's secret store.
 
@@ -151,25 +156,25 @@ takes the API down. Detail in `docs/CLOUDFLARE_SETUP.md` §2.
 
 ---
 
-## Pausing Stripe
+## Stripe removal — done
 
-Stripe is unavailable for Nigerian signup, so payments run on Paystack. The
-integration is still present and still referenced in places customers see:
+Stripe does not support merchant signup from Nigeria, so it was removed rather
+than paused: the controller, service, SDK dependency, frontend Connect card and
+onboarding placeholder, database columns and both legal-page references are all
+gone. Subscriptions now run on Paystack.
 
-- [ ] **[you/me] Platform subscription billing** currently goes through
-      `StripeService` (`setup-intent`, `connect-account`). Paystack already
-      handles session payments and payouts; subscription billing needs to move
-      there, or plans need charging another way.
-- [ ] **[me] Remove Stripe from the sub-processor table** in `/privacy`. Listing
-      a processor that receives no data is inaccurate in the direction that
-      matters least, but it is still wrong.
-- [ ] **[me] Remove Stripe from `/terms` §7**, which names it alongside Paystack.
-- [ ] **[you] Check the landing page and pricing copy** for card/Stripe claims.
-- [ ] **[me] Decide the endpoints' fate.** They currently 503 without a secret,
-      which is safe. Removing the routes is cleaner than leaving dead ones
-      behind a guard.
+One thing to confirm before the migration applies — it drops three columns:
 
-Nothing here blocks the merge — the webhook already fails closed.
+    SELECT count(*) FROM "Tenant"
+     WHERE "stripeCustomerId" IS NOT NULL OR "stripeSubscriptionId" IS NOT NULL;
+    SELECT count(*) FROM "BankSubaccount" WHERE "stripeAccountId" IS NOT NULL;
+
+Both must return 0. They should: no Stripe customer was ever created. If either
+does not, stop — the DROPs are irreversible.
+
+Also worth knowing: **subscription upgrades used to be free.** The old endpoint
+wrote the new tier straight to the database without taking payment. It now
+returns a Paystack checkout URL and the tier changes only on a verified webhook.
 
 ## Not blocking launch, worth knowing
 

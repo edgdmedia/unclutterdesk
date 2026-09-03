@@ -9,7 +9,7 @@
 
 ```
 [ Sprint 1 ] ──► [ Sprint 2 ] ──► [ Sprint 3 ] ──► [ Sprint 4 ] ──► [ Sprint 5 ] ──► [ Launch ]
- Workspace        Multi-Tenant       White-Label      Telehealth &      Paystack/Stripe   MVP Beta
+ Workspace        Multi-Tenant       White-Label      Telehealth &      Paystack          MVP Beta
  Scaffolding        Gateway          UI Engine        Intake Forms       Subaccounts       Public
 ```
 
@@ -39,7 +39,7 @@
 - [ ] Integrate Jitsi / Daily.co WebRTC video room links for confirmed bookings.
 
 ### Sprint 5: SaaS Billing & Split Payouts
-- [ ] Integrate Paystack Subaccounts / Stripe Connect for client booking payouts.
+- [ ] Integrate Paystack Subaccounts for client booking payouts.
 - [ ] Build SaaS subscription management for therapist plans (Starter, Pro, Clinic).
 
 ### Sprint 6: QA, Cloudflare DNS & Production Launch

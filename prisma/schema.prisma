@@ -44,9 +44,14 @@ model Tenant {
   closureRequestedAt DateTime?
   closureRequestedBy BigInt?
 
-  // Stripe Billing
-  stripeCustomerId     String? @unique
-  stripeSubscriptionId String? @unique
+  // Paystack subscription billing
+  paystackCustomerCode     String? @unique
+  paystackSubscriptionCode String? @unique
+  // Paystack's per-subscription email token, required to disable a subscription.
+  paystackSubscriptionToken String?
+  // "active", "past_due", "cancelled", or null before the first payment.
+  subscriptionStatus       String?
+  subscriptionRenewsAt     DateTime?
 
   // Notification plug-in: which channels this tenant has enabled at all.
   // JSON map, e.g. { "email": true, "in_app": true, "push": true, "sms": false }
@@ -359,7 +364,6 @@ model BankSubaccount {
   accountNumber    String
   accountName      String
   paystackCode     String?
-  stripeAccountId  String?  @unique
   isVerified       Boolean  @default(true)
   createdAt        DateTime @default(now())
   updatedAt        DateTime @updatedAt

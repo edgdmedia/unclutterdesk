@@ -18,7 +18,7 @@
   # /session/:id is ever wired to real media, change these to (self).
   Permissions-Policy: accelerometer=(), autoplay=(), camera=(), display-capture=(), encrypted-media=(), fullscreen=(self), geolocation=(), gyroscope=(), magnetometer=(), microphone=(), payment=(), usb=()
 
-  # Report-Only first — ON PURPOSE. A CSP that is wrong breaks Paystack/Stripe
+  # Report-Only first — ON PURPOSE. A CSP that is wrong breaks Paystack
   # checkout redirects silently and at the worst possible moment. Deploy this,
   # watch for violations in the browser console for a few real bookings, then
   # rename the header to `Content-Security-Policy` to enforce it.

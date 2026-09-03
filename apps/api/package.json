@@ -34,7 +34,6 @@
     "passport-jwt": "^4.0.1",
     "reflect-metadata": "^0.2.2",
     "rxjs": "^7.8.1",
-    "stripe": "^22.5.0",
     "web-push": "^3.6.7"
   },
   "devDependencies": {

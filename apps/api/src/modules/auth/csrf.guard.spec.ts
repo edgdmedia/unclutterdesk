@@ -76,7 +76,7 @@ describe('CsrfGuard', () => {
   it('allows unauthenticated calls, which have nothing to forge', () => {
     // Public booking and provider webhooks arrive with no session cookie.
     expect(guard.canActivate(ctx({ path: '/v1/consult/public/bookings' }))).toBe(true);
-    expect(guard.canActivate(ctx({ path: '/v1/stripe/webhook' }))).toBe(true);
+    expect(guard.canActivate(ctx({ path: '/v1/billing/paystack-webhook' }))).toBe(true);
   });
 
   describe('exempt routes', () => {

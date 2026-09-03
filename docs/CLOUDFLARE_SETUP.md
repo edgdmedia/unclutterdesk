@@ -185,9 +185,8 @@ protection, no bot filtering, and the origin IP is published in public DNS.
 
 ### Two things to verify after proxying
 
-- **Webhooks.** Stripe and Paystack must still reach `/v1/stripe/webhook` and
-  `/v1/billing/paystack-webhook`. They will, but confirm with a test event —
-  especially since Stripe signature verification now fails closed.
+- **Webhooks.** Paystack must still reach `/v1/billing/paystack-webhook`. It
+  will, but confirm with a test event — signature verification fails closed.
 - **SSE.** `notification.controller.ts` exposes `GET /v1/notifications/stream`.
   Cloudflare proxies Server-Sent Events, but confirm the stream is not buffered;
   if it is, disable Cloudflare buffering for that path.
@@ -219,7 +218,7 @@ They set `X-Frame-Options`, `X-Content-Type-Options`, `Referrer-Policy`,
 worker.
 
 **CSP is deliberately `Content-Security-Policy-Report-Only` for now.** A wrong
-CSP breaks Paystack and Stripe checkout silently. Deploy, watch the browser
+CSP breaks Paystack checkout silently. Deploy, watch the browser
 console across a few real bookings, then rename the header to
 `Content-Security-Policy` to enforce it.
 
@@ -255,8 +254,8 @@ Worth doing, but only meaningful after item 2:
 - **WAF managed rules** on `api.unclutterdesk.com`.
 - **Edge rate limiting** on `/v1/auth/*`, as defence in depth alongside the
   application throttler. Edge limiting rejects before traffic reaches the origin.
-- **Bot Fight Mode** — but exclude the webhook paths, or Stripe and Paystack
-  callbacks may be challenged.
+- **Bot Fight Mode** — but exclude the webhook path, or Paystack callbacks may
+  be challenged.
 
 ---
 

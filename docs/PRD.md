@@ -58,7 +58,7 @@ Unlike generic practice management tools, Unclutter Desk gives therapists a dedi
 * **No Software Download Needed**: Clients join sessions directly in their mobile or desktop browser with 1 click.
 
 ### 3.5 Automated SaaS Billing & Split Payouts
-* **Paystack Subaccounts & Stripe Connect**: Client session payments are routed directly to the therapist's bank account, automatically deducting platform fees.
+* **Paystack Subaccounts**: Client session payments are routed directly to the therapist's bank account, automatically deducting platform fees.
 * **Subscription Tiers**:
   * **Starter Tier (Free / Transactional)**: 5% platform fee per booking.
   * **Pro Practice (₦25,000 / $30 per month)**: 0% transaction fee, custom domain, Google Calendar sync.

@@ -4,7 +4,7 @@ import { Eyebrow, Card } from '@unclutterdesk/ui';
 import { useBrand } from '@unclutterdesk/ui';
 import { api } from '../utils/apiClient';
 
-type PayoutAccount = { bankCode: string; bankName: string; accountNumber: string; accountName: string; isVerified: boolean; stripeAccountId?: string | null } | null;
+type PayoutAccount = { bankCode: string; bankName: string; accountNumber: string; accountName: string; isVerified: boolean } | null;
 type BillingSummary = { bankSubaccount: PayoutAccount; history: Array<{ date: string; title: string; detail: string; type: string }> };
 
 export function PayoutSettingsPage() {
@@ -68,21 +68,6 @@ export function PayoutSettingsPage() {
     }
   };
 
-  const handleConnectStripe = async () => {
-    setSaving(true);
-    setError(null);
-    try {
-      const response = await api.post<{ url: string }>('/v1/stripe/connect-account', {
-        returnUrl: window.location.href,
-        refreshUrl: window.location.href,
-      });
-      window.location.href = response.url;
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Unable to connect Stripe');
-      setSaving(false);
-    }
-  };
-
   return (
     <div className="flex-1 min-w-[1192px] flex flex-col bg-[#F8FAFC]">
       <header className="h-[88px] bg-white border-b border-[#E2E8F0] px-[26px] flex items-center justify-between gap-5 shrink-0">
@@ -112,29 +97,6 @@ export function PayoutSettingsPage() {
             <div className="grid grid-cols-2 gap-3 pt-2">
               <button onClick={() => setShowBankModal(true)} className="h-[40px] rounded-[14px] bg-[#F1F5F9] text-[#0F172A] font-bold text-xs hover:bg-[#E2E8F0] cursor-pointer">{account ? 'Change account' : 'Add account'}</button>
               <button className="os-brand-btn h-[40px] rounded-[14px] font-bold text-xs cursor-pointer text-white" style={{ backgroundColor: primaryColor }}>View settlements</button>
-            </div>
-          </Card>
-        )}
-
-        {loading ? null : (
-          <Card padding="p-[24px_26px]" className="max-w-[560px] space-y-4 bg-white border border-slate-100">
-            <div className="flex items-center justify-between border-b border-[#E2E8F0] pb-3">
-              <div><Eyebrow>INTERNATIONAL PAYMENTS</Eyebrow><h3 className="text-[16px] font-bold text-[#0F172A]">Stripe Connect</h3></div>
-              <span className={`h-6 px-3 rounded-full font-bold text-xs border flex items-center ${account?.stripeAccountId ? 'bg-[#ECFDF5] text-[#059669] border-[#A7F3D0]' : 'bg-[#F1F5F9] text-[#64748B] border-[#E2E8F0]'}`}>{account?.stripeAccountId ? 'CONNECTED' : 'NOT SET'}</span>
-            </div>
-            
-            <p className="text-xs text-[#64748B] font-medium leading-relaxed">
-              Connect your Stripe account to accept payments from international clients. Funds will be deposited directly into your bank account via Stripe.
-            </p>
-
-            <div className="pt-2">
-              <button 
-                onClick={handleConnectStripe} 
-                disabled={saving}
-                className="h-[40px] px-6 rounded-[14px] bg-[#F1F5F9] text-[#0F172A] font-bold text-xs hover:bg-[#E2E8F0] cursor-pointer disabled:opacity-60"
-              >
-                {account?.stripeAccountId ? 'Manage Stripe Account' : 'Connect Stripe'}
-              </button>
             </div>
           </Card>
         )}

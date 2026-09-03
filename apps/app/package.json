@@ -13,8 +13,6 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "@stripe/react-stripe-js": "^6.8.1",
-    "@stripe/stripe-js": "^9.13.0",
     "@unclutterdesk/shared": "workspace:*",
     "@unclutterdesk/ui": "workspace:*",
     "lucide-react": "^0.428.0",

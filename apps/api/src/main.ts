@@ -20,8 +20,8 @@ import { AllExceptionsFilter } from './common/all-exceptions.filter';
 };
 
 async function bootstrap() {
-  // rawBody is required to verify Stripe webhook signatures against the exact
-  // bytes Stripe signed — the parsed body is not byte-identical.
+  // rawBody is required to verify Paystack webhook signatures against the exact
+  // bytes Paystack signed — a re-serialised parsed body is not byte-identical.
   const app = await NestFactory.create<NestExpressApplication>(AppModule, { rawBody: true });
   const isProduction = process.env.NODE_ENV === 'production';
   const configuredOrigins = (process.env.CORS_ORIGINS || '')

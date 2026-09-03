@@ -1,5 +1,18 @@
-import { Injectable, BadRequestException, NotFoundException, Logger } from '@nestjs/common';
+import {
+  Injectable,
+  BadRequestException,
+  NotFoundException,
+  ServiceUnavailableException,
+  Logger,
+} from '@nestjs/common';
 import { PrismaService } from '../../common/prisma/prisma.service';
+import {
+  SUBSCRIPTION_PLANS,
+  type SubscriptionTier,
+  isSubscriptionTier,
+  formatNaira,
+  planCodeFor,
+} from './subscription-plans';
 import { PaystackService } from './paystack.service';
 import { CalendarService } from '../calendar/calendar.service';
 
@@ -27,7 +40,6 @@ export class BillingService {
       accountNumber: subaccount.accountNumber,
       accountName: subaccount.accountName,
       paystackCode: subaccount.paystackCode,
-      stripeAccountId: subaccount.stripeAccountId,
       isVerified: subaccount.isVerified,
     };
   }
@@ -37,19 +49,22 @@ export class BillingService {
     if (!tenant) throw new NotFoundException('Practice tenant not found');
 
     const tier = (tenant.subscriptionTier || 'STARTER').toUpperCase();
-    const amounts: Record<string, string> = {
-      STARTER: '₦5,000',
-      PRO: '₦15,000',
-      CLINIC: '₦45,000',
-    };
+    const plan = isSubscriptionTier(tier) ? SUBSCRIPTION_PLANS[tier] : null;
 
-    const nextBilling = new Date();
-    nextBilling.setUTCMonth(nextBilling.getUTCMonth() + 1, 1);
-
+    // Paystack drives the renewal date once a subscription exists. Before the
+    // first payment there is nothing to report, so this no longer invents a
+    // date the practice will not actually be charged on.
     return {
       subscriptionTier: tier,
-      nextChargeAmount: amounts[tier] || '₦0',
-      nextBillingDate: new Intl.DateTimeFormat('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }).format(nextBilling),
+      subscriptionStatus: tenant.subscriptionStatus ?? 'unpaid',
+      nextChargeAmount: plan ? formatNaira(plan.amountKobo) : '₦0',
+      nextBillingDate: tenant.subscriptionRenewsAt
+        ? new Intl.DateTimeFormat('en-GB', {
+            day: '2-digit',
+            month: 'short',
+            year: 'numeric',
+          }).format(tenant.subscriptionRenewsAt)
+        : null,
     };
   }
 
@@ -68,7 +83,6 @@ export class BillingService {
           accountNumber: tenant.bankSubaccount.accountNumber,
           accountName: tenant.bankSubaccount.accountName,
           isVerified: tenant.bankSubaccount.isVerified,
-          stripeAccountId: tenant.bankSubaccount.stripeAccountId,
         }
       : null;
 
@@ -197,18 +211,19 @@ export class BillingService {
     };
   }
 
-  async updateSubscriptionPlan(tenantId: bigint, plan: 'STARTER' | 'PRO' | 'CLINIC') {
-    const validPlans = ['STARTER', 'PRO', 'CLINIC'];
-    if (!validPlans.includes(plan)) {
-      throw new BadRequestException('Invalid subscription plan tier');
-    }
-
+  /**
+   * Guards that have nothing to do with payment: a practice cannot drop to a
+   * tier that cannot hold the staff it already has.
+   */
+  private async assertDowngradeAllowed(tenantId: bigint, plan: SubscriptionTier) {
     if (plan === 'STARTER') {
       const staffCount = await this.prisma.profile.count({
         where: { tenantId, role: { notIn: ['CLIENT', 'OWNER'] } },
       });
       if (staffCount > 0) {
-        throw new BadRequestException('Cannot downgrade to Starter: your practice has active staff members. Remove them first.');
+        throw new BadRequestException(
+          'Cannot downgrade to Starter: your practice has active staff members. Remove them first.',
+        );
       }
     }
 
@@ -217,19 +232,107 @@ export class BillingService {
         where: { tenantId, role: 'THERAPIST' },
       });
       if (therapistCount > 1) {
-        throw new BadRequestException('Cannot downgrade: your practice has multiple therapists. Remove them to downgrade.');
+        throw new BadRequestException(
+          'Cannot downgrade: your practice has multiple therapists. Remove them to downgrade.',
+        );
       }
     }
+  }
 
-    const tenant = await this.prisma.tenant.update({
+  /**
+   * Begins a plan change by sending the practice to Paystack.
+   *
+   * This previously wrote the new tier straight to the database and returned,
+   * so any practice could grant itself the Clinic plan for free. The tier now
+   * changes only when Paystack confirms payment, in `handleWebhook`.
+   */
+  async startSubscriptionCheckout(tenantId: bigint, plan: string, callbackUrl?: string) {
+    if (!isSubscriptionTier(plan)) {
+      throw new BadRequestException('Invalid subscription plan tier');
+    }
+
+    await this.assertDowngradeAllowed(tenantId, plan);
+
+    const planCode = planCodeFor(plan);
+    if (!planCode) {
+      // Failing loudly beats silently upgrading without charging, which is what
+      // the previous implementation effectively did.
+      this.logger.error(
+        `${SUBSCRIPTION_PLANS[plan].planCodeEnv} is not set — cannot start a subscription`,
+      );
+      throw new ServiceUnavailableException(
+        'Subscription billing is not configured. Please contact support.',
+      );
+    }
+
+    const tenant = await this.prisma.tenant.findUnique({
       where: { id: tenantId },
-      data: { subscriptionTier: plan },
+      select: { id: true, publicEmail: true, subscriptionTier: true },
+    });
+    if (!tenant) throw new NotFoundException('Practice tenant not found');
+
+    const owner = await this.prisma.profile.findFirst({
+      where: { tenantId, role: 'OWNER' },
+      select: { email: true },
     });
 
-    return {
-      tenantId: tenant.id.toString(),
-      subscriptionTier: tenant.subscriptionTier,
-    };
+    const email = owner?.email || tenant.publicEmail;
+    if (!email) {
+      throw new BadRequestException(
+        'Add an owner or practice contact email before subscribing.',
+      );
+    }
+
+    const reference = `subscription-${tenantId}-${Date.now()}`;
+    const definition = SUBSCRIPTION_PLANS[plan];
+
+    try {
+      const transaction = await this.paystack.initializeTransaction({
+        amount: definition.amountKobo,
+        email,
+        reference,
+        plan: planCode,
+        callback_url: callbackUrl,
+      });
+
+      return {
+        authorizationUrl: transaction.authorization_url,
+        reference,
+        plan,
+        amount: formatNaira(definition.amountKobo),
+        // The tier is unchanged until Paystack confirms; say so plainly rather
+        // than letting the client assume the upgrade already happened.
+        currentTier: tenant.subscriptionTier,
+        message: 'Complete payment to activate this plan.',
+      };
+    } catch (error) {
+      this.logger.error(`Failed to start subscription checkout for tenant ${tenantId}`, error as Error);
+      throw new BadRequestException('Could not start subscription payment. Please try again.');
+    }
+  }
+
+  /** Applied only from a signature-verified Paystack webhook. */
+  private async applyPaidSubscription(
+    tenantId: bigint,
+    plan: SubscriptionTier,
+    data: any,
+  ) {
+    const renewsAt = new Date();
+    renewsAt.setUTCMonth(renewsAt.getUTCMonth() + 1);
+
+    await this.prisma.tenant.update({
+      where: { id: tenantId },
+      data: {
+        subscriptionTier: plan,
+        subscriptionStatus: 'active',
+        subscriptionRenewsAt: renewsAt,
+        ...(data?.customer?.customer_code
+          ? { paystackCustomerCode: data.customer.customer_code }
+          : {}),
+      },
+    });
+
+    this.logger.log(`Tenant ${tenantId} subscription activated on ${plan}`);
   }
 
   async calculateSplitPayout(tenantId: bigint, amountKobo: bigint) {
@@ -250,28 +353,89 @@ export class BillingService {
       platformFeeKobo: platformFeeKobo.toString(),
       therapistPayoutKobo: therapistPayoutKobo.toString(),
       paystackSubaccountCode: tenant?.bankSubaccount?.paystackCode || null,
-      stripeAccountId: tenant?.bankSubaccount?.stripeAccountId || null,
       tier,
     };
   }
 
   async handleWebhook(event: string, data: any) {
-    if (event === 'charge.success') {
-      const reference = data.reference; // 'booking-123456789'
-      if (reference?.startsWith('booking-')) {
-        const idStr = reference.split('-')[1];
-        const bookingId = BigInt(idStr);
-        
-        await this.prisma.consultBooking.updateMany({
-          where: { paymentRef: reference, status: 'PENDING_PAYMENT' },
-          data: {
-            status: 'CONFIRMED',
-            paidAt: new Date(data.paid_at || Date.now()),
-          },
-        });
-        
-        await this.calendar.pushBookingToGoogle(bookingId);
+    const reference: string | undefined = data?.reference;
+
+    if (event === 'charge.success' && reference?.startsWith('booking-')) {
+      const bookingId = BigInt(reference.split('-')[1]);
+
+      await this.prisma.consultBooking.updateMany({
+        where: { paymentRef: reference, status: 'PENDING_PAYMENT' },
+        data: {
+          status: 'CONFIRMED',
+          paidAt: new Date(data.paid_at || Date.now()),
+        },
+      });
+
+      await this.calendar.pushBookingToGoogle(bookingId);
+      return;
+    }
+
+    // Platform subscription payments. The reference carries the tenant, and the
+    // plan is read back from Paystack's own payload rather than anything the
+    // caller supplied, so a forged reference cannot select a tier.
+    if (event === 'charge.success' && reference?.startsWith('subscription-')) {
+      const tenantId = BigInt(reference.split('-')[1]);
+      const planCode: string | undefined = data?.plan?.plan_code ?? data?.plan_object?.plan_code;
+
+      const tier = (Object.keys(SUBSCRIPTION_PLANS) as SubscriptionTier[]).find(
+        (t) => planCodeFor(t) === planCode,
+      );
+
+      if (!tier) {
+        this.logger.error(
+          `Subscription payment ${reference} referenced unknown plan code ${planCode}; tier not changed`,
+        );
+        return;
       }
+
+      await this.applyPaidSubscription(tenantId, tier, data);
+      return;
+    }
+
+    if (event === 'subscription.create') {
+      const customerCode: string | undefined = data?.customer?.customer_code;
+      if (!customerCode) return;
+
+      await this.prisma.tenant.updateMany({
+        where: { paystackCustomerCode: customerCode },
+        data: {
+          paystackSubscriptionCode: data?.subscription_code ?? null,
+          paystackSubscriptionToken: data?.email_token ?? null,
+          subscriptionStatus: 'active',
+          ...(data?.next_payment_date
+            ? { subscriptionRenewsAt: new Date(data.next_payment_date) }
+            : {}),
+        },
+      });
+      return;
+    }
+
+    if (event === 'invoice.payment_failed') {
+      const code: string | undefined = data?.subscription?.subscription_code;
+      if (!code) return;
+      // Flagged, not downgraded: losing access to clinical records over a failed
+      // card is a worse outcome than a month of unpaid service.
+      await this.prisma.tenant.updateMany({
+        where: { paystackSubscriptionCode: code },
+        data: { subscriptionStatus: 'past_due' },
+      });
+      this.logger.warn(`Subscription ${code} marked past_due after a failed payment`);
+      return;
+    }
+
+    if (event === 'subscription.disable' || event === 'subscription.not_renew') {
+      const code: string | undefined = data?.subscription_code;
+      if (!code) return;
+      await this.prisma.tenant.updateMany({
+        where: { paystackSubscriptionCode: code },
+        data: { subscriptionStatus: 'cancelled' },
+      });
+      return;
     }
   }
 }
