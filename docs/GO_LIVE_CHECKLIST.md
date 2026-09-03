@@ -15,11 +15,12 @@ Legend: **[you]** needs credentials, a dashboard, or production access.
 
 Each of these will break the first deploy if skipped.
 
-- [ ] **[you] Confirm `STRIPE_WEBHOOK_SECRET` on the production host matches the
-      endpoint secret in the Stripe dashboard.** The webhook now verifies
-      signatures and **fails closed**. A stale value means paid bookings stop
-      confirming. Previously any payload was accepted, so a wrong value would
-      never have shown up.
+- [ ] **[you] Decide what happens to Stripe.** Stripe does not support signup
+      from Nigeria, so the integration is being paused. Leaving
+      `STRIPE_WEBHOOK_SECRET` unset is now the *correct* state: the webhook
+      fails closed and returns 503 rather than accepting unsigned events. But
+      the integration is still wired in and still referenced publicly — see
+      "Pausing Stripe" below for what that touches.
 
 - [ ] **[you] Install `postgresql-client` on the host** (`pg_dump` must be on
       `PATH`). `deploy.sh` aborts deliberately if it cannot take a backup.
@@ -137,11 +138,10 @@ takes the API down. Detail in `docs/CLOUDFLARE_SETUP.md` §2.
 
 ## Still to build
 
-- [ ] **[me] Practice-account closure** (audit finding 21). Client-level erasure
-      exists; closing a whole practice does not. `Tenant` cascades to 24
-      relations while `ConsultBooking.client` restricts, so a naive
-      `tenant.delete()` either fails or cascades further than intended. Needs an
-      export step first. The privacy policy commits to this.
+- [x] **[me] Practice-account closure** — done. `POST /v1/privacy/practice/close`
+      (owner, slug confirmation) deactivates and starts a 30-day window;
+      `POST /v1/admin/privacy/practices/:tenantId/purge` (platform admin) erases
+      irreversibly once it elapses.
 - [ ] **[me] Error monitoring (Sentry)** — blocked on a DSN from you. The
       exception filter logs 5xx with a reference id, but nothing aggregates or
       alerts. Until then, production failures surface only in PM2 logs.
@@ -150,6 +150,26 @@ takes the API down. Detail in `docs/CLOUDFLARE_SETUP.md` §2.
       multiply every limit per worker.
 
 ---
+
+## Pausing Stripe
+
+Stripe is unavailable for Nigerian signup, so payments run on Paystack. The
+integration is still present and still referenced in places customers see:
+
+- [ ] **[you/me] Platform subscription billing** currently goes through
+      `StripeService` (`setup-intent`, `connect-account`). Paystack already
+      handles session payments and payouts; subscription billing needs to move
+      there, or plans need charging another way.
+- [ ] **[me] Remove Stripe from the sub-processor table** in `/privacy`. Listing
+      a processor that receives no data is inaccurate in the direction that
+      matters least, but it is still wrong.
+- [ ] **[me] Remove Stripe from `/terms` §7**, which names it alongside Paystack.
+- [ ] **[you] Check the landing page and pricing copy** for card/Stripe claims.
+- [ ] **[me] Decide the endpoints' fate.** They currently 503 without a secret,
+      which is safe. Removing the routes is cleaner than leaving dead ones
+      behind a guard.
+
+Nothing here blocks the merge — the webhook already fails closed.
 
 ## Not blocking launch, worth knowing
 

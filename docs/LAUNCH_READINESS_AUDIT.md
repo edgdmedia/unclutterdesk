@@ -139,7 +139,7 @@ Ten requests exhausted the quota for **every therapist and client on the platfor
 
 ---
 
-21. **Practice-account closure still has no code path.** Client-level erasure now exists (`POST /v1/privacy/clients/:profileId/erase`), but erasing a whole tenant does not. `Tenant` cascades to 24 relations, and `ConsultBooking.client` restricts deletion of any client with a booking, so a naive `tenant.delete()` will either fail or cascade further than intended. Needs its own design, with an export step first.
+21. **Practice-account closure still has no code path.** *(Fixed on `dev`: a two-step flow — the owner closes the practice, which deactivates it and starts a 30-day retention window without deleting anything; platform staff purge afterwards, deleting in dependency order inside one transaction rather than relying on a cascade that the booking→profile restriction can abort part-way.)* Client-level erasure now exists (`POST /v1/privacy/clients/:profileId/erase`), but erasing a whole tenant does not. `Tenant` cascades to 24 relations, and `ConsultBooking.client` restricts deletion of any client with a booking, so a naive `tenant.delete()` will either fail or cascade further than intended. Needs its own design, with an export step first.
 
 ## Things that are already right
 

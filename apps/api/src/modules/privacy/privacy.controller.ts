@@ -1,7 +1,9 @@
-import { Controller, Post, Param, Req, UseGuards, HttpCode } from '@nestjs/common';
+import { Controller, Post, Param, Body, Req, UseGuards, HttpCode } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { Throttle } from '@nestjs/throttler';
 import { PrivacyService } from './privacy.service';
+import { PracticeClosureService } from './practice-closure.service';
+import { PlatformAdminGuard } from '../admin/platform-admin.guard';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { authenticatedTenantId, authenticatedProfileId } from '../../common/authenticated-tenant';
 
@@ -10,7 +12,10 @@ import { authenticatedTenantId, authenticatedProfileId } from '../../common/auth
 @UseGuards(JwtAuthGuard)
 @ApiBearerAuth('access-token')
 export class PrivacyController {
-  constructor(private readonly privacyService: PrivacyService) {}
+  constructor(
+    private readonly privacyService: PrivacyService,
+    private readonly closureService: PracticeClosureService,
+  ) {}
 
   /**
    * Irreversible. Rate limited hard because there is no undo: a compromised
@@ -28,5 +33,42 @@ export class PrivacyController {
       authenticatedProfileId(req),
       BigInt(profileId),
     );
+  }
+
+  /**
+   * Closes the practice: deactivates it and starts the retention window.
+   * Reversible — nothing is deleted until the purge below.
+   */
+  @Post('practice/close')
+  @Throttle({ default: { limit: 3, ttl: 60000 } })
+  @HttpCode(200)
+  @ApiOperation({ summary: 'Close this practice account and begin the retention window' })
+  closePractice(@Req() req: any, @Body() dto: { confirmSlug: string }) {
+    return this.closureService.requestClosure(
+      authenticatedTenantId(req),
+      authenticatedProfileId(req),
+      dto?.confirmSlug,
+    );
+  }
+}
+
+/**
+ * Separate controller: the purge is platform-operated, not something a practice
+ * can trigger, so it carries a different guard entirely.
+ */
+@ApiTags('Privacy')
+@Controller('v1/admin/privacy')
+@UseGuards(PlatformAdminGuard)
+@ApiBearerAuth('access-token')
+export class PlatformPrivacyController {
+  constructor(private readonly closureService: PracticeClosureService) {}
+
+  /** Irreversible. Only valid once the retention window has elapsed. */
+  @Post('practices/:tenantId/purge')
+  @Throttle({ default: { limit: 3, ttl: 60000 } })
+  @HttpCode(200)
+  @ApiOperation({ summary: 'Permanently erase a closed practice and all its records' })
+  purgePractice(@Param('tenantId') tenantId: string, @Body() dto: { confirmSlug: string }) {
+    return this.closureService.purgeClosedPractice(BigInt(tenantId), dto?.confirmSlug);
   }
 }

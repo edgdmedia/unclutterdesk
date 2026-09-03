@@ -38,6 +38,12 @@ model Tenant {
   subscriptionTier  String   @default("STARTER") // "STARTER", "PRO", "CLINIC"
   isActive          Boolean  @default(true)
 
+  // Account closure. Requesting closure deactivates the practice immediately
+  // and starts the retention window; the irreversible purge is a separate,
+  // platform-operated step so there is time to export or change course.
+  closureRequestedAt DateTime?
+  closureRequestedBy BigInt?
+
   // Stripe Billing
   stripeCustomerId     String? @unique
   stripeSubscriptionId String? @unique
