@@ -1,4 +1,5 @@
 import { Injectable, BadRequestException, NotFoundException, ForbiddenException, Logger } from '@nestjs/common';
+import { randomBytes } from 'crypto';
 import { PrismaService } from '../../common/prisma/prisma.service';
 import { NotificationService } from '../notifications/notification.service';
 import { DiscountService } from '../discount/discount.service';
@@ -325,6 +326,38 @@ export class ConsultService {
     };
   }
 
+  /**
+   * Removes an availability slot the practitioner owns.
+   *
+   * There was no endpoint for this at all: the schedule's delete button only
+   * filtered the row out of local React state, so the slot reappeared on
+   * refresh. Scoped to the tenant and the owning practitioner, and refuses a
+   * slot that already has a booking — cancelling an appointment is a different
+   * operation with a client on the other end of it.
+   */
+  async deleteAvailabilitySlot(tenantId: bigint, providerProfileId: bigint, slotId: bigint) {
+    const booked = await this.prisma.consultBooking.count({
+      where: { tenantId, availabilityId: slotId, status: { not: 'CANCELLED' } },
+    });
+
+    if (booked > 0) {
+      throw new BadRequestException(
+        'This slot has a booking. Cancel the session instead of deleting the slot.',
+      );
+    }
+
+    const deleted = await this.prisma.consultAvailability.deleteMany({
+      where: { id: slotId, tenantId, providerProfileId },
+    });
+
+    if (deleted.count === 0) {
+      // Same answer whether it never existed or belongs to another practitioner.
+      throw new NotFoundException('Availability slot not found');
+    }
+
+    return { id: slotId.toString(), deleted: true };
+  }
+
   async replaceTherapistAvailability(tenantId: bigint, providerProfileId: bigint, dto: {
     days: Array<{ day: number; enabled: boolean; windows: Array<{ start: string; end: string }> }>;
     sessionLengthMinutes: number;
@@ -445,8 +478,27 @@ export class ConsultService {
       }
     }
 
-    // Atomic transaction: Find or create client profile, create booking, and deactivate availability slot
+    // Atomic transaction: claim the slot, find or create the client profile,
+    // create the booking, and record discount usage.
     const result = await this.prisma.$transaction(async (tx) => {
+      // Claim the slot first, with the condition in the UPDATE itself.
+      //
+      // The availability check above runs outside this transaction, so two
+      // concurrent requests can both pass it. The deactivation used to be an
+      // unconditional `update`, which meant both would succeed and the slot
+      // would carry two bookings and two payment attempts. Here the predicate
+      // is evaluated while the row is locked: the second transaction blocks
+      // until the first commits, then matches nothing and loses the race
+      // cleanly, rolling back before any booking is written.
+      const claimed = await tx.consultAvailability.updateMany({
+        where: { id: slot.id, tenantId, isActive: true },
+        data: { isActive: false },
+      });
+
+      if (claimed.count === 0) {
+        throw new BadRequestException('The selected time slot is no longer available');
+      }
+
       let clientProfile = await tx.profile.findFirst({
         where: { tenantId, email },
       });
@@ -484,12 +536,6 @@ export class ConsultService {
         },
       });
 
-      // Mark slot as booked
-      await tx.consultAvailability.update({
-        where: { id: slot.id },
-        data: { isActive: false },
-      });
-      
       // Increment usedCount if a discount code was successfully validated
       if (dto.discountCode) {
         await tx.discountCode.update({
@@ -832,9 +878,18 @@ export class ConsultService {
     };
   }
 
-  private async resolveVideoRoomLink(therapist: any, bookingId: number): Promise<{ roomName: string; roomLink: string }> {
+  /**
+   * Builds the video room for a booking.
+   *
+   * The name used to be `unclutterdesk-session-${Date.now()}`. Jitsi rooms are
+   * unauthenticated and spring into existence when someone joins, so a
+   * guessable name means a stranger can sweep a range of timestamps — or simply
+   * learn the scheme from one link — and be waiting inside a therapy session
+   * before the therapist arrives. The name now carries 128 bits of randomness.
+   */
+  private async resolveVideoRoomLink(therapist: any, _bookingRef: number): Promise<{ roomName: string; roomLink: string }> {
     const provider = (therapist.videoProvider || 'JITSI').toUpperCase();
-    const defaultRoomName = `unclutterdesk-session-${bookingId}`;
+    const defaultRoomName = `unclutterdesk-session-${randomBytes(16).toString('hex')}`;
 
     if (provider === 'DAILY') {
       const apiKey = therapist.dailyApiKey || process.env.DAILY_PLATFORM_API_KEY;

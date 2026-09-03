@@ -263,6 +263,9 @@ function AppLayout() {
     [mutateSessions],
   );
 
+  // Re-fetch from the API, as opposed to setSessions which only edits the cache.
+  const refreshSessions = useCallback(() => mutateSessions(), [mutateSessions]);
+
   const setStaff = useCallback(
     (value: React.SetStateAction<StaffMember[]>) => {
       void mutateStaff(value, { revalidate: false });
@@ -393,7 +396,7 @@ function AppLayout() {
                   />
                 }
               />
-              <Route path="/dashboard/schedule" element={<SchedulePage sessions={resolvedSessions} setSessions={setSessions} clients={resolvedClients} tenantSlug={profile?.tenantSlug} />} />
+              <Route path="/dashboard/schedule" element={<SchedulePage sessions={resolvedSessions} setSessions={setSessions} clients={resolvedClients} tenantSlug={profile?.tenantSlug} onRefresh={refreshSessions} />} />
               <Route path="/dashboard/clients" element={<ClientsPage clients={resolvedClients} setClients={setClients} onRefresh={refreshClients} />} />
               <Route path="/dashboard/clients/:id" element={<ClientDetailPage clients={resolvedClients} setClients={setClients} />} />
               <Route path="/dashboard/analytics" element={<AnalyticsPage clients={resolvedClients} sessions={resolvedSessions} />} />

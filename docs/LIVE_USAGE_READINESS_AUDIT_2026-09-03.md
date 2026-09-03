@@ -5,9 +5,10 @@
 **Verdict:** **NO-GO for real clinical users**
 
 > **Update 2026-09-03, later:** P0 #1 (role authorization), #2 (client portal),
-> #3 (OAuth state) and #5 (demo fallback data) are fixed — see those sections.
-> P0 #4 (booking concurrency) and #6 (non-functional controls) remain open.
-> The verdict stands until they are closed.
+> #3 (OAuth state), #4 (booking concurrency) and #5 (demo fallback data) are
+> fixed — see those sections. P0 #6 is partly fixed: the schedule now persists
+> and the dead controls are wired or removed, but invite claiming is still a
+> stub. The verdict stands until that is closed.
 
 The repository builds and its automated tests pass, but the current authorization and privacy model is not safe for production use with real client records, clinical notes, or therapy-session links.
 
@@ -91,13 +92,28 @@ account while naming a victim's ids, writing their refresh token onto that
 therapist's profile. The practice's bookings would then be pushed to the
 attacker's calendar and Meet links created in the attacker's account.
 
-### 4. Booking availability is not reserved atomically
+### 4. Booking availability is not reserved atomically — **FIXED**
 
 Availability is checked before the transaction and then deactivated with an unconditional update. Concurrent requests can both create bookings for one slot.
 
 Evidence: `apps/api/src/modules/consult/consult.service.ts:412-491`.
 
 Impact: double bookings, duplicate payment attempts, and unreliable clinical scheduling.
+
+**Resolved.** The slot is claimed at the top of the transaction with an
+`updateMany` whose WHERE still requires `isActive: true`. Postgres evaluates
+that predicate while holding the row lock, so a second concurrent transaction
+waits for the first to commit, then matches nothing and rolls back before any
+booking, discount usage or payment reference is written. The unconditional
+`update` that let both racers win is gone.
+
+**Also fixed alongside it: video room names were guessable.** The room was
+`unclutterdesk-session-${Date.now()}` — a millisecond timestamp. Jitsi rooms are
+unauthenticated and are created when someone joins, so a stranger could sweep a
+range of timestamps, or simply infer the scheme from one link, and be waiting
+inside a therapy session before the therapist arrived. Names now carry 128 bits
+of randomness. This is the same class as the `.ics` and client-portal findings:
+three separate routes to an unauthenticated video room.
 
 ### 5. Frontend can present demo records as real practice data — **FIXED**
 
@@ -143,7 +159,7 @@ the synthetic account is created by the idempotent demo data migration and its
 password is provisioned separately from a server secret. Regression coverage was
 added in `apps/app/src/utils/__tests__/private-data.test.ts`.
 
-### 6. Several user-facing actions are visibly present but non-functional
+### 6. Several user-facing actions are visibly present but non-functional — **PARTLY FIXED**
 
 Verified examples include:
 
@@ -163,6 +179,32 @@ Verified examples include:
 
 Impact: users can believe bookings, staff changes, or settings succeeded when
 they will disappear on refresh, or encounter dead-end controls in core workflows.
+
+**Fixed:**
+
+- Schedule create and delete now persist. Creation posts to
+  `/v1/consult/therapist/availability`; deletion calls a new
+  `DELETE /v1/consult/therapist/availability/:slotId`, which did not exist —
+  the button had nothing to call. The endpoint is scoped to the tenant and the
+  owning practitioner and refuses a slot that already has a booking, since
+  cancelling an appointment has a client on the other end of it. Both re-fetch
+  afterwards, and failures now surface in the modal instead of being swallowed;
+  the submit button is disabled while saving so a slow network cannot
+  double-post.
+- The dashboard's branding shortcut navigated to `/settings/brand`, which is not
+  a registered route. Corrected to `/dashboard/settings/brand`.
+- The dashboard Notes button had no handler; it now opens the session prep
+  screen, which is where the SOAP note editor lives.
+- Client portal Reschedule and the Payments tab are removed rather than left
+  dead — neither had a backing operation, and the Payments panel announced its
+  own incompleteness to clients.
+
+**Still open: invite claiming.** `InvitePage.tsx` makes no API call at all — it
+navigates to `/dashboard` and shows hardcoded "Smith Therapy Ltd" and
+"segun@smiththerapy.ng". Making it real needs an invite-claim endpoint that
+validates the token in `ConsultPendingInvite`, creates the profile against the
+inviting tenant, and only then signs the user in. That is a feature rather than
+a repair, so it is called out separately instead of being marked done.
 
 ## P1 high-priority risks
 

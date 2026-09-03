@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Patch, Body, Param, Query, Req, UseGuards } from '@nestjs/common';
+import { Controller, Get, Post, Patch, Delete, Body, Param, Query, Req, UseGuards } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { ConsultService } from './consult.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
@@ -134,6 +134,19 @@ export class ConsultController {
     return this.consultService.getTherapistAvailability(
       authenticatedTenantId(req),
       authenticatedProfileId(req),
+    );
+  }
+
+  @Roles(...CLINICAL)
+  @Delete('therapist/availability/:slotId')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @ApiBearerAuth('access-token')
+  @ApiOperation({ summary: 'Remove an availability slot' })
+  deleteAvailability(@Req() req: any, @Param('slotId') slotId: string) {
+    return this.consultService.deleteAvailabilitySlot(
+      authenticatedTenantId(req),
+      authenticatedProfileId(req),
+      BigInt(slotId),
     );
   }
 

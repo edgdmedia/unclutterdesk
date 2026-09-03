@@ -27,8 +27,8 @@ Move from a technically deployable demo to a safe, supportable launch for a smal
 
 ## Phase 2: Data integrity and integration security
 
-1. Make slot reservation atomic with a database-enforced uniqueness strategy or conditional update inside the transaction.
-2. Add concurrency tests proving one slot produces at most one active booking.
+1. ~~Make slot reservation atomic with a database-enforced uniqueness strategy or conditional update inside the transaction.~~ **Done** — conditional `updateMany` claims the slot before anything is written.
+2. ~~Add concurrency tests proving one slot produces at most one active booking.~~ **Done** — `booking-concurrency.spec.ts`; a lost race writes no booking and consumes no discount code.
 3. ~~Replace OAuth state with a cryptographically random, signed or server-stored state tied to tenant, profile, browser/session, expiry, and one-time use.~~ **Done** — signed payload with a stored, single-use nonce and a 10-minute expiry.
 4. ~~Validate OAuth callback ownership before storing refresh tokens.~~ **Done** — the write is scoped by tenant and profile, and fails if the practitioner is not in the state's tenant.
 5. Restrict checkout redirects to known application origins and fixed route patterns; reject arbitrary URLs.
@@ -73,10 +73,12 @@ Complete this before onboarding real users:
    mockups.
 3. Wire invite claiming to the backend, validate the token, persist the profile,
    and redirect only after success. Use the invited tenant's name and email.
-4. Persist schedule creation, cancellation, and status changes through the API;
-   re-fetch after mutation and show loading/failure states.
+4. ~~Persist schedule creation, cancellation, and status changes through the API;
+   re-fetch after mutation and show loading/failure states.~~ **Done.**
 5. Wire or remove every visible action: Notes, notifications, reschedule,
    payment history, profile upload, practice status, and settings shortcuts.
+   **Mostly done** — Notes wired, reschedule and payment history removed,
+   brand settings route corrected. Dashboard notification button still unwired.
 6. Add a route/link audit for every `Link`, `href`, and button in the primary
    signup, onboarding, booking, portal, and workspace flows.
 7. Replace all user-visible and generated “Unclutter OS”, “unclutterOS”, and
@@ -114,6 +116,10 @@ DEMO_PASSWORD='use-a-private-12-plus-character-secret' pnpm exec node scripts/pr
 
 Never commit or publish that password. Private pages do not contain an embedded
 copy of this data and do not fall back to it when an API request fails.
+
+If the first live attempt failed after the backup completed, use
+`npx prisma migrate resolve --rolled-back 20260903230000_demo_workspace` once on
+the server before rerunning `./deploy.sh`. Confirm the backup file exists first.
 
 **Exit:** a fresh tenant never sees another tenant's or fictional private data;
 refreshing after every supported mutation preserves the result; every visible

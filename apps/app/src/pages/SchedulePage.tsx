@@ -29,13 +29,17 @@ interface SchedulePageProps {
   setSessions: React.Dispatch<React.SetStateAction<CalendarEvent[]>>;
   clients: Client[];
   tenantSlug?: string;
+  /** Re-fetches from the API after a mutation, so the view reflects what was saved. */
+  onRefresh?: () => Promise<unknown>;
 }
 
-export function SchedulePage({ sessions, setSessions, clients, tenantSlug }: SchedulePageProps) {
+export function SchedulePage({ sessions, setSessions, clients, tenantSlug, onRefresh }: SchedulePageProps) {
   const brand = useBrand();
   const primaryColor = brand.primaryColor || '#0F3A53';
   const secondaryColor = brand.secondaryColor || '#E3B341';
 
+  const [saving, setSaving] = useState(false);
+  const [scheduleError, setScheduleError] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<'week' | 'day' | 'month'>('week');
   const [currentDate, setCurrentDate] = useState<Date>(new Date('2026-08-03T09:00:00'));
   const navigate = useNavigate();
@@ -145,11 +149,14 @@ export function SchedulePage({ sessions, setSessions, clients, tenantSlug }: Sch
     setFormClientName(clients[0]?.name || '');
     setFormType('Individual Therapy');
     setFormDuration(50);
+    setScheduleError(null);
     setShowNewSessionModal(true);
   };
 
-  // Save new session
-  const handleCreateSession = (e: React.FormEvent) => {
+  // Opens a bookable slot. This previously only pushed onto local React state,
+  // so the slot vanished on refresh and a practitioner could believe their
+  // calendar was open when the booking page showed nothing.
+  const handleCreateSession = async (e: React.FormEvent) => {
     e.preventDefault();
     const [hours, minutes] = formTime.split(':').map(Number);
     const start = new Date(formDate);
@@ -158,30 +165,36 @@ export function SchedulePage({ sessions, setSessions, clients, tenantSlug }: Sch
     const end = new Date(start);
     end.setMinutes(start.getMinutes() + formDuration);
 
-    const category =
-      formType === 'Individual Therapy'
-        ? 'individual'
-        : formType === 'Couples Therapy'
-        ? 'couples'
-        : 'admin';
-
-    const newEvent: CalendarEvent = {
-      id: Math.random().toString(36).substr(2, 9),
-      title: formClientName,
-      type: formType,
-      startsAt: start.toISOString(),
-      endsAt: end.toISOString(),
-      category,
-    };
-
-    setSessions([...sessions, newEvent]);
-    setShowNewSessionModal(false);
+    setSaving(true);
+    setScheduleError(null);
+    try {
+      await api.post('/v1/consult/therapist/availability', {
+        startsAt: start.toISOString(),
+        endsAt: end.toISOString(),
+      });
+      await onRefresh?.();
+      setShowNewSessionModal(false);
+    } catch (err) {
+      setScheduleError(err instanceof Error ? err.message : 'Could not save that slot');
+    } finally {
+      setSaving(false);
+    }
   };
 
-  // Delete session
-  const handleDeleteSession = (id: string) => {
-    setSessions(sessions.filter((s) => s.id !== id));
-    setShowDetailModal(false);
+  // Same problem in reverse: deleting only filtered local state, so the slot
+  // came back on refresh.
+  const handleDeleteSession = async (id: string) => {
+    setSaving(true);
+    setScheduleError(null);
+    try {
+      await api.delete(`/v1/consult/therapist/availability/${id}`);
+      await onRefresh?.();
+      setShowDetailModal(false);
+    } catch (err) {
+      setScheduleError(err instanceof Error ? err.message : 'Could not remove that slot');
+    } finally {
+      setSaving(false);
+    }
   };
 
   const handleMarkCompleted = async () => {
@@ -469,6 +482,11 @@ export function SchedulePage({ sessions, setSessions, clients, tenantSlug }: Sch
             onSubmit={handleCreateSession}
             className="w-full max-w-[460px] bg-white rounded-[24px] p-6 shadow-2xl space-y-4 border border-slate-200 relative"
           >
+            {scheduleError ? (
+              <div className="rounded-[14px] border border-rose-200 bg-rose-50 px-3.5 py-2.5 text-xs font-semibold text-rose-700">
+                {scheduleError}
+              </div>
+            ) : null}
             <button
               type="button"
               onClick={() => setShowNewSessionModal(false)}
@@ -575,7 +593,8 @@ export function SchedulePage({ sessions, setSessions, clients, tenantSlug }: Sch
                 Cancel
               </button>
               <button
-                type="submit"
+              type="submit"
+              disabled={saving}
                 className="flex-1 h-11 rounded-[14px] text-white font-bold text-xs hover:brightness-95 cursor-pointer flex items-center justify-center"
                 style={{ backgroundColor: primaryColor }}
               >
@@ -665,8 +684,14 @@ export function SchedulePage({ sessions, setSessions, clients, tenantSlug }: Sch
             </div>
 
             {/* Actions */}
+            {scheduleError ? (
+              <div className="rounded-[14px] border border-rose-200 bg-rose-50 px-3.5 py-2.5 text-xs font-semibold text-rose-700">
+                {scheduleError}
+              </div>
+            ) : null}
             <div className="flex items-center gap-3 flex-wrap">
               <button
+                disabled={saving}
                 onClick={() => handleDeleteSession(selectedEvent.id)}
                 className="flex-1 h-11 rounded-[14px] bg-rose-50 text-rose-600 border border-rose-200 font-bold text-xs hover:bg-rose-100 cursor-pointer flex items-center justify-center gap-1.5"
               >

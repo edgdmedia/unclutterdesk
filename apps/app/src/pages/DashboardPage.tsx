@@ -370,7 +370,9 @@ export function DashboardPage(props: DashboardPageProps) {
                       {s.status}
                     </span>
 
-                    <button className="h-[34px] px-3 rounded-[11px] bg-[#F1F5F9] text-[#475569] text-xs font-bold hover:bg-[#E2E8F0] flex items-center gap-1.5 cursor-pointer">
+                    <button
+                      onClick={() => navigate(`/session/${s.id}/prep`)}
+                      className="h-[34px] px-3 rounded-[11px] bg-[#F1F5F9] text-[#475569] text-xs font-bold hover:bg-[#E2E8F0] flex items-center gap-1.5 cursor-pointer">
                       <FileText className="h-3.5 w-3.5" />
                       <span>Notes</span>
                     </button>
@@ -495,7 +497,7 @@ export function DashboardPage(props: DashboardPageProps) {
               </p>
             </div>
             <button
-              onClick={() => navigate('/settings/brand')}
+              onClick={() => navigate('/dashboard/settings/brand')}
               className="h-9 px-3.5 rounded-[12px] bg-[#F1F5F9] text-[#0F172A] text-xs font-bold hover:bg-[#E2E8F0] transition-colors shrink-0 flex items-center gap-1 cursor-pointer"
             >
               <span>Settings</span>
