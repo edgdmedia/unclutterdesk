@@ -254,16 +254,33 @@ if (skipDb) {
     const { PrismaClient } = await import('@prisma/client');
     const prisma = new PrismaClient({ datasources: { db: { url: env.DATABASE_URL } } });
     try {
+      // The seeded sample practice from prisma/seed.js, which must never reach
+      // production — distinct from the intentional demo workspace below.
       const demo = await prisma.user.count({ where: { email: 'dr.jane@smiththerapy.ng' } });
       const demoProfiles = await prisma.profile.count({
         where: { email: { contains: 'smiththerapy.ng' } },
       });
       demo === 0 && demoProfiles === 0
-        ? pass('Seed data absent', 'no demo account in production')
+        ? pass('Seed data absent', 'no seeded sample practice in production')
         : failed('Seed data present', `${demo} user(s), ${demoProfiles} profile(s) — delete before launch`);
 
-      const tenants = await prisma.tenant.count();
-      pass('Tenants in database', String(tenants));
+      // The demo workspace is deliberate, so report it rather than counting it
+      // as a real practice — saying "1 tenant" when one of them is synthetic
+      // would be quietly misleading.
+      const realTenants = await prisma.tenant.count({ where: { isDemo: false } });
+      const demoTenants = await prisma.tenant.count({ where: { isDemo: true } });
+      pass('Tenants in database', `${realTenants} real${demoTenants ? `, ${demoTenants} demo` : ''}`);
+
+      if (demoTenants > 0) {
+        // Provisioning replaces the placeholder with a bcrypt hash. Until then
+        // the account exists but cannot be signed into.
+        const unprovisioned = await prisma.user.count({
+          where: { password: '__DEMO_PASSWORD_NOT_PROVISIONED__' },
+        });
+        unprovisioned > 0
+          ? warn('Demo account', 'present but has no password yet — run scripts/provision-demo-account.mjs')
+          : pass('Demo account', 'provisioned');
+      }
     } finally {
       await prisma.$disconnect();
     }

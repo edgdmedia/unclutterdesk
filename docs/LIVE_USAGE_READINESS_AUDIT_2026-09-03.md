@@ -4,8 +4,9 @@
 **Branch:** `dev`  
 **Verdict:** **NO-GO for real clinical users**
 
-> **Update 2026-09-03, later:** P0 #1 (role authorization), #2 (client portal)
-> and #3 (OAuth state) are fixed — see those sections. P0 #4-#6 remain open.
+> **Update 2026-09-03, later:** P0 #1 (role authorization), #2 (client portal),
+> #3 (OAuth state) and #5 (demo fallback data) are fixed — see those sections.
+> P0 #4 (booking concurrency) and #6 (non-functional controls) remain open.
 > The verdict stands until they are closed.
 
 The repository builds and its automated tests pass, but the current authorization and privacy model is not safe for production use with real client records, clinical notes, or therapy-session links.
@@ -98,13 +99,39 @@ Evidence: `apps/api/src/modules/consult/consult.service.ts:412-491`.
 
 Impact: double bookings, duplicate payment attempts, and unreliable clinical scheduling.
 
-### 5. Frontend can present demo records as real practice data
+### 5. Frontend can present demo records as real practice data — **FIXED**
 
 The app supplies hardcoded clients, sessions, staff, and billing history as SWR
 `fallbackData`, including when the API request fails. It also starts billing state
 with a fictional Pro subscription and bank account.
 
 Evidence: `apps/app/src/App.tsx:189-240,291-338`.
+
+**Resolved.** The `fallbackData` is removed; the SWR hooks now return
+`undefined` on error and `?? []` yields empty arrays, so an outage or an
+unconfigured tenant renders an empty workspace instead of fictional clients.
+`apps/app/src/utils/__tests__/private-data.test.ts` fails the build if the
+constants or `fallbackData:` return.
+
+**This finding is fixed by that change alone.** The persistent demo workspace
+added at the same time is a separate product decision, not part of the fix — it
+creates a synthetic practice *in the production database* so there is somewhere
+safe to demonstrate the product. Judge it on its own merits:
+
+- The migration is idempotent and contains no usable password; the placeholder
+  is not a bcrypt hash, and `bcrypt.compare` against it returns false rather
+  than throwing, so the account cannot be signed into until
+  `scripts/provision-demo-account.mjs` sets one.
+- `Tenant.isDemo` now actually does something: every platform-admin aggregate —
+  tenant, staff, client, booking, form and user counts, and the revenue sum —
+  excludes it. Without that the demo practice would have inflated every figure
+  on the platform dashboard, including revenue, from the day it was
+  provisioned. The tenant list still shows it, flagged with `isDemo`, so an
+  operator can find it.
+- `scripts/preflight.mjs` reports real and demo tenants separately, and warns
+  while the demo account is still unprovisioned. It previously said "no demo
+  account in production", which would have become untrue the moment this
+  deployed.
 
 Impact: an outage or an unconfigured tenant can display fictional client names,
 clinical notes, payment history, and bank details in a live workspace. This is a

@@ -5,21 +5,38 @@ import { PrismaService } from '../../common/prisma/prisma.service';
 export class AdminService {
   constructor(private readonly prisma: PrismaService) {}
 
+  /**
+   * The demo practice holds synthetic clients, bookings and a priced service.
+   * Counting it here would overstate every platform figure, including revenue,
+   * from the day it is provisioned — so every aggregate excludes it.
+   */
+  private static readonly REAL_TENANTS = { isDemo: false } as const;
+
   async getStats() {
     const [tenants, activeTenants, staffCount, clientCount, bookings, forms, users] =
       await Promise.all([
-        this.prisma.tenant.count(),
-        this.prisma.tenant.count({ where: { isActive: true } }),
+        this.prisma.tenant.count({ where: AdminService.REAL_TENANTS }),
+        this.prisma.tenant.count({ where: { ...AdminService.REAL_TENANTS, isActive: true } }),
         this.prisma.profile.count({
-          where: { role: { in: ['OWNER', 'ADMIN', 'RECEPTIONIST', 'THERAPIST'] } },
+          where: {
+            role: { in: ['OWNER', 'ADMIN', 'RECEPTIONIST', 'THERAPIST'] },
+            tenant: AdminService.REAL_TENANTS,
+          },
         }),
-        this.prisma.profile.count({ where: { role: 'CLIENT' } }),
-        this.prisma.consultBooking.count(),
-        this.prisma.universalForm.count(),
-        this.prisma.user.count(),
+        this.prisma.profile.count({
+          where: { role: 'CLIENT', tenant: AdminService.REAL_TENANTS },
+        }),
+        this.prisma.consultBooking.count({ where: { tenant: AdminService.REAL_TENANTS } }),
+        this.prisma.universalForm.count({ where: { tenant: AdminService.REAL_TENANTS } }),
+        // A demo login is still a user row, so exclude anyone whose only
+        // profile is in the demo practice.
+        this.prisma.user.count({
+          where: { profiles: { some: { tenant: AdminService.REAL_TENANTS } } },
+        }),
       ]);
 
     const bookingRows = await this.prisma.consultBooking.findMany({
+      where: { tenant: AdminService.REAL_TENANTS },
       select: { status: true, service: { select: { priceKobo: true } } },
     });
     const revenueKobo = bookingRows.reduce(
@@ -41,6 +58,9 @@ export class AdminService {
 
   async listTenants() {
     const tenants = await this.prisma.tenant.findMany({
+      // The demo practice is deliberately visible here — an operator should be
+      // able to find it — but it is flagged so it cannot be mistaken for a
+      // paying customer.
       orderBy: { createdAt: 'desc' },
       include: {
         _count: {
@@ -67,6 +87,7 @@ export class AdminService {
 
     return tenants.map((t) => ({
       id: t.id.toString(),
+      isDemo: t.isDemo,
       name: t.name,
       slug: t.slug,
       customDomain: t.customDomain,
