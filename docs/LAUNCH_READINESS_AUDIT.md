@@ -4,7 +4,7 @@
 
 ## Status of this audit
 
-Findings 1, 2, 5, 6 and 10 have been **fixed on branch `dev`** (see the commit accompanying this report); everything else remains open. The fixes are not live until `dev` is merged to `main` and deployed.
+Findings 1, 2, 4, 5, 6 and 10 have been **fixed on branch `dev`** (see the commit accompanying this report); everything else remains open. The fixes are not live until `dev` is merged to `main` and deployed.
 
 ## Is it released to the public?
 
@@ -61,12 +61,16 @@ No wildcard record, no Cloudflare for SaaS custom-hostname setup. Every therapis
 
 **Fix:** wildcard `*.unclutterdesk.com` CNAME to the app Pages project, and add `www`. Custom domains need Cloudflare for SaaS (see `docs/CUSTOM_DOMAIN_PLAN.md`, still open).
 
-### 4. Production schema is managed by `prisma db push`, with no migrations and no backup
+### 4. Production schema is managed by `prisma db push`, with no migrations and no backup — FIXED on `dev`, needs a one-time baseline on the host
 `deploy.sh:34` runs `npx prisma db push` on **every** API deploy. `prisma/` has no `migrations/` directory. `db push` resolves drift by dropping columns/tables without a prompt in non-interactive mode. There is no `pg_dump` step anywhere in the deploy path.
 
 Once real clinical notes exist, one renamed field ships as silent data loss with no restore point.
 
-**Fix (in order):** take a verified backup → `prisma migrate diff` to baseline the live DB → `prisma migrate resolve --applied` → switch `deploy.sh` to `prisma migrate deploy` → add an automated nightly Postgres backup with a tested restore.
+**Fixed in this branch:** `deploy.sh` now takes a verified `pg_dump` backup (aborting the deploy if it fails or is empty, before any schema change) and runs `prisma migrate deploy` instead of `db push`; `prisma/migrations/0_init/` holds the generated baseline for all 19 tables.
+
+**You must run the one-time baseline on the production host BEFORE the next API deploy** — `migrate deploy` will otherwise fail against the existing database. Steps, including the drift check that must come first, are in `docs/DATABASE_MIGRATION_RUNBOOK.md`.
+
+**Still open:** a scheduled off-host nightly backup, independent of deploys, plus one tested restore.
 
 ### 5. The entire API is rate-limited to 10 requests/minute — shared by every user on earth
 
