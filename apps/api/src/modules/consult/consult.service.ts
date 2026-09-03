@@ -4,7 +4,6 @@ import { NotificationService } from '../notifications/notification.service';
 import { DiscountService } from '../discount/discount.service';
 import { BillingService } from '../billing/billing.service';
 import { PaystackService } from '../billing/paystack.service';
-import { StripeService } from '../billing/stripe.service';
 import { CalendarService } from '../calendar/calendar.service';
 
 @Injectable()
@@ -17,7 +16,6 @@ export class ConsultService {
     private readonly discountService: DiscountService,
     private readonly billing: BillingService,
     private readonly paystack: PaystackService,
-    private readonly stripe: StripeService,
     private readonly calendar: CalendarService,
   ) { }
 
@@ -480,40 +478,22 @@ export class ConsultService {
         const reference = `booking-${booking.id}-${Date.now()}`;
         
         try {
-          if (splitConfig.stripeAccountId) {
-            const { url } = await this.stripe.createCheckoutSession(
-              booking.id,
-              finalPriceKobo,
-              BigInt(splitConfig.platformFeeKobo),
-              splitConfig.stripeAccountId,
-              dto.callbackUrl || process.env.APP_URL || 'https://app.unclutterdesk.com',
-              clientProfile.email,
-              slot.service?.title || 'Therapy Session'
-            );
-            paymentUrl = url;
-            
-            await tx.consultBooking.update({
-              where: { id: booking.id },
-              data: { paymentRef: reference },
-            });
-          } else {
-            const pTx = await this.paystack.initializeTransaction({
-              amount: Number(splitConfig.therapistPayoutKobo) + Number(splitConfig.platformFeeKobo),
-              email: clientProfile.email,
-              reference,
-              subaccount: splitConfig.paystackSubaccountCode || undefined,
-              bearer: 'subaccount',
-              split: splitConfig.tier === 'STARTER' ? 5 : undefined,
-              callback_url: dto.callbackUrl,
-            });
+          const pTx = await this.paystack.initializeTransaction({
+            amount: Number(splitConfig.therapistPayoutKobo) + Number(splitConfig.platformFeeKobo),
+            email: clientProfile.email,
+            reference,
+            subaccount: splitConfig.paystackSubaccountCode || undefined,
+            bearer: 'subaccount',
+            split: splitConfig.tier === 'STARTER' ? 5 : undefined,
+            callback_url: dto.callbackUrl,
+          });
 
-            paymentUrl = pTx.authorization_url;
+          paymentUrl = pTx.authorization_url;
 
-            await tx.consultBooking.update({
-              where: { id: booking.id },
-              data: { paymentRef: reference },
-            });
-          }
+          await tx.consultBooking.update({
+            where: { id: booking.id },
+            data: { paymentRef: reference },
+          });
         } catch (e: any) {
           throw new BadRequestException('Failed to initialize payment: ' + (e.message || 'Unknown error'));
         }

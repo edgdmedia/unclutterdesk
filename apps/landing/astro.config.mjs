@@ -4,11 +4,15 @@ import { defineConfig } from 'astro/config';
 import react from '@astrojs/react';
 import tailwindcss from '@tailwindcss/vite';
 import AstroPWA from '@vite-pwa/astro';
+import sitemap from '@astrojs/sitemap';
 
 // https://astro.build/config
 export default defineConfig({
+  site: 'https://unclutterdesk.com',
+
   integrations: [
     react(),
+    sitemap(),
     AstroPWA({
       registerType: 'autoUpdate',
       includeAssets: ['favicon.ico', 'apple-touch-icon.png', 'mask-icon.svg'],

@@ -1,4 +1,15 @@
-import { Controller, Get, Post, Body, Req, UseGuards, Headers, BadRequestException } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Body,
+  Req,
+  UseGuards,
+  Headers,
+  BadRequestException,
+  RawBodyRequest,
+} from '@nestjs/common';
+import { Request } from 'express';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { BillingService } from './billing.service';
 import { PaystackService } from './paystack.service';
@@ -60,23 +71,32 @@ export class BillingController {
   @Post('subscribe')
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth('access-token')
-  @ApiOperation({ summary: 'Upgrade practice SaaS subscription plan (Admin/Owner)' })
-  subscribe(@Req() req: any, @Body() dto: { plan: 'STARTER' | 'PRO' | 'CLINIC' }) {
-    return this.billingService.updateSubscriptionPlan(
+  @ApiOperation({
+    summary: 'Start a Paystack checkout for a subscription plan',
+    description:
+      'Returns a Paystack authorization URL. The practice tier changes only once the payment is confirmed by webhook.',
+  })
+  subscribe(
+    @Req() req: any,
+    @Body() dto: { plan: 'STARTER' | 'PRO' | 'CLINIC'; callbackUrl?: string },
+  ) {
+    return this.billingService.startSubscriptionCheckout(
       authenticatedTenantId(req),
       dto.plan,
+      dto.callbackUrl,
     );
   }
 
   @Post('paystack-webhook')
   @ApiOperation({ summary: 'Paystack Webhook endpoint' })
-  async paystackWebhook(@Headers('x-paystack-signature') signature: string, @Body() body: any) {
-    if (!signature) {
-      throw new BadRequestException('Missing signature');
-    }
-
-    const isValid = this.paystackService.verifyWebhookSignature(signature, body);
-    if (!isValid) {
+  async paystackWebhook(
+    @Headers('x-paystack-signature') signature: string,
+    @Req() req: RawBodyRequest<Request>,
+    @Body() body: any,
+  ) {
+    // Verified against the raw bytes, not the parsed body — see
+    // PaystackService.verifyWebhookSignature.
+    if (!this.paystackService.verifyWebhookSignature(signature, req.rawBody)) {
       throw new BadRequestException('Invalid signature');
     }
 

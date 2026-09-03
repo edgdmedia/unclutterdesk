@@ -38,9 +38,20 @@ model Tenant {
   subscriptionTier  String   @default("STARTER") // "STARTER", "PRO", "CLINIC"
   isActive          Boolean  @default(true)
 
-  // Stripe Billing
-  stripeCustomerId     String? @unique
-  stripeSubscriptionId String? @unique
+  // Account closure. Requesting closure deactivates the practice immediately
+  // and starts the retention window; the irreversible purge is a separate,
+  // platform-operated step so there is time to export or change course.
+  closureRequestedAt DateTime?
+  closureRequestedBy BigInt?
+
+  // Paystack subscription billing
+  paystackCustomerCode     String? @unique
+  paystackSubscriptionCode String? @unique
+  // Paystack's per-subscription email token, required to disable a subscription.
+  paystackSubscriptionToken String?
+  // "active", "past_due", "cancelled", or null before the first payment.
+  subscriptionStatus       String?
+  subscriptionRenewsAt     DateTime?
 
   // Notification plug-in: which channels this tenant has enabled at all.
   // JSON map, e.g. { "email": true, "in_app": true, "push": true, "sms": false }
@@ -353,7 +364,6 @@ model BankSubaccount {
   accountNumber    String
   accountName      String
   paystackCode     String?
-  stripeAccountId  String?  @unique
   isVerified       Boolean  @default(true)
   createdAt        DateTime @default(now())
   updatedAt        DateTime @updatedAt

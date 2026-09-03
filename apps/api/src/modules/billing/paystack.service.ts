@@ -45,6 +45,7 @@ export class PaystackService {
     bearer?: string; // 'account' | 'subaccount'
     split?: number; // percentage platform fee, e.g. 5
     callback_url?: string;
+    plan?: string; // Paystack plan code; makes the charge a recurring subscription
   }) {
     const payload: any = {
       amount: dto.amount,
@@ -53,6 +54,13 @@ export class PaystackService {
       channels: ['card', 'bank_transfer', 'ussd'],
       callback_url: dto.callback_url,
     };
+
+    if (dto.plan) {
+      payload.plan = dto.plan;
+      // Recurring plans must be charged to a card; Paystack cannot auto-renew a
+      // bank transfer or USSD payment.
+      payload.channels = ['card'];
+    }
 
     if (dto.subaccount) {
       payload.subaccount = dto.subaccount;
@@ -105,11 +113,26 @@ export class PaystackService {
     return this.request('POST', '/subscription/disable', dto);
   }
 
-  verifyWebhookSignature(signature: string, body: any): boolean {
-    const hash = crypto
+  /**
+   * Verifies a Paystack webhook against the exact bytes Paystack signed.
+   *
+   * This previously hashed `JSON.stringify(parsedBody)`. Re-serialising a
+   * parsed body does not reliably reproduce the original bytes — unicode
+   * escaping, number formatting and key order can all differ — so a valid
+   * webhook could be rejected. The raw body is available because the Nest app
+   * is created with `rawBody: true`.
+   */
+  verifyWebhookSignature(signature: string, rawBody: Buffer | string | undefined): boolean {
+    if (!signature || !rawBody || !this.secretKey) return false;
+
+    const expected = crypto
       .createHmac('sha512', this.secretKey)
-      .update(JSON.stringify(body))
+      .update(rawBody)
       .digest('hex');
-    return hash === signature;
+
+    const a = Buffer.from(expected, 'utf8');
+    const b = Buffer.from(signature, 'utf8');
+    if (a.length !== b.length) return false;
+    return crypto.timingSafeEqual(a, b);
   }
 }

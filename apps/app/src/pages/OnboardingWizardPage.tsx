@@ -437,8 +437,8 @@ export function OnboardingWizardPage() {
     } else if (stepKey === 'availability') {
       if (!(await saveAvailability())) return;
     } else if (stepKey === 'subscription') {
-      // In a real implementation, you would confirm the Stripe SetupIntent here
-      // if (!(await handleStripeSetup())) return;
+      // Nothing to confirm here: the trial starts without a card. Choosing a
+      // paid plan sends the practice to Paystack from billing settings.
     } else if (stepKey === 'payout') {
       if (!(await savePayoutAccount())) return;
     }
@@ -921,18 +921,19 @@ export function OnboardingWizardPage() {
                   <span className="os-eyebrow block">STEP {steps.findIndex((s) => s.key === 'subscription') + 1} OF {steps.length}</span>
                   <h2 className="text-[28px] font-bold tracking-tight text-[#0F172A]">Start your 14-day free trial</h2>
                   <p className="text-xs sm:text-sm text-[#64748B] font-medium leading-relaxed">
-                    You've selected the Pro Solo plan. Enter your payment details below. You won't be charged until your trial ends, and you can cancel anytime.
+                    Everything is unlocked for 14 days. No card required now, and you can cancel any time before the trial ends.
                   </p>
                 </div>
 
                 <div className="bg-white p-8 rounded-[24px] border border-[#E2E8F0]">
-                   {/* In a real implementation, you would wrap this in <Elements> and render <PaymentElement /> */}
-                   <div className="p-4 rounded-[16px] bg-[#F8FAFC] border border-[#E2E8F0] space-y-4">
-                     <p className="text-sm font-medium text-[#475569] text-center">
-                       [Stripe Elements Integration Placeholder]
+                   <div className="p-5 rounded-[16px] bg-[#F8FAFC] border border-[#E2E8F0] space-y-3 text-center">
+                     <p className="text-sm font-semibold text-[#0F172A]">
+                       No payment details needed to start
                      </p>
-                     <p className="text-[11px] text-[#94A3B8] text-center max-w-[400px] mx-auto leading-relaxed">
-                       This is where you would mount <code>@stripe/react-stripe-js</code>'s <code>PaymentElement</code> using the client secret obtained from <code>/v1/stripe/setup-intent</code>.
+                     <p className="text-[12px] text-[#64748B] max-w-[420px] mx-auto leading-relaxed">
+                       Your trial runs for 14 days with everything enabled. When it ends,
+                       choose a plan in Billing settings and pay securely with Paystack —
+                       card, bank transfer or USSD.
                      </p>
                    </div>
                 </div>

@@ -555,10 +555,10 @@ export function LandingPage() {
           </div>
           <div className="flex flex-col gap-3">
             <div className="text-[11px] font-[800] tracking-[0.12em] text-[#64748B]">LEGAL</div>
-            <a href="#pricing" className="text-[14px] text-white hover:text-[#94A3B8] transition-colors">Terms</a>
-            <a href="#pricing" className="text-[14px] text-white hover:text-[#94A3B8] transition-colors">Privacy</a>
-            <a href="#pricing" className="text-[14px] text-white hover:text-[#94A3B8] transition-colors">Data protection</a>
-            <a href="#pricing" className="text-[14px] text-white hover:text-[#94A3B8] transition-colors">NDPR compliance</a>
+            <a href="/terms" className="text-[14px] text-white hover:text-[#94A3B8] transition-colors">Terms</a>
+            <a href="/privacy" className="text-[14px] text-white hover:text-[#94A3B8] transition-colors">Privacy</a>
+            <a href="/privacy#sub-processors" className="text-[14px] text-white hover:text-[#94A3B8] transition-colors">Data protection</a>
+            <a href="/privacy#rights" className="text-[14px] text-white hover:text-[#94A3B8] transition-colors">NDPR compliance</a>
           </div>
         </div>
         <div className="max-w-[1240px] mx-auto mt-9 pt-5 border-t border-white/10 text-[13px] text-[#64748B] text-center md:text-left">

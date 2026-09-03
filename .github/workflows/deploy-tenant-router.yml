@@ -1,0 +1,72 @@
+name: Deploy Tenant Router
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'apps/tenant-router/**'
+      - 'pnpm-lock.yaml'
+      - '.github/workflows/deploy-tenant-router.yml'
+
+concurrency:
+  group: deploy-tenant-router
+  cancel-in-progress: false
+
+jobs:
+  verify:
+    name: Typecheck & Test
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Generate Prisma Client
+        run: pnpm dlx prisma generate --schema prisma/schema.prisma
+
+      - name: Typecheck
+        run: pnpm --recursive run typecheck
+
+      - name: Test
+        run: pnpm --filter @unclutterdesk/api test && pnpm --filter @unclutterdesk/app test && pnpm --filter @unclutterdesk/tenant-router test
+
+  deploy:
+    needs: verify
+    name: Deploy Tenant Router To Cloudflare
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Deploy Worker
+        working-directory: apps/tenant-router
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: pnpm exec wrangler deploy
