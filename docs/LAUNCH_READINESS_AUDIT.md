@@ -4,7 +4,7 @@
 
 ## Status of this audit
 
-Findings 1, 2, 4, 5, 6, 10, 12, 13, 14, 15 and 16 have been **fixed on branch `dev`** (9 partly) (see the commit accompanying this report); everything else remains open. The fixes are not live until `dev` is merged to `main` and deployed.
+Findings 1, 2, 4, 5, 6, 10, 12, 13, 14, 15, 16 and 19 have been **fixed on branch `dev`** (9 partly) (see the commit accompanying this report); everything else remains open. The fixes are not live until `dev` is merged to `main` and deployed.
 
 ## Is it released to the public?
 
@@ -114,7 +114,7 @@ Ten requests exhausted the quota for **every therapist and client on the platfor
 
 10. **No CI quality gate.** *(Fixed on `dev`: a `verify` job now runs recursive typecheck plus API and app tests, and all three deploy jobs `needs: verify`.)* All three workflows deploy on push to `main` with no typecheck, no lint and no tests. `pnpm typecheck` and vitest both exist and are never run. Add them as required steps before the deploy job.
 
-11. **Test coverage is eight files** *(17 CORS, 13 tenant-router and 8 exception-filter regression tests added on `dev`; 54 tests now pass across the repo)* for the entire product (`tenant.service.spec.ts`, `intake.service.spec.ts`, `apiClient.test.ts`, one autosave test). Nothing covers authentication, cross-tenant isolation, billing, or bookings — the four areas where a bug is a breach.
+11. **Test coverage is eleven files** *(regression suites added on `dev` for CORS, the tenant router, the exception filter, client erasure and the CSRF guard; 124 tests now pass across the repo)* for the entire product (`tenant.service.spec.ts`, `intake.service.spec.ts`, `apiClient.test.ts`, one autosave test). Nothing covers authentication, cross-tenant isolation, billing, or bookings — the four areas where a bug is a breach.
 
 12. **PM2 runs a single fork-mode process** *(Fixed on `dev`: restart policy, memory ceiling, graceful-reload timeouts and log files added, plus a real `GET /health` probe that queries the database and returns 503 when it is unreachable. Deliberately still one instance — see the note below.)* (`ecosystem.config.js`) with no health check. One unhandled rejection takes the whole API down until someone notices. Add `instances: 2` / cluster mode, `max_restarts`, and an uptime monitor on `GET /`.
 
@@ -134,7 +134,7 @@ Ten requests exhausted the quota for **every therapist and client on the platfor
 
 18. **Confirm the seeded demo account is absent from production.** `docs/launch-checklist.md` §6 documents `dr.jane@smiththerapy.ng / password123` as a pre-verified login. CI sets `SEED_DB=false`, which is correct, but the seed may have been run manually during setup. Verify directly against the production DB and delete if present. *(Not verifiable from here — live credential testing was out of scope for this audit.)*
 
-19. **Tighten the CSRF guard.** `csrf.guard.ts` exempts any path *containing* `/auth/`, `/login`, `/invite`, etc. as a substring, and returns `true` when no session cookie is present. Combined with `sameSite: 'none'`, the CSRF token is the only cross-site defence. Switch to exact route matching.
+19. **Tighten the CSRF guard.** *(Fixed on `dev`.)* `csrf.guard.ts` exempted any path *containing* `/auth/`, `/login`, `/invite` etc. as a substring. `'/invite'` matched `POST /v1/tenant/staff/invite`, so the endpoint that adds staff to a practice had no CSRF protection at all, and `'/register'` matched `POST /v1/tenant/register`. Now matched on exact method-and-path against nine genuinely pre-session endpoints, with trailing-slash and query-string normalisation, a timing-safe token comparison, rejection of array-valued headers, and the `DISABLE_CSRF` escape hatch confined to non-production.
 
 
 ---
