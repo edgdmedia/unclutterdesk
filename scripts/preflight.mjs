@@ -84,28 +84,45 @@ if (skipDb) {
   failed('Database checks', 'skipped — DATABASE_URL is not set');
 } else {
   // Migration state first: it decides how to read the drift check below.
+  //
+  // The distinction that matters is whether 0_init is still pending. Applying
+  // it to a populated database fails on CREATE TABLE, so reporting a vague
+  // "migrations pending" would hide the one case that breaks the deploy.
   let baselined = false;
-  try {
-    const status = sh('npx', ['prisma', 'migrate', 'status'], {
-      env: { ...process.env, ...env },
-    });
-    if (/up to date/i.test(status)) {
-      baselined = true;
-      pass('Migration state', 'baseline applied, no pending migrations');
-    } else {
-      warn('Migration state', 'baselined, with migrations still to apply — deploy.sh will apply them');
-      baselined = true;
+  const readStatus = () => {
+    try {
+      return sh('npx', ['prisma', 'migrate', 'status'], { env: { ...process.env, ...env } });
+    } catch (e) {
+      return String(e.stdout || '') + String(e.stderr || '');
     }
-  } catch (e) {
-    const out = String(e.stdout || e.stderr || '');
-    if (/P3005|not empty/i.test(out)) {
-      warn('Migration state', 'not baselined yet — see docs/DATABASE_MIGRATION_RUNBOOK.md');
-    } else if (/following migrations have not yet been applied/i.test(out)) {
-      baselined = true;
-      warn('Migration state', 'pending migrations — deploy.sh will apply them');
-    } else {
-      warn('Migration state', out.trim().split('\n')[0] || 'could not read');
-    }
+  };
+
+  const status = readStatus();
+  const pending = [...status.matchAll(/^\s*[-•]?\s*(\d{1,14}_[a-z0-9_]+)\s*$/gim)].map((m) => m[1]);
+  const initPending = pending.some((name) => name.startsWith('0_init')) || /\b0_init\b/.test(
+    status.split(/have not yet been applied/i)[1] ?? '',
+  );
+
+  if (/P3005|database schema is not empty/i.test(status)) {
+    failed(
+      'Migration state',
+      'not baselined — run `npx prisma migrate resolve --applied 0_init` ' +
+        'before deploying, or migrate deploy will fail on CREATE TABLE',
+    );
+  } else if (initPending) {
+    failed(
+      'Migration state',
+      '0_init is still pending — applying it to a populated database fails. ' +
+        'Run `npx prisma migrate resolve --applied 0_init` first',
+    );
+  } else if (/up to date/i.test(status)) {
+    baselined = true;
+    pass('Migration state', 'baselined, nothing pending');
+  } else if (pending.length > 0) {
+    baselined = true;
+    warn('Migration state', `baselined; ${pending.length} pending: ${pending.join(', ')}`);
+  } else {
+    warn('Migration state', status.trim().split('\n').filter(Boolean).slice(-1)[0] || 'could not read');
   }
 
   // Drift matters only until the baseline exists. Once it does, migrations are

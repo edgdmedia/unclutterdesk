@@ -50,6 +50,15 @@ node scripts/preflight.mjs
 Read-only. Everything below is a fix for something it reports, so if it says a
 step is already done, skip it.
 
+Pay attention to two lines in particular:
+
+- **Migration state.** It distinguishes "not baselined", "0_init still pending"
+  and "baselined, N pending". The first two are blocking: applying `0_init` to a
+  database that already has the tables fails on `CREATE TABLE`.
+- **Paystack key mode.** A `sk_test_` key on production means live plan codes
+  will not resolve *and* real client payments would run in test mode, so no
+  money moves.
+
 ## 3. Install `pg_dump` if it is missing
 
 `deploy.sh` now aborts rather than change a schema without a backup.
