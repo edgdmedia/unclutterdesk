@@ -182,7 +182,7 @@ aws --version
 
 **5. Add the four variables** to `/home/unclutterdesk/app/.env`:
 
-```bash
+```ini
 BACKUP_S3_BUCKET=unclutterdesk-backups
 BACKUP_S3_ENDPOINT=https://<account-id>.r2.cloudflarestorage.com
 AWS_ACCESS_KEY_ID=<r2 access key id>
