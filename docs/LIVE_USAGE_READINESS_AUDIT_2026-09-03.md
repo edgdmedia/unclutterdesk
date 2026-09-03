@@ -98,8 +98,9 @@ data-trust and privacy blocker, not merely a visual issue.
 
 **Status:** Fixed on the current working tree. Private app fallback records and
 fictional billing state were removed. Failed API loads now show an error state;
-the synthetic account remains available only through the explicit database seed.
-Regression coverage was added in `apps/app/src/utils/__tests__/private-data.test.ts`.
+the synthetic account is created by the idempotent demo data migration and its
+password is provisioned separately from a server secret. Regression coverage was
+added in `apps/app/src/utils/__tests__/private-data.test.ts`.
 
 ### 6. Several user-facing actions are visibly present but non-functional
 

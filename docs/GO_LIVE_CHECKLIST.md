@@ -113,12 +113,12 @@ which is what `deploy.sh` applies.
       needs API access. The permissive `.pages.dev` and `localhost` matching is
       gone.
 
-- [x] **[you] Confirm the seeded demo account is absent from production.**
-      `docs/launch-checklist.md` §6 documents
-      `dr.jane@smiththerapy.ng / password123`. CI sets `SEED_DB=false`, and live
-      probes of `dr-smith` and `demo` return 404, which is consistent with the
-      seed never having run — but that is not proof. Check the database directly
-      and delete if present.
+- [ ] **[you] Verify the persistent demo workspace is isolated in production.**
+      The demo data migration creates only the marked `demo` tenant and synthetic
+      records. Confirm `Tenant.isDemo = true`, confirm no real tenant is marked
+      demo, and provision the demo password only through the server secret store
+      using `scripts/provision-demo-account.mjs`. Never run `pnpm db:seed` on the
+      production database; it clears all tables.
 
 ---
 

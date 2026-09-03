@@ -92,8 +92,12 @@ the remaining items are still open.
 
 ### Mockup data policy
 
-The synthetic Dr. Jane Smith workspace remains available for local or isolated
-staging demonstrations through the explicit Prisma seed only:
+The synthetic demo workspace is now created by an idempotent Prisma data
+migration on local, staging, and live databases. The migration creates the
+marked `demo` tenant plus synthetic owner, client, booking, note, service, and
+assessment records. It never contains a usable password.
+
+For a local or isolated staging demo, the legacy full-reset seed remains available:
 
 ```bash
 pnpm db:seed
@@ -102,8 +106,14 @@ pnpm db:seed
 `prisma/seed.js` clears and recreates the database with synthetic users, clients,
 bookings, notes, assessments, and services. It must never run against production;
 the seed script prints this warning and production deploys keep `SEED_DB=false`.
-Private pages do not contain an embedded copy of this data and do not fall back
-to it when an API request fails.
+After migrations, provision the demo password from a server secret:
+
+```bash
+DEMO_PASSWORD='use-a-private-12-plus-character-secret' pnpm exec node scripts/provision-demo-account.mjs
+```
+
+Never commit or publish that password. Private pages do not contain an embedded
+copy of this data and do not fall back to it when an API request fails.
 
 **Exit:** a fresh tenant never sees another tenant's or fictional private data;
 refreshing after every supported mutation preserves the result; every visible
