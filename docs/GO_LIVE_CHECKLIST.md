@@ -15,12 +15,23 @@ Legend: **[you]** needs credentials, a dashboard, or production access.
 
 Each of these will break the first deploy if skipped.
 
-- [ ] **[you] Create the three Paystack subscription plans** (Starter ₦5,000,
-      Pro ₦15,000, Clinic ₦45,000, monthly) in the Paystack dashboard and set
+- [ ] **[you] Create the three Paystack subscription plans** and set
       `PAYSTACK_PLAN_STARTER`, `PAYSTACK_PLAN_PRO` and `PAYSTACK_PLAN_CLINIC` to
       their `PLN_` codes on the host. Without them `POST /v1/billing/subscribe`
       returns 503 — deliberately, since the alternative is upgrading a practice
       without charging it.
+
+      Either use the dashboard at <https://dashboard.paystack.com/#/plans>
+      (Starter ₦5,000, Pro ₦15,000, Clinic ₦45,000, all monthly), or run:
+
+          node scripts/create-paystack-plans.mjs            # dry run
+          node scripts/create-paystack-plans.mjs --create
+
+      The script reads the amounts from the application's own plan definitions,
+      so the price created cannot drift from the price charged, and it reuses
+      plans that already exist rather than duplicating them. Run it once with
+      the test key and once with the live key — plan codes differ between
+      them.
 
 - [ ] **[you] Add the subscription events to the Paystack webhook**:
       `subscription.create`, `subscription.disable`, `subscription.not_renew`
