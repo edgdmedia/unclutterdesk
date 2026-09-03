@@ -125,6 +125,28 @@ mkdir -p logs
 echo "🔄 Reloading PM2 process..."
 pm2 reload ecosystem.config.js --env production || pm2 start ecosystem.config.js --env production
 
+# PM2 keeps its own saved copy of the process definition and reload does not
+# update the script path from the config file. If the saved copy points
+# somewhere stale the process crash-loops on MODULE_NOT_FOUND, so verify the
+# path PM2 is actually running and rebuild the definition when it disagrees.
+EXPECTED_SCRIPT="$TARGET_DIR/apps/api/dist/src/main.js"
+RUNNING_SCRIPT="$(pm2 jlist 2>/dev/null | node -e '
+  let raw = "";
+  process.stdin.on("data", (c) => (raw += c));
+  process.stdin.on("end", () => {
+    try {
+      const app = JSON.parse(raw).find((a) => a.name === "unclutterdesk-api");
+      process.stdout.write(app?.pm2_env?.pm_exec_path ?? "");
+    } catch { process.stdout.write(""); }
+  });
+' || true)"
+
+if [ -n "$RUNNING_SCRIPT" ] && [ "$RUNNING_SCRIPT" != "$EXPECTED_SCRIPT" ]; then
+    echo "   ! PM2 was running $RUNNING_SCRIPT; recreating from ecosystem.config.js"
+    pm2 delete unclutterdesk-api || true
+    pm2 start ecosystem.config.js --env production
+fi
+
 # pm2 reload returns before the process has proved it can boot, so a crash on
 # startup would otherwise look like a successful deploy. Wait for the health
 # endpoint to answer.
@@ -132,6 +154,8 @@ echo "🩺 Waiting for the API to report healthy..."
 for attempt in $(seq 1 15); do
     if curl -fsS "http://127.0.0.1:${PORT:-3050}/health" >/dev/null 2>&1; then
         echo "   ✓ API healthy after ${attempt} attempt(s)"
+        # Persist the definition so a reboot does not resurrect an older one.
+        pm2 save || true
         break
     fi
     if [ "$attempt" = "15" ]; then
