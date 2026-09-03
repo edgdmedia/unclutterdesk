@@ -122,7 +122,7 @@ Ten requests exhausted the quota for **every therapist and client on the platfor
 
 ## P2 — Launch hygiene.
 
-13. **No Privacy Policy, Terms of Service, or DPA.** `apps/landing/src/pages/` contains only `index.astro`; `/privacy` and `/terms` return the landing page with a 200. Handling client mental-health data without a published privacy policy is a legal exposure in every jurisdiction you operate in, and both Stripe and Paystack require live policy URLs for account review.
+13. **No Privacy Policy, Terms of Service, or DPA.** `apps/landing/src/pages/` contains only `index.astro`; `/privacy` and `/terms` return the landing page with a 200. Handling client mental-health data without a published privacy policy is a legal exposure in every jurisdiction you operate in, and both Stripe and Paystack require live policy URLs for account review. *(Drafts now live at `/privacy` and `/terms` on `dev`, with the four footer links wired up — they pointed at `#pricing`. They carry ~25 highlighted placeholders (entity name and RC number, registered address, contact addresses, refund policy, support hours, at-rest encryption status) and need a lawyer's review before an effective date is set. A separate DPA for practices is still outstanding.)*
 
 14. **Soft 404s everywhere.** Every unknown path on both the landing site and the app returns 200 with HTML. Broken links stay invisible and Google indexes garbage. Return a real 404.
 
@@ -135,6 +135,7 @@ Ten requests exhausted the quota for **every therapist and client on the platfor
 18. **Confirm the seeded demo account is absent from production.** `docs/launch-checklist.md` §6 documents `dr.jane@smiththerapy.ng / password123` as a pre-verified login. CI sets `SEED_DB=false`, which is correct, but the seed may have been run manually during setup. Verify directly against the production DB and delete if present. *(Not verifiable from here — live credential testing was out of scope for this audit.)*
 
 19. **Tighten the CSRF guard.** `csrf.guard.ts` exempts any path *containing* `/auth/`, `/login`, `/invite`, etc. as a substring, and returns `true` when no session cookie is present. Combined with `sameSite: 'none'`, the CSRF token is the only cross-site defence. Switch to exact route matching.
+
 
 ---
 

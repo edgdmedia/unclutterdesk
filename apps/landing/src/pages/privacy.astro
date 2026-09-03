@@ -1,0 +1,294 @@
+---
+import LegalPage from '../layouts/LegalPage.astro';
+---
+
+<LegalPage
+  title="Privacy Policy"
+  subtitle="Legal"
+  effectiveDate="[date]"
+  description="How Unclutter Desk handles personal data for therapy practices and their clients, including clinical records, payments and sub-processors."
+>
+  <div class="callout">
+    <p>
+      <strong>Read this first: there are two different relationships in this policy.</strong>
+      When a practice signs up for Unclutter Desk, we are the
+      <strong>data controller</strong> for that practice's own account information.
+      When a practice uses Unclutter Desk to hold information about
+      <em>its clients</em> — bookings, intake forms, assessment scores, clinical
+      notes — the <strong>practice is the data controller and Unclutter Desk is
+      only the data processor</strong>. We act on the practice's instructions and
+      do not use client health information for our own purposes.
+    </p>
+    <p>
+      If you are a therapy client, the practice you booked with is responsible
+      for your records. Contact them first; we will support them in responding.
+    </p>
+  </div>
+
+  <div class="toc">
+    <ol>
+      <li><a href="#who-we-are">Who we are</a></li>
+      <li><a href="#data-we-handle">Data we handle</a></li>
+      <li><a href="#how-we-use">How we use it, and our legal bases</a></li>
+      <li><a href="#cookies">Cookies</a></li>
+      <li><a href="#sub-processors">Sub-processors</a></li>
+      <li><a href="#video">Video sessions</a></li>
+      <li><a href="#retention">Storage, location and retention</a></li>
+      <li><a href="#security">How we protect data</a></li>
+      <li><a href="#rights">Your rights</a></li>
+      <li><a href="#children">Children</a></li>
+      <li><a href="#changes">Changes and contact</a></li>
+    </ol>
+  </div>
+
+  <h2 id="who-we-are">1. Who we are</h2>
+  <p>
+    Unclutter Desk is practice-management and booking software for therapists and
+    clinics, operated by <span class="todo">[legal entity name, RC number]</span>
+    of <span class="todo">[registered address]</span>, Lagos, Nigeria.
+  </p>
+  <p>
+    This policy is governed by the Nigeria Data Protection Act 2023 (NDPA) and the
+    Nigeria Data Protection Regulation (NDPR). Where a practice or client is in the
+    United Kingdom or European Economic Area, we also apply UK GDPR / EU GDPR
+    standards to that data.
+  </p>
+  <p>
+    Data protection contact: <span class="todo">[privacy@yourdomain]</span>.
+  </p>
+
+  <h2 id="data-we-handle">2. Data we handle</h2>
+
+  <h3>Practice and staff accounts (we are the controller)</h3>
+  <div class="table-scroll">
+    <table>
+      <thead>
+        <tr><th>Category</th><th>Fields</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>Identity and contact</td>
+          <td>Email address, username, first and last name, phone number, gender, date of birth, profile photo</td>
+        </tr>
+        <tr>
+          <td>Credentials</td>
+          <td>Password, stored only as a bcrypt hash. We never store or can retrieve your plain password. We also record failed login attempts and lockout times to detect attacks.</td>
+        </tr>
+        <tr>
+          <td>Practice profile</td>
+          <td>Practice name, booking subdomain, custom domain, logo and brand colours, public email and phone, city, address, category, cancellation policy</td>
+        </tr>
+        <tr>
+          <td>Billing</td>
+          <td>Subscription tier, payment references, and payout bank subaccount details. Card details are handled by our payment processors and never reach our servers.</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3>Client and clinical data (the practice is the controller)</h3>
+  <div class="table-scroll">
+    <table>
+      <thead>
+        <tr><th>Category</th><th>Fields</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>Client profile</td>
+          <td>Name, email, phone, gender, date of birth</td>
+        </tr>
+        <tr>
+          <td>Bookings</td>
+          <td>Service booked, appointment time, status, payment reference, payment date, booking notes, video room identifier</td>
+        </tr>
+        <tr>
+          <td>Intake and assessments</td>
+          <td>Responses to intake and consent forms, and responses and scores for standardised assessments including PHQ-9 and GAD-7</td>
+        </tr>
+        <tr>
+          <td>Clinical records</td>
+          <td>SOAP notes — subjective, objective, assessment and plan — plus any diagnosis code recorded by the treating therapist</td>
+        </tr>
+        <tr>
+          <td>Reviews</td>
+          <td>Testimonials a client submits after a completed session. These are only shown publicly if the practice chooses to publish them.</td>
+        </tr>
+        <tr>
+          <td>Notifications</td>
+          <td>In-app notifications, a log of emails sent, notification preferences, and browser push subscriptions where enabled</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+  <p>
+    Intake responses, assessment scores and clinical notes are
+    <strong>sensitive personal data</strong> concerning health. We handle them only
+    to provide the service to the practice.
+  </p>
+
+  <h3>Technical data</h3>
+  <p>
+    We process IP addresses and request metadata to apply rate limits, block
+    abuse and keep the service available. We do not use this to build profiles of
+    individuals.
+  </p>
+
+  <h2 id="how-we-use">3. How we use it, and our legal bases</h2>
+  <ul>
+    <li><strong>To provide the service</strong> — creating accounts, publishing booking pages, taking bookings, sending confirmations and reminders, generating session links, storing notes and assessments. Basis: performance of a contract, and the practice's instructions where we act as processor.</li>
+    <li><strong>To take payments and pay practices out</strong> — via our payment processors. Basis: performance of a contract.</li>
+    <li><strong>To keep the service secure</strong> — authentication, rate limiting, abuse detection, backups. Basis: legitimate interests.</li>
+    <li><strong>To support you</strong> — responding to enquiries and troubleshooting, which may require accessing an account. Basis: legitimate interests, and contract.</li>
+    <li><strong>To meet legal obligations</strong> — retaining financial records, responding to lawful requests. Basis: legal obligation.</li>
+  </ul>
+  <p>
+    We do not sell personal data. We do not use client health information to
+    train machine-learning models. We do not serve advertising.
+  </p>
+
+  <h2 id="cookies">4. Cookies</h2>
+  <p>
+    Unclutter Desk sets three cookies, all strictly necessary to keep you signed
+    in safely. <strong>We set no advertising, analytics or tracking cookies</strong>,
+    and we run no third-party analytics on our marketing site or in the
+    application.
+  </p>
+  <div class="table-scroll">
+    <table>
+      <thead>
+        <tr><th>Cookie</th><th>Purpose</th><th>Lifetime</th></tr>
+      </thead>
+      <tbody>
+        <tr><td><code>unclutter_access</code></td><td>Keeps you signed in. Not readable by JavaScript.</td><td>15 minutes</td></tr>
+        <tr><td><code>unclutter_refresh</code></td><td>Renews your session without re-entering your password. Not readable by JavaScript.</td><td>30 days</td></tr>
+        <tr><td><code>unclutter_csrf</code></td><td>Protects against cross-site request forgery.</td><td>30 days</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h2 id="sub-processors">5. Sub-processors</h2>
+  <p>
+    We use the following providers to deliver the service. Each receives only the
+    data needed for its function.
+  </p>
+  <div class="table-scroll">
+    <table>
+      <thead>
+        <tr><th>Provider</th><th>Function</th><th>Data shared</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>Paystack</td><td>Payments and bank payouts (Nigeria)</td><td>Name, email, amount, booking reference</td></tr>
+        <tr><td>Stripe</td><td>Subscription billing and card payments</td><td>Name, email, amount, subscription and booking references</td></tr>
+        <tr><td>Cloudflare</td><td>Hosting of the website and application, CDN, DDoS protection</td><td>IP address and request metadata</td></tr>
+        <tr><td><span class="todo">[hosting provider]</span></td><td>Application server and database hosting</td><td>All data described above</td></tr>
+        <tr><td>Google (Calendar &amp; Meet)</td><td>Calendar sync and meeting links, only if a therapist connects their Google account</td><td>Appointment time, title and attendee email addresses</td></tr>
+        <tr><td>Google (Gmail SMTP)</td><td>Sending transactional email</td><td>Recipient email address and message content</td></tr>
+        <tr><td>Jitsi Meet (8x8)</td><td>Default video sessions — see section 6</td><td>Room identifier; audio and video pass through their infrastructure</td></tr>
+        <tr><td>Daily.co</td><td>Optional branded video rooms, where a practice enables it</td><td>Room identifier and session metadata</td></tr>
+        <tr><td>Termii</td><td>SMS notifications, where enabled</td><td>Phone number and message content</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p>
+    We will update this list before adding a new sub-processor that handles
+    personal data.
+  </p>
+
+  <h2 id="video">6. Video sessions</h2>
+  <div class="callout">
+    <p>
+      By default, session links use <strong>Jitsi Meet at meet.jit.si</strong>, a
+      free public service operated by 8x8. Sessions are not recorded by Unclutter
+      Desk, and we never receive session audio or video — but the call itself runs
+      on infrastructure we do not control, under
+      <a href="https://8x8.vc/terms" rel="noopener noreferrer">8x8's terms</a>.
+    </p>
+    <p>
+      Practices should tell clients which video service they use and satisfy
+      themselves that it is appropriate for clinical sessions. A practice that
+      needs a dedicated provider can configure Daily.co or use Google Meet
+      instead.
+    </p>
+  </div>
+
+  <h2 id="retention">7. Storage, location and retention</h2>
+  <p>
+    Data is stored in a PostgreSQL database hosted at
+    <span class="todo">[hosting provider and region]</span>. Traffic between your
+    browser and our servers is encrypted with TLS.
+    <span class="todo">[Confirm and state whether the database and backups are encrypted at rest.]</span>
+  </p>
+  <p>
+    We take backups before every deployment and retain them for 14 days.
+  </p>
+  <p>
+    <strong>We retain data for as long as the practice's account is active.</strong>
+    Because a practice is the controller of its clients' records, it decides how
+    long to keep them, subject to the record-retention rules of its profession and
+    regulator. Clinical records generally must be kept for a defined minimum
+    period, so a request to delete a clinical note may lawfully be refused by the
+    practice.
+  </p>
+  <p>
+    We do not currently delete personal data automatically. If a practice closes
+    its account and asks us to erase its data, we will do so within
+    <span class="todo">[number]</span> days, except where we must retain financial
+    records to meet legal obligations.
+  </p>
+
+  <h2 id="security">8. How we protect data</h2>
+  <ul>
+    <li>All traffic is served over HTTPS.</li>
+    <li>Passwords are stored as bcrypt hashes; we cannot read them.</li>
+    <li>Session tokens are held in cookies that JavaScript cannot read, with separate cross-site request forgery protection.</li>
+    <li>Each practice's data is isolated by tenant, and every request is scoped to the tenant of the signed-in user rather than to anything the browser supplies.</li>
+    <li>Repeated failed logins trigger lockout, and the API applies rate limits.</li>
+    <li>Access to production systems is limited to staff who need it.</li>
+  </ul>
+  <p>
+    No system is perfectly secure. If a breach affects your personal data, we will
+    notify the practice, and the Nigeria Data Protection Commission, as required by
+    the NDPA.
+  </p>
+
+  <h2 id="rights">9. Your rights</h2>
+  <p>Under the NDPA — and the GDPR where it applies — you may ask to:</p>
+  <ul>
+    <li>access a copy of your personal data;</li>
+    <li>correct data that is wrong or incomplete;</li>
+    <li>delete data, where no legal or professional duty requires it to be kept;</li>
+    <li>restrict or object to certain processing;</li>
+    <li>receive your data in a portable format;</li>
+    <li>withdraw consent, where processing relies on consent;</li>
+    <li>complain to the Nigeria Data Protection Commission.</li>
+  </ul>
+  <p>
+    <strong>If you are a therapy client, contact your practice</strong> — they hold
+    your records and decide these requests. If you contact us directly, we will
+    pass your request to the practice and help them respond.
+  </p>
+  <p>
+    If you are a practice or a member of practice staff, email
+    <span class="todo">[privacy@yourdomain]</span>. We respond within
+    <span class="todo">[number]</span> days.
+  </p>
+
+  <h2 id="children">10. Children</h2>
+  <p>
+    Accounts on Unclutter Desk are for adults. A practice may treat clients under
+    18 and record their information; where it does, the practice is responsible
+    for obtaining consent from a parent or guardian as its professional and legal
+    obligations require.
+  </p>
+
+  <h2 id="changes">11. Changes and contact</h2>
+  <p>
+    We will post any change to this policy on this page and update the effective
+    date. If a change materially affects how we handle personal data, we will
+    notify practice account owners by email.
+  </p>
+  <p>
+    Questions: <span class="todo">[privacy@yourdomain]</span> ·
+    <span class="todo">[registered address]</span>, Lagos, Nigeria.
+  </p>
+</LegalPage>

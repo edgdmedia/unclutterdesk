@@ -1,0 +1,120 @@
+---
+import '../styles/global.css';
+
+interface Props {
+  title: string;
+  subtitle: string;
+  effectiveDate: string;
+  description: string;
+}
+
+const { title, subtitle, effectiveDate, description } = Astro.props;
+const appUrl = import.meta.env.PUBLIC_APP_URL ?? 'https://app.unclutterdesk.com';
+---
+
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="description" content={description} />
+    <title>{title} · Unclutter Desk</title>
+  </head>
+  <body class="antialiased bg-white">
+    <header class="border-b border-slate-200">
+      <div class="max-w-[880px] mx-auto px-5 md:px-8 h-[72px] flex items-center justify-between">
+        <a href="/" class="flex items-center">
+          <img src="/unclutterdesk-lockup.svg" alt="Unclutter Desk" class="h-7 w-auto object-contain" />
+        </a>
+        <a href={appUrl} class="text-[14px] font-semibold text-[#0F3A53] hover:underline">Sign in</a>
+      </div>
+    </header>
+
+    <main class="max-w-[880px] mx-auto px-5 md:px-8 pt-12 md:pt-16 pb-6">
+      <p class="m-0 text-[12px] font-bold tracking-[0.14em] text-[#64748B] uppercase">{subtitle}</p>
+      <h1 class="mt-3 mb-2 text-[34px] md:text-[42px] leading-[1.15] font-extrabold text-[#0F172A]">{title}</h1>
+      <p class="m-0 text-[14px] text-[#64748B]">Effective {effectiveDate}</p>
+
+      <div class="legal">
+        <slot />
+      </div>
+    </main>
+
+    <footer class="bg-[#0F172A] mt-16 py-10 px-5 md:px-8">
+      <div class="max-w-[880px] mx-auto flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+        <img src="/unclutterdesk-lockup.svg" alt="Unclutter Desk" class="h-7 w-auto object-contain brightness-0 invert" />
+        <nav class="flex flex-wrap gap-x-6 gap-y-2 text-[14px]">
+          <a href="/" class="text-white hover:text-[#94A3B8] transition-colors">Home</a>
+          <a href="/terms" class="text-white hover:text-[#94A3B8] transition-colors">Terms</a>
+          <a href="/privacy" class="text-white hover:text-[#94A3B8] transition-colors">Privacy</a>
+        </nav>
+      </div>
+      <div class="max-w-[880px] mx-auto mt-8 pt-5 border-t border-white/10 text-[13px] text-[#64748B]">
+        © 2026 Unclutter Desk · Lagos, Nigeria
+      </div>
+    </footer>
+
+    <style is:global>
+      /*
+        Prose styles for slotted legal copy. These stay as plain CSS because
+        they style markup passed through <slot />, which utility classes on the
+        layout cannot reach. Page chrome above uses Tailwind like the rest of
+        the site.
+      */
+      .legal {
+        --lp-ink: #0F172A;
+        --lp-line: #E2E8F0;
+        --lp-brand: #0F3A53;
+
+        margin-top: 40px;
+        font-size: 15px;
+        line-height: 1.75;
+        color: #334155;
+      }
+      .legal h2 {
+        margin: 44px 0 14px; font-size: 21px; line-height: 1.3;
+        font-weight: 800; color: var(--lp-ink); scroll-margin-top: 88px;
+      }
+      .legal h3 { margin: 28px 0 10px; font-size: 16px; font-weight: 700; color: var(--lp-ink); }
+      .legal p { margin: 0 0 14px; }
+      .legal ul, .legal ol { margin: 0 0 16px; padding-left: 22px; }
+      .legal li { margin-bottom: 7px; }
+      .legal a { color: var(--lp-brand); }
+      .legal strong { color: var(--lp-ink); font-weight: 650; }
+      .legal code {
+        background: #F1F5F9; border-radius: 4px; padding: 1px 5px;
+        font-size: 13px; font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+      }
+
+      .legal table { width: 100%; border-collapse: collapse; margin: 0 0 20px; font-size: 14px; }
+      /* Sub-processor and data-category tables must not make the page scroll sideways. */
+      .legal .table-scroll { overflow-x: auto; margin: 0 0 20px; }
+      .legal .table-scroll table { margin: 0; min-width: 520px; }
+      .legal th, .legal td {
+        border: 1px solid var(--lp-line); padding: 9px 12px; text-align: left; vertical-align: top;
+      }
+      .legal th { background: #F8FAFC; font-weight: 700; color: var(--lp-ink); }
+
+      .legal .toc {
+        background: #F8FAFC; border: 1px solid var(--lp-line);
+        border-radius: 12px; padding: 18px 22px; margin-bottom: 8px;
+      }
+      .legal .toc ol { margin: 0; padding-left: 20px; }
+      .legal .toc li { margin-bottom: 4px; }
+
+      .legal .callout {
+        border-left: 4px solid var(--lp-brand); background: #F1F5F9;
+        border-radius: 0 10px 10px 0; padding: 16px 20px; margin: 0 0 20px;
+      }
+      .legal .callout.urgent { border-left-color: #B91C1C; background: #FEF2F2; }
+      .legal .callout p:last-child { margin-bottom: 0; }
+
+      /* Unfilled details are highlighted so a draft cannot be published looking
+         finished. Search the source for class="todo" to find every one. */
+      .legal .todo {
+        background: #FEF3C7; border-bottom: 2px solid #D97706; padding: 1px 5px;
+        border-radius: 3px; font-weight: 650; color: #92400E;
+      }
+    </style>
+  </body>
+</html>
