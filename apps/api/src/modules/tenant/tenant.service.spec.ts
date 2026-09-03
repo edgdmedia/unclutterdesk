@@ -112,3 +112,73 @@ describe('TenantService staff role guard', () => {
     await expect(service.updateStaffRole(BigInt(1), BigInt(1), BigInt(99), 'THERAPIST')).rejects.toBeInstanceOf(NotFoundException);
   });
 });
+
+describe('TenantService.getPublicTenantExistence', () => {
+  test('reports an active practice as existing and active', async () => {
+    const prisma = createPrismaMock();
+    prisma.tenant.findFirst.mockResolvedValue({ isActive: true });
+    const service = new TenantService(prisma);
+
+    await expect(service.getPublicTenantExistence('dr-smith')).resolves.toEqual({
+      exists: true,
+      active: true,
+    });
+  });
+
+  // The whole point of this probe: getPublicTenantInfo filters on isActive, so
+  // it cannot tell "no such practice" from "practice paused". The edge router
+  // must serve a paused practice rather than 404 it, because clients with
+  // sessions already booked still need to reach the inactive-practice page.
+  test('reports a deactivated practice as existing but inactive', async () => {
+    const prisma = createPrismaMock();
+    prisma.tenant.findFirst.mockResolvedValue({ isActive: false });
+    const service = new TenantService(prisma);
+
+    await expect(service.getPublicTenantExistence('paused')).resolves.toEqual({
+      exists: true,
+      active: false,
+    });
+  });
+
+  test('does not filter on isActive when looking the practice up', async () => {
+    const prisma = createPrismaMock();
+    prisma.tenant.findFirst.mockResolvedValue({ isActive: false });
+    const service = new TenantService(prisma);
+
+    await service.getPublicTenantExistence('paused');
+    expect(prisma.tenant.findFirst.mock.calls[0][0].where).not.toHaveProperty('isActive');
+  });
+
+  test('reports a missing practice as not existing', async () => {
+    const prisma = createPrismaMock();
+    prisma.tenant.findFirst.mockResolvedValue(null);
+    const service = new TenantService(prisma);
+
+    await expect(service.getPublicTenantExistence('nope')).resolves.toEqual({
+      exists: false,
+      active: false,
+    });
+  });
+
+  test('matches on slug or custom domain, case-insensitively', async () => {
+    const prisma = createPrismaMock();
+    prisma.tenant.findFirst.mockResolvedValue({ isActive: true });
+    const service = new TenantService(prisma);
+
+    await service.getPublicTenantExistence('  Booking.DrJane.com  ');
+    expect(prisma.tenant.findFirst.mock.calls[0][0].where.OR).toEqual([
+      { slug: 'booking.drjane.com' },
+      { customDomain: 'booking.drjane.com' },
+    ]);
+  });
+
+  test('returns only existence flags, never practice detail', async () => {
+    const prisma = createPrismaMock();
+    prisma.tenant.findFirst.mockResolvedValue({ isActive: true });
+    const service = new TenantService(prisma);
+
+    const result = await service.getPublicTenantExistence('dr-smith');
+    expect(Object.keys(result).sort()).toEqual(['active', 'exists']);
+    expect(prisma.tenant.findFirst.mock.calls[0][0].select).toEqual({ isActive: true });
+  });
+});

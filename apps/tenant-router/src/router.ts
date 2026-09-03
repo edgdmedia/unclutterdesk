@@ -19,8 +19,10 @@ export type Decision =
   /**
    * Serve the app bundle for this host. `indexable` is false for the
    * application shell, which is returned with X-Robots-Tag: noindex.
+   * `checkTenant` marks a host that represents a practice address, and so
+   * should 404 when no such practice exists.
    */
-  | { kind: 'serve'; indexable: boolean }
+  | { kind: 'serve'; indexable: boolean; checkTenant: boolean }
   /** Send www to the marketing site at the apex. */
   | { kind: 'redirect'; to: string }
   /**
@@ -47,8 +49,9 @@ export function decide(hostname: string, config: RouterConfig): Decision {
 
   if (!host.endsWith(`.${apexHost}`)) {
     // Not our zone at all. A custom domain arriving via Cloudflare for SaaS is
-    // a real tenant surface, so serve it — and it should be indexable.
-    return { kind: 'serve', indexable: true };
+    // a real tenant surface, so serve it — and it should be indexable. It is
+    // also a practice address, so an unconfigured domain pointed at us 404s.
+    return { kind: 'serve', indexable: true, checkTenant: true };
   }
 
   const label = host.slice(0, -(apexHost.length + 1));
@@ -60,7 +63,8 @@ export function decide(hostname: string, config: RouterConfig): Decision {
   if (label === 'www') return { kind: 'redirect', to: `https://${apexHost}/` };
   if (FOREIGN_ORIGIN_LABELS.has(label)) return { kind: 'misrouted', host };
 
-  return { kind: 'serve', indexable: !NON_PUBLIC_LABELS.has(label) };
+  const isAppShell = NON_PUBLIC_LABELS.has(label);
+  return { kind: 'serve', indexable: !isAppShell, checkTenant: !isAppShell };
 }
 
 /**

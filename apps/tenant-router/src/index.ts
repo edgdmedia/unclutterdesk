@@ -14,12 +14,16 @@
  * See docs/CLOUDFLARE_SETUP.md §1.
  */
 import { decide, originRequest, type RouterConfig } from './router';
+import { lookupTenant } from './tenants';
+import { practiceNotFoundResponse } from './not-found';
 
 export interface Env {
   /** Pages project hostname serving the app bundle. */
   ORIGIN_HOST: string;
   /** Zone apex. */
   APEX_HOST: string;
+  /** API base used to check whether a practice address exists. */
+  API_BASE: string;
 }
 
 export default {
@@ -46,6 +50,18 @@ export default {
         );
 
       case 'serve': {
+        // Only booking surfaces get the existence check: the app shell is not a
+        // practice address, so there is nothing to look up.
+        if (decision.checkTenant) {
+          const tenant = await lookupTenant(url.hostname, env.API_BASE, caches.default);
+          // `exists: false` is the only outcome that 404s. A deactivated
+          // practice is still served, so the app can show its inactive-practice
+          // page to clients who already have sessions booked.
+          if (!tenant.exists) {
+            return practiceNotFoundResponse(url.hostname);
+          }
+        }
+
         // redirect: 'manual' so the origin's own redirects reach the browser
         // untouched rather than being followed against the origin host.
         const response = await fetch(originRequest(request, config), {

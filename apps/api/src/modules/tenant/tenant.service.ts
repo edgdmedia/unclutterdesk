@@ -91,6 +91,23 @@ export class TenantService {
     return { available: false, slug: cleanSlug, reason: 'Slug is already taken' };
   }
 
+  /**
+   * Existence probe for the edge router, which needs to tell "no such practice"
+   * (a real 404) from "practice paused" (still served, so the app can show the
+   * inactive-practice page to clients who already have sessions booked).
+   *
+   * Deliberately returns no tenant detail beyond those two booleans.
+   */
+  async getPublicTenantExistence(slugOrDomain: string) {
+    const key = slugOrDomain.toLowerCase().trim();
+    const tenant = await this.prisma.tenant.findFirst({
+      where: { OR: [{ slug: key }, { customDomain: key }] },
+      select: { isActive: true },
+    });
+
+    return { exists: Boolean(tenant), active: Boolean(tenant?.isActive) };
+  }
+
   async getPublicTenantInfo(slugOrDomain: string) {
     const key = slugOrDomain.toLowerCase().trim();
     const tenant = await this.prisma.tenant.findFirst({

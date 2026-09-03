@@ -1,5 +1,7 @@
-import { Controller, Get, Post, Patch, Body, Param, Req, UseGuards } from '@nestjs/common';
+import { Controller, Get, Post, Patch, Body, Param, Req, Res, UseGuards } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
+import { Response } from 'express';
+import { SkipThrottle } from '@nestjs/throttler';
 import { TenantService } from './tenant.service';
 import { TenantRequest } from '../../common/middleware/tenant.middleware';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
@@ -28,6 +30,20 @@ export class TenantController {
   @ApiOperation({ summary: 'Get public brand config & logo for client portal styling' })
   getPublicInfo(@Param('slugOrDomain') slugOrDomain: string) {
     return this.tenantService.getPublicTenantInfo(slugOrDomain);
+  }
+
+  @Get('public/exists/:slugOrDomain')
+  @SkipThrottle()
+  @ApiOperation({ summary: 'Whether a practice exists and is active (edge router probe)' })
+  async getPublicExistence(
+    @Param('slugOrDomain') slugOrDomain: string,
+    @Res({ passthrough: true }) res: Response,
+  ) {
+    const result = await this.tenantService.getPublicTenantExistence(slugOrDomain);
+    // A practice that exists is stable; one that does not may be created at any
+    // moment, so a shorter negative TTL keeps a new signup from 404ing for long.
+    res.setHeader('Cache-Control', result.exists ? 'public, max-age=300' : 'public, max-age=30');
+    return result;
   }
 
   @Get('check-slug/:slug')

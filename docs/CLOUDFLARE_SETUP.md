@@ -62,11 +62,25 @@ Behaviour (see `src/router.ts`, 13 tests in `src/router.spec.ts`):
 | `booking.drjane.com` (custom domain via Cloudflare for SaaS) | serves the app bundle |
 | `www.unclutterdesk.com` | 301 to the apex |
 | `api.unclutterdesk.com` | **404, deliberately** — see step 4 |
+| an address with no matching practice | genuine 404 |
 | `a.b.unclutterdesk.com` | 404 |
 
-The Worker does not check whether the slug is a real tenant. That would cost a
-lookup on every request; instead an unknown slug loads the SPA, which asks the
-API and gets a 404 back. Same outcome, no added latency.
+The Worker checks whether the address belongs to a real practice and returns a
+genuine 404 when it does not, so a mistyped or retired practice URL is not
+indexed as a live page. The check calls `GET /v1/tenant/public/exists/:host`,
+cached at the edge per host — 300s for a practice that exists, 30s for one that
+does not, so a new signup goes live quickly.
+
+Two behaviours matter here:
+
+- **It fails open.** A timeout, a 5xx, an unparseable body, or an
+  unreachable API all serve the app rather than a 404. A wrong 404 takes a real
+  practice's booking page off the internet; a wrong 200 only shows the app's own
+  not-found screen.
+- **A deactivated practice is served, not 404ed.** `getPublicTenantInfo`
+  filters on `isActive`, so it cannot tell "no such practice" from "practice
+  paused"; the probe deliberately does not filter, because clients who already
+  have sessions booked still need to reach the inactive-practice page.
 
 #### Deploying it
 
