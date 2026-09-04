@@ -202,7 +202,9 @@ def main():
         + (" — a typo'd booking link should not page anyone" if status == 500 else ""),
     )
 
-    practice_flows(rotated, csrf, payments)
+    booking_id = practice_flows(rotated, csrf, payments)
+
+    staff_and_client_flows(rotated, csrf, booking_id)
 
     # ── closing the practice, last, because it ends this tenant ──────────
     status, _, _ = call(
@@ -287,7 +289,7 @@ def practice_flows(session, csrf, payments):
     )
 
     if not (service_id and slot_id):
-        return
+        return None
 
     # ── a client books it ────────────────────────────────────────────────
     booking_body = {
@@ -477,25 +479,6 @@ def practice_flows(session, csrf, payments):
             f"status {status}",
         )
 
-    # ── the practice can cancel ──────────────────────────────────────────
-    if booking_id:
-        status, _, _ = call(
-            "PATCH",
-            f"/v1/consult/therapist/bookings/{booking_id}/status",
-            {"status": "CANCELLED"},
-            cookies=session,
-            csrf=csrf,
-        )
-        record("the practice can cancel a booking", status in (200, 201), f"status {status}")
-
-        status, summary, _ = call("GET", "/v1/consult/dashboard/summary", cookies=session)
-        still = summary.get("revenueThisMonthNaira") if isinstance(summary, dict) else None
-        record(
-            "money already taken is not erased by a cancellation",
-            still == 5000,
-            f"{still} — refunds are not modelled, so a paid booking stays paid",
-        )
-
     # ── intake and assessments ───────────────────────────────────────────
     status, public_forms, _ = call("GET", "/v1/intake/public/forms", host=host)
     record("intake forms are offered publicly", status == 200, f"status {status}")
@@ -521,6 +504,8 @@ def practice_flows(session, csrf, payments):
 
     status, subs, _ = call("GET", "/v1/intake/submissions", cookies=session)
     record("intake submissions are staff-only and readable by the owner", status == 200, f"status {status}")
+
+    return booking_id
 
 
 
@@ -611,6 +596,177 @@ def ical_token(booking_id):
         return ""
     secret = matches[-1].strip()
     return hmac.new(secret.encode(), f"ical:{booking_id}".encode(), hashlib.sha256).hexdigest()[:32]
+
+
+
+def staff_and_client_flows(owner_session, owner_csrf, booking_id):
+    """
+    A receptionist and a client, each held to their own side of the product.
+
+    Both are roles the practice actually has, and neither had ever been driven:
+    the role matrix is asserted from the route annotations, and the client
+    portal was only ever checked for refusing an anonymous request.
+    """
+    import subprocess
+
+    host = f"{TENANT_SLUG}.localhost"
+
+    # ── a receptionist ───────────────────────────────────────────────────
+    # Staff invitations need a paid tier; this run's practice is on the free
+    # one. Set directly rather than paying, since the tier is not what is
+    # under test here.
+    subprocess.run(
+        [
+            "psql",
+            os.environ.get("E2E_DB", "unclutter_os"),
+            "-tAc",
+            f"update \"Tenant\" set \"subscriptionTier\"='CLINIC' where slug='{TENANT_SLUG}'",
+        ],
+        capture_output=True,
+        text=True,
+        timeout=10,
+    )
+
+    reception_email = f"e2e-reception-{STAMP}@example.com"
+    status, invite, _ = call(
+        "POST",
+        "/v1/tenant/staff/invite",
+        {"email": reception_email, "role": "RECEPTIONIST"},
+        cookies=owner_session,
+        csrf=owner_csrf,
+    )
+    record("invite a receptionist", status in (200, 201), f"status {status}")
+
+    claim_token = (invite or {}).get("claimToken") if isinstance(invite, dict) else None
+    if not claim_token:
+        record("the invitation carries a claim token", False, "no claimToken returned")
+        return
+
+    status, roster, _ = call("GET", "/v1/tenant/staff", cookies=owner_session)
+    pending = [
+        r for r in (roster if isinstance(roster, list) else []) if r.get("kind") == "invite"
+    ]
+    record(
+        "the outstanding invitation shows on the roster",
+        bool(pending),
+        f"{len(pending)} pending",
+    )
+
+    status, claimed, cookies = call(
+        "POST",
+        "/v1/auth/invite/claim",
+        {"token": claim_token, "password": PASSWORD, "firstName": "E2E", "lastName": "Reception"},
+        host=host,
+    )
+    reception = jar(cookies)
+    reception_csrf = claimed.get("csrfToken") if isinstance(claimed, dict) else None
+    record("claiming the invitation signs them in", status in (200, 201) and bool(reception), f"status {status}")
+
+    if reception:
+        status, _, _ = call("GET", "/v1/tenant/clients", cookies=reception)
+        record("a receptionist can see the client list they book against", status == 200, f"status {status}")
+
+        # The three surfaces that carry what was discussed in a session.
+        for label, method, path in [
+            ("the video room's session prep", "GET", f"/v1/consult/therapist/bookings/{booking_id}/prep"),
+            ("intake submissions", "GET", "/v1/intake/submissions"),
+        ]:
+            status, _, _ = call(method, path, cookies=reception)
+            record(f"a receptionist cannot read {label}", status == 403, f"status {status}")
+
+        status, _, _ = call(
+            "POST",
+            "/v1/notes",
+            {"clientProfileId": "1", "subjective": "should not be written"},
+            cookies=reception,
+            csrf=reception_csrf,
+        )
+        record("a receptionist cannot write a clinical note", status == 403, f"status {status}")
+
+    # ── the client whose booking it is ───────────────────────────────────
+    client_email = f"e2e-client-{STAMP}@example.com"
+    status, _, _ = call(
+        "POST",
+        "/v1/auth/register",
+        {"email": client_email, "password": PASSWORD, "firstName": "E2E", "lastName": "Client"},
+        host=host,
+    )
+    record("the client can create a login for the practice", status in (200, 201), f"status {status}")
+
+    code = verification_code(client_email)
+    if code:
+        call("POST", "/v1/auth/verify-email", {"email": client_email, "code": code}, host=host)
+
+    status, body, cookies = call(
+        "POST", "/v1/auth/login", {"email": client_email, "password": PASSWORD}, host=host
+    )
+    client = jar(cookies)
+    record("the client can sign in", status in (200, 201) and bool(client), f"status {status}")
+
+    if not client:
+        return
+
+    # Booking created a profile for this address; registering must attach to it
+    # rather than open a second one, or the client signs in to an empty portal.
+    status, portal, _ = call("GET", "/v1/consult/portal", cookies=client, host=host)
+    bookings = (portal or {}).get("upcoming") if isinstance(portal, dict) else None
+    record(
+        "the client sees the booking they made",
+        status == 200 and isinstance(bookings, list) and len(bookings) >= 1,
+        f"status {status}, {len(bookings) if isinstance(bookings, list) else '?'} booking(s)",
+    )
+
+    status, _, _ = call("GET", "/v1/consult/portal/payments", cookies=client, host=host)
+    record("the client can see what they were charged", status == 200, f"status {status}")
+
+    if booking_id:
+        status, options, _ = call(
+            "GET",
+            f"/v1/consult/portal/bookings/{booking_id}/reschedule-options",
+            cookies=client,
+            host=host,
+        )
+        record("the client can ask to reschedule their own booking", status == 200, f"status {status}")
+
+    # The boundary that matters most: a client is not staff.
+    for label, path in [
+        ("the practice's client list", "/v1/tenant/clients"),
+        ("intake submissions", "/v1/intake/submissions"),
+        ("the dashboard", "/v1/consult/dashboard/summary"),
+    ]:
+        status, _, _ = call("GET", path, cookies=client, host=host)
+        record(f"a client cannot reach {label}", status == 403, f"status {status}")
+
+    # ── cancelling, once the client has had their turn with it ───────────
+    if booking_id:
+        status, _, _ = call(
+            "PATCH",
+            f"/v1/consult/therapist/bookings/{booking_id}/status",
+            {"status": "CANCELLED"},
+            cookies=owner_session,
+            csrf=owner_csrf,
+        )
+        record("the practice can cancel a booking", status in (200, 201), f"status {status}")
+
+        status, options, _ = call(
+            "GET",
+            f"/v1/consult/portal/bookings/{booking_id}/reschedule-options",
+            cookies=client,
+            host=host,
+        )
+        record(
+            "a cancelled booking cannot be rescheduled",
+            status >= 400,
+            f"status {status}",
+        )
+
+        status, summary, _ = call("GET", "/v1/consult/dashboard/summary", cookies=owner_session)
+        still = summary.get("revenueThisMonthNaira") if isinstance(summary, dict) else None
+        record(
+            "money already taken is not erased by a cancellation",
+            still == 5000,
+            f"{still} — refunds are not modelled, so a paid booking stays paid",
+        )
 
 
 def summarise():
