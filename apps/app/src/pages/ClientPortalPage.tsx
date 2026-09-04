@@ -317,7 +317,7 @@ export function ClientPortalPage() {
                     Join session
                   </a>
                 ) : (
-                  <button className="h-[48px] px-5 rounded-[16px] bg-[#E2E8F0] text-[#64748B] text-[13.5px] font-extrabold flex items-center gap-2 cursor-not-allowed">
+                  <button type="button" disabled className="h-[48px] px-5 rounded-[16px] bg-[#E2E8F0] text-[#64748B] text-[13.5px] font-extrabold flex items-center gap-2 cursor-not-allowed">
                     <Video className="h-4 w-4" />
                     No room link yet
                   </button>

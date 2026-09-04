@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Search, Download, Plus, Edit2, MoreHorizontal, ChevronLeft, ChevronRight, X, User, Loader2 } from 'lucide-react';
+import { Search, Download, Plus, ChevronLeft, ChevronRight, X, User, Loader2 } from 'lucide-react';
 import { Eyebrow, Card, StatusBadge, AvatarChip } from '@unclutterdesk/ui';
 import { useBrand } from '@unclutterdesk/ui';
 import { api } from '../utils/apiClient';
@@ -17,6 +17,10 @@ export function ClientsPage({ clients, setClients, onRefresh }: ClientsPageProps
   const primaryColor = brand.primaryColor || '#0F3A53';
 
   const [searchQuery, setSearchQuery] = useState('');
+  // "Previous" and "Next" had no handlers: the list showed every client at
+  // once and the pager was decoration. Paging it for real is what makes the
+  // two buttons true.
+  const [page, setPage] = useState(0);
   const [showAddModal, setShowAddModal] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
@@ -35,6 +39,44 @@ export function ClientsPage({ clients, setClients, onRefresh }: ClientsPageProps
       c.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       c.email.toLowerCase().includes(searchQuery.toLowerCase())
   );
+
+  const PAGE_SIZE = 25;
+  const lastPage = Math.max(0, Math.ceil(filteredClients.length / PAGE_SIZE) - 1);
+  // A search that shortens the list can strand the reader past the end.
+  const currentPage = Math.min(page, lastPage);
+  const pageStart = currentPage * PAGE_SIZE;
+  const pageClients = filteredClients.slice(pageStart, pageStart + PAGE_SIZE);
+
+  /**
+   * The roster as a CSV.
+   *
+   * "Export" had no handler — a button that looked enabled, took the click and
+   * did nothing. It exports the rows being shown, matching the current search,
+   * from data already in the browser.
+   *
+   * Deliberately no clinical content: this is a roster, and a spreadsheet in a
+   * downloads folder is the wrong place for session notes.
+   */
+  function exportClients() {
+    const rows = [
+      ['Name', 'Email', 'Care type', 'Sessions', 'Next session', 'Status'],
+      ...filteredClients.map((c) => [c.name, c.email, c.care, String(c.sessions), c.next, c.status]),
+    ];
+    const csv = rows
+      .map((row) =>
+        row
+          .map((cell) => (/[",\n]/.test(cell ?? '') ? `"${String(cell).replace(/"/g, '""')}"` : cell ?? ''))
+          .join(','),
+      )
+      .join('\n');
+
+    const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }));
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `clients-${new Date().toISOString().slice(0, 10)}.csv`;
+    link.click();
+    URL.revokeObjectURL(url);
+  }
 
   // KPIs
   const activeCount = clients.filter((c) => c.status === 'Active').length;
@@ -109,7 +151,12 @@ export function ClientsPage({ clients, setClients, onRefresh }: ClientsPageProps
             />
           </div>
 
-          <button className="hidden sm:flex h-[40px] px-4 rounded-[14px] bg-white border border-[#CBD5E1] text-[#0F172A] text-xs font-bold hover:bg-[#F8FAFC] items-center gap-1.5 cursor-pointer">
+          <button
+            type="button"
+            onClick={exportClients}
+            disabled={filteredClients.length === 0}
+            className="hidden sm:flex h-[40px] px-4 rounded-[14px] bg-white border border-[#CBD5E1] text-[#0F172A] text-xs font-bold hover:bg-[#F8FAFC] items-center gap-1.5 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+          >
             <Download className="h-3.5 w-3.5" />
             <span>Export</span>
           </button>
@@ -155,7 +202,7 @@ export function ClientsPage({ clients, setClients, onRefresh }: ClientsPageProps
 
           {/* Table Body */}
           <div className="divide-y divide-[#F1F5F9]">
-            {filteredClients.map((c) => (
+            {pageClients.map((c) => (
               <Link
                 key={c.id}
                 to={`/dashboard/clients/${c.id}`}
@@ -177,13 +224,14 @@ export function ClientsPage({ clients, setClients, onRefresh }: ClientsPageProps
                   <StatusBadge status={c.status} />
                 </div>
 
-                <div className="flex items-center gap-1 justify-end">
-                  <button className="h-8 w-8 rounded-[9px] hover:bg-[#F1F5F9] text-[#64748B] flex items-center justify-center cursor-pointer">
-                    <Edit2 className="h-3.5 w-3.5" />
-                  </button>
-                  <button className="h-8 w-8 rounded-[9px] hover:bg-[#F1F5F9] text-[#64748B] flex items-center justify-center cursor-pointer">
-                    <MoreHorizontal className="h-4 w-4" />
-                  </button>
+                {/*
+                  Two icon buttons sat here with no handlers, nested inside the
+                  row's own <Link> — invalid markup, and a click did nothing but
+                  open the client the row already opens. The chevron says what
+                  the row actually does.
+                */}
+                <div className="flex items-center gap-1 justify-end text-[#94A3B8]">
+                  <ChevronRight className="h-4 w-4" />
                 </div>
               </Link>
             ))}
@@ -192,14 +240,28 @@ export function ClientsPage({ clients, setClients, onRefresh }: ClientsPageProps
           {/* Table Footer */}
           <div className="p-[14px_22px] bg-[#F8FAFC] border-t border-[#E2E8F0] flex items-center justify-between">
             <span className="text-[12px] text-[#94A3B8] font-medium">
-              Showing {filteredClients.length} of {clients.length} clients
+              {filteredClients.length === 0
+                ? `No clients${searchQuery ? ' match that search' : ' yet'}`
+                : `Showing ${pageStart + 1}–${pageStart + pageClients.length} of ${filteredClients.length}${
+                    filteredClients.length !== clients.length ? ` (filtered from ${clients.length})` : ''
+                  }`}
             </span>
             <div className="flex items-center gap-1">
-              <button className="h-[30px] px-3 rounded-[9px] bg-white border border-[#E2E8F0] text-xs font-bold text-[#475569] flex items-center gap-1 hover:bg-[#F8FAFC] cursor-pointer">
+              <button
+                type="button"
+                onClick={() => setPage(Math.max(0, currentPage - 1))}
+                disabled={currentPage === 0}
+                className="h-[30px] px-3 rounded-[9px] bg-white border border-[#E2E8F0] text-xs font-bold text-[#475569] flex items-center gap-1 hover:bg-[#F8FAFC] cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
+              >
                 <ChevronLeft className="h-3.5 w-3.5" />
                 <span>Previous</span>
               </button>
-              <button className="h-[30px] px-3 rounded-[9px] bg-white border border-[#E2E8F0] text-xs font-bold text-[#475569] flex items-center gap-1 hover:bg-[#F8FAFC] cursor-pointer">
+              <button
+                type="button"
+                onClick={() => setPage(Math.min(lastPage, currentPage + 1))}
+                disabled={currentPage >= lastPage}
+                className="h-[30px] px-3 rounded-[9px] bg-white border border-[#E2E8F0] text-xs font-bold text-[#475569] flex items-center gap-1 hover:bg-[#F8FAFC] cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
+              >
                 <span>Next</span>
                 <ChevronRight className="h-3.5 w-3.5" />
               </button>

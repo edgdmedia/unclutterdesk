@@ -224,8 +224,12 @@ export function DashboardPage(props: DashboardPageProps) {
 
           <div className="h-[28px] w-[1px] bg-[#E2E8F0]" />
 
-          {/* Notification Button */}
-          <button className="relative h-[40px] w-[40px] md:h-[44px] md:w-[44px] bg-white border border-[#E2E8F0] rounded-[12px] md:rounded-[14px] flex items-center justify-center hover:bg-[#F8FAFC]">
+          {/* Showed an unread dot and did nothing when clicked. */}
+          <button
+            type="button"
+            onClick={() => navigate('/dashboard/notifications')}
+            aria-label={unreadCount > 0 ? `Notifications, ${unreadCount} unread` : 'Notifications'}
+            className="relative h-[40px] w-[40px] md:h-[44px] md:w-[44px] bg-white border border-[#E2E8F0] rounded-[12px] md:rounded-[14px] flex items-center justify-center hover:bg-[#F8FAFC] cursor-pointer">
             <Bell className="h-4 w-4 md:h-5 md:w-5 text-[#475569]" />
             {unreadCount > 0 ? <span className="absolute top-[8px] right-[8px] md:top-[9px] md:right-[9px] h-[6px] w-[6px] md:h-[7px] md:w-[7px] rounded-full bg-[#E11D48] ring-[1.5px] ring-white" /> : null}
           </button>

@@ -402,7 +402,7 @@ export function FormEditorPage() {
                   {question.options && question.options.length > 0 ? (
                     <div className="grid grid-cols-2 gap-1.5 text-[10.5px] font-bold text-center">
                       {question.options.map((option) => (
-                        <button key={option} type="button" className="h-8 rounded-[8px] bg-[#F1F5F9] text-[#0F172A]">
+                        <button key={option} type="button" disabled title="Preview only" className="h-8 rounded-[8px] bg-[#F1F5F9] text-[#0F172A]">
                           {option}
                         </button>
                       ))}

@@ -37,13 +37,18 @@ export function InactivePracticePage() {
 
         {/* Actions */}
         <div className="space-y-3 pt-2">
-          <button
-            className="os-brand-btn w-full h-[48px] rounded-[16px] font-bold text-sm flex items-center justify-center gap-2 cursor-pointer shadow-md"
-            style={{ backgroundColor: primaryColor }}
+          {/*
+            "Contact practice" was a button with no handler, and nothing on this
+            public page carries an address to contact — the brand config has no
+            contact email. A dead button promising contact is worse than saying
+            plainly that there is no route from here.
+          */}
+          <div
+            className="w-full min-h-[48px] rounded-[16px] bg-[#F1F5F9] border border-[#E2E8F0] text-[#475569] font-medium text-[13px] flex items-center justify-center gap-2 px-4 py-3 text-center"
           >
-            <Mail className="h-4 w-4" />
-            <span>Contact practice</span>
-          </button>
+            <Mail className="h-4 w-4 shrink-0" />
+            <span>Please reach the practice the way you normally do.</span>
+          </div>
           <a href="/" className="text-xs font-bold text-[#64748B] hover:text-[#0F172A] block">
             Return to homepage
           </a>

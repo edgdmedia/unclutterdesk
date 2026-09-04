@@ -94,9 +94,13 @@ export function PayoutSettingsPage() {
               <p className="text-xs text-slate-300 font-medium">{account?.accountName || 'Add a payout account to receive settlements.'}</p>
             </div>
 
-            <div className="grid grid-cols-2 gap-3 pt-2">
-              <button onClick={() => setShowBankModal(true)} className="h-[40px] rounded-[14px] bg-[#F1F5F9] text-[#0F172A] font-bold text-xs hover:bg-[#E2E8F0] cursor-pointer">{account ? 'Change account' : 'Add account'}</button>
-              <button className="os-brand-btn h-[40px] rounded-[14px] font-bold text-xs cursor-pointer text-white" style={{ backgroundColor: primaryColor }}>View settlements</button>
+            {/*
+              "View settlements" had no handler and nothing to call: there is no
+              settlements endpoint. Removed rather than left looking available —
+              Paystack is where settlements actually are.
+            */}
+            <div className="pt-2">
+              <button onClick={() => setShowBankModal(true)} className="h-[40px] w-full rounded-[14px] bg-[#F1F5F9] text-[#0F172A] font-bold text-xs hover:bg-[#E2E8F0] cursor-pointer">{account ? 'Change account' : 'Add account'}</button>
             </div>
           </Card>
         )}
