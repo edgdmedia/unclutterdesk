@@ -6,6 +6,7 @@ import { DiscountService } from '../discount/discount.service';
 import { BillingService } from '../billing/billing.service';
 import { PaystackService } from '../billing/paystack.service';
 import { CalendarService } from '../calendar/calendar.service';
+import { changePercent, chargedKobo, revenueByMonth, startOfMonth } from '../../common/revenue';
 
 @Injectable()
 export class ConsultService {
@@ -621,7 +622,7 @@ export class ConsultService {
     // The amount agreed when the booking was made, not the service's price
     // today: paying from the portal used to re-price at full list, so anyone who
     // booked with a discount code and paid later was charged the full amount.
-    const chargeKobo = booking.amountKobo ?? BigInt(booking.service?.priceKobo || 0);
+    const chargeKobo = chargedKobo(booking);
     const splitConfig = await this.billing.calculateSplitPayout(tenantId, chargeKobo);
     const reference = `booking-${booking.id}-${Date.now()}`;
 
@@ -712,9 +713,7 @@ export class ConsultService {
       bookingId: booking.id.toString(),
       serviceTitle: booking.service.title,
       sessionAt: booking.availability.startsAt.toISOString(),
-      // Rows written before amountKobo existed fall back to the service price,
-      // which is exactly right for every booking made without a discount.
-      amountKobo: (booking.amountKobo ?? booking.service.priceKobo).toString(),
+      amountKobo: chargedKobo(booking).toString(),
       discountCode: booking.discountCodeUsed,
       status: booking.status,
       paidAt: booking.paidAt ? booking.paidAt.toISOString() : null,
@@ -1178,18 +1177,30 @@ export class ConsultService {
     };
   }
 
+  /**
+   * The practice dashboard.
+   *
+   * Revenue here is money collected, taken from each booking's own amountKobo.
+   * It used to sum `service.priceKobo` over every booking created this month
+   * with a CONFIRMED or COMPLETED status, which overstated the figure three
+   * ways: a discounted booking was counted at full list price, a repriced
+   * service revalued bookings made months ago, and a booking confirmed but
+   * never paid for was counted as income.
+   */
   async getDashboardSummary(tenantId: bigint) {
     const now = new Date();
-    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+    // Twelve buckets ending with the current month, so the chart has a real
+    // series behind it instead of a ramp derived from this month's figure.
+    const seriesStart = startOfMonth(now, 11);
 
-    const [bookingsThisMonth, upcomingBookings, totalClientsCount, activeRosterCount, availabilityCount, serviceCount, payoutCount] = await Promise.all([
+    const [paidBookings, upcomingBookings, totalClientsCount, activeRosterCount, availabilityCount, serviceCount, payoutCount] = await Promise.all([
       this.prisma.consultBooking.findMany({
-        where: {
-          tenantId,
-          status: { in: ['CONFIRMED', 'COMPLETED'] },
-          createdAt: { gte: startOfMonth },
+        where: { tenantId, paidAt: { gte: seriesStart } },
+        select: {
+          amountKobo: true,
+          paidAt: true,
+          service: { select: { priceKobo: true } },
         },
-        include: { service: true },
       }),
       this.prisma.consultBooking.findMany({
         where: {
@@ -1212,15 +1223,20 @@ export class ConsultService {
       this.prisma.bankSubaccount.count({ where: { tenantId, isVerified: true } }),
     ]);
 
-    const revenueThisMonthKobo = bookingsThisMonth.reduce((acc, b) => acc + (b.service?.priceKobo ? Number(b.service.priceKobo) : 0), 0);
-    const revenueThisMonthNaira = revenueThisMonthKobo / 100;
+    const monthlyRevenue = revenueByMonth(paidBookings, now);
+    const thisMonth = monthlyRevenue[monthlyRevenue.length - 1];
     const hasAvailability = availabilityCount > 0;
     const hasService = serviceCount > 0;
     const hasPayout = payoutCount > 0;
     const onboardingCompleted = hasAvailability && hasService && hasPayout;
 
     return {
-      revenueThisMonthNaira,
+      revenueThisMonthNaira: thisMonth.revenueNaira,
+      revenueThisMonthKobo: thisMonth.revenueKobo,
+      monthlyRevenue,
+      // Null when last month earned nothing: growth from zero has no
+      // percentage, and the page used to show a fixed "+100%" instead.
+      revenueChangePercent: changePercent(monthlyRevenue),
       scheduledSessionsCount: upcomingBookings.length,
       totalClientsCount,
       activeRosterCount: activeRosterCount || 1,

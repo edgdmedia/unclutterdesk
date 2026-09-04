@@ -34,6 +34,8 @@ export function DashboardPage(props: DashboardPageProps) {
 
   const [summary, setSummary] = useState<{
     revenueThisMonthNaira: number;
+    monthlyRevenue: Array<{ month: string; label: string; revenueNaira: number }>;
+    revenueChangePercent: number | null;
     scheduledSessionsCount: number;
     totalClientsCount: number;
     activeRosterCount: number;
@@ -44,6 +46,8 @@ export function DashboardPage(props: DashboardPageProps) {
     upcomingSessions: any[];
   }>({
     revenueThisMonthNaira: 0,
+    monthlyRevenue: [],
+    revenueChangePercent: null,
     scheduledSessionsCount: 0,
     totalClientsCount: 0,
     activeRosterCount: 1,
@@ -65,6 +69,8 @@ export function DashboardPage(props: DashboardPageProps) {
         api.get<Array<{ unread: boolean }>>('/v1/tenant/notifications'),
         api.get<{
           revenueThisMonthNaira: number;
+          monthlyRevenue: Array<{ month: string; label: string; revenueNaira: number }>;
+          revenueChangePercent: number | null;
           scheduledSessionsCount: number;
           totalClientsCount: number;
           activeRosterCount: number;
@@ -95,7 +101,13 @@ export function DashboardPage(props: DashboardPageProps) {
       }
 
       if (dashSummaryRes.status === 'fulfilled' && dashSummaryRes.value) {
-        setSummary(dashSummaryRes.value);
+        setSummary({
+          ...dashSummaryRes.value,
+          // The chart maps over this on every render, so an older API that
+          // does not send it must not take the whole dashboard down.
+          monthlyRevenue: dashSummaryRes.value.monthlyRevenue ?? [],
+          revenueChangePercent: dashSummaryRes.value.revenueChangePercent ?? null,
+        });
         if (dashSummaryRes.value.onboardingCompleted === false) {
           const skipped = sessionStorage.getItem('unclutter_skip_onboarding') === 'true';
           if (!skipped) {
@@ -132,20 +144,19 @@ export function DashboardPage(props: DashboardPageProps) {
 
   const needsOnboarding = summary.onboardingCompleted === false;
 
-  const monthlyBars = [
-    { month: 'S', val: summary.revenueThisMonthNaira > 0 ? summary.revenueThisMonthNaira * 0.5 : 0 },
-    { month: 'O', val: summary.revenueThisMonthNaira > 0 ? summary.revenueThisMonthNaira * 0.6 : 0 },
-    { month: 'N', val: summary.revenueThisMonthNaira > 0 ? summary.revenueThisMonthNaira * 0.55 : 0 },
-    { month: 'D', val: summary.revenueThisMonthNaira > 0 ? summary.revenueThisMonthNaira * 0.7 : 0 },
-    { month: 'J', val: summary.revenueThisMonthNaira > 0 ? summary.revenueThisMonthNaira * 0.65 : 0 },
-    { month: 'F', val: summary.revenueThisMonthNaira > 0 ? summary.revenueThisMonthNaira * 0.75 : 0 },
-    { month: 'M', val: summary.revenueThisMonthNaira > 0 ? summary.revenueThisMonthNaira * 0.7 : 0 },
-    { month: 'A', val: summary.revenueThisMonthNaira > 0 ? summary.revenueThisMonthNaira * 0.85 : 0 },
-    { month: 'M', val: summary.revenueThisMonthNaira > 0 ? summary.revenueThisMonthNaira * 0.8 : 0 },
-    { month: 'J', val: summary.revenueThisMonthNaira > 0 ? summary.revenueThisMonthNaira * 0.9 : 0 },
-    { month: 'J', val: summary.revenueThisMonthNaira > 0 ? summary.revenueThisMonthNaira * 0.85 : 0 },
-    { month: 'A', val: summary.revenueThisMonthNaira || 1, current: true },
-  ];
+  /*
+   * The twelve bars were this month's figure times a fixed ramp — 0.5, 0.6,
+   * 0.55 and so on — so every practice on the platform saw the same invented
+   * growth story in its own currency, and a practice in its first week saw
+   * eleven months of trading it had never done. The series now comes from the
+   * server: one bucket per month, holding what was actually collected in it.
+   */
+  const monthlyBars = summary.monthlyRevenue;
+  // Scaled to the best month rather than a hard-coded ₦450, which made any
+  // practice earning more than that overflow the chart.
+  const barCeiling = Math.max(...monthlyBars.map((m) => m.revenueNaira), 0);
+
+  const changePercent = summary.revenueChangePercent;
 
   // Render list of actual sessions
   const dynamicSessions = (props.sessions || []).map(s => {
@@ -275,10 +286,27 @@ export function DashboardPage(props: DashboardPageProps) {
                   <span className="text-[32px] md:text-[40px] font-extrabold tracking-[-0.04em] text-[#0F172A] leading-none">
                     ₦{summary.revenueThisMonthNaira.toLocaleString()}
                   </span>
-                  {summary.revenueThisMonthNaira > 0 ? (
-                    <span className="h-6 px-3 rounded-full bg-[#ECFDF5] border border-[#A7F3D0] text-[#059669] text-xs font-bold flex items-center gap-1">
-                      <TrendingUp className="h-3.5 w-3.5" />
-                      <span>+100%</span>
+                  {/*
+                    Was a hard-coded "+100%" beside any non-zero figure, telling
+                    a practice it had doubled its income on the strength of
+                    having earned anything at all. Nothing is claimed when there
+                    is no earlier month to compare against.
+                  */}
+                  {changePercent !== null ? (
+                    <span
+                      className={`h-6 px-3 rounded-full text-xs font-bold flex items-center gap-1 border ${
+                        changePercent >= 0
+                          ? 'bg-[#ECFDF5] border-[#A7F3D0] text-[#059669]'
+                          : 'bg-[#FEF2F2] border-[#FECACA] text-[#B91C1C]'
+                      }`}
+                    >
+                      <TrendingUp
+                        className={`h-3.5 w-3.5 ${changePercent >= 0 ? '' : 'rotate-180'}`}
+                      />
+                      <span>
+                        {changePercent >= 0 ? '+' : ''}
+                        {changePercent}% on last month
+                      </span>
                     </span>
                   ) : (
                     <span className="h-6 px-3 rounded-full bg-slate-100 border border-slate-200 text-slate-600 text-xs font-medium">
@@ -311,15 +339,20 @@ export function DashboardPage(props: DashboardPageProps) {
             {/* 12-Month Revenue Bars */}
             <div className="h-[96px] flex items-end gap-[10px] pt-4 border-t border-[#E2E8F0]">
               {monthlyBars.map((b, i) => (
-                <div key={i} className="flex-1 flex flex-col items-center gap-1.5 h-full justify-end">
+                <div
+                  key={b.month}
+                  className="flex-1 flex flex-col items-center gap-1.5 h-full justify-end"
+                  title={`${b.month}: ₦${b.revenueNaira.toLocaleString()}`}
+                >
                   <div
                     className="w-full rounded-t-[8px] rounded-b-[3px] transition-all duration-300 min-h-[6px]"
                     style={{
-                      height: `${(b.val / 450) * 100}%`,
-                      backgroundColor: b.current ? primaryColor : `${primaryColor}4D`,
+                      height: barCeiling > 0 ? `${(b.revenueNaira / barCeiling) * 100}%` : '0%',
+                      backgroundColor:
+                        i === monthlyBars.length - 1 ? primaryColor : `${primaryColor}4D`,
                     }}
                   />
-                  <span className="text-[10.5px] font-semibold text-[#94A3B8]">{b.month}</span>
+                  <span className="text-[10.5px] font-semibold text-[#94A3B8]">{b.label}</span>
                 </div>
               ))}
             </div>
@@ -335,7 +368,7 @@ export function DashboardPage(props: DashboardPageProps) {
               <div className="flex items-center gap-2">
                 <span className="h-[32px] px-3 rounded-[10px] bg-[#F1F5F9] text-[#475569] text-[12.5px] font-bold flex items-center gap-1.5">
                   <Calendar className="h-3.5 w-3.5 text-[#64748B]" />
-                  <span>August 2026</span>
+                  <span>{new Date().toLocaleString('en-US', { month: 'long', year: 'numeric' })}</span>
                 </span>
               </div>
             </div>
