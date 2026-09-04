@@ -43,10 +43,39 @@ export class RolesGuard implements CanActivate {
       throw new ForbiddenException('This endpoint requires a practice profile');
     }
 
-    const profile = await this.prisma.profile.findFirst({
-      where: { id: BigInt(user.profileId), tenantId: BigInt(user.tenantId) },
-      select: { role: true, status: true },
-    });
+    /*
+     * Sessions are revocable, but an access token is a stateless JWT: nothing
+     * checked it against its session, so revoking one stopped the refresh and
+     * left that device fully authorised until the token expired.
+     *
+     * Fifteen minutes is a long time in every case where revocation happens.
+     * Signing out a device you no longer trust, changing a password because
+     * you think someone has it, closing a practice — each is someone acting on
+     * a suspicion, and each left the other party working for a further quarter
+     * of an hour.
+     *
+     * Read alongside the profile rather than after it: both are needed before
+     * the request proceeds, and neither should wait on the other.
+     */
+    const [profile, session] = await Promise.all([
+      this.prisma.profile.findFirst({
+        where: { id: BigInt(user.profileId), tenantId: BigInt(user.tenantId) },
+        select: { role: true, status: true },
+      }),
+      user.sessionId
+        ? this.prisma.token.findFirst({
+            where: { id: user.sessionId, type: 'refresh' },
+            select: { revokedAt: true, expiresAt: true },
+          })
+        : // Tokens minted before sessions existed carry no sid. They cannot be
+          // checked and expire within the refresh TTL; refusing them would sign
+          // everyone out on deploy.
+          Promise.resolve(null),
+    ]);
+
+    if (user.sessionId && (!session || session.revokedAt || session.expiresAt < new Date())) {
+      throw new ForbiddenException('This session has ended. Please sign in again.');
+    }
 
     if (!profile) {
       throw new ForbiddenException('Profile not found in this practice');
