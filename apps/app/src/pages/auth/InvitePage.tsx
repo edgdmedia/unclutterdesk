@@ -5,6 +5,7 @@ import { UnclutterMark } from '../../components/UnclutterMark';
 import { api, getBookingUrl } from '../../utils/apiClient';
 import { initialsOf } from '../../utils/initials';
 import { useAuth } from '../../context/AuthContext';
+import { LEGAL_URLS } from '../../utils/legal';
 
 const inviteInputCls =
   'w-full h-12 px-[15px] border border-[#E2E8F0] rounded-[14px] bg-[#F8FAFC] text-sm text-[#0F172A] outline-none placeholder:text-[#94A3B8]';
@@ -335,8 +336,13 @@ export function InvitePage() {
               {submitting && <Loader2 className="h-4 w-4 animate-spin" />}
               {submitting ? 'Setting up your account…' : `Join ${invite.practiceName}`}
             </button>
+            {/* Named the documents without linking to either of them. */}
             <p className="mt-[14px] text-[11.5px] text-[#94A3B8] text-center leading-[1.6]">
-              By joining you agree to the Unclutter Desk terms and the clinic's data-handling policy.
+              By joining you agree to the{' '}
+              <a href={LEGAL_URLS.terms} target="_blank" rel="noopener noreferrer" className="font-bold text-[#475569] hover:underline">Unclutter Desk terms</a>
+              {' '}and{' '}
+              <a href={LEGAL_URLS.privacy} target="_blank" rel="noopener noreferrer" className="font-bold text-[#475569] hover:underline">privacy policy</a>,
+              {' '}and to the clinic&apos;s own data-handling policy.
             </p>
           </form>
         </div>

@@ -7,6 +7,8 @@ import { BrandProvider, BottomNav } from '@unclutterdesk/ui';
 import { Home, Calendar, Users, Palette } from 'lucide-react';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { api, getSubdomainTenantSlug, getAppType } from './utils/apiClient';
+import { ExternalRedirect } from './components/ExternalRedirect';
+import { LEGAL_URLS } from './utils/legal';
 
 // ── Lazy-loaded pages (code-split per route) ──────────────────────────────────
 const NotFoundPage = lazy(() => import('./pages/NotFoundPage').then((m) => ({ default: m.NotFoundPage })));
@@ -29,8 +31,9 @@ const OnboardingWizardPage = lazy(() => import('./pages/OnboardingWizardPage').t
 const ClientBookingPage = lazy(() => import('./pages/ClientBookingPage').then((m) => ({ default: m.ClientBookingPage })));
 const PublicProfilePage = lazy(() => import('./pages/PublicProfilePage').then((m) => ({ default: m.PublicProfilePage })));
 const PublicReviewFormPage = lazy(() => import('./pages/PublicReviewFormPage').then((m) => ({ default: m.PublicReviewFormPage })));
-const PrivacyPolicyPage = lazy(() => import('./pages/PrivacyPolicyPage').then((m) => ({ default: m.PrivacyPolicyPage })));
-const TermsOfServicePage = lazy(() => import('./pages/TermsOfServicePage').then((m) => ({ default: m.TermsOfServicePage })));
+// The documents live on the marketing site — see utils/legal.ts. These routes
+// stay because they are linked and bookmarked, but they no longer hold a second
+// copy of the text to drift from.
 const BookingConfirmedPage = lazy(() => import('./pages/BookingConfirmedPage').then((m) => ({ default: m.BookingConfirmedPage })));
 const InactivePracticePage = lazy(() => import('./pages/InactivePracticePage').then((m) => ({ default: m.InactivePracticePage })));
 const NotificationsPage = lazy(() => import('./pages/NotificationsPage').then((m) => ({ default: m.NotificationsPage })));
@@ -331,8 +334,8 @@ function AppLayout() {
             <Route path="/booking/confirmed" element={<BookingConfirmedPage />} />
             <Route path="/booking/inactive" element={<InactivePracticePage />} />
 
-            <Route path="/privacy" element={<PrivacyPolicyPage />} />
-            <Route path="/terms" element={<TermsOfServicePage />} />
+            <Route path="/privacy" element={<ExternalRedirect to={LEGAL_URLS.privacy} />} />
+            <Route path="/terms" element={<ExternalRedirect to={LEGAL_URLS.terms} />} />
 
             {/* Auth Routes */}
             <Route path="/auth/login" element={<LoginPage />} />
@@ -549,8 +552,8 @@ export function App() {
                 <Route path="/review" element={<PublicReviewFormPage />} />
                 <Route path="/booking/confirmed" element={<BookingConfirmedPage />} />
                 <Route path="/booking/inactive" element={<InactivePracticePage />} />
-                <Route path="/privacy" element={<PrivacyPolicyPage />} />
-                <Route path="/terms" element={<TermsOfServicePage />} />
+                <Route path="/privacy" element={<ExternalRedirect to={LEGAL_URLS.privacy} />} />
+                <Route path="/terms" element={<ExternalRedirect to={LEGAL_URLS.terms} />} />
                 <Route path="*" element={<NotFoundPage />} />
               </Routes>
             </Suspense>

@@ -274,11 +274,13 @@ export class CalendarService {
     const icsContent = [
       'BEGIN:VCALENDAR',
       'VERSION:2.0',
-      'PRODID:-//Unclutter OS//Calendar//EN',
+      // Written into the client's own calendar, where it outlives the
+      // booking — so it carries the product's real name and domain.
+      'PRODID:-//Unclutter Desk//Calendar//EN',
       'CALSCALE:GREGORIAN',
       'METHOD:PUBLISH',
       'BEGIN:VEVENT',
-      `UID:booking-${booking.id}@unclutter.os`,
+      `UID:booking-${booking.id}@unclutterdesk.com`,
       `DTSTAMP:${dtStamp}`,
       `DTSTART:${dtStart}`,
       `DTEND:${dtEnd}`,

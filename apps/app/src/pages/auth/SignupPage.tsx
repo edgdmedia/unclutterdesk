@@ -4,6 +4,7 @@ import { ArrowRight, Building, Check, Lock, Mail, Sparkles, User, Users, X } fro
 import { useAuth } from '../../context/AuthContext';
 import { AuthSplitShell } from '../../components/AuthSplitShell';
 import { AuthField, authInputCls } from '../../components/AuthField';
+import { LEGAL_URLS } from '../../utils/legal';
 
 const PASSWORD_RULES = [
   { label: 'At least 8 characters', test: (p: string) => p.length >= 8 },
@@ -266,7 +267,12 @@ export function SignupPage() {
             className="mt-0.5 h-[18px] w-[18px] rounded-[5px] border-[#CBD5E1] text-[#0F3A53] focus:ring-[#0F3A53] cursor-pointer shrink-0"
           />
           <label htmlFor="terms" className="text-[11.5px] text-[#64748B] leading-[1.5]">
-            I agree to the <Link to="/terms-of-service" target="_blank" className="font-bold text-[#0F3A53] hover:underline">Terms of Service</Link> and <Link to="/privacy-policy" target="_blank" className="font-bold text-[#0F3A53] hover:underline">Privacy Policy</Link>, and I acknowledge that I am solely responsible and liable for all clinical advice, diagnosis, and services provided to clients via this platform.
+            {/*
+              These pointed at /terms-of-service and /privacy-policy, which
+              exist in neither app, so both links 404'd. Someone accepting
+              clinical liability could not open either document.
+            */}
+            I agree to the <a href={LEGAL_URLS.terms} target="_blank" rel="noopener noreferrer" className="font-bold text-[#0F3A53] hover:underline">Terms of Service</a> and <a href={LEGAL_URLS.privacy} target="_blank" rel="noopener noreferrer" className="font-bold text-[#0F3A53] hover:underline">Privacy Policy</a>, and I acknowledge that I am solely responsible and liable for all clinical advice, diagnosis, and services provided to clients via this platform.
           </label>
         </div>
 
