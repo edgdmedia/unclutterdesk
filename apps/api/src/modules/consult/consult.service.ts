@@ -7,6 +7,7 @@ import { BillingService } from '../billing/billing.service';
 import { PaystackService } from '../billing/paystack.service';
 import { CalendarService } from '../calendar/calendar.service';
 import { changePercent, chargedKobo, revenueByMonth, startOfMonth } from '../../common/revenue';
+import { tenantWebOrigin } from '../../common/origins';
 
 @Injectable()
 export class ConsultService {
@@ -437,7 +438,6 @@ export class ConsultService {
     phone?: string;
     notes?: string;
     discountCode?: string;
-    callbackUrl?: string;
   }) {
     const serviceId = BigInt(dto.serviceId);
     const availabilityId = BigInt(dto.availabilityId);
@@ -571,7 +571,13 @@ export class ConsultService {
             subaccount: splitConfig.paystackSubaccountCode || undefined,
             bearer: 'subaccount',
             split: splitConfig.tier === 'STARTER' ? 5 : undefined,
-            callback_url: dto.callbackUrl,
+            // Was dto.callbackUrl, straight from the request body. Paystack
+            // redirects the payer to whatever it is given, so an unchecked
+            // value is a phishing page wearing this checkout as its approach:
+            // the client pays the practice, then lands somewhere else still
+            // believing they are with their therapist. Built from the
+            // practice's own site instead.
+            callback_url: `${tenantWebOrigin(slot.tenant)}/booking/confirmed`,
           });
 
           paymentUrl = pTx.authorization_url;

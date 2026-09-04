@@ -15,6 +15,7 @@ import {
 } from './subscription-plans';
 import { PaystackService } from './paystack.service';
 import { CalendarService } from '../calendar/calendar.service';
+import { appOrigin } from '../../common/origins';
 
 @Injectable()
 export class BillingService {
@@ -246,7 +247,7 @@ export class BillingService {
    * so any practice could grant itself the Clinic plan for free. The tier now
    * changes only when Paystack confirms payment, in `handleWebhook`.
    */
-  async startSubscriptionCheckout(tenantId: bigint, plan: string, callbackUrl?: string) {
+  async startSubscriptionCheckout(tenantId: bigint, plan: string) {
     if (!isSubscriptionTier(plan)) {
       throw new BadRequestException('Invalid subscription plan tier');
     }
@@ -292,7 +293,9 @@ export class BillingService {
         email,
         reference,
         plan: planCode,
-        callback_url: callbackUrl,
+        // Built here, never accepted from the caller: whoever controls this
+        // value controls where a paying customer lands afterwards.
+        callback_url: `${appOrigin()}/dashboard/settings/subscription`,
       });
 
       return {

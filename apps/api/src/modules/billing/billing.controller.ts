@@ -84,15 +84,11 @@ export class BillingController {
     description:
       'Returns a Paystack authorization URL. The practice tier changes only once the payment is confirmed by webhook.',
   })
-  subscribe(
-    @Req() req: any,
-    @Body() dto: { plan: 'STARTER' | 'PRO' | 'CLINIC'; callbackUrl?: string },
-  ) {
-    return this.billingService.startSubscriptionCheckout(
-      authenticatedTenantId(req),
-      dto.plan,
-      dto.callbackUrl,
-    );
+  subscribe(@Req() req: any, @Body() dto: { plan: 'STARTER' | 'PRO' | 'CLINIC' }) {
+    // callbackUrl used to be taken from the request body and handed straight to
+    // Paystack, which redirects the payer wherever it is told. No client ever
+    // sent one; the return address is built here instead.
+    return this.billingService.startSubscriptionCheckout(authenticatedTenantId(req), dto.plan);
   }
 
   @Post('paystack-webhook')
