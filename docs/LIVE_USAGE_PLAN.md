@@ -94,7 +94,8 @@ Complete this before onboarding real users:
    “Explore features”.
 
 **Status:** Item 1 is complete. Verified with the private-data regression test;
-the remaining items are still open.
+item 7 is partly complete on auth/admin surfaces; item 9 is partly complete for
+the landing footer social links; the remaining items are still open.
 
 ### Mockup data policy
 
@@ -129,6 +130,17 @@ the server before rerunning `./deploy.sh`. Confirm the backup file exists first.
 refreshing after every supported mutation preserves the result; every visible
 primary action either works or is removed; branding and links pass a scripted
 route/content scan.
+
+### Latest local audit notes
+
+- Verified: `demo.owner@unclutterdesk.com` can be provisioned locally through
+  `scripts/provision-demo-account.mjs`.
+- Verified: login/auth shell branding and landing footer placeholder links are fixed.
+- Verified: unauthenticated unknown app routes show the app 404 screen.
+- Still open: local `.localhost` booking-host routing fails because
+  `TenantMiddleware` does not resolve `.localhost` subdomains.
+- Still open: local DB has schema drift around `ConsultBooking.amountKobo`, which
+  breaks the booking-expiry cron during startup.
 
 ## Phase 5: Controlled launch
 

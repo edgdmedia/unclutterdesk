@@ -272,3 +272,28 @@ mistaken for live data and its CTA must either work or be removed.
 ## Decision
 
 Do not onboard real practices or allow real PHI until all P0 blockers are fixed and the phase-gated plan in `docs/LIVE_USAGE_PLAN.md` is completed. A private demo with synthetic data is acceptable only if access is restricted and no real client data is entered.
+
+## Local verification
+
+Verified locally on 2026-09-04 against the current app, API, and landing dev
+servers after applying Prisma migrations and provisioning the demo password.
+
+- Fixed locally: private app fallback data removed; demo account provisioned via
+  `scripts/provision-demo-account.mjs`; auth/admin branding updated from
+  `unclutterOS` to `Unclutter Desk`; landing footer placeholder social links removed.
+- Fixed locally: `PublicProfilePage` no longer calls `/v1/tenant/public/info/`
+  with an empty slug; it falls back to the host-resolved `/v1/tenant/public/info` endpoint.
+- Fixed locally: unauthenticated unknown app routes now render the app 404 screen
+  instead of redirecting silently to `/login`.
+
+Still failing locally:
+
+- `TenantMiddleware` does not resolve `.localhost` subdomains, so public booking
+  endpoints on `demo.localhost` return 500 `Practice tenant context required`.
+  Evidence: `apps/api/src/common/middleware/tenant.middleware.ts:34-54`, plus
+  local server logs showing 500s from `ConsultController.getPublicTherapists`,
+  `ConsultController.getPublicAvailability`, and `IntakeController.getPublicReviews`.
+- The booking-expiry cron errors on local startup because the local database is
+  missing `ConsultBooking.amountKobo`, indicating schema drift beyond the current
+  committed migrations. Evidence: `apps/api/src/modules/consult/consult.cron.ts:18-26`
+  and local server log `The column ConsultBooking.amountKobo does not exist in the current database`.
