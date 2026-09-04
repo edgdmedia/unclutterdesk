@@ -108,6 +108,11 @@ def main():
         },
     )
     record("register a new practice", status in (200, 201), f"status {status}")
+    record(
+        "the verification email is actually sent",
+        isinstance(body, dict) and body.get("email_sent") is True,
+        "email_sent=" + str(body.get("email_sent") if isinstance(body, dict) else "?"),
+    )
 
     # An unverified account must not be able to sign in.
     status, body, _ = call("POST", "/v1/auth/login", {"email": OWNER_EMAIL, "password": PASSWORD})
@@ -198,6 +203,33 @@ def main():
     )
 
     practice_flows(rotated, csrf, payments)
+
+    # ── closing the practice, last, because it ends this tenant ──────────
+    status, _, _ = call(
+        "POST",
+        "/v1/privacy/practice/close",
+        {"confirmSlug": "not-the-right-slug"},
+        cookies=rotated,
+        csrf=csrf,
+    )
+    record(
+        "closing a practice refuses the wrong confirmation",
+        status >= 400,
+        f"status {status}",
+    )
+
+    status, closed, _ = call(
+        "POST",
+        "/v1/privacy/practice/close",
+        {"confirmSlug": TENANT_SLUG},
+        cookies=rotated,
+        csrf=csrf,
+    )
+    record(
+        "closing a practice starts the retention window",
+        status in (200, 201),
+        f"status {status}",
+    )
 
     # ── signing out ends the session at once ─────────────────────────────
     status, _, _ = call("POST", "/v1/auth/logout", cookies=rotated, csrf=csrf)
@@ -404,6 +436,73 @@ def practice_flows(session, csrf, payments):
         f"status {status} — it was once addressable by email alone",
     )
 
+    # ── the calendar file is not addressable by booking id alone ─────────
+    if booking_id:
+        status, _, _ = call("GET", f"/v1/calendar/bookings/{booking_id}/ical")
+        record(
+            "a calendar file needs its token",
+            status == 404,
+            f"status {status} — it carries the client's name and the join link",
+        )
+
+        status, _, _ = call("GET", f"/v1/calendar/bookings/{booking_id}/ical?token=" + "0" * 32)
+        record(
+            "a wrong token answers exactly as a missing booking does",
+            status == 404,
+            f"status {status} — so ids cannot be probed",
+        )
+
+        token = ical_token(booking_id)
+        status, ics, _ = call("GET", f"/v1/calendar/bookings/{booking_id}/ical?token={token}")
+        body_text = ics.get("raw", "") if isinstance(ics, dict) else str(ics)
+        record(
+            "the right token returns the calendar file",
+            status == 200 and "BEGIN:VCALENDAR" in body_text,
+            f"status {status}",
+        )
+        record(
+            "the calendar file carries the current product name",
+            "Unclutter Desk" in body_text and "unclutter.os" not in body_text,
+            "PRODID and UID",
+        )
+
+    # ── rescheduling belongs to the client whose booking it is ───────────
+    if booking_id:
+        status, _, _ = call(
+            "GET", f"/v1/consult/portal/bookings/{booking_id}/reschedule-options", host=host
+        )
+        record(
+            "reschedule options need a session",
+            status in (401, 403),
+            f"status {status}",
+        )
+
+    # ── the practice can cancel ──────────────────────────────────────────
+    if booking_id:
+        status, _, _ = call(
+            "PATCH",
+            f"/v1/consult/therapist/bookings/{booking_id}/status",
+            {"status": "CANCELLED"},
+            cookies=session,
+            csrf=csrf,
+        )
+        record("the practice can cancel a booking", status in (200, 201), f"status {status}")
+
+        status, summary, _ = call("GET", "/v1/consult/dashboard/summary", cookies=session)
+        still = summary.get("revenueThisMonthNaira") if isinstance(summary, dict) else None
+        record(
+            "money already taken is not erased by a cancellation",
+            still == 5000,
+            f"{still} — refunds are not modelled, so a paid booking stays paid",
+        )
+
+    # ── intake and assessments ───────────────────────────────────────────
+    status, public_forms, _ = call("GET", "/v1/intake/public/forms", host=host)
+    record("intake forms are offered publicly", status == 200, f"status {status}")
+
+    status, reviews, _ = call("GET", "/v1/intake/public/reviews", host=host)
+    record("public reviews are served", status == 200, f"status {status}")
+
     # ── notifications ────────────────────────────────────────────────────
     status, feed, _ = call("GET", "/v1/notifications", cookies=session)
     rows = feed if isinstance(feed, list) else (feed or {}).get("items")
@@ -488,6 +587,30 @@ def webhook_charge_success(booking_id):
         return f"status {e.code}: {e.read().decode()[:80]}"
     except Exception as e:
         return str(e)
+
+
+
+def ical_token(booking_id):
+    """
+    The per-booking token the calendar route expects.
+
+    HMAC-SHA256 of "ical:<id>" under JWT_SECRET, truncated to 32 characters —
+    recomputed here so the check exercises the real comparison rather than
+    trusting that some token works.
+    """
+    import hashlib
+    import hmac
+    import re
+
+    env = pathlib.Path("apps/api/.env").read_text()
+    # JWT_SECRET is currently declared twice in .env with different values.
+    # dotenv keeps the last, so this must too — and the duplicate is worth
+    # removing: rotating one and not the other silently ends every session.
+    matches = re.findall(r"^JWT_SECRET=(.+)$", env, re.M)
+    if not matches:
+        return ""
+    secret = matches[-1].strip()
+    return hmac.new(secret.encode(), f"ical:{booking_id}".encode(), hashlib.sha256).hexdigest()[:32]
 
 
 def summarise():

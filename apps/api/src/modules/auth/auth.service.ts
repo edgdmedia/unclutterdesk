@@ -561,6 +561,7 @@ export class AuthService {
     const candidateProfiles = await this.prisma.profile.findMany({
       where: tenantId ? { tenantId, userId: user.id } : { userId: user.id },
       orderBy: [{ emailVerified: 'desc' }, { createdAt: 'desc' }],
+      include: { tenant: true, consultTherapistProfile: true },
     });
 
     this.authDebug('login_profiles', {
@@ -637,16 +638,7 @@ export class AuthService {
     return {
       accessToken,
       refreshToken,
-      profile: {
-        id: profile.id.toString(),
-        email: profile.email,
-        username: profile.username,
-        firstName: profile.firstName,
-        lastName: profile.lastName,
-        type: profile.type,
-        status: profile.status,
-        avatarUrl: profile.avatarUrl,
-      },
+      profile: this.practiceProfile(profile),
     };
   }
 
@@ -898,23 +890,12 @@ export class AuthService {
   async getSessionStatus(profileId: bigint) {
     const profile = await this.prisma.profile.findUnique({
       where: { id: profileId },
-      include: { consultTherapistProfile: true },
+      include: { consultTherapistProfile: true, tenant: true },
     });
 
     if (!profile) throw new NotFoundException('Session profile not found');
 
-    return {
-      id: profile.id.toString(),
-      tenantId: profile.tenantId.toString(),
-      email: profile.email,
-      username: profile.username,
-      firstName: profile.firstName,
-      lastName: profile.lastName,
-      type: profile.type,
-      status: profile.status,
-      avatarUrl: profile.avatarUrl,
-      isTherapist: !!profile.consultTherapistProfile,
-    };
+    return this.practiceProfile(profile);
   }
 
   /** The live sessions of the signed-in account, newest use first. */
@@ -997,7 +978,7 @@ export class AuthService {
 
     const profile = await this.prisma.profile.findUnique({
       where: { id: BigInt(payload.profileId) },
-      include: { user: true, tenant: true },
+      include: { user: true, tenant: true, consultTherapistProfile: true },
     });
 
     if (!profile || !profile.user) {
@@ -1015,18 +996,7 @@ export class AuthService {
     return {
       accessToken,
       refreshToken: nextRefreshToken,
-      profile: {
-        id: profile.id.toString(),
-        email: profile.email,
-        username: profile.username,
-        firstName: profile.firstName,
-        lastName: profile.lastName,
-        type: profile.type,
-        status: profile.status,
-        avatarUrl: profile.avatarUrl,
-        practiceName: profile.tenant?.name,
-        tenantSlug: profile.tenant?.slug,
-      },
+      profile: this.practiceProfile(profile),
     };
   }
 
@@ -1074,6 +1044,48 @@ export class AuthService {
    * row backing the session. The refresh token is only usable while that row
    * still holds its hash, which is what makes it revocable.
    */
+  /**
+   * The signed-in profile, as every endpoint that returns one should describe it.
+   *
+   * Login, refresh and /status each built their own shape and disagreed.
+   * Refresh carried practiceName and tenantSlug; login carried neither;
+   * /status carried tenantId but neither of those, and added isTherapist. So a
+   * client reading tenantSlug after signing in got nothing until a token
+   * refresh happened — and tenantSlug is what the booking link and the
+   * practice branding are built from.
+   */
+  private practiceProfile(profile: {
+    id: bigint;
+    tenantId: bigint;
+    email: string;
+    username: string | null;
+    firstName: string | null;
+    lastName: string | null;
+    type: string;
+    status: string;
+    avatarUrl: string | null;
+    // Required, not optional: a caller that forgets the include would otherwise
+    // hand back tenantSlug: null, which is worse than the inconsistency this
+    // replaces — silently wrong instead of visibly absent.
+    tenant: { name: string; slug: string } | null;
+    consultTherapistProfile: unknown | null;
+  }) {
+    return {
+      id: profile.id.toString(),
+      tenantId: profile.tenantId.toString(),
+      email: profile.email,
+      username: profile.username,
+      firstName: profile.firstName,
+      lastName: profile.lastName,
+      type: profile.type,
+      status: profile.status,
+      avatarUrl: profile.avatarUrl,
+      practiceName: profile.tenant?.name ?? null,
+      tenantSlug: profile.tenant?.slug ?? null,
+      isTherapist: !!profile.consultTherapistProfile,
+    };
+  }
+
   private generateTokens(
     userId: bigint,
     profileId: bigint,
