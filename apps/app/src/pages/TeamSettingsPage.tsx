@@ -5,13 +5,26 @@ import { useBrand } from '@unclutterdesk/ui';
 import { api } from '../utils/apiClient';
 import type { StaffMember } from '../App';
 
+/**
+ * The staff roster.
+ *
+ * Every write on this page was pretend. The status toggle only edited React
+ * state, so deactivating a practitioner looked like it worked and lasted until
+ * the next refresh — while that person kept their access, their bookable slots
+ * and their clinical records. "Resend Invitation" popped an alert saying an
+ * email had gone out; none had. And when the invite API rejected a request —
+ * which it does on the free plan, with a clear message about upgrading — the
+ * page swallowed the error and added the person to the roster locally, so an
+ * owner saw a colleague who had never been invited.
+ *
+ * Each of those now either performs the write or says why it could not.
+ */
 interface TeamSettingsPageProps {
   staff: StaffMember[];
-  setStaff: React.Dispatch<React.SetStateAction<StaffMember[]>>;
   onRefresh: () => Promise<void>;
 }
 
-export function TeamSettingsPage({ staff, setStaff, onRefresh }: TeamSettingsPageProps) {
+export function TeamSettingsPage({ staff, onRefresh }: TeamSettingsPageProps) {
   const brand = useBrand();
   const primaryColor = brand.primaryColor || '#0F3A53';
 
@@ -22,6 +35,12 @@ export function TeamSettingsPage({ staff, setStaff, onRefresh }: TeamSettingsPag
   const [isInviting, setIsInviting] = useState(false);
   const [inviteError, setInviteError] = useState<string | null>(null);
   const [inviteSuccess, setInviteSuccess] = useState<string | null>(null);
+  // The invite is not emailed anywhere yet; the API returns a claim link and
+  // the practice sends it. Saying "check your inbox" would be the same lie in a
+  // different place.
+  const [inviteUrl, setInviteUrl] = useState<string | null>(null);
+  const [statusPendingId, setStatusPendingId] = useState<string | null>(null);
+  const [statusError, setStatusError] = useState<string | null>(null);
 
   const handleSendInvite = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -32,59 +51,61 @@ export function TeamSettingsPage({ staff, setStaff, onRefresh }: TeamSettingsPag
     setInviteSuccess(null);
 
     try {
-      await api.post('/v1/tenant/staff/invite', {
+      const invite = await api.post<{ inviteUrl?: string }>('/v1/tenant/staff/invite', {
         email: inviteEmail,
         role: inviteRole,
       });
 
-      setInviteSuccess(`Invite sent to ${inviteEmail}`);
+      setInviteSuccess(`Invitation created for ${inviteEmail}`);
+      setInviteUrl(invite?.inviteUrl ?? null);
       await onRefresh();
-
-      setTimeout(() => {
-        setInviteModalOpen(false);
-        setInviteSuccess(null);
-        setInviteEmail('');
-      }, 1500);
     } catch (err) {
-      // If the API rejects (e.g., STARTER plan), still add locally with a pending state
-      const emailPrefix = inviteEmail.split('@')[0];
-      const name = emailPrefix
-        .split('.')
-        .map((s) => s.charAt(0).toUpperCase() + s.slice(1))
-        .join(' ');
-
-      const newStaff: StaffMember = {
-        id: String(Date.now()),
-        name,
-        title: `Invited (pending)`,
-        email: inviteEmail,
-        role: inviteRole,
-        status: 'Pending',
-        initials: emailPrefix.slice(0, 2).toUpperCase(),
-        pending: true,
-      };
-
-      setStaff((prev) => [...prev, newStaff]);
-      setInviteError(err instanceof Error ? err.message : 'Invite sent (local only)');
-      setTimeout(() => {
-        setInviteModalOpen(false);
-        setInviteError(null);
-        setInviteEmail('');
-      }, 2500);
+      // The free plan rejects staff invites with a message explaining the
+      // upgrade. That message is the useful part, so it is shown rather than
+      // being replaced by a roster entry for someone who was never invited.
+      setInviteError(err instanceof Error ? err.message : 'Could not create that invitation');
     } finally {
       setIsInviting(false);
     }
   };
 
-  const toggleStaffStatus = (id: string) => {
-    setStaff(
-      staff.map((m) => {
-        if (m.id === id && m.role !== 'OWNER') {
-          return { ...m, status: m.status === 'Active' ? 'Inactive' : 'Active' };
-        }
-        return m;
-      })
-    );
+  function closeInviteModal() {
+    setInviteModalOpen(false);
+    setInviteError(null);
+    setInviteSuccess(null);
+    setInviteUrl(null);
+    setInviteEmail('');
+  }
+
+  /**
+   * Deactivating someone takes them out of service, so it has to reach the
+   * server. This used to be a local setState: the row flipped, the person kept
+   * working, and the next page load put them back.
+   *
+   * The list is re-read afterwards rather than patched in place, so what is on
+   * screen is what the practice actually has — including the side effect the
+   * server applies, which is to drop a deactivated practitioner from the public
+   * booking page.
+   */
+  const toggleStaffStatus = async (member: StaffMember) => {
+    // The owner cannot be deactivated; the server refuses it too.
+    if (member.role === 'OWNER' || statusPendingId) return;
+
+    const nextStatus = member.status === 'Active' ? 'inactive' : 'active';
+    setStatusPendingId(member.id);
+    setStatusError(null);
+    try {
+      await api.patch(`/v1/consult/admin/therapists/${member.id}/status`, { status: nextStatus });
+      await onRefresh();
+    } catch (err) {
+      setStatusError(
+        err instanceof Error
+          ? `${member.name}: ${err.message}`
+          : `Could not change ${member.name}'s status`,
+      );
+    } finally {
+      setStatusPendingId(null);
+    }
   };
 
   return (
@@ -94,7 +115,12 @@ export function TeamSettingsPage({ staff, setStaff, onRefresh }: TeamSettingsPag
         <div>
           <Eyebrow>SETTINGS</Eyebrow>
           <h1 className="text-[20px] font-bold tracking-[-0.02em] text-[#0F172A]">Team & staff roster</h1>
-          <p className="text-xs text-[#64748B] font-medium">{staff.length} of 10 seats used on Group Clinic plan</p>
+          {/* Claimed a Group Clinic plan and a ten-seat limit to every
+              practice, including one on the free plan that cannot invite
+              anyone. The count is the part that was true. */}
+          <p className="text-xs text-[#64748B] font-medium">
+            {staff.length} {staff.length === 1 ? 'team member' : 'team members'}
+          </p>
         </div>
 
         <button
@@ -109,6 +135,14 @@ export function TeamSettingsPage({ staff, setStaff, onRefresh }: TeamSettingsPag
 
       {/* Main Content Workspace */}
       <main className="p-[24px_26px_30px] flex-1">
+        {statusError && (
+          <div
+            role="alert"
+            className="mb-4 rounded-[16px] border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-medium text-rose-700"
+          >
+            {statusError}
+          </div>
+        )}
         {/* Staff Table */}
         <Card padding="p-0" className="overflow-hidden border border-[#E2E8F0] relative bg-white">
           {/* Header Row */}
@@ -157,21 +191,31 @@ export function TeamSettingsPage({ staff, setStaff, onRefresh }: TeamSettingsPag
                 </div>
 
                 <div>
-                  <div
-                    onClick={() => toggleStaffStatus(m.id)}
-                    className={`w-[40px] h-[22px] rounded-full p-[2px] cursor-pointer transition-colors ${
+                  <button
+                    type="button"
+                    role="switch"
+                    aria-checked={m.status === 'Active'}
+                    aria-label={`${m.name} active`}
+                    onClick={() => toggleStaffStatus(m)}
+                    disabled={m.role === 'OWNER' || statusPendingId !== null}
+                    className={`w-[40px] h-[22px] rounded-full p-[2px] transition-colors block ${
                       m.status === 'Active' ? 'bg-[#15803D]' : 'bg-[#E2E8F0]'
+                    } ${
+                      m.role === 'OWNER' || statusPendingId !== null
+                        ? 'opacity-50 cursor-not-allowed'
+                        : 'cursor-pointer'
                     }`}
                   >
                     <div className={`w-[18px] h-[18px] rounded-full bg-white shadow-xs transition-transform ${
                       m.status === 'Active' ? 'translate-x-[18px]' : 'translate-x-0'
                     }`} />
-                  </div>
+                  </button>
                 </div>
 
                 <div className="text-right relative">
                   <button
                     onClick={() => setActiveMenuId(activeMenuId === m.id ? null : m.id)}
+                    aria-label={`Actions for ${m.name}`}
                     className="h-8 w-8 rounded-[9px] hover:bg-[#F1F5F9] text-[#64748B] flex items-center justify-center ml-auto cursor-pointer"
                   >
                     <MoreHorizontal className="h-4 w-4" />
@@ -180,17 +224,22 @@ export function TeamSettingsPage({ staff, setStaff, onRefresh }: TeamSettingsPag
                   {/* Dropdown Menu */}
                   {activeMenuId === m.id && (
                     <div className="absolute right-0 top-10 w-44 bg-white rounded-[14px] shadow-xl border border-slate-200 py-1 z-30 text-left">
-                      <button
-                        onClick={() => { alert(`Resent invitation email to ${m.email}`); setActiveMenuId(null); }}
-                        className="w-full px-3 py-2 text-xs font-bold text-slate-700 hover:bg-slate-50 flex items-center gap-2"
-                      >
-                        <Mail className="h-3.5 w-3.5" />
-                        <span>Resend Invitation</span>
-                      </button>
-                      {m.role !== 'OWNER' && (
+                      {/*
+                        "Resend Invitation" alerted that an email had been sent
+                        to this address. Nothing was sent, and everyone in this
+                        list has already joined — an invitation that is still
+                        outstanding has no profile yet, so it never appears
+                        here at all.
+                      */}
+                      {m.role === 'OWNER' ? (
+                        <p className="px-3 py-2 text-xs font-medium text-slate-500">
+                          The owner cannot be deactivated.
+                        </p>
+                      ) : (
                         <button
-                          onClick={() => { toggleStaffStatus(m.id); setActiveMenuId(null); }}
-                          className="w-full px-3 py-2 text-xs font-bold text-rose-600 hover:bg-rose-50 text-left"
+                          onClick={() => { void toggleStaffStatus(m); setActiveMenuId(null); }}
+                          disabled={statusPendingId !== null}
+                          className="w-full px-3 py-2 text-xs font-bold text-rose-600 hover:bg-rose-50 text-left disabled:opacity-50"
                         >
                           {m.status === 'Active' ? 'Deactivate Member' : 'Activate Member'}
                         </button>
@@ -209,7 +258,7 @@ export function TeamSettingsPage({ staff, setStaff, onRefresh }: TeamSettingsPag
         <div className="fixed inset-0 bg-[#0F172A]/50 backdrop-blur-xs flex items-center justify-center p-6 z-50">
           <div className="w-full max-w-[490px] bg-white rounded-[26px] p-[28px_30px_26px] shadow-[0_30px_90px_rgba(15,23,42,.4)] space-y-6 relative border border-slate-100">
             <button
-              onClick={() => setInviteModalOpen(false)}
+              onClick={closeInviteModal}
               className="absolute top-6 right-6 h-8 w-8 rounded-full bg-[#F1F5F9] text-[#64748B] hover:bg-slate-200 flex items-center justify-center cursor-pointer"
             >
               <X className="h-4 w-4" />
@@ -218,7 +267,12 @@ export function TeamSettingsPage({ staff, setStaff, onRefresh }: TeamSettingsPag
             <div>
               <Eyebrow className="mb-1">TEAM MANAGEMENT</Eyebrow>
               <h2 className="text-[21px] font-bold text-[#0F172A]">Invite a staff member</h2>
-              <p className="text-xs text-[#64748B] font-medium mt-1">They'll get an email link to set their own password.</p>
+              {/* Said they would get an email. The invite endpoint sends none —
+                  it mints a claim link and returns it. */}
+              <p className="text-xs text-[#64748B] font-medium mt-1">
+                You&apos;ll get a claim link to send them. It sets their own password and expires in
+                seven days.
+              </p>
             </div>
 
             <form onSubmit={handleSendInvite} className="space-y-4">
@@ -255,30 +309,53 @@ export function TeamSettingsPage({ staff, setStaff, onRefresh }: TeamSettingsPag
               </div>
 
               {inviteSuccess && (
-                <div className="flex items-center gap-2 text-xs font-semibold text-green-700 bg-green-50 rounded-[10px] px-3 py-2">
-                  <Check className="h-3.5 w-3.5" /> {inviteSuccess}
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2 text-xs font-semibold text-green-700 bg-green-50 rounded-[10px] px-3 py-2">
+                    <Check className="h-3.5 w-3.5" /> {inviteSuccess}
+                  </div>
+                  {inviteUrl && (
+                    <div className="rounded-[12px] border border-slate-200 bg-[#F8FAFC] p-3 space-y-2">
+                      <p className="text-[11px] font-bold text-[#475569] flex items-center gap-1.5">
+                        <Mail className="h-3.5 w-3.5" />
+                        Send them this link
+                      </p>
+                      <p className="text-[11px] font-mono text-[#0F172A] break-all">{inviteUrl}</p>
+                      <button
+                        type="button"
+                        onClick={() => navigator.clipboard.writeText(inviteUrl)}
+                        className="h-8 px-3 rounded-[10px] bg-white border border-[#E2E8F0] text-[11.5px] font-bold text-[#0F3A53] hover:bg-[#F1F5F9] cursor-pointer"
+                      >
+                        Copy link
+                      </button>
+                    </div>
+                  )}
                 </div>
               )}
               {inviteError && (
-                <p className="text-xs font-medium text-amber-600 bg-amber-50 rounded-[10px] px-3 py-2">{inviteError}</p>
+                <p
+                  role="alert"
+                  className="text-xs font-medium text-amber-700 bg-amber-50 rounded-[10px] px-3 py-2"
+                >
+                  {inviteError}
+                </p>
               )}
 
               <div className="flex items-center gap-3 pt-2">
                 <button
                   type="button"
-                  onClick={() => setInviteModalOpen(false)}
+                  onClick={closeInviteModal}
                   className="flex-1 h-[46px] rounded-[14px] bg-[#F1F5F9] text-[#475569] font-bold text-xs hover:bg-[#E2E8F0] cursor-pointer"
                 >
-                  Cancel
+                  {inviteSuccess ? 'Done' : 'Cancel'}
                 </button>
                 <button
                   type="submit"
-                  disabled={isInviting}
+                  disabled={isInviting || !!inviteSuccess}
                   className="os-brand-btn flex-[1.4] h-[46px] rounded-[14px] font-bold text-xs flex items-center justify-center gap-2 cursor-pointer text-white disabled:opacity-60"
                   style={{ backgroundColor: primaryColor }}
                 >
                   {isInviting && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
-                  {isInviting ? 'Sending...' : 'Send invite'}
+                  {isInviting ? 'Creating…' : 'Create invite'}
                 </button>
               </div>
             </form>

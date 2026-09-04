@@ -266,13 +266,6 @@ function AppLayout() {
   // Re-fetch from the API, as opposed to setSessions which only edits the cache.
   const refreshSessions = useCallback(() => mutateSessions(), [mutateSessions]);
 
-  const setStaff = useCallback(
-    (value: React.SetStateAction<StaffMember[]>) => {
-      void mutateStaff(value, { revalidate: false });
-    },
-    [mutateStaff],
-  );
-
   const refreshClients = useCallback(async () => {
     await mutateClients();
   }, [mutateClients]);
@@ -356,7 +349,18 @@ function AppLayout() {
 
   // Workspace routes are private.
   if (!isAuthenticated) {
-    return <Navigate to="/login" replace />;
+    return (
+      <Suspense fallback={<PageFallback />}>
+        <Routes>
+          <Route path="/login" element={<LoginPage />} />
+          <Route path="/register" element={<SignupPage />} />
+          <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+          <Route path="/reset-password/:token" element={<ResetPasswordPage />} />
+          <Route path="/verify-email" element={<VerifyEmailPage />} />
+          <Route path="*" element={<NotFoundPage homeHref="/login" />} />
+        </Routes>
+      </Suspense>
+    );
   }
 
   return (
@@ -418,7 +422,7 @@ function AppLayout() {
                   />
                 }
               />
-              <Route path="/dashboard/settings/team" element={<TeamSettingsPage staff={resolvedStaff} setStaff={setStaff} onRefresh={refreshStaff} />} />
+              <Route path="/dashboard/settings/team" element={<TeamSettingsPage staff={resolvedStaff} onRefresh={refreshStaff} />} />
               <Route path="/dashboard/settings/subscription" element={<SubscriptionSettingsPage />} />
               <Route path="/dashboard/settings/payouts" element={<PayoutSettingsPage />} />
               <Route path="/dashboard/settings/forms" element={<FormsManagerPage />} />
