@@ -78,9 +78,9 @@ export function AuthSplitShell({
 
         <div className="flex items-center gap-[11px] relative z-[2]">
           <UnclutterMark size={32} className="rounded-[10px]" />
-          <span className="text-white text-[18px] font-semibold tracking-[-0.02em]">unclutter</span>
+          <span className="text-white text-[18px] font-semibold tracking-[-0.02em]">Unclutter</span>
           <span className="h-[19px] px-[9px] rounded-full bg-[#E3B341] text-[#0F172A] text-[9.5px] font-black tracking-[0.1em] inline-flex items-center">
-            OS
+            Desk
           </span>
         </div>
 

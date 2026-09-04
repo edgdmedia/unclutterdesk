@@ -48,6 +48,7 @@ export function PublicProfilePage() {
   const navigate = useNavigate();
   const brand = useBrand();
   const slug = getSubdomainTenantSlug() || '';
+  const tenantInfoPath = slug ? `/v1/tenant/public/info/${slug}` : '/v1/tenant/public/info';
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -61,10 +62,10 @@ export function PublicProfilePage() {
 
     async function loadProfile() {
       setLoading(true);
-      setError(null);
+        setError(null);
       try {
         const [tenantInfo, therapists, availability, reviewPayload] = await Promise.all([
-          api.get<PublicTenantInfo>(`/v1/tenant/public/info/${slug}`),
+          api.get<PublicTenantInfo>(tenantInfoPath),
           api.get<PublicTherapist[]>('/v1/consult/public/therapists'),
           api.get<PublicAvailability[]>('/v1/consult/public/availability'),
           api.get<PublicReviewsPayload>('/v1/intake/public/reviews'),
@@ -85,7 +86,7 @@ export function PublicProfilePage() {
     return () => {
       cancelled = true;
     };
-  }, [slug]);
+  }, [tenantInfoPath]);
 
   const primaryColor = tenant?.primaryColor || brand.primaryColor || '#0F3A53';
   const practiceName = tenant?.name || brand.name || 'Therapy Practice';

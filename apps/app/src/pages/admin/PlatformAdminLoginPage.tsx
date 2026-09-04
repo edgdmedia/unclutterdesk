@@ -36,7 +36,7 @@ export function PlatformAdminLoginPage() {
             O
           </div>
           <div className="flex items-center gap-1.5">
-            <span className="font-bold text-[19px] tracking-[-0.02em] text-[#F8FAFC]">unclutterOS</span>
+            <span className="font-bold text-[19px] tracking-[-0.02em] text-[#F8FAFC]">Unclutter Desk</span>
             <span className="h-[18px] px-2 rounded-full text-[9px] font-extrabold tracking-[0.08em] bg-[#E3B341] text-[#0F172A] flex items-center justify-center uppercase">
               Admin
             </span>
@@ -52,7 +52,7 @@ export function PlatformAdminLoginPage() {
           </div>
           <div className="text-[26px] font-bold tracking-[-0.03em]">Admin sign in</div>
           <p className="mt-[6px] text-[13.5px] text-[#64748B] leading-[1.6]">
-            Restricted to unclutterOS staff managing practice tenants.
+            Restricted to Unclutter Desk staff managing practice tenants.
           </p>
 
           <form onSubmit={handleLogin} className="mt-[26px]">

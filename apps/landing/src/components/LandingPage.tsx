@@ -532,13 +532,13 @@ export function LandingPage() {
             <img src="/unclutterdesk-lockup.svg" alt="unclutter desk" className="h-8 w-auto shrink-0 brightness-0 invert object-contain" />
             <p className="m-0 text-[13px] leading-[1.6] text-[#94A3B8] max-w-[280px]">Practice management and white-label booking for Nigerian therapists.</p>
             <div className="flex gap-2.5">
-              <a href="#" className="w-[34px] h-[34px] rounded-full bg-[#1E293B] flex items-center justify-center cursor-pointer hover:bg-[#334155] transition-colors">
+              <a href="mailto:support@unclutterdesk.com" aria-label="Email Unclutter Desk" className="w-[34px] h-[34px] rounded-full bg-[#1E293B] flex items-center justify-center cursor-pointer hover:bg-[#334155] transition-colors">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#F8FAFC" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="5"></rect><circle cx="12" cy="12" r="4"></circle><path d="M17.5 6.5h.01"></path></svg>
               </a>
-              <a href="#" className="w-[34px] h-[34px] rounded-full bg-[#1E293B] flex items-center justify-center cursor-pointer hover:bg-[#334155] transition-colors">
+              <a href="/privacy" aria-label="Read privacy policy" className="w-[34px] h-[34px] rounded-full bg-[#1E293B] flex items-center justify-center cursor-pointer hover:bg-[#334155] transition-colors">
                 <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#F8FAFC" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m4 4 16 16M20 4 4 20"></path></svg>
               </a>
-              <a href="#" className="w-[34px] h-[34px] rounded-full bg-[#1E293B] flex items-center justify-center cursor-pointer hover:bg-[#334155] transition-colors">
+              <a href="/terms" aria-label="Read terms" className="w-[34px] h-[34px] rounded-full bg-[#1E293B] flex items-center justify-center cursor-pointer hover:bg-[#334155] transition-colors">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#F8FAFC" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 11.5a8.5 8.5 0 0 1-12.6 7.4L3 20.5l1.7-5.2A8.5 8.5 0 1 1 21 11.5z"></path></svg>
               </a>
             </div>

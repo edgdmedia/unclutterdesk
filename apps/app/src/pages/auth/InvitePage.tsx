@@ -184,7 +184,7 @@ export function InvitePage() {
             <div className="text-white text-base font-bold tracking-[-0.01em]">
               {invite.practiceName}
             </div>
-            <div className="text-[#64748B] text-[11.5px]">unclutterOS practice</div>
+            <div className="text-[#64748B] text-[11.5px]">Unclutter Desk practice</div>
           </div>
         </div>
 
@@ -215,7 +215,7 @@ export function InvitePage() {
 
         <div className="flex items-center gap-[9px] text-[#475569] text-[11.5px] relative z-[2]">
           <UnclutterMark size={20} className="rounded-[6px] opacity-70" />
-          <span>Powered by unclutterOS · {expiresIn(invite.expiresAt)}</span>
+          <span>Powered by Unclutter Desk · {expiresIn(invite.expiresAt)}</span>
         </div>
       </div>
 
@@ -336,7 +336,7 @@ export function InvitePage() {
               {submitting ? 'Setting up your account…' : `Join ${invite.practiceName}`}
             </button>
             <p className="mt-[14px] text-[11.5px] text-[#94A3B8] text-center leading-[1.6]">
-              By joining you agree to the unclutterOS terms and the clinic's data-handling policy.
+              By joining you agree to the Unclutter Desk terms and the clinic's data-handling policy.
             </p>
           </form>
         </div>

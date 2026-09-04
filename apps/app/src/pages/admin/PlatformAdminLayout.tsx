@@ -114,7 +114,7 @@ export function PlatformAdminLayout() {
             {!isCollapsed && (
               <div className="flex items-center gap-1.5">
                 <span className="font-semibold text-[17px] tracking-[-0.02em] text-[#F8FAFC] truncate">
-                  unclutterOS
+                  Unclutter Desk
                 </span>
                 <span className="h-[18px] px-2 rounded-full text-[9px] font-extrabold tracking-[0.08em] bg-[#E3B341] text-[#0F172A] flex items-center justify-center uppercase shrink-0">
                   Admin

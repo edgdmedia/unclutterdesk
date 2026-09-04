@@ -79,13 +79,13 @@ export function AnalyticsPage({ clients = [], sessions = [] }: AnalyticsPageProp
 
         <div className="flex items-center gap-3 ml-auto">
           <SegmentedControl
-            options={[
-              { value: '30d', label: '30 days' },
-              { value: '90d', label: '90 days' },
-              { value: '12m', label: '12 months' },
-            ]}
-            value={range}
-            onChange={setRange}
+            options={['30 days', '90 days', '12 months']}
+            value={
+              range === '30d' ? '30 days' : range === '90d' ? '90 days' : '12 months'
+            }
+            onChange={(next: string) => {
+              setRange(next === '30 days' ? '30d' : next === '90 days' ? '90d' : '12m');
+            }}
           />
 
           <button className="h-[40px] px-4 rounded-[14px] bg-white border border-[#CBD5E1] text-[#0F172A] text-xs font-bold hover:bg-[#F8FAFC] flex items-center gap-1.5">
