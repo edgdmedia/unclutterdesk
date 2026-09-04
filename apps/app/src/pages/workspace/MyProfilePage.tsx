@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Save } from 'lucide-react';
 import { Eyebrow } from '@unclutterdesk/ui';
-import { api } from '../utils/apiClient';
+import { api } from '../../utils/apiClient';
 
 type ProfileRecord = {
   firstName?: string;

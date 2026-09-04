@@ -123,8 +123,10 @@ describe('private app data policy', () => {
   });
 
   test('the notifications feed is read from the API, not from a literal array', () => {
-    const page = FILES.find((f) => f.path === 'pages/NotificationsPage.tsx');
-    expect(page, 'NotificationsPage.tsx not found — did it move?').toBeDefined();
+    // Matched on file name, not path: pages are grouped by audience and a page
+    // moving between those folders should not break a policy check about it.
+    const page = FILES.find((f) => f.path.endsWith('/NotificationsPage.tsx'));
+    expect(page, 'NotificationsPage.tsx not found — was it renamed?').toBeDefined();
     expect(page!.src).toContain('/v1/notifications');
   });
 });

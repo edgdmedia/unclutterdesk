@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { ShieldCheck, X } from 'lucide-react';
 import { Eyebrow, Card } from '@unclutterdesk/ui';
 import { useBrand } from '@unclutterdesk/ui';
-import { api } from '../utils/apiClient';
+import { api } from '../../../utils/apiClient';
 
 type PayoutAccount = { bankCode: string; bankName: string; accountNumber: string; accountName: string; isVerified: boolean } | null;
 type BillingSummary = { bankSubaccount: PayoutAccount; history: Array<{ date: string; title: string; detail: string; type: string }> };

@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { Star, MapPin, Award, ArrowRight, ShieldCheck } from 'lucide-react';
 import { useBrand } from '@unclutterdesk/ui';
-import { api, getSubdomainTenantSlug } from '../utils/apiClient';
+import { api, getSubdomainTenantSlug } from '../../utils/apiClient';
 
 type PublicReview = { id: string; rating: number | null; testimonial: string; displayName: string; publishedAt: string };
 type PublicReviewsPayload = { averageRating: number | null; count: number; reviews: PublicReview[] };

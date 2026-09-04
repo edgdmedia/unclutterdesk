@@ -2,8 +2,8 @@ import React, { useState } from 'react';
 import { UserPlus, MoreHorizontal, Info, X, Check, Mail, Loader2 } from 'lucide-react';
 import { Eyebrow, Card, StatusBadge, Button } from '@unclutterdesk/ui';
 import { useBrand } from '@unclutterdesk/ui';
-import { api } from '../utils/apiClient';
-import type { StaffMember } from '../App';
+import { api } from '../../../utils/apiClient';
+import type { StaffMember } from '../../../App';
 
 /**
  * The staff roster.

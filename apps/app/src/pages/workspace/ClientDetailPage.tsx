@@ -3,8 +3,8 @@ import { Link, useParams } from 'react-router-dom';
 import { Download, ChevronRight, FileText, Printer, Lock, Plus, X, Loader2 } from 'lucide-react';
 import { Eyebrow, Card, StatusBadge, Button } from '@unclutterdesk/ui';
 import { useBrand } from '@unclutterdesk/ui';
-import { api } from '../utils/apiClient';
-import type { Client } from '../App';
+import { api } from '../../utils/apiClient';
+import type { Client } from '../../App';
 
 interface ClientDetailPageProps {
   clients: Client[];

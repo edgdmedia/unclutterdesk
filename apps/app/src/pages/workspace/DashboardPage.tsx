@@ -2,8 +2,8 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Copy, Check, Bell, Link2, Calendar, FileText, Video, Upload, Globe, Palette, Sparkles, TrendingUp, CheckCircle2, ArrowRight, Menu } from 'lucide-react';
 import { Button } from '@unclutterdesk/ui';
-import { useAuth } from '../context/AuthContext';
-import { api, TENANT_SLUG } from '../utils/apiClient';
+import { useAuth } from '../../context/AuthContext';
+import { api, TENANT_SLUG } from '../../utils/apiClient';
 
 interface DashboardPageProps {
   tenantStatus?: 'ACTIVE' | 'PAUSED';

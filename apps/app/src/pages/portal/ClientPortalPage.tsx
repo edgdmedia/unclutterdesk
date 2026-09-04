@@ -2,10 +2,10 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Video, Calendar, Check } from 'lucide-react';
 import { useBrand } from '@unclutterdesk/ui';
-import { api, getBookingUrl, TENANT_SLUG } from '../utils/apiClient';
-import { RescheduleDialog } from '../components/RescheduleDialog';
-import { initialsOf } from '../utils/initials';
-import { useAuth } from '../context/AuthContext';
+import { api, getBookingUrl, TENANT_SLUG } from '../../utils/apiClient';
+import { RescheduleDialog } from '../../components/RescheduleDialog';
+import { initialsOf } from '../../utils/initials';
+import { useAuth } from '../../context/AuthContext';
 
 type PortalTab = 'upcoming' | 'past' | 'payments' | 'settings';
 

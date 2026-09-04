@@ -2,7 +2,7 @@ import React from 'react';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, test, vi } from 'vitest';
-import { TelehealthVideoRoomPage } from '../TelehealthVideoRoomPage';
+import { TelehealthVideoRoomPage } from '../workspace/TelehealthVideoRoomPage';
 
 const getMock = vi.fn();
 const postMock = vi.fn();

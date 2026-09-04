@@ -1,5 +1,5 @@
 import React from 'react';
-import { initialsOf } from '../utils/initials';
+import { initialsOf } from '../../utils/initials';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { Check, Video, ArrowLeft, User } from 'lucide-react';
 import { useBrand } from '@unclutterdesk/ui';

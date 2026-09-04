@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { Mic, MicOff, Video, VideoOff, Monitor, MessageSquare, PhoneOff, Lock, ShieldCheck, Check, FileText } from 'lucide-react';
-import { api } from '../utils/apiClient';
+import { api } from '../../utils/apiClient';
 
 type RoomPayload = {
   booking: {

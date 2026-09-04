@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { ArrowLeft, CheckCircle2, Star } from 'lucide-react';
 import { useBrand } from '@unclutterdesk/ui';
-import { api } from '../utils/apiClient';
+import { api } from '../../utils/apiClient';
 
 type ReviewField = {
   id: string;

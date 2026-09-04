@@ -27,7 +27,7 @@ vi.mock('@unclutterdesk/ui', () => ({
   useBrand: () => ({ name: 'Demo Practice', primaryColor: '#0F3A53' }),
 }));
 
-const { PublicProfilePage } = await import('../PublicProfilePage');
+const { PublicProfilePage } = await import('../public/PublicProfilePage');
 
 function renderPage() {
   return render(

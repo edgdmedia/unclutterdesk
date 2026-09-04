@@ -2,7 +2,7 @@ import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, cleanup, fireEvent } from '@testing-library/react';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
-import { AnalyticsPage } from '../AnalyticsPage';
+import { AnalyticsPage } from '../workspace/AnalyticsPage';
 
 /**
  * Practice analytics.

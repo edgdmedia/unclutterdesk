@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { ArrowLeft, GripVertical, Trash2, Plus } from 'lucide-react';
 import { Eyebrow } from '@unclutterdesk/ui';
-import { api } from '../utils/apiClient';
+import { api } from '../../../utils/apiClient';
 
 type Question = {
   id: string;

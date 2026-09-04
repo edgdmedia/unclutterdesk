@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { CheckCircle2, EyeOff, MessageSquare, ShieldAlert, Sparkles, Star } from 'lucide-react';
 import { Eyebrow } from '@unclutterdesk/ui';
-import { api } from '../utils/apiClient';
+import { api } from '../../utils/apiClient';
 
 type SubmissionAnswer = {
   id: string;

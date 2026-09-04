@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { ArrowLeft, Video } from 'lucide-react';
 import { Eyebrow } from '@unclutterdesk/ui';
-import { api } from '../utils/apiClient';
+import { api } from '../../utils/apiClient';
 
 type PrepPayload = {
   booking: {

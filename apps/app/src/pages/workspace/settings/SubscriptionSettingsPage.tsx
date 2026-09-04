@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Check, TrendingUp } from 'lucide-react';
 import { Eyebrow } from '@unclutterdesk/ui';
 import { useBrand } from '@unclutterdesk/ui';
-import { api } from '../utils/apiClient';
+import { api } from '../../../utils/apiClient';
 
 type SubscriptionRecord = {
   subscriptionTier: 'STARTER' | 'PRO' | 'CLINIC';

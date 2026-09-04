@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Plus, FileText, Activity, ShieldCheck, MessageSquare, Edit2 } from 'lucide-react';
 import { Eyebrow } from '@unclutterdesk/ui';
-import { api } from '../utils/apiClient';
+import { api } from '../../../utils/apiClient';
 
 type FormTemplate = {
   id: string;

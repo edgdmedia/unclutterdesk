@@ -1,10 +1,10 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { initialsOf } from '../utils/initials';
+import { initialsOf } from '../../utils/initials';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { Check, Copy, ArrowRight, ArrowLeft, Loader2, Sparkles, Building2, Calendar, ShieldCheck, ExternalLink, Palette, Image, Mail, Phone, MapPin, Info, Globe, Upload, Settings } from 'lucide-react';
 import { UnclutterLockup, Eyebrow } from '@unclutterdesk/ui';
-import { useAuth } from '../context/AuthContext';
-import { api, getBookingUrl } from '../utils/apiClient';
+import { useAuth } from '../../context/AuthContext';
+import { api, getBookingUrl } from '../../utils/apiClient';
 
 type SignupState = {
   practiceName?: string;

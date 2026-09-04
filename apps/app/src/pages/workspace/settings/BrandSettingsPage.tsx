@@ -1,9 +1,9 @@
 import React, { useEffect, useState } from 'react';
 import { Globe, Palette, Sparkles } from 'lucide-react';
 import { Eyebrow, Card, BookingLinkField } from '@unclutterdesk/ui';
-import { ClientBookingPage } from './ClientBookingPage';
-import { BookingConfirmedPage } from './BookingConfirmedPage';
-import { api, TENANT_SLUG } from '../utils/apiClient';
+import { ClientBookingPage } from '../../public/ClientBookingPage';
+import { BookingConfirmedPage } from '../../public/BookingConfirmedPage';
+import { api, TENANT_SLUG } from '../../../utils/apiClient';
 
 interface BrandSettingsPageProps {
   primaryColor?: string;

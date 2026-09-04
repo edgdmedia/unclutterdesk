@@ -1,8 +1,8 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { AlertCircle, Check, Info, Loader2, Monitor, Save } from 'lucide-react';
 import { Eyebrow } from '@unclutterdesk/ui';
-import { api } from '../utils/apiClient';
-import { useAuth } from '../context/AuthContext';
+import { api } from '../../../utils/apiClient';
+import { useAuth } from '../../../context/AuthContext';
 
 /**
  * Account and preferences.

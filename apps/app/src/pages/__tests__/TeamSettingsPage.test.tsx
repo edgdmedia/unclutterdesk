@@ -35,7 +35,7 @@ vi.mock('@unclutterdesk/ui', () => ({
   useBrand: () => ({ primaryColor: '#0F3A53' }),
 }));
 
-const { TeamSettingsPage } = await import('../TeamSettingsPage');
+const { TeamSettingsPage } = await import('../workspace/settings/TeamSettingsPage');
 
 const OWNER = {
   id: '1',

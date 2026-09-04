@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ChevronLeft, ChevronRight, Plus, Settings, X, Calendar, Clock, User, Trash2, CheckCircle2 } from 'lucide-react';
 import { useBrand } from '@unclutterdesk/ui';
-import { api, getBookingUrl, TENANT_SLUG } from '../utils/apiClient';
+import { api, getBookingUrl, TENANT_SLUG } from '../../utils/apiClient';
 
 interface Client {
   id: string;

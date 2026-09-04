@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Tag, Plus, X, Power, PowerOff } from 'lucide-react';
 import { Eyebrow, useBrand } from '@unclutterdesk/ui';
-import { api } from '../utils/apiClient';
+import { api } from '../../../utils/apiClient';
 
 interface DiscountCode {
   id: string;

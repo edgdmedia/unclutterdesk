@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { MapPin, Star } from 'lucide-react';
 import { useBrand } from '@unclutterdesk/ui';
-import { api, APP_BASE_URL, getSubdomainTenantSlug } from '../utils/apiClient';
+import { api, APP_BASE_URL, getSubdomainTenantSlug } from '../../utils/apiClient';
 
 type PublicTenantInfo = {
   id: string;

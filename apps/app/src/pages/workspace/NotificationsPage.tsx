@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Bell, Calendar, CheckCircle2, CreditCard, FileText, Loader2 } from 'lucide-react';
 import { Eyebrow, Card } from '@unclutterdesk/ui';
-import { api } from '../utils/apiClient';
+import { api } from '../../utils/apiClient';
 
 /**
  * The practice's real notification feed.

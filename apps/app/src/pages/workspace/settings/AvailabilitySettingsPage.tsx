@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Save, Plus, Info } from 'lucide-react';
 import { Eyebrow } from '@unclutterdesk/ui';
-import { api } from '../utils/apiClient';
+import { api } from '../../../utils/apiClient';
 
 type DayKey = 'mon' | 'tue' | 'wed' | 'thu' | 'fri' | 'sat' | 'sun';
 type Window = { start: string; end: string };
