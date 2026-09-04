@@ -8,6 +8,7 @@ import {
 import { PrismaService } from '../../common/prisma/prisma.service';
 import {
   SUBSCRIPTION_PLANS,
+  SUBSCRIPTION_TIERS,
   type SubscriptionTier,
   isSubscriptionTier,
   formatNaira,
@@ -43,6 +44,27 @@ export class BillingService {
       paystackCode: subaccount.paystackCode,
       isVerified: subaccount.isVerified,
     };
+  }
+
+  /**
+   * The plans, priced from the same definitions the charge is built from.
+   *
+   * The upgrade page hardcoded its own prices and got all three wrong: it
+   * offered Pro at ₦25,000 and Group Clinic at ₦75,000 while Paystack was
+   * charging ₦15,000 and ₦45,000, and showed Starter as free when it is not.
+   * A price quoted on the button someone clicks to buy has to be the price
+   * they are charged, so it is no longer restated anywhere.
+   */
+  listPlans() {
+    return SUBSCRIPTION_TIERS.map((tier) => {
+      const plan = SUBSCRIPTION_PLANS[tier];
+      return {
+        tier,
+        name: plan.name,
+        amountKobo: plan.amountKobo,
+        price: formatNaira(plan.amountKobo),
+      };
+    });
   }
 
   async getSubscription(tenantId: bigint) {

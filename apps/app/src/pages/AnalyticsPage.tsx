@@ -11,50 +11,132 @@ function monthKey(date: Date) {
   return new Intl.DateTimeFormat('en-US', { month: 'short' }).format(date);
 }
 
+const RANGES = {
+  '30d': { label: '30 days', months: 1, days: 30 },
+  '90d': { label: '90 days', months: 3, days: 90 },
+  '12m': { label: '12 months', months: 12, days: 365 },
+} as const;
+
+type RangeKey = keyof typeof RANGES;
+
 export function AnalyticsPage({ clients = [], sessions = [] }: AnalyticsPageProps) {
-  const [range, setRange] = useState('12m');
+  const [range, setRange] = useState<RangeKey>('12m');
   const primaryColor = '#0F3A53';
   const secondaryColor = '#E3B341';
 
+  /*
+   * The range control set state that nothing read. Picking "30 days" left every
+   * figure on the page identical — a filter that reports the same answer for
+   * every question is worse than no filter, because it looks like it worked.
+   */
+  const since = useMemo(() => {
+    const from = new Date();
+    from.setDate(from.getDate() - RANGES[range].days);
+    return from;
+  }, [range]);
+
+  const sessionsInRange = useMemo(
+    () =>
+      sessions.filter((session) => {
+        if (!session.startsAt) return false;
+        return new Date(session.startsAt) >= since;
+      }),
+    [sessions, since],
+  );
+
   const activeClients = clients.filter((client) => client.status === 'Active').length;
-  const completedSessions = sessions.filter((session) => session.status === 'COMPLETED').length;
-  const upcomingSessions = sessions.filter((session) => session.status !== 'COMPLETED').length;
+  const completedSessions = sessionsInRange.filter((session) => session.status === 'COMPLETED').length;
+  const upcomingSessions = sessionsInRange.filter((session) => session.status !== 'COMPLETED').length;
   const clientRetention = clients.length > 0 ? Math.round((activeClients / clients.length) * 100) : 0;
-  const completionRate = sessions.length > 0 ? Math.round((completedSessions / sessions.length) * 100) : 0;
+  const completionRate =
+    sessionsInRange.length > 0 ? Math.round((completedSessions / sessionsInRange.length) * 100) : 0;
 
   const kpis = [
     { label: 'TOTAL CLIENTS', value: clients.length.toString(), delta: `${activeClients} active` },
     { label: 'ACTIVE ROSTER', value: activeClients.toString(), delta: `${clientRetention}% retained` },
-    { label: 'SESSIONS TRACKED', value: sessions.length.toString(), delta: `${completedSessions} completed` },
+    {
+      label: 'SESSIONS TRACKED',
+      value: sessionsInRange.length.toString(),
+      delta: `${completedSessions} completed`,
+    },
     { label: 'UPCOMING SESSIONS', value: upcomingSessions.toString(), delta: `${completionRate}% completion rate` },
   ];
 
   const monthlyBars = useMemo(() => {
+    const span = RANGES[range].months;
     const buckets = new Map<string, number>();
-    for (let offset = 11; offset >= 0; offset -= 1) {
+    for (let offset = span - 1; offset >= 0; offset -= 1) {
       const date = new Date();
       date.setMonth(date.getMonth() - offset);
       buckets.set(monthKey(date), 0);
     }
-    for (const session of sessions) {
+    for (const session of sessionsInRange) {
       if (!session.startsAt) continue;
       const key = monthKey(new Date(session.startsAt));
       if (buckets.has(key)) buckets.set(key, (buckets.get(key) || 0) + 1);
     }
-    return Array.from(buckets.entries()).map(([month, val], index, arr) => ({ month, val, current: index === arr.length - 1 }));
-  }, [sessions]);
+    return Array.from(buckets.entries()).map(([month, val], index, arr) => ({
+      month,
+      val,
+      current: index === arr.length - 1,
+    }));
+  }, [sessionsInRange, range]);
 
   const maxBar = Math.max(1, ...monthlyBars.map((bar) => bar.val));
 
+  /**
+   * The report, as a CSV of what is on screen.
+   *
+   * "Download report" had no handler at all — it was a button that looked
+   * enabled, took the click and did nothing. Everything it needs is already in
+   * the browser, so it downloads the figures being shown, for the range being
+   * shown, rather than promising a document that does not exist.
+   */
+  function downloadReport() {
+    const rows = [
+      ['Unclutter Desk — practice analytics'],
+      ['Range', RANGES[range].label],
+      ['Generated', new Date().toISOString()],
+      [],
+      ['Measure', 'Value', 'Detail'],
+      ...kpis.map((k) => [k.label, k.value, k.delta]),
+      [],
+      ['Month', 'Sessions'],
+      ...monthlyBars.map((bar) => [bar.month, String(bar.val)]),
+      [],
+      ['Session type', 'Count', 'Share'],
+      ...distribution.map((d) => [d.label, String(d.count), `${d.percent}%`]),
+    ];
+
+    const csv = rows
+      .map((row) =>
+        row.map((cell) => (/[",\n]/.test(cell) ? `"${cell.replace(/"/g, '""')}"` : cell)).join(','),
+      )
+      .join('\n');
+
+    const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }));
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `analytics-${range}-${new Date().toISOString().slice(0, 10)}.csv`;
+    link.click();
+    URL.revokeObjectURL(url);
+  }
+
   const distribution = useMemo(() => {
-    const total = Math.max(1, sessions.length);
+    const total = Math.max(1, sessionsInRange.length);
+    const has = (session: { type?: string }, word: string) =>
+      (session.type || '').toLowerCase().includes(word);
     const buckets = [
-      { label: 'Individual', count: sessions.filter((session) => (session.type || '').toLowerCase().includes('individual')).length, color: primaryColor },
-      { label: 'Couples', count: sessions.filter((session) => (session.type || '').toLowerCase().includes('couples')).length, color: secondaryColor },
-      { label: 'Other', count: sessions.filter((session) => !(session.type || '').toLowerCase().includes('individual') && !(session.type || '').toLowerCase().includes('couples')).length, color: '#94A3B8' },
+      { label: 'Individual', count: sessionsInRange.filter((s) => has(s, 'individual')).length, color: primaryColor },
+      { label: 'Couples', count: sessionsInRange.filter((s) => has(s, 'couples')).length, color: secondaryColor },
+      {
+        label: 'Other',
+        count: sessionsInRange.filter((s) => !has(s, 'individual') && !has(s, 'couples')).length,
+        color: '#94A3B8',
+      },
     ];
     return buckets.map((bucket) => ({ ...bucket, percent: Math.round((bucket.count / total) * 100) }));
-  }, [sessions]);
+  }, [sessionsInRange]);
 
   const clientMix = useMemo(() => {
     const total = Math.max(1, clients.length);
@@ -80,15 +162,20 @@ export function AnalyticsPage({ clients = [], sessions = [] }: AnalyticsPageProp
         <div className="flex items-center gap-3 ml-auto">
           <SegmentedControl
             options={['30 days', '90 days', '12 months']}
-            value={
-              range === '30d' ? '30 days' : range === '90d' ? '90 days' : '12 months'
-            }
+            value={RANGES[range].label}
             onChange={(next: string) => {
-              setRange(next === '30 days' ? '30d' : next === '90 days' ? '90d' : '12m');
+              const found = (Object.keys(RANGES) as RangeKey[]).find(
+                (key) => RANGES[key].label === next,
+              );
+              if (found) setRange(found);
             }}
           />
 
-          <button className="h-[40px] px-4 rounded-[14px] bg-white border border-[#CBD5E1] text-[#0F172A] text-xs font-bold hover:bg-[#F8FAFC] flex items-center gap-1.5">
+          <button
+            type="button"
+            onClick={downloadReport}
+            className="h-[40px] px-4 rounded-[14px] bg-white border border-[#CBD5E1] text-[#0F172A] text-xs font-bold hover:bg-[#F8FAFC] flex items-center gap-1.5 cursor-pointer"
+          >
             <Download className="h-3.5 w-3.5" />
             <span>Download report</span>
           </button>

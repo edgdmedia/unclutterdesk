@@ -58,6 +58,19 @@ export class BillingController {
   }
 
   @Roles(...PRACTICE_ADMIN)
+  @Get('plans')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @ApiBearerAuth('access-token')
+  @ApiOperation({
+    summary: 'The subscription plans and their prices',
+    description:
+      'Priced from the same definitions the Paystack charge is built from, so the figure on the upgrade button is the figure charged.',
+  })
+  getPlans() {
+    return this.billingService.listPlans();
+  }
+
+  @Roles(...PRACTICE_ADMIN)
   @Get('summary')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @ApiBearerAuth('access-token')

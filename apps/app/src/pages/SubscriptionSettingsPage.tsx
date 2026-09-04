@@ -16,6 +16,35 @@ type SubscriptionRecord = {
 };
 type BillingSummary = { subscription: SubscriptionRecord; history: Array<{ date: string; title: string; detail: string; type: string }> };
 
+/**
+ * A plan, priced by the server from the same figure the Paystack charge is
+ * built from.
+ *
+ * The prices used to be written into this page and all three were wrong: Pro
+ * was offered at ₦25,000 and Group Clinic at ₦75,000 while the charge was
+ * ₦15,000 and ₦45,000, and Starter was shown as free when it is not. The price
+ * on the button someone clicks to buy has to be the price they are charged.
+ */
+type Plan = { tier: SubscriptionRecord['subscriptionTier']; name: string; price: string };
+
+/** What each tier includes. Copy, not pricing — the figures come from the API. */
+const PLAN_FEATURES: Record<SubscriptionRecord['subscriptionTier'], string[]> = {
+  STARTER: ['1 Practitioner profile', 'Up to 20 bookings / mo', 'Instant Jitsi WebRTC video'],
+  PRO: [
+    'Unlimited sessions & bookings',
+    '1 Receptionist / Staff login',
+    'Custom Domain (CNAME)',
+    'Daily.co BYOK Cloud Recording',
+  ],
+  CLINIC: ['Up to 25 Therapist profiles', 'Group Clinic RBAC Roles', 'Supervisor case reviews'],
+};
+
+const PLAN_TONE: Record<SubscriptionRecord['subscriptionTier'], 'light' | 'dark'> = {
+  STARTER: 'light',
+  PRO: 'dark',
+  CLINIC: 'light',
+};
+
 function getPlanDisabledReason(plan: SubscriptionRecord['subscriptionTier'], subscription: SubscriptionRecord) {
   if (plan === subscription.subscriptionTier) return null;
   if (plan === 'STARTER' && subscription.canDowngradeToStarter === false) {
@@ -31,6 +60,7 @@ export function SubscriptionSettingsPage() {
   const brand = useBrand();
   const primaryColor = brand.primaryColor || '#0F3A53';
   const [subscription, setSubscription] = useState<SubscriptionRecord | null>(null);
+  const [plans, setPlans] = useState<Plan[] | null>(null);
   const [history, setHistory] = useState<BillingSummary['history']>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -41,9 +71,13 @@ export function SubscriptionSettingsPage() {
     async function loadSubscription() {
       setLoading(true);
       try {
-        const data = await api.get<BillingSummary>('/v1/billing/summary');
+        const [data, planList] = await Promise.all([
+          api.get<BillingSummary>('/v1/billing/summary'),
+          api.get<Plan[]>('/v1/billing/plans'),
+        ]);
         if (!cancelled) {
           setSubscription(data.subscription);
+          setPlans(planList);
           setHistory(data.history);
         }
       } catch (err: any) {
@@ -84,14 +118,17 @@ export function SubscriptionSettingsPage() {
 
       <main className="p-[24px_26px_30px] space-y-6 flex-1">
         {error ? <div className="rounded-[18px] border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-medium text-rose-700">{error}</div> : null}
-        {loading || !subscription ? <div className="rounded-[24px] border border-[#E2E8F0] bg-white px-6 py-10 text-sm font-medium text-[#64748B]">Loading subscription...</div> : (
+        {loading || !subscription || !plans ? <div className="rounded-[24px] border border-[#E2E8F0] bg-white px-6 py-10 text-sm font-medium text-[#64748B]">Loading subscription...</div> : (
           <>
             <div className="grid grid-cols-3 gap-5">
-              {[
-                { key: 'STARTER' as const, name: 'Starter', price: '₦0/month', tone: 'light', features: ['1 Practitioner profile', 'Up to 20 bookings / mo', 'Instant Jitsi WebRTC video'] },
-                { key: 'PRO' as const, name: 'Pro Solo', price: '₦25,000/month', tone: 'dark', features: ['Unlimited sessions & bookings', '1 Receptionist / Staff login', 'Custom Domain (CNAME)', 'Daily.co BYOK Cloud Recording'] },
-                { key: 'CLINIC' as const, name: 'Group Clinic', price: '₦75,000/month', tone: 'light', features: ['Up to 25 Therapist profiles', 'Group Clinic RBAC Roles', 'Supervisor case reviews'] },
-              ].map((plan) => {
+              {plans.map((p) => {
+                const plan = {
+                  key: p.tier,
+                  name: p.name,
+                  price: `${p.price}/month`,
+                  tone: PLAN_TONE[p.tier],
+                  features: PLAN_FEATURES[p.tier],
+                };
                 const disabledReason = getPlanDisabledReason(plan.key, subscription);
                 const isDisabled = saving || !!disabledReason;
 
