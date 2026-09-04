@@ -19,6 +19,7 @@ minutes between runs, or expect those lines to report the limiter instead.
 
 import json
 import os
+import pathlib
 import sys
 import time
 import urllib.error
@@ -29,6 +30,8 @@ STAMP = str(int(time.time()))
 SLUG = f"e2e{STAMP}"
 # Filled in from the login response — the API derives it from the practice name.
 TENANT_SLUG = None
+# booking id -> the payment reference the API minted for it.
+REFERENCES = {}
 # Paystack rejects a .test TLD as an invalid address, and the booking leg
 # hands the client's email to it, so the fixtures use a resolvable domain.
 OWNER_EMAIL = f"e2e-owner-{STAMP}@example.com"
@@ -342,6 +345,65 @@ def practice_flows(session, csrf, payments):
                 f"status {status}",
             )
 
+    # ── the webhook that completes the payment ───────────────────────────
+    if booking_id:
+        paid = webhook_charge_success(booking_id)
+        record(
+            "a signed webhook confirms the booking",
+            paid is True,
+            "signature accepted" if paid is True else str(paid),
+        )
+
+        status, bad, _ = call(
+            "POST",
+            "/v1/billing/paystack-webhook",
+            {"event": "charge.success", "data": {"reference": f"booking-{booking_id}-forged"}},
+        )
+        record(
+            "an unsigned webhook is refused",
+            status == 400,
+            f"status {status} — anyone can reach this endpoint",
+        )
+
+        if paid is True:
+            status, summary, _ = call("GET", "/v1/consult/dashboard/summary", cookies=session)
+            earned = summary.get("revenueThisMonthNaira") if isinstance(summary, dict) else None
+            record(
+                "the payment shows up as revenue at the amount charged",
+                earned == 5000,
+                f"reported {earned}, service priced at 5000",
+            )
+
+            status, bookings, _ = call("GET", "/v1/consult/therapist/bookings", cookies=session)
+            confirmed = [
+                b for b in (bookings if isinstance(bookings, list) else [])
+                if str(b.get("id")) == str(booking_id)
+            ]
+            record(
+                "the booking is now confirmed",
+                bool(confirmed) and confirmed[0].get("status") == "CONFIRMED",
+                confirmed[0].get("status") if confirmed else "booking not found",
+            )
+
+            # A retry must not confirm it twice or double-count the money.
+            webhook_charge_success(booking_id)
+            status, summary, _ = call("GET", "/v1/consult/dashboard/summary", cookies=session)
+            again = summary.get("revenueThisMonthNaira") if isinstance(summary, dict) else None
+            record(
+                "a replayed webhook does not count the money twice",
+                again == earned,
+                f"{earned} then {again}",
+            )
+
+    # ── the client sees their own booking, and only theirs ───────────────
+    client_email = f"e2e-client-{STAMP}@example.com"
+    status, portal, _ = call("GET", "/v1/consult/portal", host=host)
+    record(
+        "the portal cannot be read without a session",
+        status in (401, 403),
+        f"status {status} — it was once addressable by email alone",
+    )
+
     # ── notifications ────────────────────────────────────────────────────
     status, feed, _ = call("GET", "/v1/notifications", cookies=session)
     rows = feed if isinstance(feed, list) else (feed or {}).get("items")
@@ -360,6 +422,72 @@ def practice_flows(session, csrf, payments):
 
     status, subs, _ = call("GET", "/v1/intake/submissions", cookies=session)
     record("intake submissions are staff-only and readable by the owner", status == 200, f"status {status}")
+
+
+
+def webhook_charge_success(booking_id):
+    """
+    Posts a charge.success signed the way Paystack signs it.
+
+    The signature is HMAC-SHA512 of the raw body under the secret key, so this
+    is a local exercise of the real verification path rather than a bypass —
+    an unsigned body is refused by the same call.
+    """
+    import hashlib
+    import hmac
+    import re
+
+    try:
+        env = pathlib.Path("apps/api/.env").read_text()
+    except Exception:
+        return "apps/api/.env not readable"
+    match = re.search(r"^PAYSTACK_SECRET_KEY=(.+)$", env, re.M)
+    if not match:
+        return "no PAYSTACK_SECRET_KEY configured"
+    secret = match.group(1).strip()
+
+    # The reference is minted server-side as booking-<id>-<timestamp> and stored
+    # on the row; Paystack would echo back the one it was given.
+    reference = REFERENCES.get(str(booking_id))
+    if not reference:
+        import subprocess
+
+        out = subprocess.run(
+            [
+                "psql",
+                os.environ.get("E2E_DB", "unclutter_os"),
+                "-tAc",
+                f'select "paymentRef" from "ConsultBooking" where id={int(booking_id)}',
+            ],
+            capture_output=True,
+            text=True,
+            timeout=10,
+        )
+        reference = out.stdout.strip()
+        REFERENCES[str(booking_id)] = reference
+    if not reference:
+        return "booking has no payment reference"
+
+    payload = json.dumps(
+        {
+            "event": "charge.success",
+            "data": {"reference": reference, "paid_at": "2026-09-04T12:00:00.000Z"},
+        }
+    ).encode()
+    signature = hmac.new(secret.encode(), payload, hashlib.sha512).hexdigest()
+
+    req = urllib.request.Request(
+        f"{API}/v1/billing/paystack-webhook", data=payload, method="POST"
+    )
+    req.add_header("Content-Type", "application/json")
+    req.add_header("x-paystack-signature", signature)
+    try:
+        with urllib.request.urlopen(req) as resp:
+            return resp.status in (200, 201)
+    except urllib.error.HTTPError as e:
+        return f"status {e.code}: {e.read().decode()[:80]}"
+    except Exception as e:
+        return str(e)
 
 
 def summarise():
