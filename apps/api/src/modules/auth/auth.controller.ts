@@ -1,4 +1,16 @@
-import { Controller, Post, Get, Put, Body, Req, Res, UseGuards, UnauthorizedException } from '@nestjs/common';
+import {
+  Controller,
+  Post,
+  Get,
+  Put,
+  Delete,
+  Param,
+  Body,
+  Req,
+  Res,
+  UseGuards,
+  UnauthorizedException,
+} from '@nestjs/common';
 import { Throttle } from '@nestjs/throttler';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { Response } from 'express';
@@ -18,6 +30,7 @@ import {
 import { RolesGuard } from '../../common/roles.guard';
 import { authenticatedProfileId, authenticatedTenantId } from '../../common/authenticated-tenant';
 import { AnyAuthenticated } from '../../common/roles';
+import { DeviceInfo } from './session.service';
 
 @ApiTags('Auth')
 @Controller('v1/auth')
@@ -67,10 +80,11 @@ export class AuthController {
   @Throttle({ default: { limit: 5, ttl: 60000 } })
   @ApiOperation({ summary: 'Accept a staff invitation and sign in' })
   async claimInvite(
+    @Req() req: TenantRequest,
     @Body() dto: { token: string; password: string; firstName?: string; lastName?: string },
     @Res({ passthrough: true }) res: Response,
   ) {
-    const result = await this.authService.claimInvite(dto);
+    const result = await this.authService.claimInvite(dto, deviceOf(req));
     const csrfToken = this.setSessionCookies(res, result.accessToken, result.refreshToken);
     return { profile: result.profile, csrfToken };
   }
@@ -83,7 +97,7 @@ export class AuthController {
     @Body() dto: any,
     @Res({ passthrough: true }) res: Response,
   ) {
-    const result = await this.authService.login(req.tenantId, dto);
+    const result = await this.authService.login(req.tenantId, dto, deviceOf(req));
     const csrfToken = this.setSessionCookies(res, result.accessToken, result.refreshToken);
     return { profile: result.profile, csrfToken };
   }
@@ -93,17 +107,18 @@ export class AuthController {
   async refresh(@Req() req: TenantRequest, @Res({ passthrough: true }) res: Response) {
     const refreshToken = req.cookies?.[REFRESH_COOKIE];
     if (!refreshToken) throw new UnauthorizedException('No refresh token provided');
-    const result = await this.authService.refresh(refreshToken);
+    const result = await this.authService.refresh(refreshToken, deviceOf(req));
     const csrfToken = this.setSessionCookies(res, result.accessToken, result.refreshToken);
     return { profile: result.profile, csrfToken };
   }
 
   @Post('logout')
-  @ApiOperation({ summary: 'Clear the session cookies' })
-  logout(@Res({ passthrough: true }) res: Response) {
-    res.clearCookie(ACCESS_COOKIE, cookieOptions(0));
-    res.clearCookie(REFRESH_COOKIE, { ...cookieOptions(0), path: '/v1/auth/refresh' });
-    res.clearCookie(CSRF_COOKIE, { ...csrfCookieOptions(), maxAge: 0 });
+  @ApiOperation({ summary: 'End the session and clear its cookies' })
+  async logout(@Req() req: TenantRequest, @Res({ passthrough: true }) res: Response) {
+    // The refresh cookie is scoped to /v1/auth/refresh so it never reaches
+    // this route; the access cookie names the session instead.
+    await this.authService.endSessionForAccessToken(req.cookies?.[ACCESS_COOKIE]);
+    this.clearSessionCookies(res);
     return { success: true };
   }
 
@@ -142,7 +157,11 @@ export class AuthController {
     @Req() req: any,
     @Body() dto: { currentPassword: string; newPassword: string },
   ) {
-    return this.authService.changePassword(authenticatedProfileId(req), dto);
+    return this.authService.changePassword(
+      authenticatedProfileId(req),
+      dto,
+      req.user?.sessionId,
+    );
   }
 
   @AnyAuthenticated()
@@ -160,6 +179,46 @@ export class AuthController {
     return { ...result, csrfToken };
   }
 
+  @AnyAuthenticated()
+  @Get('sessions')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @ApiBearerAuth('access-token')
+  @ApiOperation({ summary: 'List the devices currently signed in to this account' })
+  listSessions(@Req() req: any) {
+    return this.authService.listSessions(BigInt(req.user.userId), req.user.sessionId);
+  }
+
+  @AnyAuthenticated()
+  @Post('sessions/revoke-others')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @ApiBearerAuth('access-token')
+  @ApiOperation({ summary: 'Sign out every other device' })
+  revokeOtherSessions(@Req() req: any) {
+    return this.authService.endOtherSessions(BigInt(req.user.userId), req.user.sessionId);
+  }
+
+  @AnyAuthenticated()
+  @Delete('sessions/:id')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @ApiBearerAuth('access-token')
+  @ApiOperation({ summary: 'Sign out one device' })
+  async revokeSession(
+    @Req() req: any,
+    @Param('id') id: string,
+    @Res({ passthrough: true }) res: Response,
+  ) {
+    const result = await this.authService.endSession(
+      BigInt(req.user.userId),
+      id,
+      req.user.sessionId,
+    );
+    // Ending the session you are sitting in is allowed — it is how someone
+    // signs out from the list — but the cookies have to go with it, or the
+    // browser keeps presenting a session that no longer exists.
+    if (result.endedCurrentSession) this.clearSessionCookies(res);
+    return result;
+  }
+
   private setSessionCookies(res: Response, accessToken: string, refreshToken: string) {
     res.cookie(ACCESS_COOKIE, accessToken, cookieOptions(ACCESS_COOKIE_MAX_AGE));
     res.cookie(REFRESH_COOKIE, refreshToken, {
@@ -170,4 +229,24 @@ export class AuthController {
     res.cookie(CSRF_COOKIE, csrfToken, csrfCookieOptions());
     return csrfToken;
   }
+
+  private clearSessionCookies(res: Response) {
+    res.clearCookie(ACCESS_COOKIE, cookieOptions(0));
+    res.clearCookie(REFRESH_COOKIE, { ...cookieOptions(0), path: '/v1/auth/refresh' });
+    res.clearCookie(CSRF_COOKIE, { ...csrfCookieOptions(), maxAge: 0 });
+  }
+}
+
+/**
+ * What to record about the device opening a session.
+ *
+ * Both values are shown back to the account owner so they can recognise their
+ * own devices; neither is trusted for anything else. `req.ip` is meaningful
+ * because main.ts sets `trust proxy`.
+ */
+function deviceOf(req: TenantRequest): DeviceInfo {
+  return {
+    userAgent: req.headers?.['user-agent'] ?? null,
+    ipAddress: req.ip ?? null,
+  };
 }

@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { AlertCircle, Check, Info, Loader2, Save } from 'lucide-react';
+import { AlertCircle, Check, Info, Loader2, Monitor, Save } from 'lucide-react';
 import { Eyebrow } from '@unclutterdesk/ui';
 import { api } from '../utils/apiClient';
 import { useAuth } from '../context/AuthContext';
@@ -16,8 +16,11 @@ import { useAuth } from '../context/AuthContext';
  * on earth. A page about account security is the worst place to invent things:
  * someone checking for unauthorised access was reading fiction.
  *
- * What remains is backed by an endpoint. What was not has been removed rather
- * than left looking real — see the note at the end of the file.
+ * The session list and the password date are now real: refresh tokens are
+ * recorded per device and can be revoked, so this page reports what the server
+ * knows and nothing else. Everything here is backed by an endpoint; what still
+ * is not has been removed rather than left looking real — see the note at the
+ * end of the file.
  */
 type DateFmt = 'DD/MM/YYYY' | 'MM/DD/YYYY' | 'YYYY-MM-DD' | 'D MMM YYYY';
 type TimeFmt = '24-hour' | '12-hour';
@@ -33,6 +36,17 @@ interface Preferences {
   timeFormat: TimeFmt;
   weekStartsOn: WeekStart;
   numberFormat: NumFmt;
+  /** Null for a password set before this was recorded. */
+  passwordChangedAt: string | null;
+}
+
+interface ActiveSession {
+  id: string;
+  device: string;
+  ipAddress: string | null;
+  lastUsedAt: string;
+  startedAt: string;
+  current: boolean;
 }
 
 const LOCALES = [
@@ -94,6 +108,33 @@ function formatSampleTime(fmt: TimeFmt, locale: string, timezone: string): strin
 
 function formatSampleNumber(fmt: NumFmt): string {
   return fmt === '1,234.56' ? '1,234.56' : '1.234,56';
+}
+
+/**
+ * "3 days ago" for a date the server supplied.
+ *
+ * The old page hard-coded "last changed 3 months ago". This says how long ago
+ * something the server recorded actually happened, and nothing at all when
+ * there is no date to report.
+ */
+function timeAgo(iso: string, now: number = Date.now()): string {
+  const seconds = Math.round((now - new Date(iso).getTime()) / 1000);
+  if (!Number.isFinite(seconds)) return 'Unknown';
+  if (seconds < 60) return 'Just now';
+
+  const units: [number, Intl.RelativeTimeFormatUnit][] = [
+    [60, 'minute'],
+    [3600, 'hour'],
+    [86400, 'day'],
+    [2592000, 'month'],
+    [31536000, 'year'],
+  ];
+  let chosen: [number, Intl.RelativeTimeFormatUnit] = units[0];
+  for (const unit of units) {
+    if (seconds >= unit[0]) chosen = unit;
+  }
+  const fmt = new Intl.RelativeTimeFormat('en', { numeric: 'auto' });
+  return fmt.format(-Math.floor(seconds / chosen[0]), chosen[1]);
 }
 
 const selectCls =
@@ -186,6 +227,11 @@ export function AccountPreferencesPage() {
   const [pwState, setPwState] = useState<'idle' | 'saving' | 'done'>('idle');
   const [pwError, setPwError] = useState<string | null>(null);
 
+  const [sessions, setSessions] = useState<ActiveSession[] | null>(null);
+  const [sessionError, setSessionError] = useState<string | null>(null);
+  // The id being signed out, so only that row shows as busy.
+  const [endingSession, setEndingSession] = useState<string | null>(null);
+
   const load = useCallback(async () => {
     try {
       const data = await api.get<Preferences>('/v1/auth/preferences');
@@ -196,9 +242,24 @@ export function AccountPreferencesPage() {
     }
   }, []);
 
+  const loadSessions = useCallback(async () => {
+    try {
+      setSessions(await api.get<ActiveSession[]>('/v1/auth/sessions'));
+      setSessionError(null);
+    } catch (err) {
+      // No list at all, rather than an empty one: "no other devices" and "we
+      // could not check" are different answers to the question being asked.
+      setSessions(null);
+      setSessionError(
+        err instanceof Error ? err.message : 'Your signed-in devices could not be loaded',
+      );
+    }
+  }, []);
+
   useEffect(() => {
     void load();
-  }, [load]);
+    void loadSessions();
+  }, [load, loadSessions]);
 
   useEffect(() => {
     api
@@ -277,9 +338,49 @@ export function AccountPreferencesPage() {
       });
       setPw({ current: '', next: '', confirm: '' });
       setPwState('done');
+      // The change ends every other session and stamps the date, so both the
+      // list and "last changed" are now stale.
+      await Promise.all([load(), loadSessions()]);
     } catch (err) {
       setPwError(err instanceof Error ? err.message : 'Could not change your password');
       setPwState('idle');
+    }
+  }
+
+  async function endSession(id: string) {
+    if (endingSession) return;
+    setEndingSession(id);
+    setSessionError(null);
+    try {
+      const result = await api.delete<{ endedCurrentSession: boolean }>(
+        `/v1/auth/sessions/${id}`,
+      );
+      // Signing out of the device you are on is allowed; the server has
+      // already cleared the cookies, so the only honest thing left is to
+      // reload into the signed-out state.
+      if (result?.endedCurrentSession) {
+        window.location.assign('/login');
+        return;
+      }
+      await loadSessions();
+    } catch (err) {
+      setSessionError(err instanceof Error ? err.message : 'Could not sign out that device');
+    } finally {
+      setEndingSession(null);
+    }
+  }
+
+  async function endOtherSessions() {
+    if (endingSession) return;
+    setEndingSession('others');
+    setSessionError(null);
+    try {
+      await api.post('/v1/auth/sessions/revoke-others', {});
+      await loadSessions();
+    } catch (err) {
+      setSessionError(err instanceof Error ? err.message : 'Could not sign out your other devices');
+    } finally {
+      setEndingSession(null);
     }
   }
 
@@ -383,8 +484,20 @@ export function AccountPreferencesPage() {
                 onSubmit={changePassword}
                 className="px-4 py-[16px] rounded-[20px] bg-[#F8FAFC] border border-[#E2E8F0]"
               >
-                <div className="text-[11px] font-bold text-[#94A3B8] uppercase tracking-wider">
-                  Password
+                <div className="flex items-baseline gap-2 flex-wrap">
+                  <div className="text-[11px] font-bold text-[#94A3B8] uppercase tracking-wider">
+                    Password
+                  </div>
+                  {/*
+                    Was the literal string "last changed 3 months ago" for every
+                    account. It now says what the server recorded, and says
+                    nothing was recorded when nothing was.
+                  */}
+                  <span className="text-[11.5px] font-medium text-[#64748B]">
+                    {prefs?.passwordChangedAt
+                      ? `Last changed ${timeAgo(prefs.passwordChangedAt)}`
+                      : 'Last change not recorded'}
+                  </span>
                 </div>
                 <div className="mt-3 grid grid-cols-3 gap-3">
                   <input
@@ -426,7 +539,7 @@ export function AccountPreferencesPage() {
                 ) : null}
                 {pwState === 'done' ? (
                   <p role="status" className="mt-2.5 text-[12px] font-bold text-[#15803D]">
-                    Your password has been changed.
+                    Your password has been changed. Your other devices have been signed out.
                   </p>
                 ) : null}
                 <button
@@ -586,6 +699,78 @@ export function AccountPreferencesPage() {
           </div>
 
           <div className="bg-white rounded-[24px] border border-[#E2E8F0] p-[22px_24px] shadow-[0_8px_26px_rgba(15,23,42,0.05)]">
+            <div className="flex items-center justify-between gap-3">
+              <span className="text-[15px] font-bold text-[#0F172A]">Active sessions</span>
+              {sessions && sessions.length > 1 ? (
+                <button
+                  type="button"
+                  onClick={endOtherSessions}
+                  disabled={endingSession !== null}
+                  className="text-[11.5px] font-bold text-[#0F3A53] hover:underline cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {endingSession === 'others' ? 'Signing out…' : 'Sign out other devices'}
+                </button>
+              ) : null}
+            </div>
+            <p className="mt-1 text-[11.5px] text-[#94A3B8] font-medium leading-snug">
+              Devices signed in to this account. Sign out anything you do not recognise.
+            </p>
+
+            {sessionError ? (
+              <p role="alert" className="mt-3 text-[11.5px] font-medium text-[#B91C1C]">
+                {sessionError}
+              </p>
+            ) : null}
+
+            {sessions === null && !sessionError ? (
+              <p className="mt-3 text-[11.5px] text-[#94A3B8] font-medium">Loading…</p>
+            ) : null}
+
+            {sessions ? (
+              <ul className="mt-3 flex flex-col gap-2.5">
+                {sessions.map((session) => (
+                  <li
+                    key={session.id}
+                    className="flex items-start gap-3 px-3 py-2.5 rounded-[16px] bg-[#F8FAFC] border border-[#E2E8F0]"
+                  >
+                    <Monitor className="h-4 w-4 text-[#64748B] mt-0.5 shrink-0" />
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        <span className="text-[12.5px] font-bold text-[#0F172A]">
+                          {session.device}
+                        </span>
+                        {session.current ? (
+                          <span className="h-[16px] px-1.5 rounded-full bg-[#ECFDF5] text-[#059669] text-[9px] font-black tracking-[0.06em] uppercase flex items-center">
+                            This device
+                          </span>
+                        ) : null}
+                      </div>
+                      <div className="text-[11px] text-[#94A3B8] font-medium">
+                        {/*
+                          An address the server saw, not a city name: the old
+                          panel said "Lagos, Nigeria" for everyone, which is a
+                          guess dressed up as a fact.
+                        */}
+                        {session.ipAddress ? `${session.ipAddress} · ` : ''}
+                        Last used {timeAgo(session.lastUsedAt)}
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => endSession(session.id)}
+                      disabled={endingSession !== null}
+                      aria-label={`Sign out ${session.device}`}
+                      className="text-[11.5px] font-bold text-[#B91C1C] hover:underline cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed shrink-0"
+                    >
+                      {endingSession === session.id ? '…' : 'Sign out'}
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            ) : null}
+          </div>
+
+          <div className="bg-white rounded-[24px] border border-[#E2E8F0] p-[22px_24px] shadow-[0_8px_26px_rgba(15,23,42,0.05)]">
             <span className="text-[15px] font-bold text-[#0F172A]">Notification channels</span>
             <div className="mt-3 flex flex-col gap-3.5">
               {CHANNELS.map((c) => (
@@ -624,9 +809,6 @@ export function AccountPreferencesPage() {
  *
  * - Two-factor authentication. The toggle said "required for clinical records",
  *   which was false in a way a clinician could rely on.
- * - Active sessions / sign out other devices. Sessions are not tracked per
- *   device, so the list was invented — the exact thing someone would check
- *   after suspecting a break-in.
  * - Export my data. A real subject-access export is its own piece of work.
  * - Change email. Needs re-verification of the new address before the switch.
  * - Deactivate account. Closing a whole practice is POST /v1/privacy/practice/close

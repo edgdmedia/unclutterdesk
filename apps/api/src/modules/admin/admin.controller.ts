@@ -1,4 +1,5 @@
 import { Controller, Get, Post, Patch, Body, Param, Req, Res, UseGuards } from '@nestjs/common';
+import { Request } from 'express';
 import { ApiTags, ApiOperation } from '@nestjs/swagger';
 import { Response } from 'express';
 import { randomBytes } from 'crypto';
@@ -26,10 +27,14 @@ export class AdminController {
   @Post('auth/login')
   @ApiOperation({ summary: 'Platform admin login (tenant-free)' })
   async login(
+    @Req() req: Request,
     @Body() dto: { email: string; password: string },
     @Res({ passthrough: true }) res: Response,
   ) {
-    const result = await this.authService.loginPlatformAdmin(dto);
+    const result = await this.authService.loginPlatformAdmin(dto, {
+      userAgent: req.headers?.['user-agent'] ?? null,
+      ipAddress: req.ip ?? null,
+    });
     this.setSessionCookies(res, result.accessToken, result.refreshToken);
     return { profile: result.profile };
   }

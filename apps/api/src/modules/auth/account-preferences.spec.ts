@@ -34,8 +34,14 @@ function makeService({ profile = STORED, updated = 1 }: { profile?: any; updated
     },
     user: { update: vi.fn().mockResolvedValue({}) },
   };
-  const service = new AuthService(prisma, { sign: vi.fn() } as any, { notify: vi.fn() } as any);
-  return { service, prisma };
+  const sessions = { revokeAllForUser: vi.fn().mockResolvedValue(0) };
+  const service = new AuthService(
+    prisma,
+    { sign: vi.fn() } as any,
+    { notify: vi.fn() } as any,
+    sessions as any,
+  );
+  return { service, prisma, sessions };
 }
 
 describe('AuthService.getPreferences', () => {
@@ -57,9 +63,30 @@ describe('AuthService.getPreferences', () => {
   });
 
   it('never returns the password hash', async () => {
+    // The account only reaches the User row for when the password last
+    // changed, so name the one column rather than including the relation.
     const { service, prisma } = makeService();
-    await service.getPreferences(TENANT, PROFILE);
-    expect(prisma.profile.findFirst.mock.calls[0][0].select).not.toHaveProperty('user');
+    const result = await service.getPreferences(TENANT, PROFILE);
+    expect(prisma.profile.findFirst.mock.calls[0][0].select.user).toEqual({
+      select: { passwordChangedAt: true },
+    });
+    expect(result).not.toHaveProperty('password');
+    expect(result).not.toHaveProperty('user');
+  });
+
+  it('reports when the password last changed', async () => {
+    const changed = new Date('2026-08-01T09:00:00.000Z');
+    const { service } = makeService({ profile: { ...STORED, user: { passwordChangedAt: changed } } });
+    await expect(service.getPreferences(TENANT, PROFILE)).resolves.toMatchObject({
+      passwordChangedAt: changed.toISOString(),
+    });
+  });
+
+  it('reports no date rather than a guess for a password that predates the record', async () => {
+    const { service } = makeService({ profile: { ...STORED, user: { passwordChangedAt: null } } });
+    await expect(service.getPreferences(TENANT, PROFILE)).resolves.toMatchObject({
+      passwordChangedAt: null,
+    });
   });
 
   it('refuses a profile outside the tenant', async () => {
@@ -174,16 +201,52 @@ describe('AuthService.changePassword', () => {
       },
       user: { update: vi.fn().mockResolvedValue({}) },
     };
-    const service = new AuthService(prisma, { sign: vi.fn() } as any, { notify: vi.fn() } as any);
-    return { service, prisma };
+    const sessions = { revokeAllForUser: vi.fn().mockResolvedValue(2) };
+    const service = new AuthService(
+      prisma,
+      { sign: vi.fn() } as any,
+      { notify: vi.fn() } as any,
+      sessions as any,
+    );
+    return { service, prisma, sessions };
   }
 
   it('changes the password when the current one is right', async () => {
     const { service, prisma } = await withUser();
     await expect(
       service.changePassword(PROFILE, { currentPassword: CURRENT, newPassword: 'a-new-password' }),
-    ).resolves.toEqual({ success: true });
+    ).resolves.toMatchObject({ success: true });
     expect(prisma.user.update).toHaveBeenCalled();
+  });
+
+  it('records when the password changed', async () => {
+    const { service, prisma } = await withUser();
+    await service.changePassword(PROFILE, {
+      currentPassword: CURRENT,
+      newPassword: 'a-new-password',
+    });
+    expect(prisma.user.update.mock.calls[0][0].data.passwordChangedAt).toBeInstanceOf(Date);
+  });
+
+  // Changing a password usually means suspecting someone else has it.
+  it('ends the other sessions but not the one asking', async () => {
+    const { service, sessions } = await withUser();
+    await expect(
+      service.changePassword(
+        PROFILE,
+        { currentPassword: CURRENT, newPassword: 'a-new-password' },
+        'session-here',
+      ),
+    ).resolves.toMatchObject({ otherSessionsEnded: 2 });
+    expect(sessions.revokeAllForUser).toHaveBeenCalledWith(7n, 'session-here');
+  });
+
+  it('leaves sessions alone when the password was not accepted', async () => {
+    const { service, sessions } = await withUser();
+    await expect(
+      service.changePassword(PROFILE, { currentPassword: 'wrong', newPassword: 'a-new-password' }),
+    ).rejects.toThrow(BadRequestException);
+    expect(sessions.revokeAllForUser).not.toHaveBeenCalled();
   });
 
   it('stores a hash, never the password itself', async () => {

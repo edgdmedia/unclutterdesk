@@ -58,12 +58,14 @@ function makeService({
     $transaction: vi.fn(async (cb: any) => cb(tx)),
   };
 
+  const sessions = { startSession: vi.fn().mockResolvedValue(undefined) };
   const service = new AuthService(
     prisma,
     { sign: vi.fn((_p: any, o: any) => (o?.secret ? 'refresh.jwt' : 'access.jwt')) } as any,
     { notify: vi.fn() } as any,
+    sessions as any,
   );
-  return { service, prisma, tx };
+  return { service, prisma, tx, sessions };
 }
 
 const dto = { token: 'a'.repeat(64), password: 'correct horse', firstName: 'Segun', lastName: 'Ade' };
