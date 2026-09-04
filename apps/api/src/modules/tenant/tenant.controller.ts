@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Patch, Body, Param, Req, Res, UseGuards } from '@nestjs/common';
+import { Controller, Get, Post, Patch, Delete, Body, Param, Req, Res, UseGuards } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { Response } from 'express';
 import { SkipThrottle } from '@nestjs/throttler';
@@ -154,6 +154,19 @@ export class TenantController {
       BigInt(req.user.profileId),
       BigInt(profileId),
       dto.role,
+    );
+  }
+
+  @Roles(...PRACTICE_ADMIN)
+  @Delete('staff/invite/:inviteId')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @ApiBearerAuth('access-token')
+  @ApiOperation({ summary: 'Withdraw a staff invitation that has not been claimed' })
+  revokeInvite(@Req() req: any, @Param('inviteId') inviteId: string) {
+    return this.tenantService.revokeStaffInvite(
+      authenticatedTenantId(req),
+      BigInt(req.user.profileId),
+      inviteId,
     );
   }
 

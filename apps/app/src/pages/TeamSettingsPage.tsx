@@ -18,10 +18,23 @@ import type { StaffMember } from '../App';
  * owner saw a colleague who had never been invited.
  *
  * Each of those now either performs the write or says why it could not.
+ *
+ * Invitations are on the roster too. They live in their own table with no
+ * profile behind them, so a list of profiles showed nothing at all — an owner
+ * could not see who they had invited, chase them, or take it back.
  */
 interface TeamSettingsPageProps {
   staff: StaffMember[];
   onRefresh: () => Promise<void>;
+}
+
+/**
+ * "1 Sep". Pinned to en-GB so day comes before month: the practices using this
+ * write dates that way, and the browser's own locale would render the same
+ * badge differently for two people looking at the same roster.
+ */
+function formatDate(iso: string): string {
+  return new Date(iso).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
 }
 
 export function TeamSettingsPage({ staff, onRefresh }: TeamSettingsPageProps) {
@@ -41,6 +54,14 @@ export function TeamSettingsPage({ staff, onRefresh }: TeamSettingsPageProps) {
   const [inviteUrl, setInviteUrl] = useState<string | null>(null);
   const [statusPendingId, setStatusPendingId] = useState<string | null>(null);
   const [statusError, setStatusError] = useState<string | null>(null);
+  // The invitation being withdrawn or sent again, so only that row is busy.
+  const [invitePendingId, setInvitePendingId] = useState<string | null>(null);
+  const [rosterNotice, setRosterNotice] = useState<string | null>(null);
+
+  // An invitation is not a team member until it is accepted, so the two are
+  // counted separately rather than added together.
+  const pendingCount = staff.filter((m) => m.pending).length;
+  const memberCount = staff.length - pendingCount;
 
   const handleSendInvite = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -51,12 +72,18 @@ export function TeamSettingsPage({ staff, onRefresh }: TeamSettingsPageProps) {
     setInviteSuccess(null);
 
     try {
-      const invite = await api.post<{ inviteUrl?: string }>('/v1/tenant/staff/invite', {
-        email: inviteEmail,
-        role: inviteRole,
-      });
+      const invite = await api.post<{ inviteUrl?: string; emailSent?: boolean }>(
+        '/v1/tenant/staff/invite',
+        { email: inviteEmail, role: inviteRole },
+      );
 
-      setInviteSuccess(`Invitation created for ${inviteEmail}`);
+      setInviteSuccess(
+        invite?.emailSent
+          ? `Invitation emailed to ${inviteEmail}`
+          : `Invitation created for ${inviteEmail}, but the email could not be sent`,
+      );
+      // Shown either way: when the email went out it is a convenience, and when
+      // it did not it is the only way the person can accept.
       setInviteUrl(invite?.inviteUrl ?? null);
       await onRefresh();
     } catch (err) {
@@ -88,8 +115,9 @@ export function TeamSettingsPage({ staff, onRefresh }: TeamSettingsPageProps) {
    * booking page.
    */
   const toggleStaffStatus = async (member: StaffMember) => {
-    // The owner cannot be deactivated; the server refuses it too.
-    if (member.role === 'OWNER' || statusPendingId) return;
+    // The owner cannot be deactivated; the server refuses it too. An invitation
+    // has no account behind it, so there is no status to change.
+    if (member.role === 'OWNER' || member.pending || statusPendingId) return;
 
     const nextStatus = member.status === 'Active' ? 'inactive' : 'active';
     setStatusPendingId(member.id);
@@ -108,6 +136,57 @@ export function TeamSettingsPage({ staff, onRefresh }: TeamSettingsPageProps) {
     }
   };
 
+  /**
+   * Withdraw an invitation. Deleting the row is what revokes it — the claim
+   * token lives only there, so the link in that person's inbox stops working.
+   */
+  const revokeInvite = async (member: StaffMember) => {
+    if (invitePendingId) return;
+    setInvitePendingId(member.id);
+    setStatusError(null);
+    setRosterNotice(null);
+    try {
+      await api.delete(`/v1/tenant/staff/invite/${member.id}`);
+      setRosterNotice(`The invitation to ${member.email} has been withdrawn.`);
+      await onRefresh();
+    } catch (err) {
+      setStatusError(
+        err instanceof Error ? err.message : `Could not withdraw the invitation to ${member.email}`,
+      );
+    } finally {
+      setInvitePendingId(null);
+    }
+  };
+
+  /**
+   * Send it again. The invite endpoint upserts on the address, so this mints a
+   * fresh token and emails it — which also retires the previous link.
+   */
+  const resendInvite = async (member: StaffMember) => {
+    if (invitePendingId) return;
+    setInvitePendingId(member.id);
+    setStatusError(null);
+    setRosterNotice(null);
+    try {
+      const result = await api.post<{ emailSent?: boolean }>('/v1/tenant/staff/invite', {
+        email: member.email,
+        role: member.role,
+      });
+      setRosterNotice(
+        result?.emailSent
+          ? `A fresh invitation has been emailed to ${member.email}. The previous link no longer works.`
+          : `A fresh invitation was created for ${member.email}, but the email could not be sent.`,
+      );
+      await onRefresh();
+    } catch (err) {
+      setStatusError(
+        err instanceof Error ? err.message : `Could not send that invitation again`,
+      );
+    } finally {
+      setInvitePendingId(null);
+    }
+  };
+
   return (
     <div className="flex-1 min-w-[1192px] flex flex-col bg-[#F8FAFC]">
       {/* 88px Header Bar */}
@@ -119,7 +198,8 @@ export function TeamSettingsPage({ staff, onRefresh }: TeamSettingsPageProps) {
               practice, including one on the free plan that cannot invite
               anyone. The count is the part that was true. */}
           <p className="text-xs text-[#64748B] font-medium">
-            {staff.length} {staff.length === 1 ? 'team member' : 'team members'}
+            {memberCount} {memberCount === 1 ? 'team member' : 'team members'}
+            {pendingCount > 0 && `, ${pendingCount} invited`}
           </p>
         </div>
 
@@ -141,6 +221,14 @@ export function TeamSettingsPage({ staff, onRefresh }: TeamSettingsPageProps) {
             className="mb-4 rounded-[16px] border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-medium text-rose-700"
           >
             {statusError}
+          </div>
+        )}
+        {rosterNotice && (
+          <div
+            role="status"
+            className="mb-4 rounded-[16px] border border-[#A7F3D0] bg-[#ECFDF5] px-4 py-3 text-sm font-medium text-[#047857]"
+          >
+            {rosterNotice}
           </div>
         )}
         {/* Staff Table */}
@@ -171,7 +259,7 @@ export function TeamSettingsPage({ staff, onRefresh }: TeamSettingsPageProps) {
                       <h3 className="text-[14px] font-bold text-[#0F172A] leading-tight">{m.name}</h3>
                       {m.pending && (
                         <span className="text-[9px] font-black uppercase text-amber-700 bg-amber-50 px-2 py-0.5 rounded-full border border-amber-200">
-                          INVITE PENDING
+                          {m.invitedAt ? `INVITED ${formatDate(m.invitedAt)}` : 'INVITE PENDING'}
                         </span>
                       )}
                     </div>
@@ -191,6 +279,13 @@ export function TeamSettingsPage({ staff, onRefresh }: TeamSettingsPageProps) {
                 </div>
 
                 <div>
+                  {m.pending ? (
+                    // Nothing to switch on: there is no account until the
+                    // invitation is claimed.
+                    <span className="text-[11.5px] font-bold text-amber-700">
+                      {m.expiresAt ? `Expires ${formatDate(m.expiresAt)}` : 'Awaiting acceptance'}
+                    </span>
+                  ) : (
                   <button
                     type="button"
                     role="switch"
@@ -210,6 +305,7 @@ export function TeamSettingsPage({ staff, onRefresh }: TeamSettingsPageProps) {
                       m.status === 'Active' ? 'translate-x-[18px]' : 'translate-x-0'
                     }`} />
                   </button>
+                  )}
                 </div>
 
                 <div className="text-right relative">
@@ -231,7 +327,25 @@ export function TeamSettingsPage({ staff, onRefresh }: TeamSettingsPageProps) {
                         outstanding has no profile yet, so it never appears
                         here at all.
                       */}
-                      {m.role === 'OWNER' ? (
+                      {m.pending ? (
+                        <>
+                          <button
+                            onClick={() => { void resendInvite(m); setActiveMenuId(null); }}
+                            disabled={invitePendingId !== null}
+                            className="w-full px-3 py-2 text-xs font-bold text-slate-700 hover:bg-slate-50 flex items-center gap-2 disabled:opacity-50"
+                          >
+                            <Mail className="h-3.5 w-3.5" />
+                            <span>Send invitation again</span>
+                          </button>
+                          <button
+                            onClick={() => { void revokeInvite(m); setActiveMenuId(null); }}
+                            disabled={invitePendingId !== null}
+                            className="w-full px-3 py-2 text-xs font-bold text-rose-600 hover:bg-rose-50 text-left disabled:opacity-50"
+                          >
+                            Withdraw invitation
+                          </button>
+                        </>
+                      ) : m.role === 'OWNER' ? (
                         <p className="px-3 py-2 text-xs font-medium text-slate-500">
                           The owner cannot be deactivated.
                         </p>

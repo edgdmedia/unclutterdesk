@@ -107,7 +107,10 @@ export interface StaffMember {
   role: string;
   status: string;
   initials: string;
+  /** An invitation that has not been claimed — there is no account behind it. */
   pending?: boolean;
+  invitedAt?: string | null;
+  expiresAt?: string | null;
 }
 
 // ── Booking shape returned by API ─────────────────────────────────────────────
@@ -124,6 +127,8 @@ interface ApiBooking {
 
 // ── Staff shape returned by API ───────────────────────────────────────────────
 interface ApiStaff {
+  /** "member" has joined; "invite" is an invitation still outstanding. */
+  kind?: 'member' | 'invite';
   id: string;
   email: string;
   firstName?: string;
@@ -132,6 +137,8 @@ interface ApiStaff {
   status: string;
   avatarUrl?: string;
   specialty?: string;
+  invitedAt?: string | null;
+  expiresAt?: string | null;
 }
 
 // ── Map API booking → CalendarEvent ──────────────────────────────────────────
@@ -157,6 +164,8 @@ function bookingToEvent(b: ApiBooking): CalendarEvent {
 
 // ── Map API staff → StaffMember ───────────────────────────────────────────────
 function apiStaffToMember(s: ApiStaff): StaffMember {
+  // An invitation has no name yet, so the address is what identifies it.
+  const pending = s.kind === 'invite';
   const name = `${s.firstName || ''} ${s.lastName || ''}`.trim() || s.email;
   const initials = name
     .split(' ')
@@ -166,12 +175,16 @@ function apiStaffToMember(s: ApiStaff): StaffMember {
   return {
     id: s.id,
     name,
-    title: s.specialty || s.role.charAt(0) + s.role.slice(1).toLowerCase(),
+    title: pending
+      ? `Invited as ${s.role.charAt(0) + s.role.slice(1).toLowerCase()}`
+      : s.specialty || s.role.charAt(0) + s.role.slice(1).toLowerCase(),
     email: s.email,
     role: s.role,
-    status: s.status === 'active' ? 'Active' : s.status === 'pending' ? 'Pending' : 'Inactive',
+    status: pending ? 'Pending' : s.status === 'active' ? 'Active' : 'Inactive',
     initials,
-    pending: s.status === 'pending',
+    pending,
+    invitedAt: s.invitedAt ?? null,
+    expiresAt: s.expiresAt ?? null,
   };
 }
 

@@ -15,6 +15,7 @@ import React from 'react';
  */
 const apiPost = vi.fn();
 const apiPatch = vi.fn();
+const apiDelete = vi.fn();
 
 vi.mock('../../utils/apiClient', () => ({
   api: {
@@ -22,7 +23,7 @@ vi.mock('../../utils/apiClient', () => ({
     post: (...a: unknown[]) => apiPost(...a),
     patch: (...a: unknown[]) => apiPatch(...a),
     put: vi.fn(),
-    delete: vi.fn(),
+    delete: (...a: unknown[]) => apiDelete(...a),
   },
 }));
 
@@ -56,6 +57,19 @@ const THERAPIST = {
   initials: 'SA',
 };
 
+const INVITE = {
+  id: 'invite-7',
+  name: 'new@practice.ng',
+  title: 'Invited as Therapist',
+  email: 'new@practice.ng',
+  role: 'THERAPIST',
+  status: 'Pending',
+  initials: 'N',
+  pending: true,
+  invitedAt: '2026-09-01T09:00:00.000Z',
+  expiresAt: '2026-09-08T09:00:00.000Z',
+};
+
 const onRefresh = vi.fn().mockResolvedValue(undefined);
 
 function renderPage(staff = [OWNER, THERAPIST]) {
@@ -63,8 +77,11 @@ function renderPage(staff = [OWNER, THERAPIST]) {
 }
 
 beforeEach(() => {
-  apiPost.mockReset().mockResolvedValue({ inviteUrl: 'https://app.test/invite/claim?token=abc' });
+  apiPost
+    .mockReset()
+    .mockResolvedValue({ inviteUrl: 'https://app.test/invite/claim?token=abc', emailSent: true });
   apiPatch.mockReset().mockResolvedValue({ profileId: '2', status: 'inactive' });
+  apiDelete.mockReset().mockResolvedValue({ success: true });
   onRefresh.mockClear();
 });
 
@@ -174,10 +191,24 @@ describe('inviting a staff member', () => {
   });
 
   // The endpoint mints a claim link and sends no email at all.
-  it('hands over the claim link rather than claiming an email was sent', async () => {
+  it('says the email went out when it did', async () => {
+    openInvite();
+    fireEvent.click(screen.getByText('Create invite'));
+    expect(await screen.findByText(/Invitation emailed to new@practice.ng/)).toBeTruthy();
+  });
+
+  // The link is useful either way, and is the only route in when mail fails.
+  it('hands over the claim link as well', async () => {
     openInvite();
     fireEvent.click(screen.getByText('Create invite'));
     expect(await screen.findByText('https://app.test/invite/claim?token=abc')).toBeTruthy();
+  });
+
+  it('does not claim an email was sent when the provider failed', async () => {
+    apiPost.mockResolvedValue({ inviteUrl: 'https://app.test/invite/claim?token=abc', emailSent: false });
+    openInvite();
+    fireEvent.click(screen.getByText('Create invite'));
+    expect(await screen.findByText(/the email could not be sent/)).toBeTruthy();
   });
 
   describe('when the API rejects it', () => {
@@ -219,5 +250,77 @@ describe('claims the page cannot keep', () => {
     const { container } = renderPage();
     expect(container.textContent).toMatch(/2 team members/);
     expect(container.textContent).not.toMatch(/Group Clinic plan|of 10 seats/);
+  });
+});
+
+describe('invitations on the roster', () => {
+  // They live in their own table with no profile behind them, so a roster of
+  // profiles showed nothing: an owner could not see who they had invited.
+  it('are listed', () => {
+    const { container } = renderPage([OWNER, INVITE as any]);
+    expect(container.textContent).toMatch(/new@practice\.ng/);
+    expect(container.textContent).toMatch(/Invited as Therapist/);
+  });
+
+  it('say when they were sent and when they lapse', () => {
+    const { container } = renderPage([OWNER, INVITE as any]);
+    expect(container.textContent).toMatch(/INVITED 1 Sep/);
+    expect(container.textContent).toMatch(/Expires 8 Sep/);
+  });
+
+  it('are counted apart from people who have actually joined', () => {
+    const { container } = renderPage([OWNER, INVITE as any]);
+    expect(container.textContent).toMatch(/1 team member, 1 invited/);
+  });
+
+  // There is no account behind an invitation, so there is no status to change.
+  it('offer no status toggle', () => {
+    renderPage([OWNER, INVITE as any]);
+    expect(screen.queryByLabelText('new@practice.ng active')).toBeNull();
+  });
+
+  it('can be withdrawn', async () => {
+    renderPage([OWNER, INVITE as any]);
+    fireEvent.click(screen.getByLabelText('Actions for new@practice.ng'));
+    fireEvent.click(screen.getByText('Withdraw invitation'));
+    await waitFor(() => expect(apiDelete).toHaveBeenCalledWith('/v1/tenant/staff/invite/invite-7'));
+    await waitFor(() => expect(onRefresh).toHaveBeenCalled());
+  });
+
+  it('report a withdrawal that failed instead of dropping the row', async () => {
+    apiDelete.mockRejectedValue(new Error('Invitation not found'));
+    renderPage([OWNER, INVITE as any]);
+    fireEvent.click(screen.getByLabelText('Actions for new@practice.ng'));
+    fireEvent.click(screen.getByText('Withdraw invitation'));
+    expect((await screen.findByRole('alert')).textContent).toMatch(/Invitation not found/);
+    expect(screen.getAllByText('new@practice.ng').length).toBeGreaterThan(0);
+  });
+
+  it('can be sent again, at the role they were invited for', async () => {
+    renderPage([OWNER, INVITE as any]);
+    fireEvent.click(screen.getByLabelText('Actions for new@practice.ng'));
+    fireEvent.click(screen.getByText('Send invitation again'));
+    await waitFor(() =>
+      expect(apiPost).toHaveBeenCalledWith('/v1/tenant/staff/invite', {
+        email: 'new@practice.ng',
+        role: 'THERAPIST',
+      }),
+    );
+  });
+
+  // Re-inviting rotates the claim token, so the old link stops working.
+  it('say that resending retires the previous link', async () => {
+    renderPage([OWNER, INVITE as any]);
+    fireEvent.click(screen.getByLabelText('Actions for new@practice.ng'));
+    fireEvent.click(screen.getByText('Send invitation again'));
+    expect((await screen.findByRole('status')).textContent).toMatch(
+      /previous link no longer works/,
+    );
+  });
+
+  it('are not offered deactivation, which would mean nothing', () => {
+    renderPage([OWNER, INVITE as any]);
+    fireEvent.click(screen.getByLabelText('Actions for new@practice.ng'));
+    expect(screen.queryByText('Deactivate Member')).toBeNull();
   });
 });
