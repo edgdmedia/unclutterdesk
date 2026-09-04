@@ -56,6 +56,15 @@ describe('the product has one name', () => {
   test('no source claims a company that does not exist', () => {
     expect(offenders(/Unclutter\s*(Desk|OS)\s*Inc\.?/)).toEqual([]);
   });
+
+  /*
+   * The logo pill said "OS" as SVG <text>, which every check above missed:
+   * they look for the old name spelled out, and this one was drawn. It sits on
+   * every auth screen and on the invitation a new colleague opens.
+   */
+  test('no logo draws the old name', () => {
+    expect(offenders(/>\s*OS\s*<\/text>/)).toEqual([]);
+  });
 });
 
 describe('links go somewhere', () => {

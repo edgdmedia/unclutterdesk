@@ -1,4 +1,9 @@
+import os
+
 from playwright.sync_api import sync_playwright
+
+APP = os.environ.get("AUDIT_APP", "http://localhost:5173")
+LANDING = os.environ.get("AUDIT_LANDING", "http://localhost:4321")
 
 
 def inspect(browser, url):
@@ -34,10 +39,10 @@ def inspect(browser, url):
 with sync_playwright() as playwright:
     browser = playwright.chromium.launch(headless=True)
     results = {
-        "landing": inspect(browser, "http://localhost:4321/"),
-        "app_login": inspect(browser, "http://localhost:5173/login"),
-        "booking_profile": inspect(browser, "http://localhost:5173/"),
-        "app_unknown": inspect(browser, "http://localhost:5173/not-a-real-route"),
+        "landing": inspect(browser, f"{LANDING}/"),
+        "app_login": inspect(browser, f"{APP}/login"),
+        "booking_profile": inspect(browser, f"{APP}/"),
+        "app_unknown": inspect(browser, f"{APP}/not-a-real-route"),
     }
 
     for name, result in results.items():

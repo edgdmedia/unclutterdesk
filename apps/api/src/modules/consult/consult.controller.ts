@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Patch, Delete, Body, Param, Query, Req, UseGuards } from '@nestjs/common';
+import { Controller, Get, Post, Patch, Delete, Body, Param, Query, Req, UseGuards, NotFoundException } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { ConsultService } from './consult.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
@@ -15,7 +15,9 @@ export class ConsultController {
   @Get('public/therapists')
   @ApiOperation({ summary: 'Get active bookable therapists for client portal' })
   getPublicTherapists(@Req() req: TenantRequest) {
-    if (!req.tenantId) throw new Error('Practice tenant context required');
+    if (!req.tenantId) throw new NotFoundException(
+        'This practice could not be found. Check the web address, or ask the practice for their booking link.',
+      );
     return this.consultService.getPublicTherapists(req.tenantId);
   }
 
@@ -89,7 +91,9 @@ export class ConsultController {
   @Get('public/services')
   @ApiOperation({ summary: 'Get active services for client booking portal' })
   getPublicServices(@Req() req: TenantRequest) {
-    if (!req.tenantId) throw new Error('Practice tenant context required');
+    if (!req.tenantId) throw new NotFoundException(
+        'This practice could not be found. Check the web address, or ask the practice for their booking link.',
+      );
     return this.consultService.getPublicServices(req.tenantId);
   }
 
@@ -108,7 +112,9 @@ export class ConsultController {
   @Get('public/availability')
   @ApiOperation({ summary: 'Get open availability slots for client booking portal' })
   getPublicAvailability(@Req() req: TenantRequest) {
-    if (!req.tenantId) throw new Error('Practice tenant context required');
+    if (!req.tenantId) throw new NotFoundException(
+        'This practice could not be found. Check the web address, or ask the practice for their booking link.',
+      );
     return this.consultService.getPublicAvailability(req.tenantId);
   }
 
@@ -166,14 +172,18 @@ export class ConsultController {
   @Post('public/bookings')
   @ApiOperation({ summary: 'Client reserve slot & generate WebRTC video session link' })
   createBooking(@Req() req: TenantRequest, @Body() dto: any) {
-    if (!req.tenantId) throw new Error('Practice tenant context required');
+    if (!req.tenantId) throw new NotFoundException(
+        'This practice could not be found. Check the web address, or ask the practice for their booking link.',
+      );
     return this.consultService.createBooking(req.tenantId, dto);
   }
 
   @Post('public/bookings/:bookingId/pay')
   @ApiOperation({ summary: 'Get payment URL for an existing pending booking' })
   getBookingPaymentUrl(@Req() req: TenantRequest, @Param('bookingId') bookingId: string, @Body() dto: { email: string }) {
-    if (!req.tenantId) throw new Error('Practice tenant context required');
+    if (!req.tenantId) throw new NotFoundException(
+        'This practice could not be found. Check the web address, or ask the practice for their booking link.',
+      );
     return this.consultService.getBookingPaymentUrl(req.tenantId, BigInt(bookingId), dto.email);
   }
 
