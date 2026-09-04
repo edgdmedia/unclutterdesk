@@ -22,7 +22,30 @@ const BCRYPT_ROUNDS = 12;
 export class AuthService {
   private readonly logger = new Logger(AuthService.name);
 
+  /**
+   * Verbose auth tracing for a developer chasing a login problem.
+   *
+   * This used to be an unconditional logger.log, and its payloads carried
+   * password lengths and bcrypt hash prefixes. Anyone who could read logs — the
+   * host, an error tracker, a support tool, a contractor — could narrow an
+   * account's password, and a sibling log line printed the whole password-reset
+   * link, which is account takeover on its own.
+   *
+   * The secrets are gone from the payloads. What remains is still an email and
+   * a tenant/profile map per attempt, which is personal data under the NDPA, so
+   * it is off unless someone deliberately turns it on — and it is refused
+   * outright in production, where the flag being set by accident is exactly the
+   * failure this is meant to prevent.
+   */
+  static authDebugEnabled(): boolean {
+    // Read per call rather than once at import, so turning it on is a config
+    // change rather than a restart-and-hope, and so the payloads stay testable
+    // with it on — the gate is a second line of defence, not the only one.
+    return process.env.AUTH_DEBUG_LOGS === 'true' && process.env.NODE_ENV !== 'production';
+  }
+
   private authDebug(event: string, details: Record<string, unknown>) {
+    if (!AuthService.authDebugEnabled()) return;
     this.logger.log(`[AUTH_DEBUG] ${event} ${JSON.stringify(details)}`);
   }
 
@@ -165,9 +188,6 @@ export class AuthService {
       profileId: profile.id.toString(),
       profileStatus: profile.status,
       emailVerified: profile.emailVerified,
-      passwordLength: dto.password?.length ?? 0,
-      passwordHashPrefix: hashedPassword.slice(0, 7),
-      passwordHashLength: hashedPassword.length,
     });
 
     // New accounts must verify their email before they can sign in. If a
@@ -409,8 +429,10 @@ export class AuthService {
         profileId: profile?.id ?? null,
       });
       emailSent = result.success;
+      // The link was printed here in full. It is a bearer credential for the
+      // account: whoever reads it owns the account, no password required.
       this.logger.log(
-        `Password reset email processed for ${email}: success=${result.success} provider=${result.providerId ?? 'n/a'} link=${resetLink}`,
+        `Password reset email processed for ${email}: success=${result.success} provider=${result.providerId ?? 'n/a'}`,
       );
       if (!result.success) {
         this.logger.warn(
@@ -473,9 +495,6 @@ export class AuthService {
       userId: reset.userId.toString(),
       email: reset.user.email,
       tokenId: reset.id,
-      passwordLength: password.length,
-      passwordHashPrefix: hashedPassword.slice(0, 7),
-      passwordHashLength: hashedPassword.length,
     });
 
     await this.prisma.token.deleteMany({ where: { userId: reset.userId, type: 'password_reset' } });
@@ -530,14 +549,11 @@ export class AuthService {
       tenantId: tenantId?.toString() ?? null,
       userFound: true,
       userId: user.id.toString(),
-      inputPasswordLength: dto.password?.length ?? 0,
-      storedPasswordHashPrefix: user.password.slice(0, 7),
-      storedPasswordHashLength: user.password.length,
       passwordValid,
     });
     if (!passwordValid) {
       this.logger.warn(
-        `Login failed for ${email}: password mismatch for user ${user.id.toString()} (hash length ${user.password.length})`,
+        `Login failed for ${email}: password mismatch for user ${user.id.toString()}`,
       );
       this.unauthorized('Invalid email or password', 'AUTH_INVALID_CREDENTIALS');
     }
