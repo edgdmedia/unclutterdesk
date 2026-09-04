@@ -35,7 +35,7 @@ vi.mock('@unclutterdesk/ui', () => ({
   useBrand: () => ({ name: 'Ade Wellness', primaryColor: '#0F3A53' }),
 }));
 
-const { ClientPortalPage } = await import('../portal/ClientPortalPage');
+const { ClientPortalPage } = await import('../client/ClientPortalPage');
 
 const PORTAL = { clientName: 'Ada Obi', upcoming: [], past: [] };
 

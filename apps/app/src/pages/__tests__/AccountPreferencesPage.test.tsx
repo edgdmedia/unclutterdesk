@@ -34,7 +34,7 @@ vi.mock('@unclutterdesk/ui', () => ({
   Eyebrow: ({ children }: { children: React.ReactNode }) => <span>{children}</span>,
 }));
 
-const { AccountPreferencesPage } = await import('../workspace/settings/AccountPreferencesPage');
+const { AccountPreferencesPage } = await import('../practice/settings/AccountPreferencesPage');
 
 const PREFS = {
   email: 'ada@practice.ng',
