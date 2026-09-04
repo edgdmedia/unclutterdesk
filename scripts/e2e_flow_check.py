@@ -27,7 +27,11 @@ import urllib.request
 API = os.environ.get("E2E_API", "http://localhost:3001")
 STAMP = str(int(time.time()))
 SLUG = f"e2e{STAMP}"
-OWNER_EMAIL = f"owner+{STAMP}@e2e.test"
+# Filled in from the login response — the API derives it from the practice name.
+TENANT_SLUG = None
+# Paystack rejects a .test TLD as an invalid address, and the booking leg
+# hands the client's email to it, so the fixtures use a resolvable domain.
+OWNER_EMAIL = f"e2e-owner-{STAMP}@example.com"
 PASSWORD = "Correct-Horse-9!"
 
 results = []
@@ -122,6 +126,10 @@ def main():
     status, body, cookies = call("POST", "/v1/auth/login", {"email": OWNER_EMAIL, "password": PASSWORD})
     session = jar(cookies)
     csrf = body.get("csrfToken") if isinstance(body, dict) else None
+    # The API derives the slug from the practice name; it is not ours to choose.
+    # Login's profile payload omits it — refresh and /status carry it, login
+    # does not — so it is read from /status, which is what the app does too.
+    global TENANT_SLUG
     record("login after verification", status in (200, 201) and bool(session), f"status {status}")
 
     status, body, _ = call("POST", "/v1/auth/login", {"email": OWNER_EMAIL, "password": "wrong"})
@@ -140,6 +148,8 @@ def main():
     # ── the session is real and revocable ────────────────────────────────
     status, body, _ = call("GET", "/v1/auth/status", cookies=session)
     record("session status reads back", status == 200, f"status {status}")
+    if isinstance(body, dict):
+        TENANT_SLUG = body.get("tenantSlug") or body.get("slug")
 
     status, sessions, _ = call("GET", "/v1/auth/sessions", cookies=session)
     record(
@@ -157,6 +167,9 @@ def main():
     status, body, refreshed = call("POST", "/v1/auth/refresh", cookies=session)
     record("refresh rotates the session", status in (200, 201), f"status {status}")
     rotated = jar(refreshed) or session
+    # Only refresh returns the practice slug; login and /status both omit it.
+    if isinstance(body, dict) and (body.get("profile") or {}).get("tenantSlug"):
+        TENANT_SLUG = body["profile"]["tenantSlug"]
     # Refresh mints a new CSRF token; the old one must stop working with it.
     if isinstance(body, dict) and body.get("csrfToken"):
         csrf = body["csrfToken"]
@@ -170,8 +183,8 @@ def main():
     record("owner can read their own client list", status == 200, f"status {status}")
 
     # ── tenant routing ───────────────────────────────────────────────────
-    status, _, _ = call("GET", "/v1/tenant/public/info/" + SLUG)
-    record("practice is reachable by slug", status in (200, 404), f"status {status}")
+    status, _, _ = call("GET", f"/v1/tenant/public/info/{TENANT_SLUG}")
+    record("practice is reachable by its own slug", status == 200, f"slug {TENANT_SLUG}, status {status}")
 
     status, body, _ = call("GET", "/v1/consult/public/therapists", host="nosuchpractice.localhost")
     record(
@@ -180,6 +193,8 @@ def main():
         f"status {status}"
         + (" — a typo'd booking link should not page anyone" if status == 500 else ""),
     )
+
+    practice_flows(rotated, csrf, payments)
 
     # ── signing out ends the session at once ─────────────────────────────
     status, _, _ = call("POST", "/v1/auth/logout", cookies=rotated, csrf=csrf)
@@ -192,13 +207,164 @@ def main():
         f"status {status} (was valid for 15 more minutes before this was fixed)",
     )
 
-    if payments:
-        print("\n  (payments leg not implemented in this pass)")
-
     return summarise()
 
 
+def practice_flows(session, csrf, payments):
+    """Booking, clinical records, notifications — the work the practice does."""
+    import datetime
+
+    # ── a service to sell ────────────────────────────────────────────────
+    status, service, _ = call(
+        "POST",
+        "/v1/consult/services",
+        {"title": "E2E Therapy", "durationMinutes": 50, "priceKobo": 500000},
+        cookies=session,
+        csrf=csrf,
+    )
+    record("create a bookable service", status in (200, 201), f"status {status}")
+    service_id = service.get("id") if isinstance(service, dict) else None
+
+    # ── a slot to book ───────────────────────────────────────────────────
+    starts = datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(days=3)
+    ends = starts + datetime.timedelta(minutes=50)
+    status, slot, _ = call(
+        "POST",
+        "/v1/consult/therapist/availability",
+        {
+            "startsAt": starts.isoformat(),
+            "endsAt": ends.isoformat(),
+            "serviceId": service_id,
+            "channel": "VIDEO",
+        },
+        cookies=session,
+        csrf=csrf,
+    )
+    record("publish an availability slot", status in (200, 201), f"status {status}")
+    slot_id = slot.get("id") if isinstance(slot, dict) else None
+
+    host = f"{TENANT_SLUG}.localhost"
+    status, listed, _ = call("GET", "/v1/consult/public/availability", host=host)
+    record(
+        "the slot is visible on the practice's own booking host",
+        status == 200 and isinstance(listed, list),
+        f"status {status}, {len(listed) if isinstance(listed, list) else '?'} slot(s)",
+    )
+
+    if not (service_id and slot_id):
+        return
+
+    # ── a client books it ────────────────────────────────────────────────
+    booking_body = {
+        "serviceId": str(service_id),
+        "availabilityId": str(slot_id),
+        "firstName": "E2E",
+        "lastName": "Client",
+        "email": f"e2e-client-{STAMP}@example.com",
+    }
+    status, booking, _ = call("POST", "/v1/consult/public/bookings", booking_body, host=host)
+    record("a client books the slot", status in (200, 201), f"status {status}")
+    booking_id = booking.get("bookingId") if isinstance(booking, dict) else None
+
+    if payments:
+        record(
+            "a paid booking returns a Paystack checkout link",
+            isinstance(booking, dict) and bool(booking.get("paymentUrl")),
+            "sandbox charge initialised" if isinstance(booking, dict) and booking.get("paymentUrl")
+            else "no paymentUrl returned",
+        )
+
+    # ── the same slot cannot be sold twice ───────────────────────────────
+    status, second, _ = call("POST", "/v1/consult/public/bookings", booking_body, host=host)
+    record(
+        "the same slot cannot be booked twice",
+        status >= 400,
+        f"status {status} — {json.dumps(second)[:70]}",
+    )
+
+    # ── the practice sees it ─────────────────────────────────────────────
+    status, bookings, _ = call("GET", "/v1/consult/therapist/bookings", cookies=session)
+    record(
+        "the booking appears on the practice's list",
+        status == 200 and isinstance(bookings, list) and len(bookings) >= 1,
+        f"status {status}",
+    )
+
+    status, summary, _ = call("GET", "/v1/consult/dashboard/summary", cookies=session)
+    if status == 200 and isinstance(summary, dict):
+        record(
+            "the dashboard reports no revenue for an unpaid booking",
+            summary.get("revenueThisMonthNaira") == 0,
+            f"revenue {summary.get('revenueThisMonthNaira')}",
+        )
+        record(
+            "the dashboard returns a real twelve-month series",
+            isinstance(summary.get("monthlyRevenue"), list)
+            and len(summary["monthlyRevenue"]) == 12,
+            f"{len(summary.get('monthlyRevenue') or [])} months",
+        )
+
+    # ── clinical records ─────────────────────────────────────────────────
+    status, clients, _ = call("GET", "/v1/tenant/clients", cookies=session)
+    client_id = clients[0]["id"] if isinstance(clients, list) and clients else None
+    if client_id:
+        status, note, _ = call(
+            "POST",
+            "/v1/notes",
+            {
+                "clientProfileId": str(client_id),
+                "bookingId": str(booking_id) if booking_id else None,
+                "subjective": "E2E subjective",
+                "plan": "E2E plan",
+            },
+            cookies=session,
+            csrf=csrf,
+        )
+        record("write a SOAP note", status in (200, 201), f"status {status}")
+        note_id = note.get("id") if isinstance(note, dict) else None
+
+        if note_id:
+            status, _, _ = call("PATCH", f"/v1/notes/{note_id}/lock", {}, cookies=session, csrf=csrf)
+            record("lock the note", status in (200, 201), f"status {status}")
+
+            status, after, _ = call(
+                "POST",
+                "/v1/notes",
+                {"clientProfileId": str(client_id), "subjective": "edited after lock"},
+                cookies=session,
+                csrf=csrf,
+            )
+            # A locked note is the clinical record; editing it must not silently
+            # overwrite what was signed.
+            record(
+                "a locked note is not silently overwritten",
+                status >= 400 or (isinstance(after, dict) and after.get("id") != note_id),
+                f"status {status}",
+            )
+
+    # ── notifications ────────────────────────────────────────────────────
+    status, feed, _ = call("GET", "/v1/notifications", cookies=session)
+    rows = feed if isinstance(feed, list) else (feed or {}).get("items")
+    record(
+        "the notifications feed reads from the API",
+        status == 200 and isinstance(rows, list),
+        f"status {status}, {len(rows) if isinstance(rows, list) else '?'} item(s)",
+    )
+
+    status, unread, _ = call("GET", "/v1/notifications/unread-count", cookies=session)
+    record("unread count is served", status == 200, f"status {status}")
+
+    # ── intake ───────────────────────────────────────────────────────────
+    status, forms, _ = call("GET", "/v1/intake/forms", cookies=session)
+    record("intake forms list is served", status == 200, f"status {status}")
+
+    status, subs, _ = call("GET", "/v1/intake/submissions", cookies=session)
+    record("intake submissions are staff-only and readable by the owner", status == 200, f"status {status}")
+
+
 def summarise():
+
+
     print()
     passed = sum(1 for _, ok, _ in results if ok)
     print(f"{passed}/{len(results)} flows passed")
