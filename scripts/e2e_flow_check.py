@@ -737,6 +737,49 @@ def staff_and_client_flows(owner_session, owner_csrf, booking_id):
         status, _, _ = call("GET", path, cookies=client, host=host)
         record(f"a client cannot reach {label}", status == 403, f"status {status}")
 
+    # ── subject access: the practice can produce what it holds ───────────
+    client_profile_id = None
+    status, clients, _ = call("GET", "/v1/tenant/clients", cookies=owner_session)
+    for row in clients if isinstance(clients, list) else []:
+        if row.get("email") == client_email:
+            client_profile_id = row.get("id")
+
+    if client_profile_id:
+        status, export, _ = call(
+            "GET", f"/v1/privacy/clients/{client_profile_id}/export", cookies=owner_session
+        )
+        record("the practice can export a client's data", status == 200, f"status {status}")
+
+        if status == 200 and isinstance(export, dict):
+            record(
+                "the export carries who they are and what they booked",
+                bool(export.get("about", {}).get("email")) and len(export.get("appointments", [])) >= 1,
+                f"{len(export.get('appointments', []))} appointment(s)",
+            )
+            record(
+                "the export lists clinical notes without their content",
+                "records" in export.get("clinicalNotes", {})
+                and "subjective" not in json.dumps(export.get("clinicalNotes")),
+                f"{len(export.get('clinicalNotes', {}).get('records', []))} note(s), no narrative",
+            )
+            record(
+                "the export reports the amount actually charged",
+                any(a.get("amountKobo") == "500000" for a in export.get("appointments", [])),
+                "500000 kobo",
+            )
+
+        # A receptionist has no business pulling a whole record.
+        if reception:
+            status, _, _ = call(
+                "GET", f"/v1/privacy/clients/{client_profile_id}/export", cookies=reception
+            )
+            record("a receptionist cannot export a client's data", status == 403, f"status {status}")
+
+        status, _, _ = call(
+            "GET", f"/v1/privacy/clients/{client_profile_id}/export", cookies=client, host=host
+        )
+        record("a client cannot call the export route themselves", status == 403, f"status {status}")
+
     # ── cancelling, once the client has had their turn with it ───────────
     if booking_id:
         status, _, _ = call(

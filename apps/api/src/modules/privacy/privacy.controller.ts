@@ -1,7 +1,8 @@
-import { Controller, Post, Param, Body, Req, UseGuards, HttpCode } from '@nestjs/common';
+import { Controller, Get, Post, Param, Body, Req, UseGuards, HttpCode } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { Throttle } from '@nestjs/throttler';
 import { PrivacyService } from './privacy.service';
+import { DataExportService } from './data-export.service';
 import { PracticeClosureService } from './practice-closure.service';
 import { PlatformAdminGuard } from '../admin/platform-admin.guard';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
@@ -16,6 +17,7 @@ import { authenticatedTenantId, authenticatedProfileId } from '../../common/auth
 export class PrivacyController {
   constructor(
     private readonly privacyService: PrivacyService,
+    private readonly dataExportService: DataExportService,
     private readonly closureService: PracticeClosureService,
   ) {}
 
@@ -32,6 +34,27 @@ export class PrivacyController {
   })
   eraseClient(@Req() req: any, @Param('profileId') profileId: string) {
     return this.privacyService.eraseClientPersonalData(
+      authenticatedTenantId(req),
+      authenticatedProfileId(req),
+      BigInt(profileId),
+    );
+  }
+
+  /**
+   * The counterpart to erasure: a copy of what is held, so a subject access
+   * request has a route through the product. Rate limited because an export is
+   * the whole of someone's record in one response.
+   */
+  @Roles(...PRACTICE_ADMIN)
+  @Get('clients/:profileId/export')
+  @Throttle({ default: { limit: 10, ttl: 60000 } })
+  @ApiOperation({
+    summary: "Export a client's personal data for a subject access request",
+    description:
+      'Returns the client\'s own records as JSON. Clinical notes are listed without their content — releasing clinical narrative is a decision the practitioner makes.',
+  })
+  exportClient(@Req() req: any, @Param('profileId') profileId: string) {
+    return this.dataExportService.exportClientData(
       authenticatedTenantId(req),
       authenticatedProfileId(req),
       BigInt(profileId),
