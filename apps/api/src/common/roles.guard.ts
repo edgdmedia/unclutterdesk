@@ -2,6 +2,7 @@ import { CanActivate, ExecutionContext, Injectable, ForbiddenException } from '@
 import { Reflector } from '@nestjs/core';
 import { PrismaService } from './prisma/prisma.service';
 import { ROLES_KEY, type PracticeRole } from './roles';
+import { assertSessionLive } from './session-validity';
 
 /**
  * Enforces practice roles on routes behind `JwtAuthGuard`.
@@ -44,38 +45,18 @@ export class RolesGuard implements CanActivate {
     }
 
     /*
-     * Sessions are revocable, but an access token is a stateless JWT: nothing
-     * checked it against its session, so revoking one stopped the refresh and
-     * left that device fully authorised until the token expired.
-     *
-     * Fifteen minutes is a long time in every case where revocation happens.
-     * Signing out a device you no longer trust, changing a password because
-     * you think someone has it, closing a practice — each is someone acting on
-     * a suspicion, and each left the other party working for a further quarter
-     * of an hour.
-     *
      * Read alongside the profile rather than after it: both are needed before
-     * the request proceeds, and neither should wait on the other.
+     * the request proceeds, and neither should wait on the other. The session
+     * rule itself lives in session-validity.ts, shared with the platform-admin
+     * guard so one cannot be hardened and the other forgotten.
      */
-    const [profile, session] = await Promise.all([
+    const [profile] = await Promise.all([
       this.prisma.profile.findFirst({
         where: { id: BigInt(user.profileId), tenantId: BigInt(user.tenantId) },
         select: { role: true, status: true },
       }),
-      user.sessionId
-        ? this.prisma.token.findFirst({
-            where: { id: user.sessionId, type: 'refresh' },
-            select: { revokedAt: true, expiresAt: true },
-          })
-        : // Tokens minted before sessions existed carry no sid. They cannot be
-          // checked and expire within the refresh TTL; refusing them would sign
-          // everyone out on deploy.
-          Promise.resolve(null),
+      assertSessionLive(this.prisma, user.sessionId),
     ]);
-
-    if (user.sessionId && (!session || session.revokedAt || session.expiresAt < new Date())) {
-      throw new ForbiddenException('This session has ended. Please sign in again.');
-    }
 
     if (!profile) {
       throw new ForbiddenException('Profile not found in this practice');

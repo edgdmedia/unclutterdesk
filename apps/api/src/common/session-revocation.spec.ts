@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { ForbiddenException } from '@nestjs/common';
 import { RolesGuard } from './roles.guard';
 import { ROLES_KEY, STAFF } from './roles';
+import { PlatformAdminGuard } from '../modules/admin/platform-admin.guard';
 
 /**
  * A revoked session stops working straight away.
@@ -170,5 +171,54 @@ describe('the metadata key', () => {
     const { guard, reflector } = makeGuard();
     void guard.canActivate(context(signedIn));
     expect(reflector.getAllAndOverride.mock.calls[0][0]).toBe(ROLES_KEY);
+  });
+});
+
+describe('platform operators', () => {
+  /*
+   * PlatformAdminGuard authenticated the token and checked its type and
+   * nothing else — it never touched the database, so revoking an operator's
+   * session left them working until the token expired. Fewer accounts than the
+   * practice side, and a wider reach: these are the accounts that can see every
+   * practice on the platform.
+   */
+  function makeAdminGuard(session: unknown) {
+    const prisma: any = { token: { findFirst: vi.fn().mockResolvedValue(session) } };
+    const guard = new PlatformAdminGuard(prisma);
+    // Passport's own work is covered by its strategy; stub it so these tests
+    // are about the session rule and nothing else.
+    vi.spyOn(
+      Object.getPrototypeOf(Object.getPrototypeOf(guard)) as any,
+      'canActivate',
+    ).mockResolvedValue(true);
+    return { guard, prisma };
+  }
+
+  const admin = { type: 'platform_admin', sessionId: SESSION };
+
+  it('lets a live session through', async () => {
+    const { guard } = makeAdminGuard({ revokedAt: null, expiresAt: new Date(Date.now() + 60_000) });
+    await expect(guard.canActivate(context(admin))).resolves.toBe(true);
+  });
+
+  it('refuses a revoked one', async () => {
+    const { guard } = makeAdminGuard({ revokedAt: new Date(), expiresAt: new Date(Date.now() + 60_000) });
+    await expect(guard.canActivate(context(admin))).rejects.toThrow(/session has ended/i);
+  });
+
+  it('refuses an expired one', async () => {
+    const { guard } = makeAdminGuard({ revokedAt: null, expiresAt: new Date(Date.now() - 1000) });
+    await expect(guard.canActivate(context(admin))).rejects.toThrow(/session has ended/i);
+  });
+
+  it('refuses one whose row is gone', async () => {
+    const { guard } = makeAdminGuard(null);
+    await expect(guard.canActivate(context(admin))).rejects.toThrow(/session has ended/i);
+  });
+
+  it('still lets a pre-sessions token through', async () => {
+    const { guard, prisma } = makeAdminGuard(null);
+    await expect(guard.canActivate(context({ type: 'platform_admin' }))).resolves.toBe(true);
+    expect(prisma.token.findFirst).not.toHaveBeenCalled();
   });
 });
