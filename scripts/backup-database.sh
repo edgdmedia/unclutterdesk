@@ -132,11 +132,18 @@ if [ -n "${BACKUP_ENCRYPTION_PASSPHRASE:-}" ]; then
         fail "encryption failed — refusing to ship an unencrypted dump"
     fi
 
+    # Decrypted to a file rather than piped: a custom-format archive is read by
+    # seeking, so pg_restore cannot take one on stdin and reports every backup
+    # as unreadable if you try. Removed immediately either way — it is the
+    # whole database in the clear while it exists.
+    VERIFY_FILE="$FILE.verify"
     if ! printf '%s' "$BACKUP_ENCRYPTION_PASSPHRASE" | openssl enc -d -aes-256-cbc -pbkdf2 -iter 200000 \
-            -in "$FILE.enc" -pass stdin 2>/dev/null | pg_restore --list - >/dev/null 2>&1; then
-        rm -f "$FILE.enc"
+            -in "$FILE.enc" -out "$VERIFY_FILE" -pass stdin 2>/dev/null \
+            || ! pg_restore --list "$VERIFY_FILE" >/dev/null 2>&1; then
+        rm -f "$FILE.enc" "$VERIFY_FILE"
         fail "encrypted dump did not decrypt back to a readable dump — refusing to keep it"
     fi
+    rm -f "$VERIFY_FILE"
 
     rm -f "$FILE"
     FILE="$FILE.enc"
@@ -167,8 +174,12 @@ else
 fi
 
 # ── Prune ────────────────────────────────────────────────────────────────────
-find "$BACKUP_DIR" -name 'nightly-*.dump' -type f -mtime "+$LOCAL_RETENTION_DAYS" -delete 2>/dev/null || true
-log "local backups: $(find "$BACKUP_DIR" -name 'nightly-*.dump' -type f | wc -l | tr -d ' ') kept"
+# Matches both .dump and .dump.enc: encrypted backups still need pruning, and
+# any unencrypted ones left from before encryption was added need it too. With
+# the narrower glob they would have accumulated until the disk filled, while the
+# count below cheerfully reported none.
+find "$BACKUP_DIR" -name 'nightly-*.dump*' -type f -mtime "+$LOCAL_RETENTION_DAYS" -delete 2>/dev/null || true
+log "local backups: $(find "$BACKUP_DIR" -name 'nightly-*.dump*' -type f | wc -l | tr -d ' ') kept"
 
 if [ "$UPLOAD_CONFIGURED" = true ] && [ "$LOCAL_ONLY" = false ]; then
     CUTOFF="$(date -u -d "-${REMOTE_RETENTION_DAYS} days" +%Y%m%d 2>/dev/null || date -u -v-"${REMOTE_RETENTION_DAYS}"d +%Y%m%d)"
