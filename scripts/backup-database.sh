@@ -47,11 +47,41 @@ done
 log() { printf '%s  %s\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$*"; }
 fail() { log "ERROR: $*"; exit 1; }
 
-# ── Connection details ───────────────────────────────────────────────────────
-if [ -z "${DATABASE_URL:-}" ] && [ -f ".env" ]; then
-    DATABASE_URL="$(grep -E '^[[:space:]]*DATABASE_URL=' .env | tail -n 1 | cut -d= -f2- | sed -e 's/^"//' -e 's/"$//')"
-    export DATABASE_URL
-fi
+# ── Configuration ────────────────────────────────────────────────────────────
+# Only DATABASE_URL used to be read from .env, so a passphrase or bucket set
+# there was silently ignored: the script warned that encryption was off and
+# shipped the dump in the clear, while the file said otherwise. Anything
+# already in the environment still wins, so cron and systemd stay in charge.
+ENV_FILE="${BACKUP_ENV_FILE:-.env}"
+read_from_env_file() {
+    local name="$1"
+    # Already in the environment: cron and systemd stay in charge.
+    [ -n "${!name:-}" ] && return 0
+    [ -f "$ENV_FILE" ] || return 0
+
+    # Read in bash rather than grep|cut|sed. That pipeline had two failure
+    # modes at once: under `set -euo pipefail` a key simply not being present
+    # made grep exit 1 and killed the script before it logged anything, and it
+    # depended on whichever `grep` was first on PATH behaving like the one it
+    # was written against.
+    local line key value
+    while IFS= read -r line || [ -n "$line" ]; do
+        line="${line#"${line%%[![:space:]]*}"}"          # leading whitespace
+        case "$line" in \#*|'') continue ;; esac
+        key="${line%%=*}"
+        [ "$key" = "$name" ] || continue
+        value="${line#*=}"
+        value="${value%\"}"; value="${value#\"}"          # surrounding quotes
+        [ -n "$value" ] && export "$name=$value"
+        return 0
+    done < "$ENV_FILE"
+    return 0
+}
+
+for setting in DATABASE_URL BACKUP_S3_BUCKET BACKUP_S3_ENDPOINT BACKUP_ENCRYPTION_PASSPHRASE; do
+    read_from_env_file "$setting"
+done
+
 [ -n "${DATABASE_URL:-}" ] || fail "DATABASE_URL is not set"
 
 # Prisma accepts parameters libpq rejects; pg_dump fails outright on ?schema=.
@@ -88,6 +118,12 @@ if [ "$CHECK_ONLY" = true ]; then
         log "off-host:        BUCKET SET BUT aws CLI MISSING — backups stay on this host"
     else
         log "off-host:        NOT CONFIGURED — backups stay on this host"
+    fi
+    if [ -n "${BACKUP_ENCRYPTION_PASSPHRASE:-}" ]; then
+        log "encryption:      on (AES-256-CBC, verified by decrypting each dump)"
+    else
+        # The check exists so this is caught here rather than in a bucket.
+        log "encryption:      OFF — dumps contain every clinical note in the clear"
     fi
     exit 0
 fi
