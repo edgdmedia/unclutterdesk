@@ -20,6 +20,7 @@ minutes between runs, or expect those lines to report the limiter instead.
 import json
 import os
 import pathlib
+import re
 import sys
 import time
 import urllib.error
@@ -32,9 +33,33 @@ SLUG = f"e2e{STAMP}"
 TENANT_SLUG = None
 # booking id -> the payment reference the API minted for it.
 REFERENCES = {}
-# Paystack rejects a .test TLD as an invalid address, and the booking leg
-# hands the client's email to it, so the fixtures use a resolvable domain.
-OWNER_EMAIL = f"e2e-owner-{STAMP}@example.com"
+def _fixture_address(tag):
+    """
+    Where this run's test mail goes.
+
+    Now that SMTP works, every run genuinely sends. A reserved domain like
+    example.com has no MX, so each run would bounce against the sending
+    account's reputation for nothing. Sub-addressing the configured sender
+    instead keeps the mail deliverable and puts it somewhere that can actually
+    be checked. Falls back to example.com when no sender is configured, which
+    also keeps the check runnable with SMTP off.
+    """
+    try:
+        env = pathlib.Path("apps/api/.env").read_text()
+        match = re.search(r"^SMTP_USER=(.+)$", env, re.M)
+        sender = match.group(1).strip() if match else ""
+    except Exception:
+        sender = ""
+    if "@" in sender:
+        local, _, domain = sender.partition("@")
+        return f"{local}+{tag}-{STAMP}@{domain}"
+    return f"e2e-{tag}-{STAMP}@example.com"
+
+
+# Paystack rejects a .test TLD as an invalid address, and the booking leg hands
+# the client's email to it, so both fixtures use a resolvable one.
+OWNER_EMAIL = _fixture_address("owner")
+CLIENT_EMAIL = _fixture_address("client")
 PASSWORD = "Correct-Horse-9!"
 
 results = []
@@ -297,7 +322,7 @@ def practice_flows(session, csrf, payments):
         "availabilityId": str(slot_id),
         "firstName": "E2E",
         "lastName": "Client",
-        "email": f"e2e-client-{STAMP}@example.com",
+        "email": CLIENT_EMAIL,
     }
     status, booking, _ = call("POST", "/v1/consult/public/bookings", booking_body, host=host)
     record("a client books the slot", status in (200, 201), f"status {status}")
@@ -430,7 +455,7 @@ def practice_flows(session, csrf, payments):
             )
 
     # ── the client sees their own booking, and only theirs ───────────────
-    client_email = f"e2e-client-{STAMP}@example.com"
+    client_email = CLIENT_EMAIL
     status, portal, _ = call("GET", "/v1/consult/portal", host=host)
     record(
         "the portal cannot be read without a session",
@@ -519,8 +544,7 @@ def webhook_charge_success(booking_id):
     """
     import hashlib
     import hmac
-    import re
-
+    
     try:
         env = pathlib.Path("apps/api/.env").read_text()
     except Exception:
@@ -585,8 +609,7 @@ def ical_token(booking_id):
     """
     import hashlib
     import hmac
-    import re
-
+    
     env = pathlib.Path("apps/api/.env").read_text()
     # JWT_SECRET is currently declared twice in .env with different values.
     # dotenv keeps the last, so this must too — and the duplicate is worth
@@ -627,7 +650,7 @@ def staff_and_client_flows(owner_session, owner_csrf, booking_id):
         timeout=10,
     )
 
-    reception_email = f"e2e-reception-{STAMP}@example.com"
+    reception_email = _fixture_address("reception")
     status, invite, _ = call(
         "POST",
         "/v1/tenant/staff/invite",
@@ -684,7 +707,7 @@ def staff_and_client_flows(owner_session, owner_csrf, booking_id):
         record("a receptionist cannot write a clinical note", status == 403, f"status {status}")
 
     # ── the client whose booking it is ───────────────────────────────────
-    client_email = f"e2e-client-{STAMP}@example.com"
+    client_email = CLIENT_EMAIL
     status, _, _ = call(
         "POST",
         "/v1/auth/register",

@@ -52,11 +52,27 @@ const PLANS = [
     features: ["Unlimited sessions", "Custom domain (CNAME)", "1 receptionist login", "Auto-scored PHQ-9 and GAD-7", "0% payout fee"]
   },
   {
-    tier: "CLINIC", price: "From ₦45,000", fee: "/month", cta: "Talk to sales", dark: false, popular: false,
+    tier: "CLINIC", price: "From ₦45,000", fee: "/month", cta: "Talk to sales", ctaHref: SALES_MAILTO, dark: false, popular: false,
     blurb: "For multi-therapist clinics that need shared visibility and operational support.",
     features: ["2-5 therapists", "Owner/admin/therapist/reception roles", "Clinic-wide revenue analytics", "Priority support", "Dedicated onboarding"]
   }
 ];
+
+/**
+ * Where "Talk to sales" goes.
+ *
+ * It was an <a href={registerUrl}> like every other plan's button, so a clinic
+ * that clicked "Talk to sales" landed on a signup form instead of reaching a
+ * person — not a dead link, a mislabelled one, which is harder to notice.
+ *
+ * Pointed at the address already published in the footer rather than a sales@
+ * mailbox that does not exist yet. When one does, this is the line to change.
+ */
+const CONTACT_EMAIL = 'support@unclutterdesk.com';
+const SALES_MAILTO =
+  `mailto:${CONTACT_EMAIL}` +
+  '?subject=Group%20Clinic%20enquiry' +
+  '&body=Practice%20name%3A%0APractitioners%3A%0APreferred%20start%20date%3A%0A';
 
 const FAQS = [
   ["What is included in each plan?", "Starter includes core scheduling, Jitsi telehealth, and email support. Pro Solo adds unlimited sessions, custom domain, and auto-scored assessments. Clinic plans include team access, role management, and analytics."],
@@ -475,7 +491,7 @@ export function LandingPage() {
                   ))}
                 </div>
                 <a 
-                  href={registerUrl}
+                  href={pl.ctaHref ?? registerUrl}
                   onClick={(e) => e.stopPropagation()}
                   className="flex items-center justify-center h-12 rounded-[14px] text-[14px] font-[700] transition-colors hover:opacity-90"
                   style={{ backgroundColor: btnBg, border: btnBorder, color: btnFg, boxShadow: btnShadow }}
@@ -543,7 +559,7 @@ export function LandingPage() {
               links until there are accounts to link to.
             */}
             <div className="flex flex-col gap-2 items-start">
-              <a href="mailto:support@unclutterdesk.com" className="text-[13px] text-[#94A3B8] hover:text-white transition-colors">support@unclutterdesk.com</a>
+              <a href={`mailto:${CONTACT_EMAIL}`} className="text-[13px] text-[#94A3B8] hover:text-white transition-colors">{CONTACT_EMAIL}</a>
             </div>
           </div>
           <div className="flex flex-col gap-3">
