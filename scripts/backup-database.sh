@@ -15,6 +15,11 @@
 #
 #   BACKUP_S3_BUCKET     e.g. unclutterdesk-backups
 #   BACKUP_S3_ENDPOINT   e.g. https://<account>.r2.cloudflarestorage.com
+#   BACKUP_ENCRYPTION_PASSPHRASE
+#                        Encrypts the dump before it leaves the machine. Keep it
+#                        somewhere other than the backup bucket: together, a
+#                        thief who takes the bucket has both, and losing the
+#                        bucket loses both.
 #   AWS_ACCESS_KEY_ID
 #   AWS_SECRET_ACCESS_KEY
 #
@@ -109,6 +114,37 @@ TABLE_COUNT="$(pg_restore --list "$FILE" 2>/dev/null | grep -c 'TABLE DATA' || t
 
 SIZE="$(du -h "$FILE" | cut -f1)"
 log "dump ok: $FILE ($SIZE, $TABLE_COUNT tables)"
+
+# ── Encrypt ──────────────────────────────────────────────────────────────────
+# A pg_dump is the whole database in one file: every client, every note, every
+# amount. Off-host means it lands in a bucket, and a bucket is one
+# misconfiguration away from being readable. Encrypt before it leaves, not
+# after.
+#
+# Verified by decrypting before the plaintext is removed — an encrypted backup
+# nobody has ever opened is not a backup.
+if [ -n "${BACKUP_ENCRYPTION_PASSPHRASE:-}" ]; then
+    command -v openssl >/dev/null 2>&1 || fail "openssl not found — needed to encrypt the backup"
+    log "encrypting dump"
+    if ! printf '%s' "$BACKUP_ENCRYPTION_PASSPHRASE" | openssl enc -aes-256-cbc -pbkdf2 -iter 200000 \
+            -salt -in "$FILE" -out "$FILE.enc" -pass stdin; then
+        rm -f "$FILE.enc"
+        fail "encryption failed — refusing to ship an unencrypted dump"
+    fi
+
+    if ! printf '%s' "$BACKUP_ENCRYPTION_PASSPHRASE" | openssl enc -d -aes-256-cbc -pbkdf2 -iter 200000 \
+            -in "$FILE.enc" -pass stdin 2>/dev/null | pg_restore --list - >/dev/null 2>&1; then
+        rm -f "$FILE.enc"
+        fail "encrypted dump did not decrypt back to a readable dump — refusing to keep it"
+    fi
+
+    rm -f "$FILE"
+    FILE="$FILE.enc"
+    log "encrypted ok: $FILE"
+else
+    log "WARNING: BACKUP_ENCRYPTION_PASSPHRASE is not set, so this dump is stored"
+    log "WARNING: in the clear. It contains every clinical note in the database."
+fi
 
 # ── Off-host copy ────────────────────────────────────────────────────────────
 if [ "$LOCAL_ONLY" = true ]; then

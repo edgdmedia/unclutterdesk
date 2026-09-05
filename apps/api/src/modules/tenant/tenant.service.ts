@@ -4,6 +4,7 @@ import { randomBytes } from 'crypto';
 import { Logger } from '@nestjs/common';
 import { PrismaService } from '../../common/prisma/prisma.service';
 import { NotificationService } from '../notifications/notification.service';
+import { decryptNoteFields } from '../../common/field-encryption';
 
 /**
  * Invite ids are prefixed on the way out so they cannot be mistaken for a
@@ -767,7 +768,7 @@ export class TenantService {
         title: 'Clinical Session Note',
         status: n.isLocked ? 'COMPLETED' : 'DRAFT',
         note: n.isLocked ? 'NOTE SIGNED' : 'DRAFT',
-        subjective: n.subjective || '',
+        subjective: decryptNoteFields(n).subjective || '',
         objective: n.objective || '',
         assessment: n.assessment || '',
         plan: n.plan || '',

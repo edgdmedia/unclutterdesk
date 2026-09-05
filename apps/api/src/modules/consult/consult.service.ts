@@ -8,6 +8,7 @@ import { PaystackService } from '../billing/paystack.service';
 import { CalendarService } from '../calendar/calendar.service';
 import { changePercent, chargedKobo, revenueByMonth, startOfMonth } from '../../common/revenue';
 import { tenantWebOrigin } from '../../common/origins';
+import { decryptNoteFields } from '../../common/field-encryption';
 
 @Injectable()
 export class ConsultService {
@@ -1109,10 +1110,14 @@ export class ConsultService {
       latestNote: latestNote
         ? {
           id: latestNote.id.toString(),
-          subjective: latestNote.subjective,
-          objective: latestNote.objective,
-          assessment: latestNote.assessment,
-          plan: latestNote.plan,
+          // Stored encrypted; the practitioner reading their own note is
+          // exactly who it is decrypted for.
+          ...(({ subjective, objective, assessment, plan }) => ({
+            subjective,
+            objective,
+            assessment,
+            plan,
+          }))(decryptNoteFields(latestNote)),
           isLocked: latestNote.isLocked,
           createdAt: latestNote.createdAt.toISOString(),
         }
