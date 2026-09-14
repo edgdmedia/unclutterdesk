@@ -45,7 +45,7 @@ import LegalPage from '../layouts/LegalPage.astro';
   <p>
     Unclutter Desk is practice-management and booking software for therapists and
     clinics, operated by <span class="todo">[legal entity name, RC number]</span>
-    of <span class="todo">[registered address]</span>, Lagos, Nigeria.
+    of 19 Yesufu Sanusi, off Adeniran Ogunsanya, Lagos, Nigeria.
   </p>
   <p>
     This policy is governed by the Nigeria Data Protection Act 2023 (NDPA) and the
@@ -54,7 +54,7 @@ import LegalPage from '../layouts/LegalPage.astro';
     standards to that data.
   </p>
   <p>
-    Data protection contact: <span class="todo">[privacy@yourdomain]</span>.
+    Data protection contact: privacy@unclutterdesk.com.
   </p>
 
   <h2 id="data-we-handle">2. Data we handle</h2>
@@ -179,7 +179,7 @@ import LegalPage from '../layouts/LegalPage.astro';
       <tbody>
         <tr><td>Paystack</td><td>Client payments, practice subscriptions and bank payouts</td><td>Name, email, amount, booking and subscription references</td></tr>
         <tr><td>Cloudflare</td><td>Hosting of the website and application, CDN, DDoS protection</td><td>IP address and request metadata</td></tr>
-        <tr><td><span class="todo">[hosting provider]</span></td><td>Application server and database hosting</td><td>All data described above</td></tr>
+        <tr><td>Contabo (Germany)</td><td>Application server and database hosting</td><td>All data described above</td></tr>
         <tr><td>Google (Calendar &amp; Meet)</td><td>Calendar sync and meeting links, only if a therapist connects their Google account</td><td>Appointment time, title and attendee email addresses</td></tr>
         <tr><td>Google (Gmail SMTP)</td><td>Sending transactional email</td><td>Recipient email address and message content</td></tr>
         <tr><td>Jitsi Meet (8x8)</td><td>Default video sessions — see section 6</td><td>Room identifier; audio and video pass through their infrastructure</td></tr>
@@ -212,8 +212,8 @@ import LegalPage from '../layouts/LegalPage.astro';
 
   <h2 id="retention">7. Storage, location and retention</h2>
   <p>
-    Data is stored in a PostgreSQL database hosted at
-    <span class="todo">[hosting provider and region]</span>. Traffic between your
+    Data is stored in a PostgreSQL database hosted on
+    Contabo infrastructure in Germany. Traffic between your
     browser and our servers is encrypted with TLS.
     Clinical notes are encrypted by the application before they reach the
     database: the narrative fields of a note are sealed with AES-256-GCM, so
@@ -222,6 +222,13 @@ import LegalPage from '../layouts/LegalPage.astro';
     the server. The database volume itself is not encrypted at rest, which is
     precisely why we encrypt the clinical fields in the application rather
     than relying on the volume.
+  </p>
+  <p>
+    Because our servers are in Germany, personal data — including clinical
+    records — leaves Nigeria and is stored in the European Union. The NDPA
+    allows this where the destination country offers adequate protection or
+    another lawful basis applies.
+    <span class="todo">[Confirm with counsel which NDPA transfer basis applies, and name it here.]</span>
   </p>
   <p>
     We take a backup every night, keep it for 14 days on the server, and keep
@@ -297,8 +304,8 @@ import LegalPage from '../layouts/LegalPage.astro';
   </p>
   <p>
     If you are a practice or a member of practice staff, email
-    <span class="todo">[privacy@yourdomain]</span>. We respond within
-    <span class="todo">[number]</span> days.
+    privacy@unclutterdesk.com. We respond within
+    30 days.
   </p>
 
   <h2 id="children">10. Children</h2>
@@ -316,7 +323,7 @@ import LegalPage from '../layouts/LegalPage.astro';
     notify practice account owners by email.
   </p>
   <p>
-    Questions: <span class="todo">[privacy@yourdomain]</span> ·
-    <span class="todo">[registered address]</span>, Lagos, Nigeria.
+    Questions: privacy@unclutterdesk.com ·
+    19 Yesufu Sanusi, off Adeniran Ogunsanya, Lagos, Nigeria.
   </p>
 </LegalPage>
