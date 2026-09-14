@@ -215,10 +215,17 @@ import LegalPage from '../layouts/LegalPage.astro';
     Data is stored in a PostgreSQL database hosted at
     <span class="todo">[hosting provider and region]</span>. Traffic between your
     browser and our servers is encrypted with TLS.
-    <span class="todo">[Confirm and state whether the database and backups are encrypted at rest.]</span>
+    Clinical notes are encrypted by the application before they reach the
+    database: the narrative fields of a note are sealed with AES-256-GCM, so
+    they cannot be read by anyone holding the disk, a backup file, or a
+    database connection. Backups are encrypted with AES-256 before they leave
+    the server. The database volume itself is not encrypted at rest, which is
+    precisely why we encrypt the clinical fields in the application rather
+    than relying on the volume.
   </p>
   <p>
-    We take backups before every deployment and retain them for 14 days.
+    We take a backup every night, keep it for 14 days on the server, and keep
+    an encrypted copy off-site for 90 days.
   </p>
   <p>
     <strong>We retain data for as long as the practice's account is active.</strong>
