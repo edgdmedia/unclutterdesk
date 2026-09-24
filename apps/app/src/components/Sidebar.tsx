@@ -115,7 +115,7 @@ function counterClasses(type: 'gold' | 'neutral' | 'rose'): string {
   return 'bg-white/10 text-[#CBD5E1]';
 }
 
-function NavLinkItem({ item, indent = false, currentPlan = 'starter', collapsed = false }: { item: NavItem; indent?: boolean; currentPlan?: string; collapsed?: boolean }) {
+function NavLinkItem({ item, currentPlan = 'starter', collapsed = false }: { item: NavItem; currentPlan?: string; collapsed?: boolean }) {
   const Icon = item.icon;
   return (
     <NavLink
@@ -126,7 +126,7 @@ function NavLinkItem({ item, indent = false, currentPlan = 'starter', collapsed 
         `relative flex items-center h-[44px] ${
           collapsed 
             ? 'justify-center w-[44px] mx-auto px-0' 
-            : indent ? 'pr-3 pl-[30px] gap-2.5' : 'px-3 gap-2.5'
+            : 'px-3 gap-2.5'
         } rounded-[14px] text-[13.5px] font-semibold transition-all ${
           isActive ? 'text-white' : 'text-[#94A3B8] hover:text-[#E2E8F0] hover:bg-[#1E293B]'
         }`
@@ -312,14 +312,18 @@ export function Sidebar({ plan = 'starter', isOpen, onClose, isCollapsed = false
             </button>
           )}
           {practiceOpen && !isCollapsed && (
-            <div className="space-y-1">
-              {practiceGroups.map((group) => (
+            // A tinted panel marks the sub-menu instead of indenting it, so its
+            // icons line up with the top menu and labels keep their full width.
+            // The negative margin lets the tint reach into the gutter without
+            // moving the items.
+            <div className="-mx-1.5 px-1.5 py-1.5 rounded-[14px] bg-white/[0.045] space-y-1">
+              {practiceGroups.map((group, index) => (
                 <div key={group.label} className="space-y-1">
-                  <div className="text-[9px] font-black tracking-[0.2em] uppercase text-[#475569] pl-[30px] pt-3 pb-1">
+                  <div className={`text-[9px] font-black tracking-[0.2em] uppercase text-[#64748B] px-3 pb-1 ${index === 0 ? 'pt-1.5' : 'pt-3'}`}>
                     {group.label}
                   </div>
                   {group.items.map((item) => (
-                    <NavLinkItem key={item.to} item={item} indent currentPlan={plan} />
+                    <NavLinkItem key={item.to} item={item} currentPlan={plan} />
                   ))}
                 </div>
               ))}
