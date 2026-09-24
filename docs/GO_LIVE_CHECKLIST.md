@@ -120,12 +120,11 @@ which is what `deploy.sh` applies.
       using `scripts/provision-demo-account.mjs`. Never run `pnpm db:seed` on the
       production database; it clears all tables.
 
-      If a previous deployment reports a failed `20260903230000_demo_workspace`
-      migration after its backup completed, first mark that failed attempt as
-      rolled back, then rerun deployment:
-
-          npx prisma migrate resolve --rolled-back 20260903230000_demo_workspace
-          ./deploy.sh
+      If a previous deployment left `20260903230000_demo_workspace` marked as
+      failed, `deploy.sh` now marks it rolled back and retries it automatically
+      (it is listed in `RETRYABLE_MIGRATIONS` and is safe to re-run). Any other
+      failed migration still stops the deploy; resolve those by hand with
+      `npx prisma migrate resolve` after checking what was applied.
 
 ---
 
