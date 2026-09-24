@@ -29,7 +29,7 @@ import {
 } from '../../common/auth.config';
 import { RolesGuard } from '../../common/roles.guard';
 import { authenticatedProfileId, authenticatedTenantId } from '../../common/authenticated-tenant';
-import { AnyAuthenticated } from '../../common/roles';
+import { AllowPlatformAdmin, AnyAuthenticated } from '../../common/roles';
 import { DeviceInfo } from './session.service';
 
 @ApiTags('Auth')
@@ -165,6 +165,7 @@ export class AuthController {
   }
 
   @AnyAuthenticated()
+  @AllowPlatformAdmin()
   @Get('status')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @ApiBearerAuth('access-token')

@@ -54,6 +54,7 @@ const PlatformAdminLoginPage = lazy(() => import('./pages/admin/PlatformAdminLog
 const PlatformAdminLayout = lazy(() => import('./pages/admin/PlatformAdminLayout').then((m) => ({ default: m.PlatformAdminLayout })));
 const AdminOverviewPage = lazy(() => import('./pages/admin/AdminOverviewPage').then((m) => ({ default: m.AdminOverviewPage })));
 const AdminTenantsPage = lazy(() => import('./pages/admin/AdminTenantsPage').then((m) => ({ default: m.AdminTenantsPage })));
+const AdminInvitesPage = lazy(() => import('./pages/admin/AdminInvitesPage').then((m) => ({ default: m.AdminInvitesPage })));
 const AdminTenantDetailPage = lazy(() => import('./pages/admin/AdminTenantDetailPage').then((m) => ({ default: m.AdminTenantDetailPage })));
 
 // ── Types ──────────────────────────────────────────────────────────────────────
@@ -503,6 +504,7 @@ function AdminShell() {
           <Route path="/admin" element={<AdminOverviewPage />} />
           <Route path="/admin/tenants" element={<AdminTenantsPage />} />
           <Route path="/admin/tenants/:id" element={<AdminTenantDetailPage />} />
+          <Route path="/admin/invites" element={<AdminInvitesPage />} />
           <Route path="*" element={<NotFoundPage homeHref="/admin" />} />
         </Route>
       </Routes>

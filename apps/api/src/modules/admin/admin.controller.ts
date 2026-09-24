@@ -1,9 +1,10 @@
-import { Controller, Get, Post, Patch, Body, Param, Req, Res, UseGuards } from '@nestjs/common';
+import { Controller, Get, Post, Patch, Body, Param, Req, Res, UseGuards, NotFoundException } from '@nestjs/common';
 import { Request } from 'express';
 import { ApiTags, ApiOperation } from '@nestjs/swagger';
 import { Response } from 'express';
 import { randomBytes } from 'crypto';
 import { AdminService } from './admin.service';
+import { InviteService } from '../invites/invite.service';
 import { AuthService } from '../auth/auth.service';
 import { PlatformAdminGuard } from './platform-admin.guard';
 import {
@@ -22,6 +23,7 @@ export class AdminController {
   constructor(
     private readonly adminService: AdminService,
     private readonly authService: AuthService,
+    private readonly invites: InviteService,
   ) {}
 
   @Post('auth/login')
@@ -68,6 +70,28 @@ export class AdminController {
     @Body() dto: { isActive?: boolean; subscriptionTier?: 'STARTER' | 'PRO' | 'CLINIC' },
   ) {
     return this.adminService.updateTenant(BigInt(id), dto);
+  }
+
+  @Get('invites')
+  @UseGuards(PlatformAdminGuard)
+  @ApiOperation({ summary: 'Invite codes, with the practices that used each' })
+  listInvites() {
+    return this.invites.list();
+  }
+
+  @Post('invites')
+  @UseGuards(PlatformAdminGuard)
+  @ApiOperation({ summary: 'Create an invite code that grants a plan for a set number of days' })
+  createInvite(@Body() dto: any) {
+    return this.invites.create(dto ?? {});
+  }
+
+  @Patch('invites/:id')
+  @UseGuards(PlatformAdminGuard)
+  @ApiOperation({ summary: 'Switch an invite code off or back on' })
+  updateInvite(@Param('id') id: string, @Body() dto: { isActive?: boolean }) {
+    if (!/^\d+$/.test(id)) throw new NotFoundException('Invite code not found');
+    return this.invites.setActive(BigInt(id), dto?.isActive !== false);
   }
 
   private setSessionCookies(res: Response, accessToken: string, refreshToken: string) {

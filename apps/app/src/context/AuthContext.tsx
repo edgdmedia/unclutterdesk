@@ -37,6 +37,7 @@ interface AuthContextValue {
     practiceName: string;
     persona: 'therapist' | 'practice';
     alsoTherapist?: boolean;
+    inviteCode?: string;
   }) => Promise<RegisterResult>;
   logout: () => Promise<void>;
 }
@@ -46,6 +47,8 @@ export interface RegisterResult {
   verification_required: boolean;
   email_sent: boolean;
   profile_id?: string;
+  /** Present when an invite code gave the new practice a plan. */
+  invite?: { tier: string; complimentaryUntil: string };
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -142,7 +145,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   // is explicitly emptied so the API creates a fresh tenant instead of
   // resolving into the current practice context.
   const register = useCallback(
-    async (data: { firstName: string; lastName: string; email: string; password: string; practiceName: string; persona: 'therapist' | 'practice'; alsoTherapist?: boolean }) => {
+    async (data: { firstName: string; lastName: string; email: string; password: string; practiceName: string; persona: 'therapist' | 'practice'; alsoTherapist?: boolean; inviteCode?: string }) => {
       const handle = data.practiceName.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '') || 'practice';
       // Registration creates an unverified profile. The user must verify their
       // email (6-digit code) before logging in — so no session is established here.
@@ -157,6 +160,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           username: handle,
           type: data.persona === 'practice' ? 'admin' : 'therapist',
           alsoTherapist: data.alsoTherapist,
+          inviteCode: data.inviteCode || undefined,
         },
         { 'X-Tenant-Slug': '' },
       );

@@ -124,3 +124,39 @@ describe('RolesGuard', () => {
     });
   });
 });
+
+/*
+ * A platform admin has no practice profile, so every role check refused them —
+ * including /v1/auth/status, which the admin console calls on page load. Each
+ * refresh of an admin page logged the admin out. The exemption is opt-in per
+ * endpoint, so nothing else opens up to them.
+ */
+describe('RolesGuard and platform admins', () => {
+  function guardWith({ allowAdmin }: { allowAdmin: boolean }) {
+    const reflector = {
+      getAllAndOverride: vi.fn((key: string) =>
+        key === 'allowPlatformAdmin' ? allowAdmin : ['OWNER', 'ADMIN', 'THERAPIST', 'RECEPTIONIST', 'CLIENT'],
+      ),
+    } as any;
+    const prisma = {
+      profile: { findFirst: vi.fn() },
+      token: { findFirst: vi.fn().mockResolvedValue({ revokedAt: null, expiresAt: new Date(Date.now() + 60_000) }) },
+    } as any;
+    return new RolesGuard(reflector, prisma);
+  }
+  const admin = { type: 'platform_admin', userId: '1', sessionId: 's1' };
+
+  it('admits a platform admin where the endpoint allows it', async () => {
+    await expect(guardWith({ allowAdmin: true }).canActivate(ctx(admin).host)).resolves.toBe(true);
+  });
+
+  it('still refuses a platform admin everywhere else', async () => {
+    await expect(guardWith({ allowAdmin: false }).canActivate(ctx(admin).host)).rejects.toThrow(ForbiddenException);
+  });
+
+  it('does not let a practice user skip the role check through it', async () => {
+    const guard = guardWith({ allowAdmin: true });
+    const user = { profileId: '5', tenantId: '1', type: 'therapist' };
+    await expect(guard.canActivate(ctx(user).host)).rejects.toThrow(ForbiddenException);
+  });
+});
