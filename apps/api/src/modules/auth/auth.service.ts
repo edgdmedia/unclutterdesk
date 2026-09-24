@@ -1092,7 +1092,7 @@ export class AuthService {
     // Required, not optional: a caller that forgets the include would otherwise
     // hand back tenantSlug: null, which is worse than the inconsistency this
     // replaces — silently wrong instead of visibly absent.
-    tenant: { name: string; slug: string } | null;
+    tenant: { name: string; slug: string; subscriptionTier?: string | null } | null;
     consultTherapistProfile: unknown | null;
   }) {
     return {
@@ -1111,6 +1111,8 @@ export class AuthService {
       avatarUrl: profile.avatarUrl,
       practiceName: profile.tenant?.name ?? null,
       tenantSlug: profile.tenant?.slug ?? null,
+      // The practice's plan, so the app can mark what is and is not included.
+      plan: profile.tenant?.subscriptionTier ?? 'STARTER',
       isTherapist: !!profile.consultTherapistProfile,
     };
   }

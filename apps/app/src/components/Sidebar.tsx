@@ -115,6 +115,13 @@ function counterClasses(type: 'gold' | 'neutral' | 'rose'): string {
   return 'bg-white/10 text-[#CBD5E1]';
 }
 
+const PLAN_RANK: Record<string, number> = { starter: 0, pro: 1, clinic: 2 };
+
+/** Whether a practice on `plan` has features tagged `tier`. */
+export function planIncludes(plan: string | undefined, tier: string): boolean {
+  return (PLAN_RANK[(plan || 'starter').toLowerCase()] ?? 0) >= (PLAN_RANK[tier.toLowerCase()] ?? 0);
+}
+
 function NavLinkItem({ item, currentPlan = 'starter', collapsed = false }: { item: NavItem; currentPlan?: string; collapsed?: boolean }) {
   const Icon = item.icon;
   return (
@@ -154,13 +161,12 @@ function NavLinkItem({ item, currentPlan = 'starter', collapsed = false }: { ite
             )}
           </span>
           {!collapsed && <span className="truncate">{item.label}</span>}
-          {!collapsed && item.tier && (
+          {/* Only for features outside the practice's plan, as an upgrade
+              hint. Tagging features the practice already has was noise. */}
+          {!collapsed && item.tier && !planIncludes(currentPlan, item.tier) && (
             <span
-              className={`ml-auto h-[16px] px-1.5 rounded-[4px] text-[8.5px] font-extrabold flex items-center justify-center uppercase tracking-wider ${
-                (item.tier === 'pro' && currentPlan === 'starter') || (item.tier === 'clinic' && currentPlan !== 'clinic')
-                  ? 'bg-[#1E293B] text-[#94A3B8] border border-white/5'
-                  : 'bg-[var(--brand-secondary,#E3B341)] text-[#0F172A]'
-              }`}
+              title={`Part of the ${item.tier === 'clinic' ? 'Clinic' : 'Pro'} plan`}
+              className="ml-auto h-[16px] px-1.5 rounded-[4px] text-[8.5px] font-extrabold flex items-center justify-center uppercase tracking-wider bg-[#1E293B] text-[#94A3B8] border border-white/5"
             >
               {item.tier}
             </span>

@@ -387,6 +387,7 @@ function AppLayout() {
         {/* Desktop Sidebar (hidden on mobile) */}
         <div className="hidden md:flex flex-none">
           <Sidebar 
+             plan={profile?.plan?.toLowerCase()}
              isCollapsed={isSidebarCollapsed}
             onToggleCollapse={handleToggleCollapse} 
           />
