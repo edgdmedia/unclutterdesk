@@ -40,6 +40,10 @@ const CLIENT_SURFACE = [
   'GET /v1/consult/portal/payments',
   'GET /v1/consult/portal/bookings/:bookingId/reschedule-options',
   'POST /v1/consult/portal/bookings/:bookingId/reschedule',
+  // Assessments sent to them; every query is scoped to their own profile id.
+  'GET /v1/assessments/mine',
+  'GET /v1/assessments/mine/:id',
+  'POST /v1/assessments/mine/:id',
 
   // Their own messages
   'GET /v1/notifications',

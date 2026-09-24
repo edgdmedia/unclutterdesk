@@ -150,6 +150,30 @@ describe('TenantService staff role guard', () => {
 });
 
 describe('TenantService.getPublicTenantExistence', () => {
+  // The edge router probes with the host it is serving. This used to miss, so
+  // every practice subdomain showed the 404 page.
+  test('finds a practice from its full subdomain host', async () => {
+    const prisma = createPrismaMock();
+    prisma.tenant.findFirst.mockResolvedValue({ isActive: true });
+    const service = new TenantService(prisma, notificationsMock());
+
+    await expect(service.getPublicTenantExistence('Dr-Smith.unclutterdesk.com')).resolves.toEqual({ exists: true, active: true });
+    expect(prisma.tenant.findFirst.mock.calls[0][0].where).toEqual({
+      OR: [{ slug: 'dr-smith' }, { customDomain: 'dr-smith' }],
+    });
+  });
+
+  test('looks a custom domain up as itself', async () => {
+    const prisma = createPrismaMock();
+    prisma.tenant.findFirst.mockResolvedValue({ isActive: true });
+    const service = new TenantService(prisma, notificationsMock());
+
+    await service.getPublicTenantExistence('book.calmpractice.ng');
+    expect(prisma.tenant.findFirst.mock.calls[0][0].where).toEqual({
+      OR: [{ slug: 'book.calmpractice.ng' }, { customDomain: 'book.calmpractice.ng' }],
+    });
+  });
+
   test('reports an active practice as existing and active', async () => {
     const prisma = createPrismaMock();
     prisma.tenant.findFirst.mockResolvedValue({ isActive: true });

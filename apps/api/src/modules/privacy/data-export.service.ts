@@ -174,14 +174,16 @@ export class DataExportService {
         submittedAt: submission.createdAt.toISOString(),
       })),
 
-      // Standard questionnaires (PHQ-9, GAD-7, PCL-5, DASS-21) and their scores.
+      // Standard questionnaires (PHQ-9, GAD-7, PCL-5, DASS-21): the person's
+      // answers, scores, and the summary written for them. The clinician's
+      // interpretation is left out, as with the notes below.
       assessmentsYouCompleted: assessments.map((response) => ({
         responseId: response.id.toString(),
         instrument: response.instrumentKey,
         answers: response.answers,
         totalScore: response.totalScore,
         severity: response.severityLabel,
-        detail: response.result,
+        summaryForYou: (response.result as { client?: unknown } | null)?.client ?? null,
         completedAt: response.completedAt.toISOString(),
       })),
 

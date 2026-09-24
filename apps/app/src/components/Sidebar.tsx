@@ -20,6 +20,7 @@ import {
   Tag,
   X,
   Activity,
+  MessageSquarePlus,
 } from 'lucide-react';
 import { useBrand, UnclutterLockup } from '@unclutterdesk/ui';
 import { useAuth } from '../context/AuthContext';
@@ -54,6 +55,7 @@ const NAV_ITEMS: NavItem[] = [
 const ACCOUNT_MENU_ITEMS: { to: string; label: string; icon: typeof IdCard }[] = [
   { to: '/dashboard/profile', label: 'My profile', icon: IdCard },
   { to: '/dashboard/settings/account', label: 'Account & preferences', icon: UserCog },
+  { to: '/dashboard/requests', label: 'Requests & feedback', icon: MessageSquarePlus },
 ];
 
 // Full settings visible to practice owners and admins only

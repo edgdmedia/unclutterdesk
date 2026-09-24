@@ -1,5 +1,20 @@
--- Assessments: standard instruments practices switch on, send to clients and
--- read scored results from, kept apart from forms. Additive only.
+-- Assessments: standard instruments stored as rule-based definitions, which
+-- practices switch on, send to clients and read scored results from; kept
+-- apart from forms. Also general requests from practices to the platform.
+-- Additive only. Built-in instruments are inserted by the API on start.
+
+-- CreateTable
+CREATE TABLE "AssessmentInstrument" (
+    "key" VARCHAR(40) NOT NULL,
+    "version" INTEGER NOT NULL DEFAULT 1,
+    "status" VARCHAR(20) NOT NULL DEFAULT 'PUBLISHED',
+    "builtIn" BOOLEAN NOT NULL DEFAULT false,
+    "definition" JSONB NOT NULL,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "AssessmentInstrument_pkey" PRIMARY KEY ("key")
+);
 
 -- CreateTable
 CREATE TABLE "TenantAssessment" (
@@ -21,7 +36,6 @@ CREATE TABLE "AssessmentAssignment" (
     "tokenHash" VARCHAR(64) NOT NULL,
     "status" VARCHAR(20) NOT NULL DEFAULT 'SENT',
     "message" TEXT,
-    "expiresAt" TIMESTAMP(3) NOT NULL,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "completedAt" TIMESTAMP(3),
 
@@ -34,6 +48,7 @@ CREATE TABLE "AssessmentResponse" (
     "tenantId" BIGINT NOT NULL,
     "assignmentId" BIGINT,
     "instrumentKey" VARCHAR(40) NOT NULL,
+    "instrumentVersion" INTEGER NOT NULL,
     "clientProfileId" BIGINT NOT NULL,
     "answers" JSONB NOT NULL,
     "totalScore" INTEGER NOT NULL,
@@ -47,18 +62,19 @@ CREATE TABLE "AssessmentResponse" (
 );
 
 -- CreateTable
-CREATE TABLE "AssessmentRequest" (
+CREATE TABLE "PlatformRequest" (
     "id" BIGSERIAL NOT NULL,
     "tenantId" BIGINT NOT NULL,
     "requestedByProfileId" BIGINT,
-    "name" VARCHAR(160) NOT NULL,
+    "type" VARCHAR(20) NOT NULL,
+    "subject" VARCHAR(160) NOT NULL,
     "details" TEXT,
     "status" VARCHAR(20) NOT NULL DEFAULT 'OPEN',
     "adminNote" TEXT,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
 
-    CONSTRAINT "AssessmentRequest_pkey" PRIMARY KEY ("id")
+    CONSTRAINT "PlatformRequest_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateIndex
@@ -77,10 +93,16 @@ CREATE UNIQUE INDEX "AssessmentResponse_assignmentId_key" ON "AssessmentResponse
 CREATE INDEX "AssessmentResponse_tenantId_clientProfileId_instrumentKey_idx" ON "AssessmentResponse"("tenantId", "clientProfileId", "instrumentKey");
 
 -- CreateIndex
-CREATE INDEX "AssessmentRequest_status_idx" ON "AssessmentRequest"("status");
+CREATE INDEX "PlatformRequest_status_idx" ON "PlatformRequest"("status");
+
+-- CreateIndex
+CREATE INDEX "PlatformRequest_tenantId_idx" ON "PlatformRequest"("tenantId");
 
 -- AddForeignKey
 ALTER TABLE "TenantAssessment" ADD CONSTRAINT "TenantAssessment_tenantId_fkey" FOREIGN KEY ("tenantId") REFERENCES "Tenant"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "TenantAssessment" ADD CONSTRAINT "TenantAssessment_instrumentKey_fkey" FOREIGN KEY ("instrumentKey") REFERENCES "AssessmentInstrument"("key") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "AssessmentAssignment" ADD CONSTRAINT "AssessmentAssignment_tenantId_fkey" FOREIGN KEY ("tenantId") REFERENCES "Tenant"("id") ON DELETE CASCADE ON UPDATE CASCADE;
@@ -98,5 +120,5 @@ ALTER TABLE "AssessmentResponse" ADD CONSTRAINT "AssessmentResponse_clientProfil
 ALTER TABLE "AssessmentResponse" ADD CONSTRAINT "AssessmentResponse_assignmentId_fkey" FOREIGN KEY ("assignmentId") REFERENCES "AssessmentAssignment"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "AssessmentRequest" ADD CONSTRAINT "AssessmentRequest_tenantId_fkey" FOREIGN KEY ("tenantId") REFERENCES "Tenant"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE "PlatformRequest" ADD CONSTRAINT "PlatformRequest_tenantId_fkey" FOREIGN KEY ("tenantId") REFERENCES "Tenant"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
