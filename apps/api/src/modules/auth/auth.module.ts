@@ -8,10 +8,12 @@ import { JwtStrategy } from './jwt.strategy';
 import { CsrfGuard } from './csrf.guard';
 import { SessionService } from './session.service';
 import { PrismaService } from '../../common/prisma/prisma.service';
+import { InviteModule } from '../invites/invite.module';
 import { JWT_SECRET, JWT_EXPIRES_IN } from '../../common/auth.config';
 
 @Module({
   imports: [
+    InviteModule,
     PassportModule.register({ defaultStrategy: 'jwt' }),
     JwtModule.register({
       secret: JWT_SECRET,

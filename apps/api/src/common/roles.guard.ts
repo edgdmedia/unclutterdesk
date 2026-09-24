@@ -1,7 +1,7 @@
 import { CanActivate, ExecutionContext, Injectable, ForbiddenException } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { PrismaService } from './prisma/prisma.service';
-import { ROLES_KEY, type PracticeRole } from './roles';
+import { PLATFORM_ADMIN_KEY, ROLES_KEY, type PracticeRole } from './roles';
 import { assertSessionLive } from './session-validity';
 
 /**
@@ -37,6 +37,16 @@ export class RolesGuard implements CanActivate {
 
     const req = context.switchToHttp().getRequest();
     const user = req.user;
+
+    // /v1/auth/status is how the admin console restores its session on page
+    // load. Without this, every refresh of an admin page logged the admin out.
+    if (
+      user?.type === 'platform_admin' &&
+      this.reflector.getAllAndOverride<boolean>(PLATFORM_ADMIN_KEY, [context.getHandler(), context.getClass()]) === true
+    ) {
+      await assertSessionLive(this.prisma, user.sessionId);
+      return true;
+    }
 
     if (!user?.profileId || !user?.tenantId) {
       // Platform admins hold a token with no tenant or profile; they have their

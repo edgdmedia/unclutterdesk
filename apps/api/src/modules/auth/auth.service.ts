@@ -15,6 +15,7 @@ import { JwtPayload } from './jwt.strategy';
 import { DeviceInfo, SessionService } from './session.service';
 import { JWT_EXPIRES_IN, REFRESH_SECRET, REFRESH_EXPIRES_IN } from '../../common/auth.config';
 import { NotificationService } from '../notifications/notification.service';
+import { InviteService } from '../invites/invite.service';
 
 const BCRYPT_ROUNDS = 12;
 
@@ -62,6 +63,7 @@ export class AuthService {
     private readonly jwtService: JwtService,
     private readonly notifications: NotificationService,
     private readonly sessions: SessionService,
+    private readonly invites?: InviteService,
   ) {}
 
   async register(tenantId: bigint | undefined, dto: {
@@ -73,8 +75,12 @@ export class AuthService {
     practiceName?: string;
     type?: string; // "user", "therapist", "admin"
     alsoTherapist?: boolean; // Practice owner who also provides services
+    inviteCode?: string; // Platform invite: a paid plan free for a while
   }) {
     const email = dto.email.toLowerCase().trim();
+    // Only a new practice's owner can bring an invite code, and a bad one is
+    // refused before anything is created, so the person can fix it and retry.
+    const inviteCode = !tenantId && dto.inviteCode?.trim() ? dto.inviteCode.trim() : null;
 
     // Workspace creation requires a brand-new account. If a global User
     // already exists for this email, re-registering would silently keep the
@@ -103,6 +109,11 @@ export class AuthService {
     }
     if (!/[^A-Za-z0-9]/.test(dto.password)) {
       throw new BadRequestException('Password must contain at least one special character');
+    }
+
+    if (inviteCode) {
+      if (!this.invites) throw new BadRequestException('Invite codes are not available right now.');
+      await this.invites.assertUsable(inviteCode);
     }
 
     const username = (dto.username || email.split('@')[0]).toLowerCase().trim();
@@ -165,6 +176,18 @@ export class AuthService {
           },
         });
 
+    // The code was checked above; if its last use went to someone else in the
+    // meantime, the practice still gets created, on Starter, rather than
+    // losing the signup over it.
+    let invite: { tier: string; complimentaryUntil: string } | null = null;
+    if (inviteCode && isOwner && this.invites) {
+      try {
+        invite = await this.invites.redeem(targetTenantId!, inviteCode);
+      } catch (err) {
+        this.logger.warn(`Invite ${inviteCode} not applied to new tenant ${targetTenantId}: ${(err as Error).message}`);
+      }
+    }
+
     // If therapist, create ConsultTherapistProfile
     if (isTherapist) {
       await this.prisma.consultTherapistProfile.create({
@@ -217,6 +240,7 @@ export class AuthService {
       verification_required: !alreadyVerified,
       email_sent: emailSent,
       profile_id: profile.id.toString(),
+      ...(invite ? { invite } : {}),
     };
   }
 
