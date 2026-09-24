@@ -32,6 +32,7 @@ export function DashboardPage(props: DashboardPageProps) {
   const secondaryColor = props.secondaryColor || '#E3B341';
   const [customDomain, setCustomDomain] = useState('');
   const [customDomainStatus, setCustomDomainStatus] = useState<string | null>(null);
+  const [complimentary, setComplimentary] = useState<{ tier: string; until: string } | null>(null);
 
   const [summary, setSummary] = useState<{
     revenueThisMonthNaira: number;
@@ -124,6 +125,14 @@ export function DashboardPage(props: DashboardPageProps) {
     }
 
     void loadDashboardMeta();
+
+    // Invite-code plans: owners only (others get a 403, which is fine to ignore).
+    api
+      .get<{ subscriptionTier: string; complimentaryUntil?: string | null }>('/v1/billing/subscription')
+      .then((sub) => {
+        if (!cancelled && sub.complimentaryUntil) setComplimentary({ tier: sub.subscriptionTier, until: sub.complimentaryUntil });
+      })
+      .catch(() => undefined);
     return () => {
       cancelled = true;
     };
@@ -246,6 +255,26 @@ export function DashboardPage(props: DashboardPageProps) {
       <main className="p-4 md:p-[24px_26px_30px] grid grid-cols-1 lg:grid-cols-[1fr_372px] gap-4 md:gap-[20px] items-start">
         {/* Left Column */}
         <div className="space-y-4 md:space-y-[20px]">
+          {complimentary && (() => {
+            const days = Math.max(0, Math.ceil((new Date(complimentary.until).getTime() - Date.now()) / 86_400_000));
+            // Only in the last two weeks: earlier it is noise.
+            if (days > 14) return null;
+            const plan = complimentary.tier === 'CLINIC' ? 'Clinic' : 'Pro';
+            return (
+              <div className="p-4 rounded-2xl bg-amber-50 border border-amber-200 flex flex-col md:flex-row md:items-center justify-between gap-3">
+                <p className="text-sm font-semibold text-amber-900">
+                  Your free {plan} plan ends in {days} {days === 1 ? 'day' : 'days'}. After that your practice moves to Starter.
+                </p>
+                <button
+                  onClick={() => navigate('/dashboard/settings/subscription')}
+                  className="h-9 px-4 rounded-[10px] bg-amber-900 text-white text-xs font-bold cursor-pointer shrink-0"
+                >
+                  Keep {plan}
+                </button>
+              </div>
+            );
+          })()}
+
           {/* Practice Setup Onboarding Banner */}
           {needsOnboarding && (
             <div className="p-5 rounded-2xl bg-gradient-to-r from-[#0F3A53] to-[#1E293B] text-white shadow-md border border-[#E3B341]/30 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">

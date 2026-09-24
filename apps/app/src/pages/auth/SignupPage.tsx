@@ -5,6 +5,13 @@ import { useAuth } from '../../context/AuthContext';
 import { AuthSplitShell } from '../../components/AuthSplitShell';
 import { AuthField, authInputCls } from '../../components/AuthField';
 import { LEGAL_URLS } from '../../utils/legal';
+import { api } from '../../utils/apiClient';
+
+type InvitePreview = { code: string; tier: string; durationDays: number };
+
+function planName(tier: string) {
+  return tier === 'CLINIC' ? 'Clinic' : tier === 'PRO' ? 'Pro' : tier;
+}
 
 const PASSWORD_RULES = [
   { label: 'At least 8 characters', test: (p: string) => p.length >= 8 },
@@ -37,6 +44,27 @@ export function SignupPage() {
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [agreedToTerms, setAgreedToTerms] = useState(false);
+  // Invite links look like /auth/signup?invite=DESK-AB12-CD34.
+  const inviteFromLink = useMemo(() => new URLSearchParams(location.search).get('invite') ?? '', [location.search]);
+  const [inviteCode, setInviteCode] = useState(inviteFromLink);
+  const [showInvite, setShowInvite] = useState(Boolean(inviteFromLink));
+  const [invitePreview, setInvitePreview] = useState<InvitePreview | null>(null);
+  const [inviteError, setInviteError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const code = inviteCode.trim();
+    setInvitePreview(null);
+    setInviteError(null);
+    if (code.length < 4) return;
+    let cancelled = false;
+    const timer = window.setTimeout(() => {
+      api
+        .get<InvitePreview>(`/v1/invites/check/${encodeURIComponent(code)}`)
+        .then((preview) => { if (!cancelled) setInvitePreview(preview); })
+        .catch((err) => { if (!cancelled) setInviteError(err instanceof Error ? err.message : 'That invite code is not valid.'); });
+    }, 350);
+    return () => { cancelled = true; window.clearTimeout(timer); };
+  }, [inviteCode]);
 
   const passwordChecks = useMemo(() => PASSWORD_RULES.map((rule) => ({ ...rule, ok: rule.test(password) })), [password]);
   const passwordValid = passwordChecks.every((c) => c.ok);
@@ -63,6 +91,7 @@ export function SignupPage() {
         practiceName: practiceName.trim(),
         persona,
         alsoTherapist: persona === 'practice' ? alsoTherapist : undefined,
+        inviteCode: showInvite ? inviteCode.trim() : undefined,
       });
       navigate('/verify-email', { state: { email, emailSent: result.email_sent } });
     } catch (err) {
@@ -231,6 +260,35 @@ export function SignupPage() {
             ))}
           </div>
         )}
+
+        {showInvite ? (
+          <AuthField label="Invite code">
+            <input
+              type="text"
+              value={inviteCode}
+              onChange={(e) => setInviteCode(e.target.value.toUpperCase())}
+              placeholder="DESK-XXXX-XXXX"
+              autoCapitalize="characters"
+              className={`${authInputCls} font-mono tracking-[0.04em]`}
+            />
+          </AuthField>
+        ) : (
+          <button
+            type="button"
+            onClick={() => setShowInvite(true)}
+            className="self-start text-xs font-bold text-[#0F3A53] hover:underline cursor-pointer"
+          >
+            Have an invite code?
+          </button>
+        )}
+        {showInvite && invitePreview ? (
+          <p className="text-xs font-semibold text-emerald-700 bg-emerald-50 rounded-[12px] px-3.5 py-2.5">
+            {planName(invitePreview.tier)} plan free for {invitePreview.durationDays} days.
+          </p>
+        ) : null}
+        {showInvite && inviteError ? (
+          <p className="text-xs font-medium text-amber-800 bg-amber-50 rounded-[12px] px-3.5 py-2.5">{inviteError}</p>
+        ) : null}
 
         {error && (
           <p className="text-xs font-medium text-red-600 bg-red-50 rounded-[12px] px-3.5 py-2.5">

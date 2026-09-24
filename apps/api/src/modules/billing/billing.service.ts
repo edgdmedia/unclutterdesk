@@ -80,6 +80,8 @@ export class BillingService {
     return {
       subscriptionTier: tier,
       subscriptionStatus: tenant.subscriptionStatus ?? 'unpaid',
+      // Set while the plan comes from an invite code; it ends on this date.
+      complimentaryUntil: tenant.complimentaryUntil?.toISOString() ?? null,
       nextChargeAmount: plan ? formatNaira(plan.amountKobo) : '₦0',
       nextBillingDate: tenant.subscriptionRenewsAt
         ? new Intl.DateTimeFormat('en-GB', {
@@ -113,7 +115,11 @@ export class BillingService {
       {
         date: tenant.updatedAt.toISOString(),
         title: `${tenant.subscriptionTier} plan active`,
-        detail: `Current subscription is ${tenant.subscriptionTier}. Next charge ${subscription.nextChargeAmount} on ${subscription.nextBillingDate}.`,
+        detail: tenant.complimentaryUntil
+          ? `${tenant.subscriptionTier} from an invite code, free until ${tenant.complimentaryUntil.toISOString().slice(0, 10)}.`
+          : subscription.nextBillingDate
+            ? `Current subscription is ${tenant.subscriptionTier}. Next charge ${subscription.nextChargeAmount} on ${subscription.nextBillingDate}.`
+            : `Current plan is ${tenant.subscriptionTier}. No payment has been taken yet.`,
         type: 'subscription',
       },
       ...(tenant.bankSubaccount
@@ -351,6 +357,9 @@ export class BillingService {
         subscriptionTier: plan,
         subscriptionStatus: 'active',
         subscriptionRenewsAt: renewsAt,
+        // Paying now: any invite period is superseded, and must not later
+        // be "ended" by moving the practice back to Starter.
+        complimentaryUntil: null,
         ...(data?.customer?.customer_code
           ? { paystackCustomerCode: data.customer.customer_code }
           : {}),

@@ -53,6 +53,12 @@ model Tenant {
   // "active", "past_due", "cancelled", or null before the first payment.
   subscriptionStatus       String?
   subscriptionRenewsAt     DateTime?
+  // Complimentary access from an invite code: the plan in subscriptionTier
+  // lasts until this date, then drops back to STARTER unless the practice
+  // has started paying. Null for everyone else.
+  complimentaryUntil       DateTime?
+  inviteCodeId             BigInt?
+  inviteCode               InviteCode? @relation(fields: [inviteCodeId], references: [id], onDelete: SetNull)
 
   // Notification plug-in: which channels this tenant has enabled at all.
   // JSON map, e.g. { "email": true, "in_app": true, "push": true, "sms": false }
@@ -80,6 +86,25 @@ model Tenant {
 
   @@index([slug])
   @@index([customDomain])
+  @@index([complimentaryUntil])
+}
+
+/// A platform-issued code that gives a practice a plan for free for a while,
+/// e.g. Pro for 90 days for early testers. Not a DiscountCode: those are a
+/// practice's own promotions on its clients' session prices.
+model InviteCode {
+  id           BigInt    @id @default(autoincrement())
+  code         String    @unique @db.VarChar(40)
+  tier         String    @db.VarChar(20) // "PRO" | "CLINIC"
+  durationDays Int       @default(90)
+  maxUses      Int?      // null: unlimited
+  usedCount    Int       @default(0)
+  redeemBy     DateTime? // null: no deadline
+  note         String?
+  isActive     Boolean   @default(true)
+  createdAt    DateTime  @default(now())
+
+  tenants Tenant[]
 }
 
 // ── User & Profile ─────────────────────────────────────────────────────────
