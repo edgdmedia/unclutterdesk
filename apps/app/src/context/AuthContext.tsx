@@ -8,6 +8,7 @@ interface AuthProfile {
   lastName?: string;
   username?: string;
   type: string;
+  role?: string;
   status: string;
   avatarUrl?: string;
   tenantId?: string;

@@ -28,17 +28,22 @@ export class TenantMiddleware implements NestMiddleware {
         where: { id: BigInt(tenantHeaderId) },
       });
     } else if (tenantHeaderSlug) {
-      tenant = await this.prisma.tenant.findUnique({
-        where: { slug: tenantHeaderSlug.toLowerCase() },
-      });
+      // The app sends the practice it is serving, read from the page's own
+      // address. Browsers call api.unclutterdesk.com, so the Host header here
+      // never names a practice; without this, public booking calls could not
+      // tell which practice they were for. On a practice's own domain the
+      // "slug" the app reads is that whole domain.
+      const key = tenantHeaderSlug.trim().toLowerCase();
+      tenant = await this.prisma.tenant.findUnique({ where: { slug: key } });
+      if (!tenant && key.includes('.')) {
+        tenant = await this.activeCustomDomain(key);
+      }
     } else if (host) {
       // Clean host (remove port)
       const domain = host.split(':')[0].toLowerCase();
-      
+
       // Try exact custom domain first
-      tenant = await this.prisma.tenant.findUnique({
-        where: { customDomain: domain },
-      });
+      tenant = await this.activeCustomDomain(domain);
 
       // Otherwise check subdomain (e.g. "drjane.unclutterdesk.com" -> "drjane").
       // Local dev uses *.localhost, which has only two labels.
@@ -62,5 +67,12 @@ export class TenantMiddleware implements NestMiddleware {
     }
 
     next();
+  }
+
+  /** A custom domain only stands for a practice once it has been verified. */
+  private activeCustomDomain(domain: string) {
+    return this.prisma.tenant.findFirst({
+      where: { customDomain: domain, customDomainStatus: 'ACTIVE' },
+    });
   }
 }

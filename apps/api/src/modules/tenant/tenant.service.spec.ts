@@ -1,5 +1,5 @@
 import { BadRequestException, ForbiddenException, NotFoundException } from '@nestjs/common';
-import { describe, expect, test, vi } from 'vitest';
+import { afterEach, describe, expect, test, vi } from 'vitest';
 import { TenantService } from './tenant.service';
 
 function createPrismaMock() {
@@ -55,28 +55,59 @@ describe('TenantService custom domain flow', () => {
     ).rejects.toBeInstanceOf(ForbiddenException);
   });
 
-  test('marks a configured custom domain as active when verified', async () => {
+});
+
+/**
+ * Verification used to mark any domain ACTIVE on request. An active domain
+ * becomes the practice's address in client emails and is trusted by CORS, so
+ * it must be proven to reach us first.
+ */
+describe('TenantService custom domain verification', () => {
+  const TARGET = 'customers.unclutterdesk.com';
+
+  function setup({ cname = [TARGET + '.'], https = true, target = TARGET as string | null } = {}) {
+    if (target) vi.stubEnv('CUSTOM_DOMAIN_TARGET', target);
+    else vi.stubEnv('CUSTOM_DOMAIN_TARGET', '');
     const prisma = createPrismaMock();
-    const service = new TenantService(prisma, notificationsMock());
+    prisma.tenant.findUnique.mockResolvedValue({ id: BigInt(1), customDomain: 'Booking.Example.com' });
+    prisma.tenant.update.mockImplementation(({ data }: any) =>
+      Promise.resolve({ id: BigInt(1), customDomain: data.customDomain, customDomainStatus: data.customDomainStatus }),
+    );
+    const service = new TenantService(prisma, notificationsMock()) as any;
+    vi.spyOn(service, 'lookupCname').mockResolvedValue(cname);
+    vi.spyOn(service, 'servesHttps').mockResolvedValue(https);
+    return { prisma, service: service as TenantService };
+  }
 
-    prisma.tenant.findUnique.mockResolvedValue({
-      id: BigInt(1),
-      customDomain: 'booking.example.com',
-    });
+  const statusWritten = (prisma: any) => prisma.tenant.update.mock.calls.map((c: any) => c[0].data.customDomainStatus);
 
-    prisma.tenant.update.mockResolvedValue({
-      id: BigInt(1),
-      customDomain: 'booking.example.com',
-      customDomainStatus: 'ACTIVE',
-    });
+  afterEach(() => vi.unstubAllEnvs());
 
-    const result = await service.verifyCustomDomain(BigInt(1));
-
-    expect(result).toEqual({
+  test('activates a domain whose CNAME points at us and which serves HTTPS', async () => {
+    const { service } = setup();
+    await expect(service.verifyCustomDomain(BigInt(1))).resolves.toEqual({
       id: '1',
       customDomain: 'booking.example.com',
       customDomainStatus: 'ACTIVE',
     });
+  });
+
+  test('marks a domain that does not point at us as FAILED, naming the record to add', async () => {
+    const { service, prisma } = setup({ cname: [] });
+    await expect(service.verifyCustomDomain(BigInt(1))).rejects.toThrow(TARGET);
+    expect(statusWritten(prisma)).toEqual(['FAILED']);
+  });
+
+  test('keeps a domain PENDING while its certificate is issued', async () => {
+    const { service, prisma } = setup({ https: false });
+    await expect(service.verifyCustomDomain(BigInt(1))).rejects.toThrow(/certificate/);
+    expect(statusWritten(prisma)).toEqual(['PENDING']);
+  });
+
+  test('activates nothing while custom domains are not configured on the platform', async () => {
+    const { service, prisma } = setup({ target: null });
+    await expect(service.verifyCustomDomain(BigInt(1))).rejects.toBeInstanceOf(BadRequestException);
+    expect(prisma.tenant.update).not.toHaveBeenCalled();
   });
 });
 

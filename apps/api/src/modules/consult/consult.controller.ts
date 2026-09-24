@@ -109,6 +109,25 @@ export class ConsultController {
     );
   }
 
+  @Roles(...PRACTICE_ADMIN)
+  @Get('services')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @ApiBearerAuth('access-token')
+  @ApiOperation({ summary: 'List all of the practice\'s services, including retired ones' })
+  listServices(@Req() req: any) {
+    return this.consultService.listServices(authenticatedTenantId(req));
+  }
+
+  @Roles(...PRACTICE_ADMIN)
+  @Patch('services/:id')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @ApiBearerAuth('access-token')
+  @ApiOperation({ summary: 'Edit a service, or retire it with isActive: false' })
+  updateService(@Req() req: any, @Param('id') id: string, @Body() dto: any) {
+    if (!/^\d+$/.test(id)) throw new NotFoundException('That service could not be found.');
+    return this.consultService.updateService(authenticatedTenantId(req), BigInt(id), dto);
+  }
+
   @Get('public/availability')
   @ApiOperation({ summary: 'Get open availability slots for client booking portal' })
   getPublicAvailability(@Req() req: TenantRequest) {

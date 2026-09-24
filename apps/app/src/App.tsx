@@ -23,6 +23,7 @@ const SubscriptionSettingsPage = lazy(() => import('./pages/practice/settings/Su
 const PayoutSettingsPage = lazy(() => import('./pages/practice/settings/PayoutSettingsPage').then((m) => ({ default: m.PayoutSettingsPage })));
 const FormsManagerPage = lazy(() => import('./pages/practice/settings/FormsManagerPage').then((m) => ({ default: m.FormsManagerPage })));
 const FormEditorPage = lazy(() => import('./pages/practice/settings/FormEditorPage').then((m) => ({ default: m.FormEditorPage })));
+const ServicesSettingsPage = lazy(() => import('./pages/practice/settings/ServicesSettingsPage').then((m) => ({ default: m.ServicesSettingsPage })));
 const DiscountSettingsPage = lazy(() => import('./pages/practice/settings/DiscountSettingsPage').then((m) => ({ default: m.DiscountSettingsPage })));
 const TelehealthVideoRoomPage = lazy(() => import('./pages/practice/TelehealthVideoRoomPage').then((m) => ({ default: m.TelehealthVideoRoomPage })));
 const SessionPrepPage = lazy(() => import('./pages/practice/SessionPrepPage').then((m) => ({ default: m.SessionPrepPage })));
@@ -444,6 +445,10 @@ function AppLayout() {
               <Route path="/dashboard/settings/forms" element={<FormsManagerPage />} />
               <Route path="/dashboard/settings/forms/:id" element={<FormEditorPage />} />
               <Route path="/dashboard/settings/discounts" element={<DiscountSettingsPage />} />
+              <Route path="/dashboard/settings/services" element={<ServicesSettingsPage />} />
+              {/* Every other route tree has these; signed-in staff got a 404. */}
+              <Route path="/privacy" element={<ExternalRedirect to={LEGAL_URLS.privacy} />} />
+              <Route path="/terms" element={<ExternalRedirect to={LEGAL_URLS.terms} />} />
               <Route path="/" element={<RootRedirect />} />
               <Route path="*" element={<NotFoundPage />} />
             </Routes>

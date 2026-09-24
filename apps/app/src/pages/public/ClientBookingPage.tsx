@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { Star, MapPin, Award, ArrowRight, ShieldCheck } from 'lucide-react';
 import { useBrand } from '@unclutterdesk/ui';
-import { api, getSubdomainTenantSlug } from '../../utils/apiClient';
+import { api, apiRequest, getSubdomainTenantSlug } from '../../utils/apiClient';
 
 type PublicReview = { id: string; rating: number | null; testimonial: string; displayName: string; publishedAt: string };
 type PublicReviewsPayload = { averageRating: number | null; count: number; reviews: PublicReview[] };
@@ -28,9 +28,14 @@ function formatTime(value: string) {
   return new Intl.DateTimeFormat('en-US', { hour: 'numeric', minute: '2-digit', hour12: true }).format(new Date(value));
 }
 
-export function ClientBookingPage() {
+/**
+ * `previewSlug` renders a practice's page from outside its own host, for the
+ * preview in Brand settings. On app.unclutterdesk.com there is no subdomain to
+ * read, so without it the preview could load neither services nor times.
+ */
+export function ClientBookingPage({ previewSlug }: { previewSlug?: string } = {}) {
   const navigate = useNavigate();
-  const slug = getSubdomainTenantSlug() || '';
+  const slug = previewSlug || getSubdomainTenantSlug() || '';
   const [selectedServiceId, setSelectedServiceId] = useState<string>('');
   const [selectedDateKey, setSelectedDateKey] = useState<string>('');
   const [selectedSlotId, setSelectedSlotId] = useState<string>('');
@@ -70,10 +75,14 @@ export function ClientBookingPage() {
     async function loadBookingData() {
       setLoading(true);
       try {
+        const get = <T,>(path: string) =>
+          previewSlug
+            ? apiRequest<T>(path, { method: 'GET', headers: { 'X-Tenant-Slug': previewSlug } })
+            : api.get<T>(path);
         const [reviewPayload, servicesPayload, availabilityPayload] = await Promise.all([
-          api.get<PublicReviewsPayload>('/v1/intake/public/reviews'),
-          api.get<PublicService[]>('/v1/consult/public/services'),
-          api.get<PublicAvailability[]>('/v1/consult/public/availability'),
+          get<PublicReviewsPayload>('/v1/intake/public/reviews'),
+          get<PublicService[]>('/v1/consult/public/services'),
+          get<PublicAvailability[]>('/v1/consult/public/availability'),
         ]);
         const tenantInfo = await api.get<PublicTenantInfo>(`/v1/tenant/public/info/${slug}`);
         if (cancelled) return;
@@ -92,11 +101,18 @@ export function ClientBookingPage() {
     }
     void loadBookingData();
     return () => { cancelled = true; };
-  }, [slug]);
+  }, [slug, previewSlug]);
 
   const selectedService = services.find((service) => service.id === selectedServiceId) || services[0];
   const filteredAvailability = useMemo(
-    () => availability.filter((slot) => !selectedService || slot.serviceId === selectedService.id),
+    () =>
+      availability.filter((slot) => {
+        if (!selectedService) return true;
+        if (slot.serviceId) return slot.serviceId === selectedService.id;
+        // An open slot fits any service no longer than it.
+        const minutes = (new Date(slot.endsAt).getTime() - new Date(slot.startsAt).getTime()) / 60_000;
+        return selectedService.durationMinutes <= minutes;
+      }),
     [availability, selectedService],
   );
   const availableDates = useMemo(() => {

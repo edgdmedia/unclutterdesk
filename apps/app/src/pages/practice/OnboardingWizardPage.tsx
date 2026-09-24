@@ -109,7 +109,7 @@ export function OnboardingWizardPage() {
   const [slugAvailable, setSlugAvailable] = useState<boolean | null>(saved?.slugAvailable ?? null);
   const [customDomain, setCustomDomain] = useState(saved?.customDomain ?? '');
   const [customDomainStatus, setCustomDomainStatus] = useState(saved?.customDomainStatus ?? 'PENDING');
-  const [verifyingCustomDomain, setVerifyingCustomDomain] = useState(false);
+  const [customDomainTarget, setCustomDomainTarget] = useState<string | null>(null);
   const [showAdvancedDomain, setShowAdvancedDomain] = useState(false);
   const [primaryColor, setPrimaryColor] = useState(saved?.primaryColor ?? '#0F3A53');
   const [secondaryColor, setSecondaryColor] = useState(saved?.secondaryColor ?? '#E3B341');
@@ -260,6 +260,7 @@ export function OnboardingWizardPage() {
           slug?: string;
           customDomain?: string;
           customDomainStatus?: string;
+          customDomainTarget?: string | null;
           primaryColor?: string;
           secondaryColor?: string;
           logoUrl?: string;
@@ -289,6 +290,7 @@ export function OnboardingWizardPage() {
         if (brand.customDomainStatus) {
           setCustomDomainStatus(brand.customDomainStatus);
         }
+        setCustomDomainTarget(brand.customDomainTarget ?? null);
         if (brand.primaryColor) setPrimaryColor(brand.primaryColor);
         if (brand.secondaryColor) setSecondaryColor(brand.secondaryColor);
         if (brand.logoUrl) setLogoUrl(brand.logoUrl);
@@ -314,21 +316,6 @@ export function OnboardingWizardPage() {
     setCopied(true);
     setTimeout(() => setCopied(false), 1600);
   };
-
-  async function handleVerifyCustomDomain() {
-    setVerifyingCustomDomain(true);
-    setError(null);
-    try {
-      const verified = await api.post<{ customDomain: string | null; customDomainStatus: string }>('/v1/tenant/brand/custom-domain/verify', {});
-      if (verified.customDomain) setCustomDomain(verified.customDomain);
-      setCustomDomainStatus(verified.customDomainStatus || 'ACTIVE');
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Unable to verify custom domain.');
-      setCustomDomainStatus('FAILED');
-    } finally {
-      setVerifyingCustomDomain(false);
-    }
-  }
 
   async function saveDetails(): Promise<boolean> {
     setSaving(true);
@@ -388,12 +375,22 @@ export function OnboardingWizardPage() {
         cancellationHours,
       });
       if (enabledCount > 0) {
-        await api.post('/v1/consult/services', {
-          title: 'Individual Therapy',
-          description: 'One-on-one session with your therapist.',
-          durationMinutes: 50,
-          priceKobo: nairaToKobo(rate),
-        });
+        // The wizard can be re-run from the dashboard. Reprice the service it
+        // made last time; posting again left a second "Individual Therapy" at
+        // the old price on the booking page.
+        const existing = await api.get<Array<{ id: string; title: string; isActive: boolean }>>('/v1/consult/services');
+        const current =
+          existing.find((s) => s.isActive && s.title === 'Individual Therapy') ?? existing.find((s) => s.isActive);
+        if (current) {
+          await api.patch(`/v1/consult/services/${current.id}`, { priceKobo: nairaToKobo(rate) });
+        } else {
+          await api.post('/v1/consult/services', {
+            title: 'Individual Therapy',
+            description: 'One-on-one session with your therapist.',
+            durationMinutes: 50,
+            priceKobo: nairaToKobo(rate),
+          });
+        }
       }
       return true;
     } catch (err) {
@@ -653,34 +650,24 @@ export function OnboardingWizardPage() {
                             <div className="flex items-center justify-between">
                               <label className={labelCls}>Custom Domain (Advanced)</label>
                               <span className="text-[10.5px] text-[#0F766E] font-semibold flex items-center gap-1 mb-1.5">
-                                <Info className="h-3 w-3" /> CNAME guide provided after setup
+                                <Info className="h-3 w-3" /> Verified later in Brand settings
                               </span>
                             </div>
                             <input type="text" value={customDomain} onChange={(e) => setCustomDomain(e.target.value)} placeholder="e.g. booking.mypractice.com" className={inputCls} />
-                            {customDomain ? (
-                              <div className="mt-3 flex items-center justify-between gap-3 rounded-[12px] bg-[#F8FAFC] border border-[#E2E8F0] px-3 py-2.5">
-                                <div className="text-[11.5px] font-medium text-[#475569]">
-                                  Status:{' '}
-                                  <span className={`font-bold ${customDomainStatus === 'ACTIVE' ? 'text-emerald-700' : customDomainStatus === 'FAILED' ? 'text-red-700' : 'text-amber-700'}`}>
-                                    {customDomainStatus}
-                                  </span>
-                                </div>
-                                <button
-                                  type="button"
-                                  onClick={() => void handleVerifyCustomDomain()}
-                                  disabled={verifyingCustomDomain}
-                                  className="h-[34px] px-3 rounded-[10px] bg-[#0F3A53] text-white text-[11px] font-bold disabled:opacity-60 cursor-pointer"
-                                >
-                                  {verifyingCustomDomain ? 'Verifying...' : 'Verify domain'}
-                                </button>
-                              </div>
+                            {customDomain && customDomainTarget ? (
+                              <p className="mt-2 text-[11.5px] text-[#64748B] leading-relaxed">
+                                After setup, add a <span className="font-bold">CNAME</span> record for{' '}
+                                <span className="font-mono font-bold text-[#0F172A]">{customDomain}</span> with the value{' '}
+                                <span className="font-mono font-bold text-[#0F172A]">{customDomainTarget}</span>, then verify it
+                                under Brand settings. Until then clients use your unclutterdesk.com address.
+                              </p>
                             ) : null}
                           </div>
-                        ) : (
+                        ) : customDomainTarget ? (
                           <button type="button" onClick={() => setShowAdvancedDomain(true)} className="text-[11.5px] font-bold text-[#0F3A53] hover:underline flex items-center gap-1.5">
                             <Settings className="h-3.5 w-3.5" /> Configure a custom domain instead
                           </button>
-                        )}
+                        ) : null}
                       </div>
                     </div>
 

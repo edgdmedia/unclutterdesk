@@ -221,29 +221,116 @@ export class ConsultService {
     }));
   }
 
+  /**
+   * Checks a service's editable fields. Every field is optional so the same
+   * rules serve create (which then insists on a title) and partial updates.
+   */
+  private serviceFields(dto: {
+    title?: string;
+    description?: string | null;
+    durationMinutes?: number | string;
+    priceKobo?: number | string;
+    isActive?: boolean;
+  }) {
+    const data: {
+      title?: string;
+      description?: string | null;
+      durationMinutes?: number;
+      priceKobo?: bigint;
+      isActive?: boolean;
+    } = {};
+
+    if (dto.title !== undefined) {
+      const title = String(dto.title ?? '').trim();
+      if (!title) throw new BadRequestException('Give the service a name.');
+      if (title.length > 120) throw new BadRequestException('Keep the service name under 120 characters.');
+      data.title = title;
+    }
+    if (dto.description !== undefined) {
+      data.description = dto.description ? String(dto.description).trim().slice(0, 1000) : null;
+    }
+    if (dto.durationMinutes !== undefined) {
+      const minutes = Number(dto.durationMinutes);
+      if (!Number.isInteger(minutes) || minutes < 10 || minutes > 480) {
+        throw new BadRequestException('Session length must be between 10 and 480 minutes.');
+      }
+      data.durationMinutes = minutes;
+    }
+    if (dto.priceKobo !== undefined) {
+      const raw = String(dto.priceKobo ?? '0').trim();
+      if (!/^\d+$/.test(raw)) throw new BadRequestException('Price must be a whole, non-negative amount.');
+      data.priceKobo = BigInt(raw);
+    }
+    if (dto.isActive !== undefined) data.isActive = Boolean(dto.isActive);
+    return data;
+  }
+
+  private serviceView(s: {
+    id: bigint;
+    title: string;
+    description: string | null;
+    durationMinutes: number;
+    priceKobo: bigint;
+    isActive: boolean;
+  }) {
+    return {
+      id: s.id.toString(),
+      title: s.title,
+      description: s.description,
+      durationMinutes: s.durationMinutes,
+      priceKobo: s.priceKobo.toString(),
+      isActive: s.isActive,
+    };
+  }
+
   async createService(tenantId: bigint, dto: {
     title: string;
     description?: string;
     durationMinutes?: number;
     priceKobo?: number | string;
   }) {
+    const fields = this.serviceFields({ ...dto, title: dto?.title ?? '' });
     const service = await this.prisma.consultService.create({
       data: {
         tenantId,
-        title: dto.title.trim(),
-        description: dto.description?.trim(),
-        durationMinutes: dto.durationMinutes || 50,
-        priceKobo: BigInt(dto.priceKobo || 0),
+        title: fields.title!,
+        description: fields.description ?? undefined,
+        durationMinutes: fields.durationMinutes ?? 50,
+        priceKobo: fields.priceKobo ?? 0n,
         isActive: true,
       },
     });
 
-    return {
-      id: service.id.toString(),
-      title: service.title,
-      durationMinutes: service.durationMinutes,
-      priceKobo: service.priceKobo.toString(),
-    };
+    return this.serviceView(service);
+  }
+
+  /** Every service the practice has, retired ones included, for its settings page. */
+  async listServices(tenantId: bigint) {
+    const services = await this.prisma.consultService.findMany({
+      where: { tenantId },
+      orderBy: [{ isActive: 'desc' }, { createdAt: 'asc' }],
+    });
+    return services.map((s) => this.serviceView(s));
+  }
+
+  /**
+   * Edits a service in place. Services are retired with isActive rather than
+   * deleted: past bookings point at them, and their price is part of the
+   * record of what a client paid for.
+   */
+  async updateService(
+    tenantId: bigint,
+    serviceId: bigint,
+    dto: { title?: string; description?: string | null; durationMinutes?: number; priceKobo?: number | string; isActive?: boolean },
+  ) {
+    const existing = await this.prisma.consultService.findFirst({ where: { id: serviceId, tenantId } });
+    if (!existing) throw new NotFoundException('That service could not be found.');
+
+    const updated = await this.prisma.consultService.update({
+      where: { id: existing.id },
+      data: { ...this.serviceFields(dto ?? {}), updatedAt: new Date() },
+    });
+    return this.serviceView(updated);
   }
 
   async getPublicAvailability(tenantId: bigint, providerProfileId?: bigint, serviceId?: bigint) {
@@ -254,7 +341,7 @@ export class ConsultService {
         isActive: true,
         startsAt: { gte: now },
         ...(providerProfileId ? { providerProfileId } : {}),
-        ...(serviceId ? { serviceId } : {}),
+        ...(serviceId ? { OR: [{ serviceId }, { serviceId: null }] } : {}),
       },
       include: {
         therapist: {
@@ -380,7 +467,6 @@ export class ConsultService {
       },
     });
 
-    const service = await this.prisma.consultService.findFirst({ where: { tenantId, isActive: true }, orderBy: { createdAt: 'asc' } });
     const slotData: Array<{ tenantId: bigint; providerProfileId: bigint; serviceId: bigint | null; startsAt: Date; endsAt: Date; channel: string; isActive: boolean }> = [];
 
     for (let cursor = new Date(now); cursor <= horizon; cursor.setDate(cursor.getDate() + 1)) {
@@ -404,7 +490,9 @@ export class ConsultService {
             slotData.push({
               tenantId,
               providerProfileId,
-              serviceId: service?.id || null,
+              // Open to any service. Pinning every slot to the oldest service
+              // left services added later with no bookable times at all.
+              serviceId: null,
               startsAt: new Date(slotStart),
               endsAt: slotEnd,
               channel: 'VIDEO',
@@ -459,11 +547,27 @@ export class ConsultService {
     if (!slot) {
       throw new BadRequestException('The selected time slot is no longer available');
     }
-    
+
+    // A slot either names its service or is open to any of the practice's
+    // active ones, in which case the client's choice is checked here, never
+    // trusted: its price is what gets charged.
+    const service =
+      slot.service ??
+      (await this.prisma.consultService.findFirst({ where: { id: serviceId, tenantId, isActive: true } }));
+    if (!service) {
+      throw new BadRequestException('That service is no longer offered. Please choose another.');
+    }
+    if (
+      !slot.service &&
+      service.durationMinutes > (slot.endsAt.getTime() - slot.startsAt.getTime()) / 60_000
+    ) {
+      throw new BadRequestException('That time is too short for this service. Please pick another time.');
+    }
+
     // Validate discount code if provided
     let discountResult = null;
-    if (dto.discountCode && slot.service) {
-      discountResult = await this.discountService.validateDiscount(tenantId, dto.discountCode, slot.service.priceKobo);
+    if (dto.discountCode) {
+      discountResult = await this.discountService.validateDiscount(tenantId, dto.discountCode, service.priceKobo);
     }
 
     const tier = (slot.tenant.subscriptionTier || 'STARTER').toUpperCase();
@@ -531,7 +635,7 @@ export class ConsultService {
       // practice may reprice the service at any time.
       const finalPriceKobo = discountResult
         ? BigInt(discountResult.finalKobo)
-        : BigInt(slot.service?.priceKobo || 0);
+        : BigInt(service.priceKobo || 0);
       const discountCodeUsed = discountResult
         ? dto.discountCode!.toUpperCase().trim()
         : null;
@@ -539,7 +643,7 @@ export class ConsultService {
       const booking = await tx.consultBooking.create({
         data: {
           tenantId,
-          serviceId: slot.serviceId || serviceId,
+          serviceId: service.id,
           availabilityId: slot.id,
           clientProfileId: clientProfile.id,
           status: 'PENDING_PAYMENT',
@@ -604,7 +708,7 @@ export class ConsultService {
         // the client may not have an account yet.
         icalToken: CalendarService.icalToken(booking.id),
         status: finalPriceKobo > 0n ? 'PENDING_PAYMENT' : 'CONFIRMED',
-        serviceTitle: slot.service?.title || 'Therapy Session',
+        serviceTitle: service.title,
         startsAt: slot.startsAt.toISOString(),
         endsAt: slot.endsAt.toISOString(),
         therapistName: `${slot.therapist.profile.firstName || ''} ${slot.therapist.profile.lastName || ''}`.trim(),
