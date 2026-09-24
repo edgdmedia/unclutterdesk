@@ -36,6 +36,15 @@ export class BillingController {
   }
 
   @Roles(...PRACTICE_ADMIN)
+  @Get('banks')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @ApiBearerAuth('access-token')
+  @ApiOperation({ summary: 'Nigerian banks with the codes Paystack expects' })
+  listBanks() {
+    return this.paystackService.listBanks();
+  }
+
+  @Roles(...PRACTICE_ADMIN)
   @Get('resolve-account')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @ApiBearerAuth('access-token')
