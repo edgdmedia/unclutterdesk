@@ -48,7 +48,7 @@ function makeService({
     { validateDiscount: vi.fn() } as any,
     { calculateSplitPayout: vi.fn() } as any,
     {} as any,
-    { pushBookingToGoogle: vi.fn() } as any,
+    { pushBookingToGoogle: vi.fn() } as any, {} as any,
   );
   return { service, prisma, tx };
 }
@@ -91,5 +91,19 @@ describe('booking a slot that names its service', () => {
     await service.createBooking(TENANT, dto as any).catch(() => undefined);
     expect(prisma.consultService.findFirst).not.toHaveBeenCalled();
     expect(tx.consultBooking.create.mock.calls[0][0].data.serviceId).toBe(2n);
+  });
+});
+
+describe('booking details', () => {
+  // These used to crash inside the transaction and reach the client as a 500.
+  it.each([
+    [{ firstName: '' }, /Enter your name/],
+    [{ firstName: undefined }, /Enter your name/],
+    [{ email: 'not-an-email' }, /valid email/],
+    [{ serviceId: '' }, /Choose a service/],
+  ])('refuses %o with a clear message, before claiming anything', async (override, message) => {
+    const { service, tx } = makeService();
+    await expect(service.createBooking(TENANT, { ...dto, ...override } as any)).rejects.toThrow(message);
+    expect(tx.consultAvailability.updateMany).not.toHaveBeenCalled();
   });
 });

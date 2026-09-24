@@ -3,10 +3,11 @@ import { Link } from 'react-router-dom';
 import useSWR from 'swr';
 import { Loader2, Building2, Search } from 'lucide-react';
 import { api } from '../../utils/apiClient';
-import { Card, Eyebrow, StatusBadge } from '@unclutterdesk/ui';
+import { Card, Eyebrow, StatusBadge, useToast } from '@unclutterdesk/ui';
 import { AdminTenant, formatNaira, formatDate } from './adminTypes';
 
 export function AdminTenantsPage() {
+  const toast = useToast();
   const { data: tenants, isLoading, mutate } = useSWR<AdminTenant[]>('/v1/admin/tenants');
   const [query, setQuery] = useState('');
   const [updatingId, setUpdatingId] = useState<string | null>(null);
@@ -33,7 +34,9 @@ export function AdminTenantsPage() {
         (list) => (list ?? []).map((x) => (x.id === updated.id ? { ...x, isActive: updated.isActive } : x)),
         { revalidate: false },
       );
+      toast.success('Practice status updated');
     } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Could not update the practice');
       setError(err instanceof Error ? err.message : 'Update failed');
     } finally {
       setUpdatingId(null);

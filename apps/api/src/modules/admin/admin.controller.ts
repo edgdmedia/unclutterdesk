@@ -1,10 +1,13 @@
-import { Controller, Get, Post, Patch, Body, Param, Req, Res, UseGuards, NotFoundException } from '@nestjs/common';
+import { Controller, Get, Post, Patch, Body, Param, Query, Req, Res, UseGuards, NotFoundException } from '@nestjs/common';
 import { Request } from 'express';
 import { ApiTags, ApiOperation } from '@nestjs/swagger';
 import { Response } from 'express';
 import { randomBytes } from 'crypto';
 import { AdminService } from './admin.service';
 import { InviteService } from '../invites/invite.service';
+import { InstrumentService } from '../assessments/instrument.service';
+import { score, validateAnswers, validateDefinition, type InstrumentDefinition } from '../assessments/engine';
+import { RequestService } from '../requests/request.service';
 import { AuthService } from '../auth/auth.service';
 import { PlatformAdminGuard } from './platform-admin.guard';
 import {
@@ -24,6 +27,8 @@ export class AdminController {
     private readonly adminService: AdminService,
     private readonly authService: AuthService,
     private readonly invites: InviteService,
+    private readonly instruments: InstrumentService,
+    private readonly requests: RequestService,
   ) {}
 
   @Post('auth/login')
@@ -92,6 +97,57 @@ export class AdminController {
   updateInvite(@Param('id') id: string, @Body() dto: { isActive?: boolean }) {
     if (!/^\d+$/.test(id)) throw new NotFoundException('Invite code not found');
     return this.invites.setActive(BigInt(id), dto?.isActive !== false);
+  }
+
+  @Get('requests')
+  @UseGuards(PlatformAdminGuard)
+  @ApiOperation({ summary: 'Requests from practices: assessments, features, services, feedback' })
+  listRequests(@Query('type') type?: string, @Query('status') status?: string) {
+    return this.requests.all({ type, status });
+  }
+
+  @Patch('requests/:id')
+  @UseGuards(PlatformAdminGuard)
+  @ApiOperation({ summary: 'Set a request status and a note the practice sees' })
+  updateRequest(@Param('id') id: string, @Body() dto: { status?: string; adminNote?: string }) {
+    if (!/^\d+$/.test(id)) throw new NotFoundException('Request not found');
+    return this.requests.update(BigInt(id), dto ?? {});
+  }
+
+  @Get('assessment-instruments')
+  @UseGuards(PlatformAdminGuard)
+  @ApiOperation({ summary: 'Every assessment instrument, including drafts and retired ones' })
+  listInstruments() {
+    return this.instruments.all();
+  }
+
+  @Post('assessment-instruments')
+  @UseGuards(PlatformAdminGuard)
+  @ApiOperation({ summary: 'Add an instrument as a draft' })
+  createInstrument(@Body() dto: { definition?: unknown }) {
+    return this.instruments.create(dto?.definition);
+  }
+
+  @Post('assessment-instruments/preview')
+  @UseGuards(PlatformAdminGuard)
+  @ApiOperation({ summary: 'Check a definition and score sample answers with it, without saving' })
+  previewInstrument(@Body() dto: { definition?: unknown; answers?: unknown }) {
+    const errors = validateDefinition(dto?.definition);
+    if (errors.length) return { errors };
+    const def = dto.definition as InstrumentDefinition;
+    const answers = validateAnswers(def, dto?.answers);
+    if (typeof answers === 'string') return { errors: [], result: null, answersError: answers };
+    return { errors: [], result: score(def, answers) };
+  }
+
+  @Patch('assessment-instruments/:key')
+  @UseGuards(PlatformAdminGuard)
+  @ApiOperation({ summary: "Replace an instrument's definition (new version) or change its status" })
+  async updateInstrument(@Param('key') key: string, @Body() dto: { definition?: unknown; status?: string }) {
+    let result = dto?.definition !== undefined ? await this.instruments.update(key, dto.definition) : null;
+    if (dto?.status) result = await this.instruments.setStatus(key, dto.status);
+    if (!result) throw new NotFoundException('Nothing to change');
+    return result;
   }
 
   private setSessionCookies(res: Response, accessToken: string, refreshToken: string) {

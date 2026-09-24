@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Copy, Check, Bell, Link2, Calendar, FileText, Video, Upload, Globe, Palette, Sparkles, TrendingUp, CheckCircle2, ArrowRight, Menu } from 'lucide-react';
 import { Button } from '@unclutterdesk/ui';
 import { useAuth } from '../../context/AuthContext';
+import { PendingTransfersCard } from '../../components/payments/PendingTransfersCard';
 import { api, practiceBookingUrl } from '../../utils/apiClient';
 
 interface DashboardPageProps {
@@ -255,6 +256,7 @@ export function DashboardPage(props: DashboardPageProps) {
       <main className="p-4 md:p-[24px_26px_30px] grid grid-cols-1 lg:grid-cols-[1fr_372px] gap-4 md:gap-[20px] items-start">
         {/* Left Column */}
         <div className="space-y-4 md:space-y-[20px]">
+          {['OWNER', 'ADMIN', 'RECEPTIONIST'].includes(String(authUser?.role ?? '')) ? <PendingTransfersCard color={primaryColor} /> : null}
           {complimentary && (() => {
             const days = Math.max(0, Math.ceil((new Date(complimentary.until).getTime() - Date.now()) / 86_400_000));
             // Only in the last two weeks: earlier it is noise.

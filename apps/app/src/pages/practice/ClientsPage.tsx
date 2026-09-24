@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Search, Download, Plus, ChevronLeft, ChevronRight, X, User, Loader2 } from 'lucide-react';
-import { Eyebrow, Card, StatusBadge, AvatarChip } from '@unclutterdesk/ui';
+import { Eyebrow, Card, StatusBadge, AvatarChip, useToast } from '@unclutterdesk/ui';
 import { useBrand } from '@unclutterdesk/ui';
 import { api } from '../../utils/apiClient';
 import type { Client } from '../../App';
@@ -13,6 +13,7 @@ interface ClientsPageProps {
 }
 
 export function ClientsPage({ clients, setClients, onRefresh }: ClientsPageProps) {
+  const toast = useToast();
   const brand = useBrand();
   const primaryColor = brand.primaryColor || '#0F3A53';
 
@@ -122,7 +123,9 @@ export function ClientsPage({ clients, setClients, onRefresh }: ClientsPageProps
       setFormCare('Individual Therapy');
       setFormStatus('Active');
       setFormEmergency('');
+      toast.success('Client added');
     } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Could not add the client');
       setSubmitError(err instanceof Error ? err.message : 'Failed to create client');
     } finally {
       setIsSubmitting(false);

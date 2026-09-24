@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { CheckCircle2, EyeOff, MessageSquare, ShieldAlert, Sparkles, Star } from 'lucide-react';
-import { Eyebrow } from '@unclutterdesk/ui';
+import { Eyebrow, useToast } from '@unclutterdesk/ui';
 import { api } from '../../utils/apiClient';
 
 type SubmissionAnswer = {
@@ -72,6 +72,7 @@ function isReview(submission: SubmissionRecord) {
 }
 
 export function SubmissionsPage() {
+  const toast = useToast();
   const [submissions, setSubmissions] = useState<SubmissionRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [savingId, setSavingId] = useState<string | null>(null);
@@ -126,7 +127,9 @@ export function SubmissionsPage() {
             : item,
         ),
       );
+      toast.success('Submission updated');
     } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Could not update the submission');
       setError(err instanceof Error ? err.message : 'Unable to update submission');
     } finally {
       setSavingId(null);

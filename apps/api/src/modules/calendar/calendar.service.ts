@@ -10,13 +10,26 @@ export class CalendarService {
   private oauth2Client;
 
   constructor(private readonly prisma: PrismaService) {
+    // Must match an "Authorized redirect URI" on the Google OAuth client
+    // exactly, or Google refuses with redirect_uri_mismatch. Logged at start
+    // so the value to register is never a guess.
+    const redirectUri = CalendarService.redirectUri();
     this.oauth2Client = new google.auth.OAuth2(
       process.env.GOOGLE_CLIENT_ID,
       process.env.GOOGLE_CLIENT_SECRET,
-      process.env.NODE_ENV === 'production' 
-        ? 'https://api.unclutterdesk.com/v1/calendar/google/callback'
-        : 'http://localhost:3001/v1/calendar/google/callback'
+      redirectUri,
     );
+    if (process.env.GOOGLE_CLIENT_ID) {
+      this.logger.log(`Google Calendar OAuth redirect URI: ${redirectUri}`);
+    }
+  }
+
+  static redirectUri(): string {
+    const configured = process.env.GOOGLE_REDIRECT_URI?.trim();
+    if (configured) return configured;
+    return process.env.NODE_ENV === 'production'
+      ? 'https://api.unclutterdesk.com/v1/calendar/google/callback'
+      : 'http://localhost:3001/v1/calendar/google/callback';
   }
 
   private static readonly OAUTH_STATE_TYPE = 'google_oauth_state';

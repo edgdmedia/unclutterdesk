@@ -1,13 +1,15 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Video, Calendar, Check } from 'lucide-react';
-import { useBrand } from '@unclutterdesk/ui';
+import { Video, Calendar, Check, ClipboardList, ChevronRight } from 'lucide-react';
+import { useBrand, useToast } from '@unclutterdesk/ui';
 import { api, getBookingUrl, TENANT_SLUG } from '../../utils/apiClient';
 import { RescheduleDialog } from '../../components/RescheduleDialog';
 import { initialsOf } from '../../utils/initials';
 import { useAuth } from '../../context/AuthContext';
+import type { MyAssessment } from '../../utils/assessments';
+import { TransferDetails, type ManualPayment } from '../../components/payments/TransferDetails';
 
-type PortalTab = 'upcoming' | 'past' | 'payments' | 'settings';
+type PortalTab = 'upcoming' | 'past' | 'assessments' | 'payments' | 'settings';
 
 type PortalSession = {
   icalToken?: string;
@@ -19,6 +21,8 @@ type PortalSession = {
   priceKobo: string;
   therapistName: string;
   videoRoomLink: string | null;
+  paymentMethod?: string;
+  manualPayment?: ManualPayment | null;
 };
 
 type PortalPayload = {
@@ -104,6 +108,7 @@ function DateTile({ startsAt, size = 'md' }: { startsAt: string; size?: 'md' | '
 }
 
 export function ClientPortalPage() {
+  const toast = useToast();
   const brand = useBrand();
   const { profile, isAuthenticated } = useAuth();
   const navigate = useNavigate();
@@ -119,6 +124,7 @@ export function ClientPortalPage() {
   const [payments, setPayments] = useState<PaymentsPayload | null>(null);
   const [paymentsError, setPaymentsError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+  const [assessments, setAssessments] = useState<MyAssessment[]>([]);
 
   useEffect(() => {
     let cancelled = false;
@@ -180,6 +186,24 @@ export function ClientPortalPage() {
     };
   }, [tab, isAuthenticated, payments]);
 
+  // Assessments the practitioner sent: waiting ones are shown up top.
+  useEffect(() => {
+    if (!isAuthenticated) return;
+    let cancelled = false;
+    api
+      .get<MyAssessment[]>('/v1/assessments/mine')
+      .then((rows) => {
+        if (!cancelled) setAssessments(rows);
+      })
+      .catch(() => {
+        // Not fatal: the rest of the portal still works.
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [isAuthenticated]);
+  const waiting = assessments.filter((a) => a.status === 'SENT');
+
   const nextSession = portal.upcoming[0] || null;
 
   // A session already paid for or awaiting payment can still be moved; a
@@ -192,6 +216,7 @@ export function ClientPortalPage() {
   const tabs: Array<{ key: PortalTab; label: string }> = [
     { key: 'upcoming', label: 'Upcoming' },
     { key: 'past', label: 'Past sessions' },
+    { key: 'assessments', label: waiting.length ? `Assessments (${waiting.length})` : 'Assessments' },
     { key: 'payments', label: 'Payments' },
     { key: 'settings', label: 'Preferences' },
   ];
@@ -218,7 +243,18 @@ export function ClientPortalPage() {
             <h1 className="mt-1 text-[28px] font-bold tracking-[-0.03em] text-[#0F172A]">{portal.clientName ? `Hello, ${portal.clientName.split(' ')[0]}` : 'Client portal'}</h1>
           </div>
 
-          {portal.upcoming.some(s => s.status === 'PENDING_PAYMENT') && (
+          {portal.upcoming
+            .filter((s) => s.status === 'PENDING_PAYMENT' && s.manualPayment)
+            .map((s) => (
+              <div key={s.id} className="space-y-2">
+                <p className="text-[13px] font-semibold text-[#475569]">
+                  {s.serviceTitle} on {formatDay(s.startsAt)} with {s.therapistName}
+                </p>
+                <TransferDetails payment={s.manualPayment!} bookingId={s.id} email={lookupEmail} color={primary} />
+              </div>
+            ))}
+
+          {portal.upcoming.some(s => s.status === 'PENDING_PAYMENT' && !s.manualPayment) && (
             <div className="rounded-[18px] border border-amber-200 bg-amber-50 p-4 flex items-center justify-between shadow-sm">
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-full bg-amber-100 flex items-center justify-center text-amber-600">
@@ -231,7 +267,7 @@ export function ClientPortalPage() {
               </div>
               <button
                 onClick={async () => {
-                  const pending = portal.upcoming.find(s => s.status === 'PENDING_PAYMENT');
+                  const pending = portal.upcoming.find(s => s.status === 'PENDING_PAYMENT' && !s.manualPayment);
                   if (!pending) return;
 
                   if (!isAuthenticated || profile?.type !== 'user') {
@@ -248,7 +284,7 @@ export function ClientPortalPage() {
                     const res = await api.post<{ paymentUrl: string }>(`/v1/consult/public/bookings/${pending.id}/pay`, { email: lookupEmail });
                     if (res.paymentUrl) window.location.href = res.paymentUrl;
                   } catch (e: any) {
-                    alert('Failed to get payment URL: ' + e.message);
+                    toast.error(e.message || 'Could not open payment. Please try again.');
                   }
                 }}
                 className="px-5 h-[38px] rounded-[10px] bg-amber-500 text-white text-[13px] font-bold shadow-[0_4px_12px_rgba(245,158,11,0.3)] hover:bg-amber-600 cursor-pointer transition-colors"
@@ -330,12 +366,34 @@ export function ClientPortalPage() {
             </div>
           )}
 
-          <div className="flex gap-1.5 p-[5px] bg-[#EEF2F7] rounded-[12px] w-fit">
+          {waiting.map((a) => (
+            <button
+              key={a.id}
+              type="button"
+              onClick={() => navigate(`/portal/assessments/${a.id}`)}
+              className="text-left rounded-[18px] border border-[#E2E8F0] bg-white p-4 flex items-center gap-3 shadow-sm hover:border-[#CBD5E1] cursor-pointer"
+            >
+              <div className="w-10 h-10 rounded-full flex items-center justify-center text-white shrink-0" style={{ backgroundColor: brand.primaryColor || '#0F3A53' }}>
+                <ClipboardList className="w-5 h-5" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <h3 className="text-[14.5px] font-bold text-[#0F172A]">Your practitioner sent you {a.shortName}</h3>
+                <p className="text-[13px] text-[#64748B] mt-0.5 truncate">
+                  {a.message ? `“${a.message}”` : `${a.measures} · about ${a.estimatedMinutes} minutes`}
+                </p>
+              </div>
+              <span className="text-[12.5px] font-bold shrink-0 flex items-center gap-1" style={{ color: brand.primaryColor || '#0F3A53' }}>
+                Start <ChevronRight className="h-4 w-4" />
+              </span>
+            </button>
+          ))}
+
+          <div className="flex gap-1.5 p-[5px] bg-[#EEF2F7] rounded-[12px] w-fit max-w-full overflow-x-auto">
             {tabs.map((item) => (
               <button
                 key={item.key}
                 onClick={() => setTab(item.key)}
-                className={`h-[36px] px-4 rounded-[10px] text-[12.5px] font-bold transition-all cursor-pointer ${
+                className={`h-[36px] px-4 rounded-[10px] text-[12.5px] font-bold whitespace-nowrap shrink-0 transition-all cursor-pointer ${
                   tab === item.key ? 'bg-white text-[#0F172A] shadow-[0_2px_8px_rgba(15,23,42,0.1)]' : 'text-[#64748B] hover:text-[#0F172A]'
                 }`}
               >
@@ -407,6 +465,41 @@ export function ClientPortalPage() {
             </div>
           )}
 
+
+          {tab === 'assessments' && (
+            <div className="bg-white rounded-[22px] border border-[#E2E8F0] overflow-hidden">
+              {assessments.length === 0 ? (
+                <div className="px-5 py-10 text-sm font-medium text-[#64748B]">Your practitioner has not sent you any assessments.</div>
+              ) : (
+                assessments.map((a, index) => (
+                  <button
+                    key={a.id}
+                    type="button"
+                    onClick={() => navigate(`/portal/assessments/${a.id}`)}
+                    className={`w-full text-left flex items-start gap-4 px-5 py-[16px] hover:bg-[#F8FAFC] cursor-pointer ${index > 0 ? 'border-t border-[#F1F5F9]' : ''}`}
+                  >
+                    <div className="flex-1 min-w-0">
+                      <div className="text-[14px] font-bold text-[#0F172A]">{a.shortName} <span className="font-medium text-[#64748B]">· {a.measures}</span></div>
+                      {a.message ? <div className="mt-0.5 text-[12.5px] text-[#475569]">“{a.message}”</div> : null}
+                      {a.status === 'COMPLETED' && a.result?.summary ? (
+                        <div className="mt-1 text-[12.5px] text-[#334155]">{a.result.summary}</div>
+                      ) : null}
+                      <div className="mt-1 text-[11.5px] text-[#94A3B8] font-medium">
+                        {a.status === 'COMPLETED' && a.completedAt ? `Completed ${formatDay(a.completedAt)}` : `Sent ${formatDay(a.sentAt)}`}
+                      </div>
+                    </div>
+                    {a.status === 'SENT' ? (
+                      <span className="h-[24px] px-2.5 rounded-full bg-[#FFFBEB] text-[#B45309] text-[10px] font-black tracking-[0.06em] uppercase flex items-center shrink-0">To do</span>
+                    ) : (
+                      <span className="h-[24px] px-2.5 rounded-full bg-[#ECFDF5] text-[#059669] text-[10px] font-black tracking-[0.06em] uppercase flex items-center gap-1 shrink-0">
+                        <Check className="h-3 w-3" strokeWidth={3} /> Done
+                      </span>
+                    )}
+                  </button>
+                ))
+              )}
+            </div>
+          )}
 
           {tab === 'payments' && (
             <div className="flex flex-col gap-4">

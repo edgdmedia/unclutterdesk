@@ -55,6 +55,12 @@ const PlatformAdminLayout = lazy(() => import('./pages/admin/PlatformAdminLayout
 const AdminOverviewPage = lazy(() => import('./pages/admin/AdminOverviewPage').then((m) => ({ default: m.AdminOverviewPage })));
 const AdminTenantsPage = lazy(() => import('./pages/admin/AdminTenantsPage').then((m) => ({ default: m.AdminTenantsPage })));
 const AdminInvitesPage = lazy(() => import('./pages/admin/AdminInvitesPage').then((m) => ({ default: m.AdminInvitesPage })));
+const AdminRequestsPage = lazy(() => import('./pages/admin/AdminRequestsPage').then((m) => ({ default: m.AdminRequestsPage })));
+const AdminAssessmentsPage = lazy(() => import('./pages/admin/AdminAssessmentsPage').then((m) => ({ default: m.AdminAssessmentsPage })));
+const RequestsPage = lazy(() => import('./pages/practice/RequestsPage').then((m) => ({ default: m.RequestsPage })));
+const AssessmentsPage = lazy(() => import('./pages/practice/AssessmentsPage').then((m) => ({ default: m.AssessmentsPage })));
+const PortalAssessmentPage = lazy(() => import('./pages/client/PortalAssessmentPage').then((m) => ({ default: m.PortalAssessmentPage })));
+const AssessmentPage = lazy(() => import('./pages/public/AssessmentPage').then((m) => ({ default: m.AssessmentPage })));
 const AdminTenantDetailPage = lazy(() => import('./pages/admin/AdminTenantDetailPage').then((m) => ({ default: m.AdminTenantDetailPage })));
 
 // ── Types ──────────────────────────────────────────────────────────────────────
@@ -239,7 +245,9 @@ function AppLayout() {
   const isAdminRoute =
     location.pathname === '/admin' || location.pathname.startsWith('/admin/');
 
-  const hasTenantSession = isAuthenticated && profile?.type !== 'platform_admin';
+  // Clients (type "user") have no workspace either: these endpoints are staff
+  // only, so fetching them for a client just produced 403s on every page.
+  const hasTenantSession = isAuthenticated && profile?.type !== 'platform_admin' && profile?.type !== 'user';
   const clientsKey = hasTenantSession && !isAdminRoute ? '/v1/tenant/clients' : null;
   const bookingsKey = hasTenantSession && !isAdminRoute ? '/v1/consult/therapist/bookings' : null;
   const staffKey = hasTenantSession && !isAdminRoute ? '/v1/tenant/staff' : null;
@@ -313,11 +321,13 @@ function AppLayout() {
   const isFullscreen =
     location.pathname.startsWith('/session') ||
     location.pathname.startsWith('/booking') ||
+    location.pathname.startsWith('/assessment/') ||
     location.pathname.startsWith('/onboarding') ||
     location.pathname.startsWith('/auth') ||
     location.pathname.startsWith('/invite') ||
     location.pathname.startsWith('/client/') ||
     location.pathname === '/portal' ||
+    location.pathname.startsWith('/portal/') ||
     location.pathname === '/login' ||
     location.pathname === '/register' ||
     location.pathname === '/forgot-password' ||
@@ -332,9 +342,11 @@ function AppLayout() {
             <Route path="/session/:id/prep" element={<SessionPrepPage />} />
             <Route path="/session/:id" element={<TelehealthVideoRoomPage />} />
             <Route path="/portal" element={<ClientPortalPage />} />
+            <Route path="/portal/assessments/:id" element={<PortalAssessmentPage />} />
             <Route path="/onboarding" element={<OnboardingWizardPage />} />
             <Route path="/booking/confirmed" element={<BookingConfirmedPage />} />
             <Route path="/booking/inactive" element={<InactivePracticePage />} />
+            <Route path="/assessment/:token" element={<AssessmentPage />} />
 
             <Route path="/privacy" element={<ExternalRedirect to={LEGAL_URLS.privacy} />} />
             <Route path="/terms" element={<ExternalRedirect to={LEGAL_URLS.terms} />} />
@@ -375,7 +387,7 @@ function AppLayout() {
           <Route path="/forgot-password" element={<ForgotPasswordPage />} />
           <Route path="/reset-password/:token" element={<ResetPasswordPage />} />
           <Route path="/verify-email" element={<VerifyEmailPage />} />
-          <Route path="*" element={<NotFoundPage homeHref="/login" />} />
+          <Route path="*" element={<SignInToContinue />} />
         </Routes>
       </Suspense>
     );
@@ -387,6 +399,7 @@ function AppLayout() {
         {/* Desktop Sidebar (hidden on mobile) */}
         <div className="hidden md:flex flex-none">
           <Sidebar 
+             plan={profile?.plan?.toLowerCase()}
              isCollapsed={isSidebarCollapsed}
             onToggleCollapse={handleToggleCollapse} 
           />
@@ -423,6 +436,8 @@ function AppLayout() {
               <Route path="/dashboard/clients/:id" element={<ClientDetailPage clients={resolvedClients} setClients={setClients} />} />
               <Route path="/dashboard/analytics" element={<AnalyticsPage clients={resolvedClients} sessions={resolvedSessions} />} />
               <Route path="/dashboard/submissions" element={<SubmissionsPage />} />
+              <Route path="/dashboard/assessments" element={<AssessmentsPage />} />
+              <Route path="/dashboard/requests" element={<RequestsPage />} />
               <Route path="/dashboard/notifications" element={<NotificationsPage />} />
               <Route path="/dashboard/settings/notifications" element={<NotificationsPage />} />
               <Route path="/dashboard/profile" element={<MyProfilePage />} />
@@ -505,11 +520,24 @@ function AdminShell() {
           <Route path="/admin/tenants" element={<AdminTenantsPage />} />
           <Route path="/admin/tenants/:id" element={<AdminTenantDetailPage />} />
           <Route path="/admin/invites" element={<AdminInvitesPage />} />
+          <Route path="/admin/requests" element={<AdminRequestsPage />} />
+          <Route path="/admin/assessments" element={<AdminAssessmentsPage />} />
           <Route path="*" element={<NotFoundPage homeHref="/admin" />} />
         </Route>
       </Routes>
     </Suspense>
   );
+}
+
+/**
+ * A workspace page reached while signed out: usually the session expired
+ * while the tab was open, or a bookmarked link. It used to show "page not
+ * found"; send the person to sign in and bring them back afterwards.
+ */
+function SignInToContinue() {
+  const location = useLocation();
+  const returnTo = `${location.pathname}${location.search}`;
+  return <Navigate to="/login" replace state={returnTo.startsWith('/dashboard') ? { returnTo } : undefined} />;
 }
 
 function RootRedirect() {
@@ -557,6 +585,7 @@ export function App() {
                 <Route path="/" element={<PublicProfilePage />} />
                 <Route path="/book" element={<ClientBookingPage />} />
                 <Route path="/review" element={<PublicReviewFormPage />} />
+                <Route path="/assessment/:token" element={<AssessmentPage />} />
                 <Route path="/booking/confirmed" element={<BookingConfirmedPage />} />
                 <Route path="/booking/inactive" element={<InactivePracticePage />} />
                 <Route path="/privacy" element={<ExternalRedirect to={LEGAL_URLS.privacy} />} />

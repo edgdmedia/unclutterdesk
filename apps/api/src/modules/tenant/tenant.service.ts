@@ -7,6 +7,7 @@ import { PrismaService } from '../../common/prisma/prisma.service';
 import { NotificationService } from '../notifications/notification.service';
 import { decryptNoteFields } from '../../common/field-encryption';
 import { isPlatformHostname, isReservedSlug, normalizeSlug } from './reserved-slugs';
+import { appOrigin, ROOT_DOMAIN } from '../../common/origins';
 
 const RESERVED_SLUG_MESSAGE = 'That booking handle is reserved. Try another one.';
 
@@ -141,7 +142,10 @@ export class TenantService {
    * Deliberately returns no tenant detail beyond those two booleans.
    */
   async getPublicTenantExistence(slugOrDomain: string) {
-    const key = slugOrDomain.toLowerCase().trim();
+    // The edge router sends the full host it is serving, so a practice
+    // subdomain arrives as "dr-smith.unclutterdesk.com", not "dr-smith".
+    // Matching only bare slugs made every practice subdomain 404.
+    const key = practiceKeyFromHost(slugOrDomain);
     const tenant = await this.prisma.tenant.findFirst({
       where: { OR: [{ slug: key }, { customDomain: key }] },
       select: { isActive: true },
@@ -630,7 +634,9 @@ export class TenantService {
       },
     });
 
-    const inviteUrl = `${process.env.APP_URL || 'https://unclutterdesk.com'}/invite/claim?token=${claimToken}`;
+    // The claim page is in the app. The old fallback was the marketing site,
+    // which has no such page, so invitations could link to a 404.
+    const inviteUrl = `${appOrigin()}/invite/claim?token=${claimToken}`;
 
     /*
      * The invitation was minted and the link handed back to the caller, so
@@ -916,4 +922,19 @@ export class TenantService {
       intake: [],
     };
   }
+}
+
+/**
+ * A slug from `<slug>.unclutterdesk.com`, or the input unchanged: a bare slug
+ * or a practice's own custom domain.
+ */
+export function practiceKeyFromHost(input: string): string {
+  const key = input.toLowerCase().trim().replace(/\.$/, '');
+  const suffix = `.${ROOT_DOMAIN}`;
+  if (key.endsWith(suffix)) {
+    const label = key.slice(0, -suffix.length);
+    // Only a single label is a practice address; a.b.unclutterdesk.com is not.
+    if (label && !label.includes('.')) return label;
+  }
+  return key;
 }

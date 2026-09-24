@@ -47,6 +47,7 @@ function makeService(over: Record<string, any> = {}) {
     },
     consultBooking: { findMany: vi.fn().mockResolvedValue(over.bookings ?? []) },
     universalFormSubmission: { findMany: vi.fn().mockResolvedValue(over.submissions ?? []) },
+    assessmentResponse: { findMany: vi.fn().mockResolvedValue(over.assessments ?? []) },
     clinicalNote: { findMany: vi.fn().mockResolvedValue(over.notes ?? []) },
     notification: { findMany: vi.fn().mockResolvedValue(over.notifications ?? []) },
   };
@@ -100,7 +101,7 @@ describe('whose record may be exported', () => {
   it('every read is scoped to the practice', async () => {
     const { service, prisma } = makeService();
     await service.exportClientData(TENANT, OWNER, CLIENT);
-    for (const model of ['consultBooking', 'universalFormSubmission', 'clinicalNote']) {
+    for (const model of ['consultBooking', 'universalFormSubmission', 'assessmentResponse', 'clinicalNote']) {
       expect(prisma[model].findMany.mock.calls[0][0].where, model).toMatchObject({
         tenantId: TENANT,
         clientProfileId: CLIENT,

@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import useSWR from 'swr';
 import { Copy, Check, Loader2, Ticket } from 'lucide-react';
 import { api, APP_BASE_URL } from '../../utils/apiClient';
-import { Card, Eyebrow } from '@unclutterdesk/ui';
+import { Card, Eyebrow, useToast } from '@unclutterdesk/ui';
 import { formatDate } from './adminTypes';
 
 interface InvitePractice {
@@ -41,6 +41,7 @@ export function inviteLink(code: string) {
  * number of days, then it moves back to Starter unless it has subscribed.
  */
 export function AdminInvitesPage() {
+  const toast = useToast();
   const { data: invites, isLoading, mutate } = useSWR<Invite[]>('/v1/admin/invites');
   const [tier, setTier] = useState<'PRO' | 'CLINIC'>('PRO');
   const [durationDays, setDurationDays] = useState('90');
@@ -68,7 +69,9 @@ export function AdminInvitesPage() {
       setCode('');
       setNote('');
       await mutate((list) => [created, ...(list ?? [])], { revalidate: false });
+      toast.success('Invite code created');
     } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Could not create the code');
       setError(err instanceof Error ? err.message : 'Could not create the code');
     } finally {
       setCreating(false);
@@ -82,7 +85,9 @@ export function AdminInvitesPage() {
       await mutate((list) => (list ?? []).map((i) => (i.id === invite.id ? { ...i, isActive: !i.isActive } : i)), {
         revalidate: false,
       });
+      toast.success('Invite code updated');
     } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Could not update the code');
       setError(err instanceof Error ? err.message : 'Update failed');
     }
   }

@@ -11,22 +11,22 @@ datasource db {
 // ── Multi-Tenant Core ────────────────────────────────────────────────────────
 
 model Tenant {
-  id                BigInt   @id @default(autoincrement())
-  name              String   @db.VarChar(100)
-  slug              String   @unique @db.VarChar(50) // e.g., "dr-jane" -> dr-jane.unclutterdesk.com
-  customDomain      String?  @unique @db.VarChar(100) // e.g., "booking.drjanetherapy.com"
-  customDomainStatus String   @default("PENDING") @db.VarChar(20) // "PENDING", "ACTIVE", "FAILED"
-  
+  id                 BigInt  @id @default(autoincrement())
+  name               String  @db.VarChar(100)
+  slug               String  @unique @db.VarChar(50) // e.g., "dr-jane" -> dr-jane.unclutterdesk.com
+  customDomain       String? @unique @db.VarChar(100) // e.g., "booking.drjanetherapy.com"
+  customDomainStatus String  @default("PENDING") @db.VarChar(20) // "PENDING", "ACTIVE", "FAILED"
+
   // White-Label Brand Tokens
-  logoUrl           String?
-  faviconUrl        String?
-  primaryColor      String   @default("#0F3A53") @db.VarChar(20)
-  secondaryColor    String   @default("#E3B341") @db.VarChar(20)
-  currency          String   @default("NGN") @db.VarChar(10)
-  isDemo            Boolean  @default(false)
-  
+  logoUrl        String?
+  faviconUrl     String?
+  primaryColor   String  @default("#0F3A53") @db.VarChar(20)
+  secondaryColor String  @default("#E3B341") @db.VarChar(20)
+  currency       String  @default("NGN") @db.VarChar(10)
+  isDemo         Boolean @default(false)
+
   // Policies & Content
-  cancellationHours Int      @default(24)
+  cancellationHours Int     @default(24)
   shortName         String?
   welcomeTitle      String?
   welcomeMessage    String?
@@ -35,9 +35,14 @@ model Tenant {
   city              String?
   address           String?
   category          String?
-  
-  subscriptionTier  String   @default("STARTER") // "STARTER", "PRO", "CLINIC"
-  isActive          Boolean  @default(true)
+
+  subscriptionTier      String  @default("STARTER") // "STARTER", "PRO", "CLINIC"
+  /// Clients may pay by bank transfer straight to the practice (Pro and
+  /// Clinic only). Off unless the practice turns it on.
+  manualPaymentsEnabled Boolean @default(false)
+  /// { bankName, accountName, accountNumber, instructions }
+  manualPaymentDetails  Json?
+  isActive              Boolean @default(true)
 
   // Account closure. Requesting closure deactivates the practice immediately
   // and starts the retention window; the irreversible purge is a separate,
@@ -46,26 +51,30 @@ model Tenant {
   closureRequestedBy BigInt?
 
   // Paystack subscription billing
-  paystackCustomerCode     String? @unique
-  paystackSubscriptionCode String? @unique
+  paystackCustomerCode      String?                @unique
+  paystackSubscriptionCode  String?                @unique
   // Paystack's per-subscription email token, required to disable a subscription.
   paystackSubscriptionToken String?
   // "active", "past_due", "cancelled", or null before the first payment.
-  subscriptionStatus       String?
-  subscriptionRenewsAt     DateTime?
+  subscriptionStatus        String?
+  subscriptionRenewsAt      DateTime?
   // Complimentary access from an invite code: the plan in subscriptionTier
   // lasts until this date, then drops back to STARTER unless the practice
   // has started paying. Null for everyone else.
-  complimentaryUntil       DateTime?
-  inviteCodeId             BigInt?
-  inviteCode               InviteCode? @relation(fields: [inviteCodeId], references: [id], onDelete: SetNull)
+  complimentaryUntil        DateTime?
+  inviteCodeId              BigInt?
+  inviteCode                InviteCode?            @relation(fields: [inviteCodeId], references: [id], onDelete: SetNull)
+  enabledAssessments        TenantAssessment[]
+  assessmentAssignments     AssessmentAssignment[]
+  assessmentResponses       AssessmentResponse[]
+  platformRequests          PlatformRequest[]
 
   // Notification plug-in: which channels this tenant has enabled at all.
   // JSON map, e.g. { "email": true, "in_app": true, "push": true, "sms": false }
-  notificationChannels Json     @default("{\"in_app\":true,\"email\":true,\"push\":true,\"sms\":false}")
+  notificationChannels Json @default("{\"in_app\":true,\"email\":true,\"push\":true,\"sms\":false}")
 
-  createdAt         DateTime @default(now())
-  updatedAt         DateTime @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   profiles                Profile[]
   therapists              ConsultTherapistProfile[]
@@ -74,15 +83,15 @@ model Tenant {
   notificationPreferences NotificationPreference[]
   emailLogs               EmailLog[]
   pushSubscriptions       WebPushSubscription[]
-  services          ConsultService[]
-  availabilities    ConsultAvailability[]
-  bookings          ConsultBooking[]
-  discountCodes     DiscountCode[]
-  pendingInvites       ConsultPendingInvite[]
-  universalForms       UniversalForm[]
-  universalSubmissions UniversalFormSubmission[]
-  clinicalNotes        ClinicalNote[]
-  bankSubaccount    BankSubaccount?
+  services                ConsultService[]
+  availabilities          ConsultAvailability[]
+  bookings                ConsultBooking[]
+  discountCodes           DiscountCode[]
+  pendingInvites          ConsultPendingInvite[]
+  universalForms          UniversalForm[]
+  universalSubmissions    UniversalFormSubmission[]
+  clinicalNotes           ClinicalNote[]
+  bankSubaccount          BankSubaccount?
 
   @@index([slug])
   @@index([customDomain])
@@ -97,7 +106,7 @@ model InviteCode {
   code         String    @unique @db.VarChar(40)
   tier         String    @db.VarChar(20) // "PRO" | "CLINIC"
   durationDays Int       @default(90)
-  maxUses      Int?      // null: unlimited
+  maxUses      Int? // null: unlimited
   usedCount    Int       @default(0)
   redeemBy     DateTime? // null: no deadline
   note         String?
@@ -122,9 +131,9 @@ model User {
   createdAt           DateTime  @default(now())
   updatedAt           DateTime  @updatedAt
 
-  platformRole        String?   // "SUPER_ADMIN", "ADMIN" — platform-level staff, no tenant context
-  profiles            Profile[]
-  tokens              Token[]
+  platformRole String? // "SUPER_ADMIN", "ADMIN" — platform-level staff, no tenant context
+  profiles     Profile[]
+  tokens       Token[]
 }
 
 model Token {
@@ -170,15 +179,15 @@ model Profile {
   // How dates, times and numbers are shown to this person. Display only —
   // clients are always billed in the practice's own currency, so there is
   // deliberately no display-currency override here.
-  locale          String    @default("en-NG")
-  timezone        String    @default("Africa/Lagos")
-  dateFormat      String    @default("DD/MM/YYYY")
-  timeFormat      String    @default("24-hour")
-  weekStartsOn    String    @default("Monday")
-  numberFormat    String    @default("1,234.56")
+  locale       String @default("en-NG")
+  timezone     String @default("Africa/Lagos")
+  dateFormat   String @default("DD/MM/YYYY")
+  timeFormat   String @default("24-hour")
+  weekStartsOn String @default("Monday")
+  numberFormat String @default("1,234.56")
 
-  createdAt       DateTime  @default(now())
-  updatedAt       DateTime  @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   tenant                  Tenant                   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   user                    User?                    @relation(fields: [userId], references: [id])
@@ -189,6 +198,9 @@ model Profile {
   notificationPreferences NotificationPreference[]
   emailLogs               EmailLog[]
   pushSubscriptions       WebPushSubscription[]
+
+  assessmentAssignments AssessmentAssignment[]
+  assessmentResponses   AssessmentResponse[]
 
   @@unique([tenantId, email])
   @@unique([tenantId, username])
@@ -218,9 +230,9 @@ model ConsultTherapistProfile {
   createdAt             DateTime @default(now())
   updatedAt             DateTime @updatedAt
 
-  tenant                Tenant                @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  profile               Profile               @relation(fields: [profileId], references: [id], onDelete: Cascade)
-  availabilities        ConsultAvailability[]
+  tenant         Tenant                @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  profile        Profile               @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  availabilities ConsultAvailability[]
 
   @@unique([tenantId, profileId])
   @@unique([tenantId, publicUsername])
@@ -230,19 +242,19 @@ model ConsultTherapistProfile {
 // ── Services & Scheduling ───────────────────────────────────────────────────
 
 model ConsultService {
-  id              BigInt   @id @default(autoincrement())
+  id              BigInt    @id @default(autoincrement())
   tenantId        BigInt
   title           String
   description     String?
-  durationMinutes Int      @default(50)
-  priceKobo       BigInt   @default(0)
-  isActive        Boolean  @default(true)
-  createdAt       DateTime @default(now())
+  durationMinutes Int       @default(50)
+  priceKobo       BigInt    @default(0)
+  isActive        Boolean   @default(true)
+  createdAt       DateTime  @default(now())
   updatedAt       DateTime?
 
-  tenant          Tenant                @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  availabilities  ConsultAvailability[]
-  bookings        ConsultBooking[]
+  tenant         Tenant                @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  availabilities ConsultAvailability[]
+  bookings       ConsultBooking[]
 
   @@index([tenantId, isActive])
 }
@@ -259,37 +271,46 @@ model ConsultAvailability {
   createdAt         DateTime @default(now())
   updatedAt         DateTime @updatedAt
 
-  tenant            Tenant                  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  therapist         ConsultTherapistProfile @relation(fields: [providerProfileId], references: [profileId], onDelete: Cascade)
-  service           ConsultService?         @relation(fields: [serviceId], references: [id], onDelete: SetNull)
-  bookings          ConsultBooking[]
+  tenant    Tenant                  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  therapist ConsultTherapistProfile @relation(fields: [providerProfileId], references: [profileId], onDelete: Cascade)
+  service   ConsultService?         @relation(fields: [serviceId], references: [id], onDelete: SetNull)
+  bookings  ConsultBooking[]
 
   @@index([tenantId, providerProfileId, startsAt, isActive])
 }
 
 model ConsultBooking {
-  id              BigInt   @id @default(autoincrement())
-  tenantId        BigInt
-  serviceId       BigInt
-  availabilityId  BigInt
-  clientProfileId BigInt
-  status          String    @default("PENDING_PAYMENT") // "PENDING_PAYMENT", "CONFIRMED", "COMPLETED", "CANCELLED"
-  paymentRef      String?   @unique
-  paidAt          DateTime?
+  id                          BigInt    @id @default(autoincrement())
+  tenantId                    BigInt
+  serviceId                   BigInt
+  availabilityId              BigInt
+  clientProfileId             BigInt
+  status                      String    @default("PENDING_PAYMENT") // "PENDING_PAYMENT", "CONFIRMED", "COMPLETED", "CANCELLED"
+  /// "PAYSTACK" (paid online) or "MANUAL" (bank transfer straight to the
+  /// practice, confirmed by its staff).
+  paymentMethod               String    @default("PAYSTACK") @db.VarChar(20)
+  /// A manual booking holds its slot until this time, then is released.
+  holdExpiresAt               DateTime?
+  /// The client said they had sent the transfer.
+  clientReportedPaidAt        DateTime?
+  /// Who marked a manual payment as received.
+  paymentConfirmedByProfileId BigInt?
+  paymentRef                  String?   @unique
+  paidAt                      DateTime?
   // What was actually charged, after any discount. The service price is not a
   // substitute: it moves when the practice reprices, and it is simply wrong for
   // a discounted booking.
-  amountKobo      BigInt?
-  discountCodeUsed String?
-  notes           String?
-  videoRoomName   String?
-  createdAt       DateTime  @default(now())
-  updatedAt       DateTime?
+  amountKobo                  BigInt?
+  discountCodeUsed            String?
+  notes                       String?
+  videoRoomName               String?
+  createdAt                   DateTime  @default(now())
+  updatedAt                   DateTime?
 
-  tenant          Tenant              @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  service         ConsultService      @relation(fields: [serviceId], references: [id])
-  availability    ConsultAvailability @relation(fields: [availabilityId], references: [id])
-  client          Profile             @relation("ClientBookings", fields: [clientProfileId], references: [id])
+  tenant          Tenant                    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  service         ConsultService            @relation(fields: [serviceId], references: [id])
+  availability    ConsultAvailability       @relation(fields: [availabilityId], references: [id])
+  client          Profile                   @relation("ClientBookings", fields: [clientProfileId], references: [id])
   formSubmissions UniversalFormSubmission[]
   clinicalNotes   ClinicalNote[]
 
@@ -303,7 +324,7 @@ model DiscountCode {
   code               String
   label              String?
   discountType       String    @default("PERCENT") // "PERCENT" | "FIXED"
-  discountPercent    Int?      // 1–100
+  discountPercent    Int? // 1–100
   discountAmountKobo BigInt?
   maxUses            Int?
   usedCount          Int       @default(0)
@@ -311,7 +332,7 @@ model DiscountCode {
   isActive           Boolean   @default(true)
   createdAt          DateTime  @default(now())
 
-  tenant          Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 
   @@unique([tenantId, code])
 }
@@ -325,7 +346,7 @@ model ConsultPendingInvite {
   sentAt     DateTime @default(now())
   expiresAt  DateTime
 
-  tenant     Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 
   @@unique([tenantId, email])
 }
@@ -333,20 +354,20 @@ model ConsultPendingInvite {
 // ── Universal Form & Assessment Builder Engine ───────────────────────────
 
 model UniversalForm {
-  id          BigInt   @id @default(autoincrement())
-  tenantId    BigInt
-  title       String
-  slug        String?
-  systemKey   String?
-  description String?
-  targetType  String   @default("INTAKE") // "INTAKE", "ASSESSMENT", "FEEDBACK", "CONSENT", "REVIEW"
-  schemaJson  Json     // Field array: { id, label, type: 'text'|'textarea'|'single_choice'|'multiple_choice'|'scale'|'signature'|'file_upload', required, options }
-  reviewPublicationMode String @default("MANUAL") // "MANUAL", "AUTO"
-  reviewerDisplayMode   String @default("FIRST_NAME") // "FIRST_NAME", "ANONYMOUS"
-  isDefault   Boolean  @default(false)
-  isActive    Boolean  @default(true)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id                    BigInt   @id @default(autoincrement())
+  tenantId              BigInt
+  title                 String
+  slug                  String?
+  systemKey             String?
+  description           String?
+  targetType            String   @default("INTAKE") // "INTAKE", "ASSESSMENT", "FEEDBACK", "CONSENT", "REVIEW"
+  schemaJson            Json // Field array: { id, label, type: 'text'|'textarea'|'single_choice'|'multiple_choice'|'scale'|'signature'|'file_upload', required, options }
+  reviewPublicationMode String   @default("MANUAL") // "MANUAL", "AUTO"
+  reviewerDisplayMode   String   @default("FIRST_NAME") // "FIRST_NAME", "ANONYMOUS"
+  isDefault             Boolean  @default(false)
+  isActive              Boolean  @default(true)
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
 
   tenant      Tenant                    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   submissions UniversalFormSubmission[]
@@ -355,23 +376,23 @@ model UniversalForm {
 }
 
 model UniversalFormSubmission {
-  id              BigInt   @id @default(autoincrement())
+  id              BigInt    @id @default(autoincrement())
   tenantId        BigInt
   formId          BigInt
   bookingId       BigInt?
   clientProfileId BigInt
-  targetType      String   @default("INTAKE")
-  status          String   @default("UNREAD") // "UNREAD", "REVIEWED", "PUBLISHED", "HIDDEN"
-  answersJson     Json     // Key-value map of question ID -> answer or signature data
+  targetType      String    @default("INTAKE")
+  status          String    @default("UNREAD") // "UNREAD", "REVIEWED", "PUBLISHED", "HIDDEN"
+  answersJson     Json // Key-value map of question ID -> answer or signature data
   derivedJson     Json?
-  createdAt       DateTime @default(now())
+  createdAt       DateTime  @default(now())
   updatedAt       DateTime?
   reviewedAt      DateTime?
   publishedAt     DateTime?
 
-  tenant          Tenant          @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  form            UniversalForm   @relation(fields: [formId], references: [id], onDelete: Cascade)
-  booking         ConsultBooking? @relation(fields: [bookingId], references: [id])
+  tenant  Tenant          @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  form    UniversalForm   @relation(fields: [formId], references: [id], onDelete: Cascade)
+  booking ConsultBooking? @relation(fields: [bookingId], references: [id])
 
   @@index([tenantId, bookingId])
   @@index([tenantId, clientProfileId])
@@ -394,8 +415,8 @@ model ClinicalNote {
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 
-  tenant          Tenant          @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  booking         ConsultBooking? @relation(fields: [bookingId], references: [id])
+  tenant  Tenant          @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  booking ConsultBooking? @relation(fields: [bookingId], references: [id])
 
   @@index([tenantId, bookingId])
   @@index([tenantId, clientProfileId])
@@ -404,18 +425,18 @@ model ClinicalNote {
 // ── Bank Subaccount & Payout Billing ───────────────────────────────────────
 
 model BankSubaccount {
-  id               BigInt   @id @default(autoincrement())
-  tenantId         BigInt   @unique
-  bankCode         String
-  bankName         String
-  accountNumber    String
-  accountName      String
-  paystackCode     String?
-  isVerified       Boolean  @default(true)
-  createdAt        DateTime @default(now())
-  updatedAt        DateTime @updatedAt
+  id            BigInt   @id @default(autoincrement())
+  tenantId      BigInt   @unique
+  bankCode      String
+  bankName      String
+  accountNumber String
+  accountName   String
+  paystackCode  String?
+  isVerified    Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
 
-  tenant           Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 }
 
 // ── Notifications & Messaging ────────────────────────────────────────────────
@@ -424,7 +445,7 @@ model BankSubaccount {
 // web-push subscriptions. Tenants opt into channels via `notificationChannels`.
 
 model Notification {
-  id          BigInt   @id @default(autoincrement())
+  id          BigInt    @id @default(autoincrement())
   tenantId    BigInt
   profileId   BigInt
   type        String // e.g. "consult.booking_confirmed", "billing.receipt"
@@ -433,13 +454,13 @@ model Notification {
   link        String?
   actionLabel String?
   data        Json?
-  status      String   @default("unread") // "unread", "read", "archived"
+  status      String    @default("unread") // "unread", "read", "archived"
   readAt      DateTime?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
 
-  tenant   Tenant                 @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  profile  Profile                @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  tenant   Tenant                @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  profile  Profile               @relation(fields: [profileId], references: [id], onDelete: Cascade)
   dispatch NotificationDispatch?
 
   @@index([profileId, status])
@@ -496,7 +517,7 @@ model NotificationPreference {
 }
 
 model EmailLog {
-  id         BigInt    @id @default(autoincrement())
+  id         BigInt   @id @default(autoincrement())
   tenantId   BigInt
   profileId  BigInt
   type       String // module/event
@@ -505,7 +526,7 @@ model EmailLog {
   providerId String? // SMTP messageId
   status     String // "SENT", "FAILED", "SKIPPED"
   error      String?
-  createdAt  DateTime  @default(now())
+  createdAt  DateTime @default(now())
 
   tenant  Tenant  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   profile Profile @relation(fields: [profileId], references: [id], onDelete: Cascade)
@@ -532,4 +553,105 @@ model WebPushSubscription {
   profile Profile @relation(fields: [profileId], references: [id], onDelete: Cascade)
 
   @@index([profileId])
+}
+
+/// A standard assessment, stored as a definition the engine applies
+/// (apps/api/src/modules/assessments/engine.ts). The same for every practice
+/// and not editable by them; platform admins maintain it. Built-in
+/// instruments are inserted on first start and never overwritten.
+model AssessmentInstrument {
+  key        String   @id @db.VarChar(40)
+  /// Goes up whenever the definition changes. Each result records the version
+  /// it was scored with, and keeps its own copy of the result.
+  version    Int      @default(1)
+  status     String   @default("PUBLISHED") @db.VarChar(20) // "DRAFT", "PUBLISHED", "RETIRED"
+  builtIn    Boolean  @default(false)
+  definition Json
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  enabledBy TenantAssessment[]
+}
+
+/// A library assessment a practice has switched on.
+model TenantAssessment {
+  tenantId      BigInt
+  instrumentKey String   @db.VarChar(40)
+  enabledAt     DateTime @default(now())
+
+  tenant     Tenant               @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  instrument AssessmentInstrument @relation(fields: [instrumentKey], references: [key], onDelete: Cascade)
+
+  @@id([tenantId, instrumentKey])
+}
+
+/// An assessment sent to a client. The client opens it from their portal, or
+/// through an emailed link whose token is stored only as a hash. Links do not
+/// expire; staff can cancel one that is still open.
+model AssessmentAssignment {
+  id              BigInt    @id @default(autoincrement())
+  tenantId        BigInt
+  instrumentKey   String    @db.VarChar(40)
+  clientProfileId BigInt
+  sentByProfileId BigInt?
+  bookingId       BigInt?
+  tokenHash       String    @unique @db.VarChar(64)
+  status          String    @default("SENT") @db.VarChar(20) // "SENT", "COMPLETED", "CANCELLED"
+  /// The practitioner's note to the client, shown with the assessment.
+  message         String?
+  createdAt       DateTime  @default(now())
+  completedAt     DateTime?
+
+  tenant   Tenant              @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  client   Profile             @relation(fields: [clientProfileId], references: [id], onDelete: Cascade)
+  response AssessmentResponse?
+
+  @@index([tenantId, clientProfileId])
+  @@index([tenantId, status])
+}
+
+/// A completed assessment, scored when it was submitted.
+model AssessmentResponse {
+  id                BigInt   @id @default(autoincrement())
+  tenantId          BigInt
+  assignmentId      BigInt?  @unique
+  instrumentKey     String   @db.VarChar(40)
+  instrumentVersion Int
+  clientProfileId   BigInt
+  answers           Json
+  totalScore        Int
+  severityLabel     String
+  severityLevel     Int
+  /// The full result: clinician wording, subscales, flags, and exactly what
+  /// the client may see. Kept as scored, so later rule changes do not rewrite
+  /// a past result.
+  result            Json
+  hasFlags          Boolean  @default(false)
+  completedAt       DateTime @default(now())
+
+  tenant     Tenant                @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  client     Profile               @relation(fields: [clientProfileId], references: [id], onDelete: Cascade)
+  assignment AssessmentAssignment? @relation(fields: [assignmentId], references: [id], onDelete: SetNull)
+
+  @@index([tenantId, clientProfileId, instrumentKey])
+}
+
+/// A practice asking the platform for something: a new assessment, a feature,
+/// a service, or feedback.
+model PlatformRequest {
+  id                   BigInt   @id @default(autoincrement())
+  tenantId             BigInt
+  requestedByProfileId BigInt?
+  type                 String   @db.VarChar(20) // "ASSESSMENT", "FEATURE", "SERVICE", "FEEDBACK", "OTHER"
+  subject              String   @db.VarChar(160)
+  details              String?
+  status               String   @default("OPEN") @db.VarChar(20) // "OPEN", "PLANNED", "DONE", "DECLINED"
+  adminNote            String?
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([status])
+  @@index([tenantId])
 }

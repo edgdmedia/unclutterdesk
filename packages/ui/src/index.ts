@@ -25,3 +25,4 @@ export * from './components/Textarea';
 export * from './components/Toggle';
 export * from './components/UnclutterLockup';
 export * from './components/UnclutterMark';
+export * from './components/Toast';

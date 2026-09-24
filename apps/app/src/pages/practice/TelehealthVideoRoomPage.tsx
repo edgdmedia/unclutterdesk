@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { Mic, MicOff, Video, VideoOff, Monitor, MessageSquare, PhoneOff, Lock, ShieldCheck, Check, FileText } from 'lucide-react';
 import { api } from '../../utils/apiClient';
+import { useToast } from '@unclutterdesk/ui';
 
 type RoomPayload = {
   booking: {
@@ -28,6 +29,7 @@ type RoomPayload = {
 };
 
 export function TelehealthVideoRoomPage() {
+  const toast = useToast();
   const navigate = useNavigate();
   const { id } = useParams<{ id: string }>();
   const [drawerOpen, setDrawerOpen] = useState(true);
@@ -106,6 +108,7 @@ export function TelehealthVideoRoomPage() {
       await api.patch(`/v1/notes/${targetNoteId}/lock`, {});
       setNoteLocked(true);
       setSaveState('saved');
+      toast.success('Note locked');
     }
   }
 

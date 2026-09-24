@@ -31,6 +31,7 @@ vi.mock('../../context/AuthContext', () => ({
 }));
 
 vi.mock('@unclutterdesk/ui', () => ({
+  useToast: () => ({ success: () => undefined, error: () => undefined, info: () => undefined }),
   Eyebrow: ({ children }: { children: React.ReactNode }) => <span>{children}</span>,
 }));
 

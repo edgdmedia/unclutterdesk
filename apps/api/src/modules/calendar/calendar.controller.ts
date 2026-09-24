@@ -6,6 +6,7 @@ import { RolesGuard } from '../../common/roles.guard';
 import { CLINICAL, Roles } from '../../common/roles';
 import { authenticatedProfileId, authenticatedTenantId } from '../../common/authenticated-tenant';
 import { Response } from 'express';
+import { appOrigin } from '../../common/origins';
 
 @ApiTags('Calendar')
 @Controller('v1/calendar')
@@ -29,7 +30,9 @@ export class CalendarController {
   @Get('google/callback')
   @ApiOperation({ summary: 'Google OAuth callback handler' })
   async handleGoogleCallback(@Query('code') code: string, @Query('state') state: string, @Res() res: Response) {
-    const frontendBase = (process.env.APP_URL || 'http://localhost:5173').replace(/\/+$/, '');
+    // appOrigin, not APP_URL with a localhost fallback: unset in production,
+    // that sent therapists to localhost after connecting Google Calendar.
+    const frontendBase = appOrigin();
     try {
       await this.calendarService.handleCallback(code, state);
     } catch {

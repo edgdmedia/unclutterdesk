@@ -25,7 +25,7 @@ function makeService() {
     consultBooking: { findMany: vi.fn().mockResolvedValue([]) },
   };
   const service = new ConsultService(
-    prisma, {} as any, {} as any, {} as any, {} as any, {} as any,
+    prisma, {} as any, {} as any, {} as any, {} as any, {} as any, {} as any,
   );
   return { service, prisma };
 }

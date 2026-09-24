@@ -101,7 +101,7 @@ function makeService({
     {} as any,
     {} as any,
     {} as any,
-    { pushBookingToGoogle: vi.fn() } as any,
+    { pushBookingToGoogle: vi.fn() } as any, {} as any,
   );
   return { service, prisma, tx };
 }

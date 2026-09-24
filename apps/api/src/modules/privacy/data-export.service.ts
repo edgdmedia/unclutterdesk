@@ -79,7 +79,7 @@ export class DataExportService {
       );
     }
 
-    const [bookings, submissions, notes, notifications] = await Promise.all([
+    const [bookings, submissions, assessments, notes, notifications] = await Promise.all([
       this.prisma.consultBooking.findMany({
         where: { tenantId, clientProfileId },
         include: {
@@ -92,6 +92,10 @@ export class DataExportService {
         where: { tenantId, clientProfileId },
         include: { form: { select: { title: true, systemKey: true } } },
         orderBy: { createdAt: 'desc' },
+      }),
+      this.prisma.assessmentResponse.findMany({
+        where: { tenantId, clientProfileId },
+        orderBy: { completedAt: 'desc' },
       }),
       this.prisma.clinicalNote.findMany({
         where: { tenantId, clientProfileId },
@@ -168,6 +172,19 @@ export class DataExportService {
         answers: submission.answersJson,
         scores: submission.derivedJson,
         submittedAt: submission.createdAt.toISOString(),
+      })),
+
+      // Standard questionnaires (PHQ-9, GAD-7, PCL-5, DASS-21): the person's
+      // answers, scores, and the summary written for them. The clinician's
+      // interpretation is left out, as with the notes below.
+      assessmentsYouCompleted: assessments.map((response) => ({
+        responseId: response.id.toString(),
+        instrument: response.instrumentKey,
+        answers: response.answers,
+        totalScore: response.totalScore,
+        severity: response.severityLabel,
+        summaryForYou: (response.result as { client?: unknown } | null)?.client ?? null,
+        completedAt: response.completedAt.toISOString(),
       })),
 
       clinicalNotes: {

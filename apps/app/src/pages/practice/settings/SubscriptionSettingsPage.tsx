@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Check, TrendingUp } from 'lucide-react';
-import { Eyebrow } from '@unclutterdesk/ui';
+import { Eyebrow, useToast } from '@unclutterdesk/ui';
 import { useBrand } from '@unclutterdesk/ui';
 import { api } from '../../../utils/apiClient';
 
@@ -70,6 +70,7 @@ function getPlanDisabledReason(plan: SubscriptionRecord['subscriptionTier'], sub
 }
 
 export function SubscriptionSettingsPage() {
+  const toast = useToast();
   const brand = useBrand();
   const primaryColor = brand.primaryColor || '#0F3A53';
   const [subscription, setSubscription] = useState<SubscriptionRecord | null>(null);
@@ -146,7 +147,9 @@ export function SubscriptionSettingsPage() {
       setInviteCode('');
       setInviteMessage(`${PLAN_NAMES[result.tier] ?? result.tier} is on, free until ${formatDate(result.complimentaryUntil)}.`);
       await refresh();
+      toast.success('Invite code applied');
     } catch (err: any) {
+      toast.error(err instanceof Error ? err.message : 'Could not use that invite code');
       setError(err.message || 'Unable to use that invite code');
     } finally {
       setRedeeming(false);

@@ -33,7 +33,7 @@ function makeService(existing: ReturnType<typeof stored> | null = stored()) {
       update: vi.fn().mockImplementation(({ data }) => Promise.resolve({ ...existing, ...data })),
     },
   };
-  const service = new ConsultService(prisma, {} as any, {} as any, {} as any, {} as any, {} as any);
+  const service = new ConsultService(prisma, {} as any, {} as any, {} as any, {} as any, {} as any, {} as any);
   return { service, prisma };
 }
 

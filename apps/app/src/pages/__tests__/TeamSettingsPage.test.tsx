@@ -28,6 +28,7 @@ vi.mock('../../utils/apiClient', () => ({
 }));
 
 vi.mock('@unclutterdesk/ui', () => ({
+  useToast: () => ({ success: () => undefined, error: () => undefined, info: () => undefined }),
   Eyebrow: ({ children }: any) => <span>{children}</span>,
   Card: ({ children }: any) => <div>{children}</div>,
   StatusBadge: ({ children }: any) => <span>{children}</span>,

@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Tag, Plus, X, Power, PowerOff } from 'lucide-react';
-import { Eyebrow, useBrand } from '@unclutterdesk/ui';
+import { Eyebrow, useBrand, useToast } from '@unclutterdesk/ui';
 import { api } from '../../../utils/apiClient';
 
 interface DiscountCode {
@@ -18,6 +18,7 @@ interface DiscountCode {
 }
 
 export function DiscountSettingsPage() {
+  const toast = useToast();
   const brand = useBrand();
   const primaryColor = brand.primaryColor || '#0F3A53';
 
@@ -60,8 +61,9 @@ export function DiscountSettingsPage() {
     try {
       await api.delete(`/v1/discount/${id}`);
       setDiscounts(current => current.map(d => d.id === id ? { ...d, isActive: false } : d));
+      toast.success('Discount code switched off');
     } catch (err: any) {
-      alert(err.response?.data?.message || err.message || 'Error updating status');
+      toast.error(err.response?.data?.message || err.message || 'Could not switch the code off');
     }
   }
 
@@ -94,7 +96,9 @@ export function DiscountSettingsPage() {
       setFormAmount('');
       setFormMaxUses('');
       setFormExpiresAt('');
+      toast.success('Discount code created');
     } catch (err: any) {
+      toast.error(err instanceof Error ? err.message : 'Could not create the discount code');
       setError(err.response?.data?.message || err.message || 'Error creating discount code');
     } finally {
       setIsSubmitting(false);

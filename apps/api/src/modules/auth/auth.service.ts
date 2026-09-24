@@ -16,11 +16,13 @@ import { DeviceInfo, SessionService } from './session.service';
 import { JWT_EXPIRES_IN, REFRESH_SECRET, REFRESH_EXPIRES_IN } from '../../common/auth.config';
 import { NotificationService } from '../notifications/notification.service';
 import { InviteService } from '../invites/invite.service';
+import { appOrigin } from '../../common/origins';
 
 const BCRYPT_ROUNDS = 12;
 
 @Injectable()
 export class AuthService {
+
   private readonly logger = new Logger(AuthService.name);
 
   /**
@@ -65,6 +67,17 @@ export class AuthService {
     private readonly sessions: SessionService,
     private readonly invites?: InviteService,
   ) {}
+
+  /** `base`, or `base-xxxx` when an account already has that username. */
+  private async freeUsername(base: string): Promise<string> {
+    const root = base || 'user';
+    for (let attempt = 0; attempt < 5; attempt++) {
+      const candidate = attempt === 0 ? root : `${root}-${randomBytes(2).toString('hex')}`;
+      const taken = await this.prisma.user.findUnique({ where: { username: candidate }, select: { id: true } });
+      if (!taken) return candidate;
+    }
+    return `${root}-${randomBytes(6).toString('hex')}`;
+  }
 
   async register(tenantId: bigint | undefined, dto: {
     email: string;
@@ -116,7 +129,10 @@ export class AuthService {
       await this.invites.assertUsable(inviteCode);
     }
 
-    const username = (dto.username || email.split('@')[0]).toLowerCase().trim();
+    // User.username is unique across the platform, and the app sends the
+    // practice name as the handle, so two practices called "Grace Therapy"
+    // would collide. Resolve a free one before creating anything.
+    const username = await this.freeUsername((dto.username || email.split('@')[0]).toLowerCase().trim());
 
     let targetTenantId = tenantId;
     if (!targetTenantId) {
@@ -432,12 +448,8 @@ export class AuthService {
       orderBy: [{ emailVerified: 'desc' }, { createdAt: 'desc' }],
     });
 
-    const baseUrl = (
-      process.env.APP_BASE_URL ||
-      process.env.VITE_APP_URL ||
-      process.env.WEB_BASE_URL ||
-      'https://app.unclutterdesk.com'
-    ).replace(/\/+$/, '');
+    // One way to build app links everywhere: APP_URL, else the production app.
+    const baseUrl = appOrigin();
     const resetLink = `${baseUrl}/reset-password/${token}`;
 
     let emailSent = false;
@@ -1092,7 +1104,7 @@ export class AuthService {
     // Required, not optional: a caller that forgets the include would otherwise
     // hand back tenantSlug: null, which is worse than the inconsistency this
     // replaces — silently wrong instead of visibly absent.
-    tenant: { name: string; slug: string } | null;
+    tenant: { name: string; slug: string; subscriptionTier?: string | null } | null;
     consultTherapistProfile: unknown | null;
   }) {
     return {
@@ -1111,6 +1123,8 @@ export class AuthService {
       avatarUrl: profile.avatarUrl,
       practiceName: profile.tenant?.name ?? null,
       tenantSlug: profile.tenant?.slug ?? null,
+      // The practice's plan, so the app can mark what is and is not included.
+      plan: profile.tenant?.subscriptionTier ?? 'STARTER',
       isTherapist: !!profile.consultTherapistProfile,
     };
   }

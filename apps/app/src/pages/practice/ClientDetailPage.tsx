@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { Download, ChevronRight, FileText, Printer, Lock, Plus, X, Loader2 } from 'lucide-react';
-import { Eyebrow, Card, StatusBadge, Button } from '@unclutterdesk/ui';
+import { Eyebrow, Card, StatusBadge, Button, useToast } from '@unclutterdesk/ui';
 import { useBrand } from '@unclutterdesk/ui';
 import { api } from '../../utils/apiClient';
 import type { Client } from '../../App';
+import { ClientAssessmentsPanel } from '../../components/ClientAssessmentsPanel';
 
 interface ClientDetailPageProps {
   clients: Client[];
@@ -12,6 +13,7 @@ interface ClientDetailPageProps {
 }
 
 export function ClientDetailPage({ clients, setClients }: ClientDetailPageProps) {
+  const toast = useToast();
   const { id } = useParams();
   const brand = useBrand();
   const primaryColor = brand.primaryColor || '#0F3A53';
@@ -20,7 +22,7 @@ export function ClientDetailPage({ clients, setClients }: ClientDetailPageProps)
   const propClient = clients.find((c) => c.id === id) || clients[0];
   const [client, setClient] = useState<Client>(propClient);
 
-  const [activeTab, setActiveTab] = useState<'history' | 'notes' | 'intake'>('history');
+  const [activeTab, setActiveTab] = useState<'history' | 'notes' | 'intake' | 'assessments'>('history');
   const [selectedNoteId, setSelectedNoteId] = useState<string | null>(
     propClient.notes.length > 0 ? propClient.notes[0].id : null
   );
@@ -111,7 +113,9 @@ export function ClientDetailPage({ clients, setClients }: ClientDetailPageProps)
       setNoteObjective('');
       setNoteAssessment('');
       setNotePlan('');
+      toast.success('Note saved');
     } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Could not save the note');
       setNoteError(err instanceof Error ? err.message : 'Failed to save note');
     } finally {
       setIsSavingNote(false);
@@ -204,6 +208,7 @@ export function ClientDetailPage({ clients, setClients }: ClientDetailPageProps)
               { id: 'history', label: 'Session history' },
               { id: 'notes', label: 'SOAP notes' },
               { id: 'intake', label: 'Intake answers' },
+              { id: 'assessments', label: 'Assessments' },
             ].map((t) => (
               <button
                 key={t.id}
@@ -397,6 +402,10 @@ export function ClientDetailPage({ clients, setClients }: ClientDetailPageProps)
                 </div>
               )}
             </Card>
+          )}
+
+          {activeTab === 'assessments' && (
+            <ClientAssessmentsPanel clientId={client.id} clientName={client.name} primaryColor={primaryColor} />
           )}
         </div>
       </main>
