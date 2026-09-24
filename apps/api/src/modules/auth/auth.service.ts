@@ -16,6 +16,7 @@ import { DeviceInfo, SessionService } from './session.service';
 import { JWT_EXPIRES_IN, REFRESH_SECRET, REFRESH_EXPIRES_IN } from '../../common/auth.config';
 import { NotificationService } from '../notifications/notification.service';
 import { InviteService } from '../invites/invite.service';
+import { ensureDefaultForms } from '../intake/default-forms';
 import { appOrigin } from '../../common/origins';
 
 const BCRYPT_ROUNDS = 12;
@@ -130,6 +131,13 @@ export class AuthService {
         },
       });
       targetTenantId = newTenant.id;
+      // A new practice starts with PHQ-9, GAD-7 and a review form. Not worth
+      // failing the signup over; a missing form can be added later.
+      try {
+        await ensureDefaultForms(this.prisma, newTenant.id);
+      } catch (err) {
+        this.logger.warn(`Default forms not created for tenant ${newTenant.id}: ${(err as Error).message}`);
+      }
     }
 
     // Check if user profile already exists for this tenant
