@@ -1,6 +1,6 @@
 import React from 'react';
 import { Check } from 'lucide-react';
-import { UnclutterMark } from './UnclutterMark';
+import { UnclutterLockup } from '@unclutterdesk/ui';
 
 export type AuthStat = { value: string; label: string };
 
@@ -76,12 +76,8 @@ export function AuthSplitShell({
           />
         ))}
 
-        <div className="flex items-center gap-[11px] relative z-[2]">
-          <UnclutterMark size={32} className="rounded-[10px]" />
-          <span className="text-white text-[18px] font-semibold tracking-[-0.02em]">Unclutter</span>
-          <span className="h-[19px] px-[9px] rounded-full bg-[#E3B341] text-[#0F172A] text-[9.5px] font-black tracking-[0.1em] inline-flex items-center">
-            Desk
-          </span>
+        <div className="relative z-[2]">
+          <UnclutterLockup variant="dark" markSize={32} />
         </div>
 
         <div className="mt-auto pt-10 relative z-[2]">

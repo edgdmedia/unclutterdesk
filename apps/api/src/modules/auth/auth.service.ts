@@ -1062,6 +1062,7 @@ export class AuthService {
     firstName: string | null;
     lastName: string | null;
     type: string;
+    role: string;
     status: string;
     avatarUrl: string | null;
     // Required, not optional: a caller that forgets the include would otherwise
@@ -1078,6 +1079,10 @@ export class AuthService {
       firstName: profile.firstName,
       lastName: profile.lastName,
       type: profile.type,
+      // The app decides which practice settings to show from this. Without it
+      // every owner was treated as a plain therapist and could not reach
+      // brand, services, team, billing or payouts from the menu.
+      role: profile.role,
       status: profile.status,
       avatarUrl: profile.avatarUrl,
       practiceName: profile.tenant?.name ?? null,

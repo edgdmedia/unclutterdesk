@@ -82,6 +82,34 @@ describe('internal links', () => {
   });
 });
 
+/*
+ * The menus live in components/, which the link scan above never read. The
+ * sidebar's "Services & pricing" pointed at a route that did not exist, so
+ * every owner who clicked it landed on the 404 page.
+ */
+describe('navigation menus', () => {
+  const COMPONENTS = resolve(APP, 'components');
+  const menuLinks: Array<{ file: string; target: string }> = [];
+  for (const file of sourceFiles(COMPONENTS)) {
+    const source = stripComments(readFileSync(file, 'utf8'));
+    for (const m of source.matchAll(/\b(?:to|key):\s*'(\/[^']*)'/g)) {
+      menuLinks.push({ file: file.slice(APP.length + 1), target: m[1] });
+    }
+  }
+  for (const m of stripComments(APP_TSX).matchAll(/\bkey:\s*'(\/[^']*)'/g)) {
+    menuLinks.push({ file: 'App.tsx', target: m[1] });
+  }
+
+  test('the sidebar was found', () => {
+    expect(menuLinks.some((l) => l.file.endsWith('Sidebar.tsx'))).toBe(true);
+  });
+
+  test('every menu entry resolves to a declared route', () => {
+    const broken = menuLinks.filter((l) => !routeExists(l.target));
+    expect(broken.map((l) => `${l.file} → ${l.target}`)).toEqual([]);
+  });
+});
+
 describe('buttons', () => {
   /*
    * A <button> has to do something: carry an onClick, submit a form, or be

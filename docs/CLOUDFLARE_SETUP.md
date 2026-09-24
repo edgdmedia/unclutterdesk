@@ -237,9 +237,15 @@ so this flow is what promotes a domain to trusted.
    lands. If you take Option B above, point it at that Worker.
 3. Create a **CNAME target** for customers to point at, e.g.
    `customers.unclutterdesk.com`.
-4. Per tenant: create a custom hostname via API, have the practice add a CNAME
-   from their domain to your CNAME target, then flip `customDomainStatus` to
-   `ACTIVE` once Cloudflare reports the certificate as issued.
+4. Set `CUSTOM_DOMAIN_TARGET` in the API's `.env` to that CNAME target and
+   restart the API. Until it is set, the app says custom domains are not
+   available and the Verify button refuses, so nothing can go ACTIVE early.
+5. Per tenant: create a custom hostname via API, and have the practice add a
+   CNAME from their domain to your CNAME target. **Verify** in Brand settings
+   then checks both things before it sets `customDomainStatus` to `ACTIVE`:
+   the CNAME resolves to `CUSTOM_DOMAIN_TARGET`, and the domain answers over
+   HTTPS (the certificate has been issued). Otherwise it records `FAILED` (DNS)
+   or leaves `PENDING` (certificate) and tells the practice which.
 
 Limits are generous — 50,000 custom hostnames on pay-as-you-go — so this scales
 past Option A's ceiling. Pricing is per custom hostname; check current rates

@@ -269,14 +269,9 @@ export function Sidebar({ plan = 'starter', isOpen, onClose, isCollapsed = false
                     alt={brand.name}
                     className="h-7 w-7 rounded-[9px] object-cover border border-white/10"
                   />
-                  <div className="flex items-center gap-1.5">
-                    <span className="font-semibold text-[17px] tracking-[-0.02em] text-[#F8FAFC] truncate max-w-[120px]">
-                      {brand.name.toLowerCase()}
-                    </span>
-                    <span className="h-[18px] px-2 rounded-full text-[9px] font-extrabold tracking-[0.08em] bg-[#E3B341] text-[#0F172A] flex items-center justify-center uppercase shrink-0">
-                      OS
-                    </span>
-                  </div>
+                  <span className="font-semibold text-[16px] tracking-[-0.02em] text-[#F8FAFC] truncate max-w-[150px]">
+                    {brand.name}
+                  </span>
                 </div>
               ) : (
                 <UnclutterLockup variant="dark" markSize={32} />

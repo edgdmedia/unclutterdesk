@@ -1,6 +1,7 @@
 import { Injectable, BadRequestException, ConflictException, NotFoundException, ForbiddenException } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { randomBytes } from 'crypto';
+import { promises as dns } from 'dns';
 import { Logger } from '@nestjs/common';
 import { PrismaService } from '../../common/prisma/prisma.service';
 import { NotificationService } from '../notifications/notification.service';
@@ -272,6 +273,9 @@ export class TenantService {
       select: {
         id: true,
         name: true,
+        // The wizard keeps the practice's address from this. Without it, the
+        // wizard re-derived a slug from the name on every run and saved that.
+        slug: true,
         shortName: true,
         logoUrl: true,
         primaryColor: true,
@@ -290,9 +294,50 @@ export class TenantService {
     });
 
     if (!tenant) throw new NotFoundException('Practice tenant not found');
-    return { ...tenant, id: tenant.id.toString() };
+    return { ...tenant, id: tenant.id.toString(), customDomainTarget: this.customDomainTarget() };
   }
 
+  /**
+   * The hostname practices point their CNAME at, e.g. customers.unclutterdesk.com.
+   * Unset means Cloudflare for SaaS is not configured, so no custom domain can
+   * actually be served and none may be marked active.
+   */
+  customDomainTarget(): string | null {
+    const target = process.env.CUSTOM_DOMAIN_TARGET?.trim().toLowerCase().replace(/\.$/, '');
+    return target || null;
+  }
+
+  /** Separate so tests can stand in for DNS. */
+  protected async lookupCname(hostname: string): Promise<string[]> {
+    try {
+      return await dns.resolveCname(hostname);
+    } catch {
+      return [];
+    }
+  }
+
+  /** True when the domain answers over HTTPS, which means its certificate has been issued. */
+  protected async servesHttps(hostname: string): Promise<boolean> {
+    try {
+      const response = await fetch(`https://${hostname}/`, {
+        method: 'HEAD',
+        redirect: 'manual',
+        signal: AbortSignal.timeout(8000),
+      });
+      return response.status > 0;
+    } catch {
+      return false;
+    }
+  }
+
+  /**
+   * Promotes a custom domain to ACTIVE only once it really reaches us.
+   *
+   * This used to set ACTIVE unconditionally. An active domain becomes the
+   * practice's public address in emails and calendar invites, and is trusted
+   * by CORS, so a typo or a domain nobody had pointed anywhere went straight
+   * into clients' inboxes as a dead link.
+   */
   async verifyCustomDomain(tenantId: bigint) {
     const tenant = await this.prisma.tenant.findUnique({
       where: { id: tenantId },
@@ -304,13 +349,38 @@ export class TenantService {
       throw new BadRequestException('No custom domain has been configured for this practice.');
     }
 
-    const normalized = this.validateCustomDomain(tenant.customDomain);
-    const updated = await this.prisma.tenant.update({
-      where: { id: tenantId },
-      data: { customDomain: normalized, customDomainStatus: 'ACTIVE' },
-      select: { id: true, customDomain: true, customDomainStatus: true },
-    });
+    const target = this.customDomainTarget();
+    if (!target) {
+      throw new BadRequestException(
+        'Custom domains are not available yet. Your practice keeps working at its unclutterdesk.com address.',
+      );
+    }
 
+    const normalized = this.validateCustomDomain(tenant.customDomain)!;
+    const setStatus = (customDomainStatus: 'ACTIVE' | 'PENDING' | 'FAILED') =>
+      this.prisma.tenant.update({
+        where: { id: tenantId },
+        data: { customDomain: normalized, customDomainStatus },
+        select: { id: true, customDomain: true, customDomainStatus: true },
+      });
+
+    const cnames = (await this.lookupCname(normalized)).map((c) => c.toLowerCase().replace(/\.$/, ''));
+    if (!cnames.includes(target)) {
+      await setStatus('FAILED');
+      throw new BadRequestException(
+        `${normalized} does not point to us yet. Add a CNAME record for it with the value ${target}. ` +
+          'DNS changes can take up to an hour to show.',
+      );
+    }
+
+    if (!(await this.servesHttps(normalized))) {
+      await setStatus('PENDING');
+      throw new BadRequestException(
+        `${normalized} points to us, but its security certificate is still being issued. Try again in a few minutes.`,
+      );
+    }
+
+    const updated = await setStatus('ACTIVE');
     return {
       id: updated.id.toString(),
       customDomain: updated.customDomain,

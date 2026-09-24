@@ -215,7 +215,7 @@ export function InvitePage() {
         </div>
 
         <div className="flex items-center gap-[9px] text-[#475569] text-[11.5px] relative z-[2]">
-          <UnclutterMark size={20} className="rounded-[6px] opacity-70" />
+          <UnclutterMark size={20} showBadge={false} className="rounded-[6px] opacity-70" />
           <span>Powered by Unclutter Desk · {expiresIn(invite.expiresAt)}</span>
         </div>
       </div>
