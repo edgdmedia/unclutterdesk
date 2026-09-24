@@ -7,20 +7,18 @@ export default defineConfig({
     react(),
     VitePWA({
       registerType: 'autoUpdate',
-      includeAssets: ['unclutterdesk-mark.svg', 'unclutterdesk-lockup.svg'],
+      includeAssets: ['favicon.svg', 'favicon.ico', 'apple-touch-icon.png', 'unclutterdesk-mark.svg', 'unclutterdesk-lockup.svg'],
       manifest: {
         name: 'Unclutter Desk',
         short_name: 'Unclutter',
         description: 'Mental health practice management platform',
-        theme_color: '#0F3A53',
+        theme_color: '#1C4E3F',
         background_color: '#F8FAFC',
         display: 'standalone',
         icons: [
-          {
-            src: 'unclutterdesk-mark.svg',
-            sizes: 'any',
-            type: 'image/svg+xml'
-          }
+          { src: 'icon-192.png', sizes: '192x192', type: 'image/png' },
+          { src: 'icon-512.png', sizes: '512x512', type: 'image/png' },
+          { src: 'favicon.svg', sizes: 'any', type: 'image/svg+xml' },
         ]
       }
     })

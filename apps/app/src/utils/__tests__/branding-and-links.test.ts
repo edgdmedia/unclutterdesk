@@ -1,5 +1,5 @@
 import { readdirSync, readFileSync, statSync } from 'node:fs';
-import { resolve } from 'node:path';
+import { relative, resolve } from 'node:path';
 import { describe, expect, test } from 'vitest';
 
 /**
@@ -14,7 +14,9 @@ import { describe, expect, test } from 'vitest';
  * cannot quietly reintroduce either.
  */
 const APPS = resolve(__dirname, '../../../..');
-const SOURCE_DIRS = ['app/src', 'landing/src', 'api/src'];
+// packages/ui holds the shared logo components, and was the one place the old
+// pill survived because it was never scanned.
+const SOURCE_DIRS = ['app/src', 'landing/src', 'api/src', '../packages/ui/src'];
 const CODE = /\.(ts|tsx|astro|js|jsx)$/;
 
 function sourceFiles(dir: string): string[] {
@@ -34,7 +36,7 @@ const ALL_SOURCE = SOURCE_DIRS.flatMap((d) => sourceFiles(resolve(APPS, d)));
 
 function offenders(pattern: RegExp): string[] {
   return ALL_SOURCE.filter((file) => pattern.test(readFileSync(file, 'utf8'))).map((file) =>
-    file.slice(APPS.length + 1),
+    relative(APPS, file),
   );
 }
 
@@ -64,6 +66,12 @@ describe('the product has one name', () => {
    */
   test('no logo draws the old name', () => {
     expect(offenders(/>\s*OS\s*<\/text>/)).toEqual([]);
+  });
+
+  // The same pill, written as a JSX badge next to the wordmark (sidebar,
+  // lockup) or as a dimmed suffix (auth card).
+  test('no logo badge spells the old name', () => {
+    expect(offenders(/>\s*OS\s*<\/span>|^\s*OS\s*$/m)).toEqual([]);
   });
 });
 
