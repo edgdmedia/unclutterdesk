@@ -159,7 +159,7 @@ the synthetic account is created by the idempotent demo data migration and its
 password is provisioned separately from a server secret. Regression coverage was
 added in `apps/app/src/utils/__tests__/private-data.test.ts`.
 
-### 6. Several user-facing actions are visibly present but non-functional — **PARTLY FIXED**
+### 6. Several user-facing actions are visibly present but non-functional — **FIXED**
 
 Verified examples include:
 
@@ -195,16 +195,36 @@ they will disappear on refresh, or encounter dead-end controls in core workflows
   a registered route. Corrected to `/dashboard/settings/brand`.
 - The dashboard Notes button had no handler; it now opens the session prep
   screen, which is where the SOAP note editor lives.
-- Client portal Reschedule and the Payments tab are removed rather than left
-  dead — neither had a backing operation, and the Payments panel announced its
-  own incompleteness to clients.
+- Client portal Reschedule and the Payments tab were first removed rather than
+  left dead, then built properly:
 
-**Still open: invite claiming.** `InvitePage.tsx` makes no API call at all — it
-navigates to `/dashboard` and shows hardcoded "Smith Therapy Ltd" and
-"segun@smiththerapy.ng". Making it real needs an invite-claim endpoint that
-validates the token in `ConsultPendingInvite`, creates the profile against the
-inviting tenant, and only then signs the user in. That is a feature rather than
-a repair, so it is called out separately instead of being marked done.
+  - **Reschedule.** `GET /v1/consult/portal/bookings/:id/reschedule-options` and
+    `POST .../reschedule`. Two slots change hands at once, so the new one is
+    claimed with the conditional `updateMany` (WHERE still requires
+    `isActive: true`) *before* the old one is released — releasing first would
+    leave a client who loses the race with no appointment at all. The booking
+    lookup is scoped by `clientProfileId` as well as `tenantId`; without it any
+    signed-in client could move a stranger's appointment by guessing an id. The
+    cutoff is the practice's own `cancellationHours`, and options and the write
+    share one guard so the dialog cannot offer a time the write then refuses.
+  - **Payments.** `GET /v1/consult/portal/payments`, scoped to the profile in
+    the session. Building it surfaced that the amount charged was never
+    recorded: it was computed at booking time (price minus discount), sent to
+    Paystack, and discarded. `ConsultBooking` now carries `amountKobo` and
+    `discountCodeUsed`. This also fixed a live overcharge — paying later from
+    the portal re-priced at the service's full list price, so anyone who used a
+    discount code and paid from the portal was charged the undiscounted amount.
+
+- **Invite claiming.** `POST /v1/auth/invite/claim` consumes the invitation and
+  creates the profile in the inviting tenant in one transaction; a `deleteMany`
+  returning zero loses cleanly to a concurrent claim. The role comes from the
+  invitation, never the request body, and an unknown token is indistinguishable
+  from an expired one. The claim token was
+  `invite-${Date.now()}-${Math.random()...}` — both halves guessable, for a
+  credential that grants access to clinical records — and is now 32 random
+  bytes. The page loads the real invitation, handles expired/spent/missing
+  tokens, and drops the Title and avatar inputs, which discarded what was typed
+  (Profile has no title column; the avatar was only a local data URL).
 
 ## P1 high-priority risks
 
@@ -221,8 +241,10 @@ a repair, so it is called out separately instead of being marked done.
 - The app legal pages still say “Unclutter OS” instead of “Unclutter Desk”:
   `apps/app/src/pages/PrivacyPolicyPage.tsx:13,22` and
   `apps/app/src/pages/TermsOfServicePage.tsx:20,26,44,57,60,71`.
-- Invite UI still says “Smith Therapy Ltd”, “segun@smiththerapy.ng”, and
-  “unclutterOS”: `apps/app/src/pages/auth/InvitePage.tsx:50,80,151,201,204`.
+- Invite UI: the “Smith Therapy Ltd” and “segun@smiththerapy.ng” placeholders are
+  gone — the page now renders the practice and address from the invitation
+  itself. The “unclutterOS” wording in `InvitePage.tsx` remains, covered by the
+  rename below.
 - Login and platform-admin screens still use “unclutterOS”:
   `apps/app/src/pages/auth/LoginPage.tsx:75`,
   `apps/app/src/pages/admin/AdminTenantsPage.tsx:50`,
@@ -250,3 +272,28 @@ mistaken for live data and its CTA must either work or be removed.
 ## Decision
 
 Do not onboard real practices or allow real PHI until all P0 blockers are fixed and the phase-gated plan in `docs/LIVE_USAGE_PLAN.md` is completed. A private demo with synthetic data is acceptable only if access is restricted and no real client data is entered.
+
+## Local verification
+
+Verified locally on 2026-09-04 against the current app, API, and landing dev
+servers after applying Prisma migrations and provisioning the demo password.
+
+- Fixed locally: private app fallback data removed; demo account provisioned via
+  `scripts/provision-demo-account.mjs`; auth/admin branding updated from
+  `unclutterOS` to `Unclutter Desk`; landing footer placeholder social links removed.
+- Fixed locally: `PublicProfilePage` no longer calls `/v1/tenant/public/info/`
+  with an empty slug; it falls back to the host-resolved `/v1/tenant/public/info` endpoint.
+- Fixed locally: unauthenticated unknown app routes now render the app 404 screen
+  instead of redirecting silently to `/login`.
+
+Still failing locally:
+
+- `TenantMiddleware` does not resolve `.localhost` subdomains, so public booking
+  endpoints on `demo.localhost` return 500 `Practice tenant context required`.
+  Evidence: `apps/api/src/common/middleware/tenant.middleware.ts:34-54`, plus
+  local server logs showing 500s from `ConsultController.getPublicTherapists`,
+  `ConsultController.getPublicAvailability`, and `IntakeController.getPublicReviews`.
+- The booking-expiry cron errors on local startup because the local database is
+  missing `ConsultBooking.amountKobo`, indicating schema drift beyond the current
+  committed migrations. Evidence: `apps/api/src/modules/consult/consult.cron.ts:18-26`
+  and local server log `The column ConsultBooking.amountKobo does not exist in the current database`.

@@ -22,6 +22,12 @@ interface AuthContextValue {
   isAuthenticated: boolean;
   login: (email: string, password: string) => Promise<AuthProfile>;
   loginAdmin: (email: string, password: string) => Promise<AuthProfile>;
+  claimInvite: (data: {
+    token: string;
+    password: string;
+    firstName?: string;
+    lastName?: string;
+  }) => Promise<AuthProfile>;
   register: (data: {
     firstName: string;
     lastName: string;
@@ -117,6 +123,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return res.profile;
   }, []);
 
+  // An invited colleague setting their password. The API creates the profile
+  // inside the practice that invited them and signs them in, so this ends with
+  // a session exactly like login — no separate verification step, because the
+  // invitation reaching their inbox is what proved the address.
+  const claimInvite = useCallback(
+    async (data: { token: string; password: string; firstName?: string; lastName?: string }) => {
+      const res = await api.post<{ profile: AuthProfile }>('/v1/auth/invite/claim', data);
+      setProfile(res.profile);
+      cacheProfile(res.profile);
+      return res.profile;
+    },
+    [],
+  );
+
   // Registers a brand-new practice + owner therapist. The X-Tenant-Slug header
   // is explicitly emptied so the API creates a fresh tenant instead of
   // resolving into the current practice context.
@@ -159,6 +179,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         isAuthenticated: !!profile,
         login,
         loginAdmin,
+        claimInvite,
         register,
         logout,
       }}

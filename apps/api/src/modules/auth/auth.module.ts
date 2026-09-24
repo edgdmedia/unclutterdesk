@@ -6,6 +6,7 @@ import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
 import { JwtStrategy } from './jwt.strategy';
 import { CsrfGuard } from './csrf.guard';
+import { SessionService } from './session.service';
 import { PrismaService } from '../../common/prisma/prisma.service';
 import { JWT_SECRET, JWT_EXPIRES_IN } from '../../common/auth.config';
 
@@ -20,11 +21,12 @@ import { JWT_SECRET, JWT_EXPIRES_IN } from '../../common/auth.config';
   controllers: [AuthController],
   providers: [
     AuthService,
+    SessionService,
     JwtStrategy,
     PrismaService,
     CsrfGuard,
     { provide: APP_GUARD, useClass: CsrfGuard },
   ],
-  exports: [AuthService, JwtModule],
+  exports: [AuthService, SessionService, JwtModule],
 })
 export class AuthModule {}

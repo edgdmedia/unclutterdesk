@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Patch, Body, Param, Req, Res, UseGuards } from '@nestjs/common';
+import { Controller, Get, Post, Patch, Delete, Body, Param, Req, Res, UseGuards } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { Response } from 'express';
 import { SkipThrottle } from '@nestjs/throttler';
@@ -46,6 +46,14 @@ export class TenantController {
     // moment, so a shorter negative TTL keeps a new signup from 404ing for long.
     res.setHeader('Cache-Control', result.exists ? 'public, max-age=300' : 'public, max-age=30');
     return result;
+  }
+
+  @Get('public/invite/:claimToken')
+  @ApiOperation({ summary: 'Details of a pending staff invitation, for the claim page' })
+  getInvite(@Param('claimToken') claimToken: string) {
+    // Public by necessity: the invitee has no account until they claim it. The
+    // token is the credential, so it is 32 random bytes.
+    return this.tenantService.getInviteByToken(claimToken);
   }
 
   @AnyAuthenticated()
@@ -146,6 +154,19 @@ export class TenantController {
       BigInt(req.user.profileId),
       BigInt(profileId),
       dto.role,
+    );
+  }
+
+  @Roles(...PRACTICE_ADMIN)
+  @Delete('staff/invite/:inviteId')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @ApiBearerAuth('access-token')
+  @ApiOperation({ summary: 'Withdraw a staff invitation that has not been claimed' })
+  revokeInvite(@Req() req: any, @Param('inviteId') inviteId: string) {
+    return this.tenantService.revokeStaffInvite(
+      authenticatedTenantId(req),
+      BigInt(req.user.profileId),
+      inviteId,
     );
   }
 

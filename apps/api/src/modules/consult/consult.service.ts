@@ -6,6 +6,9 @@ import { DiscountService } from '../discount/discount.service';
 import { BillingService } from '../billing/billing.service';
 import { PaystackService } from '../billing/paystack.service';
 import { CalendarService } from '../calendar/calendar.service';
+import { changePercent, chargedKobo, revenueByMonth, startOfMonth } from '../../common/revenue';
+import { tenantWebOrigin } from '../../common/origins';
+import { decryptNoteFields } from '../../common/field-encryption';
 
 @Injectable()
 export class ConsultService {
@@ -436,7 +439,6 @@ export class ConsultService {
     phone?: string;
     notes?: string;
     discountCode?: string;
-    callbackUrl?: string;
   }) {
     const serviceId = BigInt(dto.serviceId);
     const availabilityId = BigInt(dto.availabilityId);
@@ -524,6 +526,16 @@ export class ConsultService {
         bookingId,
       );
 
+      // Settle the price before writing the row. The amount charged is not
+      // recoverable from the service afterwards: a discount changes it, and the
+      // practice may reprice the service at any time.
+      const finalPriceKobo = discountResult
+        ? BigInt(discountResult.finalKobo)
+        : BigInt(slot.service?.priceKobo || 0);
+      const discountCodeUsed = discountResult
+        ? dto.discountCode!.toUpperCase().trim()
+        : null;
+
       const booking = await tx.consultBooking.create({
         data: {
           tenantId,
@@ -533,6 +545,8 @@ export class ConsultService {
           status: 'PENDING_PAYMENT',
           notes: dto.notes,
           videoRoomName,
+          amountKobo: finalPriceKobo,
+          discountCodeUsed,
         },
       });
 
@@ -545,11 +559,6 @@ export class ConsultService {
       }
 
       let paymentUrl = null;
-      let finalPriceKobo = BigInt(slot.service?.priceKobo || 0);
-
-      if (discountResult) {
-        finalPriceKobo = BigInt(discountResult.finalKobo);
-      }
 
       if (finalPriceKobo > 0n) {
         const splitConfig = await this.billing.calculateSplitPayout(tenantId, finalPriceKobo);
@@ -563,7 +572,13 @@ export class ConsultService {
             subaccount: splitConfig.paystackSubaccountCode || undefined,
             bearer: 'subaccount',
             split: splitConfig.tier === 'STARTER' ? 5 : undefined,
-            callback_url: dto.callbackUrl,
+            // Was dto.callbackUrl, straight from the request body. Paystack
+            // redirects the payer to whatever it is given, so an unchecked
+            // value is a phishing page wearing this checkout as its approach:
+            // the client pays the practice, then lands somewhere else still
+            // believing they are with their therapist. Built from the
+            // practice's own site instead.
+            callback_url: `${tenantWebOrigin(slot.tenant)}/booking/confirmed`,
           });
 
           paymentUrl = pTx.authorization_url;
@@ -611,7 +626,11 @@ export class ConsultService {
       throw new NotFoundException('Pending payment booking not found');
     }
 
-    const splitConfig = await this.billing.calculateSplitPayout(tenantId, BigInt(booking.service?.priceKobo || 0));
+    // The amount agreed when the booking was made, not the service's price
+    // today: paying from the portal used to re-price at full list, so anyone who
+    // booked with a discount code and paid later was charged the full amount.
+    const chargeKobo = chargedKobo(booking);
+    const splitConfig = await this.billing.calculateSplitPayout(tenantId, chargeKobo);
     const reference = `booking-${booking.id}-${Date.now()}`;
 
     await this.prisma.consultBooking.update({
@@ -676,6 +695,245 @@ export class ConsultService {
    * address could read that person's appointment history — and the response
    * carries Jitsi join links, which are themselves unauthenticated.
    */
+  /**
+   * What the signed-in client has been charged, and what is still owed.
+   *
+   * The portal's payments tab was a placeholder reading "payment history is not
+   * wired yet". Amounts come from the booking's own amountKobo — the figure
+   * agreed at booking time — not from the service's price today, which moves
+   * when the practice reprices and is simply wrong for a discounted booking.
+   */
+  async getClientPayments(tenantId: bigint, clientProfileId: bigint) {
+    const bookings = await this.prisma.consultBooking.findMany({
+      // Scoped to the client in the session. This is billing history, so it must
+      // never be addressable by anything the caller supplies.
+      where: { tenantId, clientProfileId },
+      include: {
+        service: { select: { title: true, priceKobo: true } },
+        availability: { select: { startsAt: true } },
+      },
+      orderBy: { createdAt: 'desc' },
+      take: 200,
+    });
+
+    const payments = bookings.map((booking) => ({
+      bookingId: booking.id.toString(),
+      serviceTitle: booking.service.title,
+      sessionAt: booking.availability.startsAt.toISOString(),
+      amountKobo: chargedKobo(booking).toString(),
+      discountCode: booking.discountCodeUsed,
+      status: booking.status,
+      paidAt: booking.paidAt ? booking.paidAt.toISOString() : null,
+      // Enough of the Paystack reference to match against a bank statement
+      // without printing the whole thing back over the wire.
+      reference: booking.paymentRef,
+      bookedAt: booking.createdAt.toISOString(),
+    }));
+
+    const paidKobo = payments
+      .filter((p) => p.paidAt)
+      .reduce((total, p) => total + BigInt(p.amountKobo), 0n);
+    const outstandingKobo = payments
+      .filter((p) => p.status === 'PENDING_PAYMENT')
+      .reduce((total, p) => total + BigInt(p.amountKobo), 0n);
+
+    return {
+      payments,
+      totalPaidKobo: paidKobo.toString(),
+      outstandingKobo: outstandingKobo.toString(),
+    };
+  }
+
+  /**
+   * The booking a client is allowed to move, with the reason if they are not.
+   *
+   * Shared by the options list and the reschedule itself, so the two can never
+   * disagree about what is movable — offering a slot the write then refuses is
+   * the failure mode this exists to prevent.
+   */
+  private async loadReschedulable(tenantId: bigint, clientProfileId: bigint, bookingId: bigint) {
+    const booking = await this.prisma.consultBooking.findFirst({
+      // Scoped by client as well as tenant: without clientProfileId any signed-in
+      // client could move a stranger's appointment by guessing a booking id.
+      where: { id: bookingId, tenantId, clientProfileId },
+      include: { availability: true, service: true },
+    });
+
+    if (!booking) throw new NotFoundException('Booking not found');
+
+    if (booking.status === 'CANCELLED' || booking.status === 'COMPLETED') {
+      throw new BadRequestException(`A ${booking.status.toLowerCase()} session cannot be moved`);
+    }
+
+    const tenant = await this.prisma.tenant.findUnique({
+      where: { id: tenantId },
+      select: { cancellationHours: true },
+    });
+    const noticeHours = tenant?.cancellationHours ?? 24;
+    const deadline = new Date(
+      booking.availability.startsAt.getTime() - noticeHours * 60 * 60 * 1000,
+    );
+
+    if (new Date() > deadline) {
+      throw new BadRequestException(
+        `This session can no longer be moved online — it starts within ${noticeHours} hours. Please contact the practice.`,
+      );
+    }
+
+    return { booking, noticeHours };
+  }
+
+  /**
+   * Slots this booking could move to: same practitioner, same service, still
+   * open, still in the future.
+   *
+   * Keeping the practitioner fixed is deliberate — the payout split, the
+   * practitioner's prep and their calendar are all tied to who is seeing the
+   * client, so switching therapist is a new booking, not a reschedule.
+   */
+  async getRescheduleOptions(tenantId: bigint, clientProfileId: bigint, bookingId: bigint) {
+    const { booking, noticeHours } = await this.loadReschedulable(
+      tenantId,
+      clientProfileId,
+      bookingId,
+    );
+
+    const slots = await this.prisma.consultAvailability.findMany({
+      where: {
+        tenantId,
+        providerProfileId: booking.availability.providerProfileId,
+        serviceId: booking.serviceId,
+        isActive: true,
+        // A slot that starts sooner than the notice window would be unmovable
+        // the moment it was booked, so it is not worth offering.
+        startsAt: { gte: new Date(Date.now() + noticeHours * 60 * 60 * 1000) },
+        id: { not: booking.availabilityId },
+      },
+      orderBy: { startsAt: 'asc' },
+      take: 60,
+    });
+
+    return {
+      bookingId: booking.id.toString(),
+      serviceTitle: booking.service.title,
+      currentStartsAt: booking.availability.startsAt.toISOString(),
+      noticeHours,
+      slots: slots.map((slot) => ({
+        id: slot.id.toString(),
+        startsAt: slot.startsAt.toISOString(),
+        endsAt: slot.endsAt.toISOString(),
+        channel: slot.channel,
+      })),
+    };
+  }
+
+  /**
+   * Move a booking to another open slot.
+   *
+   * The new slot is claimed with the same conditional `updateMany` the original
+   * booking uses: the WHERE still requires `isActive: true`, so Postgres holds
+   * the row lock while evaluating it and a second request matches nothing
+   * rather than double-booking the time. Releasing the old slot and repointing
+   * the booking happen in that same transaction, so a failure part-way cannot
+   * leave the client holding two slots or none.
+   */
+  async rescheduleBooking(
+    tenantId: bigint,
+    clientProfileId: bigint,
+    bookingId: bigint,
+    newAvailabilityId: bigint,
+  ) {
+    const { booking } = await this.loadReschedulable(tenantId, clientProfileId, bookingId);
+
+    if (newAvailabilityId === booking.availabilityId) {
+      throw new BadRequestException('That is the time this session is already booked for');
+    }
+
+    const target = await this.prisma.consultAvailability.findFirst({
+      where: { id: newAvailabilityId, tenantId },
+    });
+
+    if (!target || !target.isActive) {
+      throw new BadRequestException('That time is no longer available');
+    }
+    if (target.startsAt <= new Date()) {
+      throw new BadRequestException('That time is in the past');
+    }
+    if (target.providerProfileId !== booking.availability.providerProfileId) {
+      throw new BadRequestException(
+        'That time belongs to a different practitioner. Book a new session instead.',
+      );
+    }
+    if (target.serviceId !== booking.serviceId) {
+      throw new BadRequestException('That time is not open for this service');
+    }
+
+    const updated = await this.prisma.$transaction(async (tx) => {
+      const claimed = await tx.consultAvailability.updateMany({
+        where: { id: target.id, tenantId, isActive: true },
+        data: { isActive: false },
+      });
+      if (claimed.count === 0) {
+        throw new BadRequestException('That time was taken while you were choosing it');
+      }
+
+      // Only now is the old slot safe to give back.
+      await tx.consultAvailability.updateMany({
+        where: { id: booking.availabilityId, tenantId },
+        data: { isActive: true },
+      });
+
+      const moved = await tx.consultBooking.updateMany({
+        where: { id: booking.id, tenantId, clientProfileId },
+        data: { availabilityId: target.id, updatedAt: new Date() },
+      });
+      if (moved.count === 0) {
+        throw new BadRequestException('Booking not found');
+      }
+
+      return tx.consultBooking.findFirst({
+        where: { id: booking.id, tenantId },
+        include: { availability: true, service: true, client: true },
+      });
+    });
+
+    if (!updated) throw new NotFoundException('Booking not found');
+
+    const clientName =
+      `${updated.client.firstName || ''} ${updated.client.lastName || ''}`.trim() ||
+      updated.client.email;
+    const when = updated.availability.startsAt.toISOString();
+
+    // Best effort from here: the booking has already moved, and a failed
+    // notification must not roll that back or surface as an error to the client.
+    try {
+      await this.notifications.notify({
+        tenantId,
+        profileIds: [updated.availability.providerProfileId],
+        type: 'consult.booking_rescheduled',
+        title: 'Session moved',
+        message: `${clientName} moved their ${updated.service.title} session to ${when}.`,
+        link: `/portal/clients/${updated.clientProfileId}`,
+        preferenceCategory: 'reminders',
+      });
+    } catch (err) {
+      this.logger.warn(`Reschedule notice failed for booking ${bookingId}: ${err}`);
+    }
+
+    try {
+      await this.calendar.pushBookingToGoogle(updated.id);
+    } catch (err) {
+      this.logger.warn(`Google calendar update failed for booking ${bookingId}: ${err}`);
+    }
+
+    return {
+      id: updated.id.toString(),
+      startsAt: updated.availability.startsAt.toISOString(),
+      endsAt: updated.availability.endsAt.toISOString(),
+      status: updated.status,
+    };
+  }
+
   async getClientPortal(tenantId: bigint, profileId: bigint) {
     const client = await this.prisma.profile.findFirst({
       where: { id: profileId, tenantId },
@@ -852,10 +1110,14 @@ export class ConsultService {
       latestNote: latestNote
         ? {
           id: latestNote.id.toString(),
-          subjective: latestNote.subjective,
-          objective: latestNote.objective,
-          assessment: latestNote.assessment,
-          plan: latestNote.plan,
+          // Stored encrypted; the practitioner reading their own note is
+          // exactly who it is decrypted for.
+          ...(({ subjective, objective, assessment, plan }) => ({
+            subjective,
+            objective,
+            assessment,
+            plan,
+          }))(decryptNoteFields(latestNote)),
           isLocked: latestNote.isLocked,
           createdAt: latestNote.createdAt.toISOString(),
         }
@@ -926,18 +1188,30 @@ export class ConsultService {
     };
   }
 
+  /**
+   * The practice dashboard.
+   *
+   * Revenue here is money collected, taken from each booking's own amountKobo.
+   * It used to sum `service.priceKobo` over every booking created this month
+   * with a CONFIRMED or COMPLETED status, which overstated the figure three
+   * ways: a discounted booking was counted at full list price, a repriced
+   * service revalued bookings made months ago, and a booking confirmed but
+   * never paid for was counted as income.
+   */
   async getDashboardSummary(tenantId: bigint) {
     const now = new Date();
-    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+    // Twelve buckets ending with the current month, so the chart has a real
+    // series behind it instead of a ramp derived from this month's figure.
+    const seriesStart = startOfMonth(now, 11);
 
-    const [bookingsThisMonth, upcomingBookings, totalClientsCount, activeRosterCount, availabilityCount, serviceCount, payoutCount] = await Promise.all([
+    const [paidBookings, upcomingBookings, totalClientsCount, activeRosterCount, availabilityCount, serviceCount, payoutCount] = await Promise.all([
       this.prisma.consultBooking.findMany({
-        where: {
-          tenantId,
-          status: { in: ['CONFIRMED', 'COMPLETED'] },
-          createdAt: { gte: startOfMonth },
+        where: { tenantId, paidAt: { gte: seriesStart } },
+        select: {
+          amountKobo: true,
+          paidAt: true,
+          service: { select: { priceKobo: true } },
         },
-        include: { service: true },
       }),
       this.prisma.consultBooking.findMany({
         where: {
@@ -960,15 +1234,20 @@ export class ConsultService {
       this.prisma.bankSubaccount.count({ where: { tenantId, isVerified: true } }),
     ]);
 
-    const revenueThisMonthKobo = bookingsThisMonth.reduce((acc, b) => acc + (b.service?.priceKobo ? Number(b.service.priceKobo) : 0), 0);
-    const revenueThisMonthNaira = revenueThisMonthKobo / 100;
+    const monthlyRevenue = revenueByMonth(paidBookings, now);
+    const thisMonth = monthlyRevenue[monthlyRevenue.length - 1];
     const hasAvailability = availabilityCount > 0;
     const hasService = serviceCount > 0;
     const hasPayout = payoutCount > 0;
     const onboardingCompleted = hasAvailability && hasService && hasPayout;
 
     return {
-      revenueThisMonthNaira,
+      revenueThisMonthNaira: thisMonth.revenueNaira,
+      revenueThisMonthKobo: thisMonth.revenueKobo,
+      monthlyRevenue,
+      // Null when last month earned nothing: growth from zero has no
+      // percentage, and the page used to show a fixed "+100%" instead.
+      revenueChangePercent: changePercent(monthlyRevenue),
       scheduledSessionsCount: upcomingBookings.length,
       totalClientsCount,
       activeRosterCount: activeRosterCount || 1,

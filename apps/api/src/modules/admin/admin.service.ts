@@ -1,5 +1,6 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../../common/prisma/prisma.service';
+import { chargedKobo, collectedKobo } from '../../common/revenue';
 
 @Injectable()
 export class AdminService {
@@ -35,14 +36,14 @@ export class AdminService {
         }),
       ]);
 
+    // Was every booking row at its service's current list price — so a
+    // cancelled booking nobody paid for, and every discounted one, counted at
+    // full price. Only money that arrived counts, at the amount charged.
     const bookingRows = await this.prisma.consultBooking.findMany({
-      where: { tenant: AdminService.REAL_TENANTS },
-      select: { status: true, service: { select: { priceKobo: true } } },
+      where: { tenant: AdminService.REAL_TENANTS, paidAt: { not: null } },
+      select: { amountKobo: true, paidAt: true, service: { select: { priceKobo: true } } },
     });
-    const revenueKobo = bookingRows.reduce(
-      (acc, row) => acc + (row.service?.priceKobo ?? 0n),
-      0n,
-    );
+    const revenueKobo = collectedKobo(bookingRows);
 
     return {
       tenants,
@@ -74,15 +75,18 @@ export class AdminService {
     });
 
     const bookingRows = await this.prisma.consultBooking.findMany({
-      select: { tenantId: true, service: { select: { priceKobo: true } } },
+      where: { paidAt: { not: null } },
+      select: {
+        tenantId: true,
+        amountKobo: true,
+        paidAt: true,
+        service: { select: { priceKobo: true } },
+      },
     });
     const revenueByTenant = new Map<string, number>();
     for (const row of bookingRows) {
       const key = row.tenantId.toString();
-      revenueByTenant.set(
-        key,
-        (revenueByTenant.get(key) ?? 0) + Number(row.service?.priceKobo ?? 0n),
-      );
+      revenueByTenant.set(key, (revenueByTenant.get(key) ?? 0) + Number(chargedKobo(row)));
     }
 
     return tenants.map((t) => ({
@@ -151,15 +155,12 @@ export class AdminService {
         take: 8,
       }),
       this.prisma.consultBooking.findMany({
-        where: { tenantId: id },
-        select: { service: { select: { priceKobo: true } } },
+        where: { tenantId: id, paidAt: { not: null } },
+        select: { amountKobo: true, paidAt: true, service: { select: { priceKobo: true } } },
       }),
     ]);
 
-    const revenueKobo = bookingRows.reduce(
-      (acc, row) => acc + (row.service?.priceKobo ?? 0n),
-      0n,
-    );
+    const revenueKobo = collectedKobo(bookingRows);
 
     return {
       id: tenant.id.toString(),

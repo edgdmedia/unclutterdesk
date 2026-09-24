@@ -1,5 +1,6 @@
 import { Injectable, BadRequestException, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../../common/prisma/prisma.service';
+import { decryptNoteFields, encryptNoteFields } from '../../common/field-encryption';
 
 @Injectable()
 export class NotesService {
@@ -42,10 +43,14 @@ export class NotesService {
       note = await this.prisma.clinicalNote.update({
         where: { id: note.id },
         data: {
-          subjective: dto.subjective,
-          objective: dto.objective,
-          assessment: dto.assessment,
-          plan: dto.plan,
+          // The narrative is encrypted before it reaches the database; see
+          // common/field-encryption.ts.
+          ...encryptNoteFields({
+            subjective: dto.subjective,
+            objective: dto.objective,
+            assessment: dto.assessment,
+            plan: dto.plan,
+          }),
           diagnosisCode: dto.diagnosisCode,
         },
       });
@@ -56,21 +61,24 @@ export class NotesService {
           bookingId,
           clientProfileId,
           authorProfileId,
-          subjective: dto.subjective,
-          objective: dto.objective,
-          assessment: dto.assessment,
-          plan: dto.plan,
+          ...encryptNoteFields({
+            subjective: dto.subjective,
+            objective: dto.objective,
+            assessment: dto.assessment,
+            plan: dto.plan,
+          }),
           diagnosisCode: dto.diagnosisCode,
         },
       });
     }
 
+    const readable = decryptNoteFields(note);
     return {
       id: note.id.toString(),
-      subjective: note.subjective,
-      objective: note.objective,
-      assessment: note.assessment,
-      plan: note.plan,
+      subjective: readable.subjective,
+      objective: readable.objective,
+      assessment: readable.assessment,
+      plan: readable.plan,
       isLocked: note.isLocked,
       updatedAt: note.updatedAt.toISOString(),
     };
@@ -82,18 +90,21 @@ export class NotesService {
       orderBy: { createdAt: 'desc' },
     });
 
-    return notes.map((n) => ({
+    return notes.map((n) => {
+      const readable = decryptNoteFields(n);
+      return {
       id: n.id.toString(),
       bookingId: n.bookingId?.toString(),
-      subjective: n.subjective,
-      objective: n.objective,
-      assessment: n.assessment,
-      plan: n.plan,
+      subjective: readable.subjective,
+      objective: readable.objective,
+      assessment: readable.assessment,
+      plan: readable.plan,
       diagnosisCode: n.diagnosisCode,
       isLocked: n.isLocked,
       createdAt: n.createdAt.toISOString(),
       updatedAt: n.updatedAt.toISOString(),
-    }));
+      };
+    });
   }
 
   async lockNote(tenantId: bigint, noteId: bigint) {

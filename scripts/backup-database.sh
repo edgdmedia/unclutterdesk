@@ -15,6 +15,11 @@
 #
 #   BACKUP_S3_BUCKET     e.g. unclutterdesk-backups
 #   BACKUP_S3_ENDPOINT   e.g. https://<account>.r2.cloudflarestorage.com
+#   BACKUP_ENCRYPTION_PASSPHRASE
+#                        Encrypts the dump before it leaves the machine. Keep it
+#                        somewhere other than the backup bucket: together, a
+#                        thief who takes the bucket has both, and losing the
+#                        bucket loses both.
 #   AWS_ACCESS_KEY_ID
 #   AWS_SECRET_ACCESS_KEY
 #
@@ -42,11 +47,41 @@ done
 log() { printf '%s  %s\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$*"; }
 fail() { log "ERROR: $*"; exit 1; }
 
-# ── Connection details ───────────────────────────────────────────────────────
-if [ -z "${DATABASE_URL:-}" ] && [ -f ".env" ]; then
-    DATABASE_URL="$(grep -E '^[[:space:]]*DATABASE_URL=' .env | tail -n 1 | cut -d= -f2- | sed -e 's/^"//' -e 's/"$//')"
-    export DATABASE_URL
-fi
+# ── Configuration ────────────────────────────────────────────────────────────
+# Only DATABASE_URL used to be read from .env, so a passphrase or bucket set
+# there was silently ignored: the script warned that encryption was off and
+# shipped the dump in the clear, while the file said otherwise. Anything
+# already in the environment still wins, so cron and systemd stay in charge.
+ENV_FILE="${BACKUP_ENV_FILE:-.env}"
+read_from_env_file() {
+    local name="$1"
+    # Already in the environment: cron and systemd stay in charge.
+    [ -n "${!name:-}" ] && return 0
+    [ -f "$ENV_FILE" ] || return 0
+
+    # Read in bash rather than grep|cut|sed. That pipeline had two failure
+    # modes at once: under `set -euo pipefail` a key simply not being present
+    # made grep exit 1 and killed the script before it logged anything, and it
+    # depended on whichever `grep` was first on PATH behaving like the one it
+    # was written against.
+    local line key value
+    while IFS= read -r line || [ -n "$line" ]; do
+        line="${line#"${line%%[![:space:]]*}"}"          # leading whitespace
+        case "$line" in \#*|'') continue ;; esac
+        key="${line%%=*}"
+        [ "$key" = "$name" ] || continue
+        value="${line#*=}"
+        value="${value%\"}"; value="${value#\"}"          # surrounding quotes
+        [ -n "$value" ] && export "$name=$value"
+        return 0
+    done < "$ENV_FILE"
+    return 0
+}
+
+for setting in DATABASE_URL BACKUP_S3_BUCKET BACKUP_S3_ENDPOINT BACKUP_ENCRYPTION_PASSPHRASE; do
+    read_from_env_file "$setting"
+done
+
 [ -n "${DATABASE_URL:-}" ] || fail "DATABASE_URL is not set"
 
 # Prisma accepts parameters libpq rejects; pg_dump fails outright on ?schema=.
@@ -84,6 +119,12 @@ if [ "$CHECK_ONLY" = true ]; then
     else
         log "off-host:        NOT CONFIGURED — backups stay on this host"
     fi
+    if [ -n "${BACKUP_ENCRYPTION_PASSPHRASE:-}" ]; then
+        log "encryption:      on (AES-256-CBC, verified by decrypting each dump)"
+    else
+        # The check exists so this is caught here rather than in a bucket.
+        log "encryption:      OFF — dumps contain every clinical note in the clear"
+    fi
     exit 0
 fi
 
@@ -110,6 +151,44 @@ TABLE_COUNT="$(pg_restore --list "$FILE" 2>/dev/null | grep -c 'TABLE DATA' || t
 SIZE="$(du -h "$FILE" | cut -f1)"
 log "dump ok: $FILE ($SIZE, $TABLE_COUNT tables)"
 
+# ── Encrypt ──────────────────────────────────────────────────────────────────
+# A pg_dump is the whole database in one file: every client, every note, every
+# amount. Off-host means it lands in a bucket, and a bucket is one
+# misconfiguration away from being readable. Encrypt before it leaves, not
+# after.
+#
+# Verified by decrypting before the plaintext is removed — an encrypted backup
+# nobody has ever opened is not a backup.
+if [ -n "${BACKUP_ENCRYPTION_PASSPHRASE:-}" ]; then
+    command -v openssl >/dev/null 2>&1 || fail "openssl not found — needed to encrypt the backup"
+    log "encrypting dump"
+    if ! printf '%s' "$BACKUP_ENCRYPTION_PASSPHRASE" | openssl enc -aes-256-cbc -pbkdf2 -iter 200000 \
+            -salt -in "$FILE" -out "$FILE.enc" -pass stdin; then
+        rm -f "$FILE.enc"
+        fail "encryption failed — refusing to ship an unencrypted dump"
+    fi
+
+    # Decrypted to a file rather than piped: a custom-format archive is read by
+    # seeking, so pg_restore cannot take one on stdin and reports every backup
+    # as unreadable if you try. Removed immediately either way — it is the
+    # whole database in the clear while it exists.
+    VERIFY_FILE="$FILE.verify"
+    if ! printf '%s' "$BACKUP_ENCRYPTION_PASSPHRASE" | openssl enc -d -aes-256-cbc -pbkdf2 -iter 200000 \
+            -in "$FILE.enc" -out "$VERIFY_FILE" -pass stdin 2>/dev/null \
+            || ! pg_restore --list "$VERIFY_FILE" >/dev/null 2>&1; then
+        rm -f "$FILE.enc" "$VERIFY_FILE"
+        fail "encrypted dump did not decrypt back to a readable dump — refusing to keep it"
+    fi
+    rm -f "$VERIFY_FILE"
+
+    rm -f "$FILE"
+    FILE="$FILE.enc"
+    log "encrypted ok: $FILE"
+else
+    log "WARNING: BACKUP_ENCRYPTION_PASSPHRASE is not set, so this dump is stored"
+    log "WARNING: in the clear. It contains every clinical note in the database."
+fi
+
 # ── Off-host copy ────────────────────────────────────────────────────────────
 if [ "$LOCAL_ONLY" = true ]; then
     log "skipping upload (--local-only)"
@@ -131,8 +210,12 @@ else
 fi
 
 # ── Prune ────────────────────────────────────────────────────────────────────
-find "$BACKUP_DIR" -name 'nightly-*.dump' -type f -mtime "+$LOCAL_RETENTION_DAYS" -delete 2>/dev/null || true
-log "local backups: $(find "$BACKUP_DIR" -name 'nightly-*.dump' -type f | wc -l | tr -d ' ') kept"
+# Matches both .dump and .dump.enc: encrypted backups still need pruning, and
+# any unencrypted ones left from before encryption was added need it too. With
+# the narrower glob they would have accumulated until the disk filled, while the
+# count below cheerfully reported none.
+find "$BACKUP_DIR" -name 'nightly-*.dump*' -type f -mtime "+$LOCAL_RETENTION_DAYS" -delete 2>/dev/null || true
+log "local backups: $(find "$BACKUP_DIR" -name 'nightly-*.dump*' -type f | wc -l | tr -d ' ') kept"
 
 if [ "$UPLOAD_CONFIGURED" = true ] && [ "$LOCAL_ONLY" = false ]; then
     CUTOFF="$(date -u -d "-${REMOTE_RETENTION_DAYS} days" +%Y%m%d 2>/dev/null || date -u -v-"${REMOTE_RETENTION_DAYS}"d +%Y%m%d)"

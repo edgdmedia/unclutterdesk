@@ -1,10 +1,52 @@
 import { Injectable, BadRequestException, ConflictException, NotFoundException, ForbiddenException } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
+import { randomBytes } from 'crypto';
+import { Logger } from '@nestjs/common';
 import { PrismaService } from '../../common/prisma/prisma.service';
+import { NotificationService } from '../notifications/notification.service';
+import { decryptNoteFields } from '../../common/field-encryption';
+import { isPlatformHostname, isReservedSlug, normalizeSlug } from './reserved-slugs';
+
+const RESERVED_SLUG_MESSAGE = 'That booking handle is reserved. Try another one.';
+
+/**
+ * Invite ids are prefixed on the way out so they cannot be mistaken for a
+ * profile id. The two tables have separate sequences, so a client holding a
+ * bare "5" could send it to an endpoint that acts on profiles and hit a real
+ * colleague.
+ */
+export const INVITE_ID_PREFIX = 'invite-';
+
+export function parseInviteRef(ref: string): bigint | null {
+  const raw = ref.startsWith(INVITE_ID_PREFIX) ? ref.slice(INVITE_ID_PREFIX.length) : ref;
+  if (!/^\d+$/.test(raw)) return null;
+  try {
+    return BigInt(raw);
+  } catch {
+    return null;
+  }
+}
+
+/** "an admin" / "a therapist" — for the sentence in the invitation email. */
+function describeRole(role: string): string {
+  switch (role.toUpperCase()) {
+    case 'ADMIN':
+      return 'an admin';
+    case 'RECEPTIONIST':
+      return 'a receptionist';
+    default:
+      return 'a therapist';
+  }
+}
 
 @Injectable()
 export class TenantService {
-  constructor(private readonly prisma: PrismaService) {}
+  private readonly logger = new Logger(TenantService.name);
+
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly notifications: NotificationService,
+  ) {}
 
   private normalizeCustomDomain(input?: string | null) {
     return input?.toLowerCase().trim() || null;
@@ -26,16 +68,7 @@ export class TenantService {
       throw new BadRequestException('Custom domain must not include query strings or fragments');
     }
 
-    const reserved = new Set([
-      'unclutterdesk.com',
-      'www.unclutterdesk.com',
-      'api.unclutterdesk.com',
-      'app.unclutterdesk.com',
-      'admin.unclutterdesk.com',
-      'localhost',
-    ]);
-
-    if (reserved.has(value)) {
+    if (isPlatformHostname(value)) {
       throw new BadRequestException('That domain cannot be used as a practice custom domain.');
     }
 
@@ -56,8 +89,9 @@ export class TenantService {
     secondaryColor?: string;
     currency?: string;
   }) {
-    const slug = dto.slug.toLowerCase().trim().replace(/[^a-z0-9-]/g, '');
+    const slug = normalizeSlug(dto.slug);
     if (!slug) throw new BadRequestException('Valid practice slug is required');
+    if (isReservedSlug(slug)) throw new BadRequestException(RESERVED_SLUG_MESSAGE);
 
     const existing = await this.prisma.tenant.findUnique({ where: { slug } });
     if (existing) throw new BadRequestException('This practice slug is already taken');
@@ -77,7 +111,7 @@ export class TenantService {
   }
 
   async checkSlugAvailability(slug: string, tenantId?: bigint) {
-    const cleanSlug = slug.toLowerCase().trim().replace(/[^a-z0-9-]/g, '');
+    const cleanSlug = normalizeSlug(slug);
     if (!cleanSlug) return { available: false, reason: 'Slug is empty' };
 
     const existing = await this.prisma.tenant.findUnique({
@@ -85,7 +119,14 @@ export class TenantService {
       select: { id: true },
     });
 
-    if (!existing || (tenantId && existing.id === tenantId)) {
+    // A tenant keeps the slug it already holds, even a reserved one (demo).
+    if (tenantId && existing?.id === tenantId) {
+      return { available: true, slug: cleanSlug };
+    }
+    if (isReservedSlug(cleanSlug)) {
+      return { available: false, slug: cleanSlug, reason: RESERVED_SLUG_MESSAGE };
+    }
+    if (!existing) {
       return { available: true, slug: cleanSlug };
     }
     return { available: false, slug: cleanSlug, reason: 'Slug is already taken' };
@@ -175,9 +216,22 @@ export class TenantService {
       }
     }
 
+    let slug: string | undefined;
+    if (dto.slug) {
+      slug = normalizeSlug(dto.slug);
+      if (!slug) throw new BadRequestException('Valid practice slug is required');
+      if (isReservedSlug(slug)) {
+        const current = await this.prisma.tenant.findUnique({
+          where: { id: tenantId },
+          select: { slug: true },
+        });
+        if (current?.slug !== slug) throw new BadRequestException(RESERVED_SLUG_MESSAGE);
+      }
+    }
+
     const data: Prisma.TenantUpdateInput = {
       ...(dto.name ? { name: dto.name.trim() } : {}),
-      ...(dto.slug ? { slug: dto.slug.toLowerCase().trim() } : {}),
+      ...(slug ? { slug } : {}),
       ...(dto.shortName !== undefined ? { shortName: dto.shortName?.trim() || null } : {}),
       ...(dto.logoUrl !== undefined ? { logoUrl: dto.logoUrl } : {}),
       ...(dto.faviconUrl !== undefined ? { faviconUrl: dto.faviconUrl } : {}),
@@ -337,19 +391,41 @@ export class TenantService {
 
   // ── Group Clinic Team & Staff Management ────────────────────────────────────
 
+  /**
+   * The team page's roster: people who have joined, plus invitations still
+   * outstanding.
+   *
+   * An invitation creates a ConsultPendingInvite and no Profile, so a list of
+   * profiles left every invite invisible — an owner could not see who they had
+   * invited, chase them, or take it back, and re-inviting the same address was
+   * the only way to find out anything had happened.
+   *
+   * Invite ids are namespaced. The two tables have separate autoincrement
+   * sequences, so a bare id could name a profile and an invite at once, and a
+   * client that mixed them up would act on the wrong row.
+   */
   async getClinicStaff(tenantId: bigint) {
-    const staff = await this.prisma.profile.findMany({
-      where: {
-        tenantId,
-        role: { in: ['OWNER', 'ADMIN', 'RECEPTIONIST', 'THERAPIST'] },
-      },
-      include: {
-        consultTherapistProfile: true,
-      },
-      orderBy: { createdAt: 'asc' },
-    });
+    const [staff, invites] = await Promise.all([
+      this.prisma.profile.findMany({
+        where: {
+          tenantId,
+          role: { in: ['OWNER', 'ADMIN', 'RECEPTIONIST', 'THERAPIST'] },
+        },
+        include: {
+          consultTherapistProfile: true,
+        },
+        orderBy: { createdAt: 'asc' },
+      }),
+      // An expired invitation cannot be claimed, so it is not outstanding. It
+      // is left in the table for the unique constraint to find on re-invite.
+      this.prisma.consultPendingInvite.findMany({
+        where: { tenantId, expiresAt: { gt: new Date() } },
+        orderBy: { sentAt: 'asc' },
+      }),
+    ]);
 
-    return staff.map((s) => ({
+    const members = staff.map((s) => ({
+      kind: 'member' as const,
       id: s.id.toString(),
       email: s.email,
       firstName: s.firstName,
@@ -359,7 +435,86 @@ export class TenantService {
       avatarUrl: s.avatarUrl,
       isTherapist: !!s.consultTherapistProfile,
       specialty: s.consultTherapistProfile?.specialty,
+      invitedAt: null as string | null,
+      expiresAt: null as string | null,
     }));
+
+    // Someone who has already claimed their invite is on the roster twice
+    // otherwise: the invite row survives the claim.
+    const joined = new Set(members.map((m) => m.email.toLowerCase()));
+
+    const pending = invites
+      .filter((invite) => !joined.has(invite.email.toLowerCase()))
+      .map((invite) => ({
+        kind: 'invite' as const,
+        id: `${INVITE_ID_PREFIX}${invite.id}`,
+        email: invite.email,
+        firstName: null,
+        lastName: null,
+        role: invite.role,
+        status: 'pending',
+        avatarUrl: null,
+        isTherapist: invite.role === 'THERAPIST',
+        specialty: undefined,
+        invitedAt: invite.sentAt.toISOString(),
+        expiresAt: invite.expiresAt.toISOString(),
+      }));
+
+    return [...members, ...pending];
+  }
+
+  /**
+   * Withdraw an invitation that has not been claimed.
+   *
+   * Deleting the row is what revokes it: the claim token lives only here, so
+   * the link in that person's inbox stops working the moment it goes.
+   */
+  async revokeStaffInvite(tenantId: bigint, actorProfileId: bigint, inviteRef: string) {
+    const actor = await this.prisma.profile.findFirst({
+      where: { id: actorProfileId, tenantId },
+      select: { role: true },
+    });
+    if (!actor || !['OWNER', 'ADMIN'].includes(actor.role)) {
+      throw new ForbiddenException('Only owners and admins can withdraw an invitation');
+    }
+
+    const inviteId = parseInviteRef(inviteRef);
+    if (inviteId === null) throw new NotFoundException('Invitation not found');
+
+    // deleteMany so the tenant stays in the WHERE: delete() takes a unique
+    // where, which would leave this addressable by invite id alone.
+    const removed = await this.prisma.consultPendingInvite.deleteMany({
+      where: { id: inviteId, tenantId },
+    });
+    // Identical whether it never existed, was already claimed, or belongs to
+    // another practice.
+    if (removed.count === 0) throw new NotFoundException('Invitation not found');
+
+    return { success: true };
+  }
+
+  /**
+   * What the claim page needs to render, for someone with a token and no
+   * account yet. Returns the practice name, the invited address and the role —
+   * and nothing else, since this is reachable without a session.
+   */
+  async getInviteByToken(claimToken: string) {
+    const invite = await this.prisma.consultPendingInvite.findUnique({
+      where: { claimToken },
+      include: { tenant: { select: { name: true, slug: true } } },
+    });
+
+    if (!invite || invite.expiresAt < new Date()) {
+      throw new NotFoundException('This invitation is no longer valid');
+    }
+
+    return {
+      email: invite.email,
+      role: invite.role,
+      practiceName: invite.tenant.name,
+      practiceSlug: invite.tenant.slug,
+      expiresAt: invite.expiresAt.toISOString(),
+    };
   }
 
   async inviteStaffMember(tenantId: bigint, dto: { email: string; role: 'ADMIN' | 'RECEPTIONIST' | 'THERAPIST' }) {
@@ -383,7 +538,10 @@ export class TenantService {
     }
 
     const email = dto.email.toLowerCase().trim();
-    const claimToken = `invite-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
+    // Math.random() is not cryptographic and Date.now() is predictable, so the
+    // previous token could be guessed — and claiming an invite grants a role in
+    // someone else's practice, with access to their clinical records.
+    const claimToken = randomBytes(32).toString('hex');
     const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000); // 7 days
 
     const invite = await this.prisma.consultPendingInvite.upsert({
@@ -402,13 +560,49 @@ export class TenantService {
       },
     });
 
+    const inviteUrl = `${process.env.APP_URL || 'https://unclutterdesk.com'}/invite/claim?token=${claimToken}`;
+
+    /*
+     * The invitation was minted and the link handed back to the caller, so
+     * whoever invited a colleague had to copy it out of a dialog and send it
+     * themselves — the modal meanwhile promised the person would get an email.
+     *
+     * A failure to send is reported rather than thrown: the invitation is
+     * already valid at this point, and losing it because the mail provider
+     * blipped would be worse than handing back the link with a note. The link
+     * is returned either way, which is also what makes this the resend path —
+     * re-inviting the same address rotates the token and sends again.
+     */
+    let emailSent = false;
+    try {
+      const result = await this.notifications.sendEmail({
+        to: email,
+        type: 'tenant.staff_invite',
+        title: `${tenant.name} invited you to join their practice`,
+        message:
+          `You have been invited to join ${tenant.name} on Unclutter Desk as ` +
+          `${describeRole(dto.role || 'THERAPIST')}. Open the link below to set your own ` +
+          `password and get started. The invitation expires in seven days.`,
+        link: inviteUrl,
+        actionLabel: 'Accept invitation',
+        tenantId,
+      });
+      emailSent = result.success === true;
+      if (!emailSent) {
+        this.logger.warn(`Staff invite email to ${email} was not delivered: ${result.error}`);
+      }
+    } catch (err) {
+      this.logger.warn(`Failed to send staff invite email to ${email}: ${(err as Error).message}`);
+    }
+
     return {
       id: invite.id.toString(),
+      emailSent,
       email: invite.email,
       role: invite.role,
       claimToken: invite.claimToken,
       expiresAt: invite.expiresAt.toISOString(),
-      inviteUrl: `${process.env.APP_URL || 'https://unclutterdesk.com'}/invite/claim?token=${claimToken}`,
+      inviteUrl,
     };
   }
 
@@ -589,7 +783,7 @@ export class TenantService {
         title: 'Clinical Session Note',
         status: n.isLocked ? 'COMPLETED' : 'DRAFT',
         note: n.isLocked ? 'NOTE SIGNED' : 'DRAFT',
-        subjective: n.subjective || '',
+        subjective: decryptNoteFields(n).subjective || '',
         objective: n.objective || '',
         assessment: n.assessment || '',
         plan: n.plan || '',

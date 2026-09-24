@@ -91,6 +91,9 @@ model User {
   password            String
   failedLoginAttempts Int       @default(0)
   lockedUntil         DateTime?
+  // Null for accounts that have not changed their password since this was
+  // added. The page says "never changed" rather than inventing an age.
+  passwordChangedAt   DateTime?
   createdAt           DateTime  @default(now())
   updatedAt           DateTime  @updatedAt
 
@@ -116,6 +119,8 @@ model Token {
 
   @@index([userId, type])
   @@index([type, expiresAt])
+  // Listing a user's live sessions filters on all three.
+  @@index([userId, type, revokedAt])
 }
 
 model Profile {
@@ -136,6 +141,17 @@ model Profile {
   avatarUrl       String?
   emailVerified   Boolean   @default(false)
   emailVerifiedAt DateTime?
+
+  // How dates, times and numbers are shown to this person. Display only —
+  // clients are always billed in the practice's own currency, so there is
+  // deliberately no display-currency override here.
+  locale          String    @default("en-NG")
+  timezone        String    @default("Africa/Lagos")
+  dateFormat      String    @default("DD/MM/YYYY")
+  timeFormat      String    @default("24-hour")
+  weekStartsOn    String    @default("Monday")
+  numberFormat    String    @default("1,234.56")
+
   createdAt       DateTime  @default(now())
   updatedAt       DateTime  @updatedAt
 
@@ -235,6 +251,11 @@ model ConsultBooking {
   status          String    @default("PENDING_PAYMENT") // "PENDING_PAYMENT", "CONFIRMED", "COMPLETED", "CANCELLED"
   paymentRef      String?   @unique
   paidAt          DateTime?
+  // What was actually charged, after any discount. The service price is not a
+  // substitute: it moves when the practice reprices, and it is simply wrong for
+  // a discounted booking.
+  amountKobo      BigInt?
+  discountCodeUsed String?
   notes           String?
   videoRoomName   String?
   createdAt       DateTime  @default(now())

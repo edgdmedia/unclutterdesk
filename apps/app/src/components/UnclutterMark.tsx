@@ -5,6 +5,14 @@ interface UnclutterMarkProps {
   className?: string;
 }
 
+/**
+ * The product mark.
+ *
+ * The pill carried the old two-letter brand, drawn as SVG text rather than
+ * written as a string, so the scan that swept the old name out of the source
+ * never saw it. It renders on every auth screen and on the invitation a new
+ * colleague opens.
+ */
 export function UnclutterMark({ size = 32, className = '' }: UnclutterMarkProps) {
   return (
     <svg
@@ -48,7 +56,7 @@ export function UnclutterMark({ size = 32, className = '' }: UnclutterMarkProps)
           letterSpacing="1"
           fill="#0F3A53"
         >
-          OS
+          Desk
         </text>
       </g>
     </svg>

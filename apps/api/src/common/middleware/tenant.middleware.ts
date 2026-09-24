@@ -40,10 +40,12 @@ export class TenantMiddleware implements NestMiddleware {
         where: { customDomain: domain },
       });
 
-      // Otherwise check subdomain (e.g. "drjane.unclutterdesk.com" -> "drjane")
+      // Otherwise check subdomain (e.g. "drjane.unclutterdesk.com" -> "drjane").
+      // Local dev uses *.localhost, which has only two labels.
       if (!tenant && domain.includes('.')) {
         const parts = domain.split('.');
-        if (parts.length >= 3) {
+        const isLocalhostHost = parts[parts.length - 1] === 'localhost';
+        if ((isLocalhostHost && parts.length >= 2) || (!isLocalhostHost && parts.length >= 3)) {
           const subdomain = parts[0];
           if (subdomain !== 'www' && subdomain !== 'app' && subdomain !== 'api') {
             tenant = await this.prisma.tenant.findUnique({

@@ -52,11 +52,27 @@ const PLANS = [
     features: ["Unlimited sessions", "Custom domain (CNAME)", "1 receptionist login", "Auto-scored PHQ-9 and GAD-7", "0% payout fee"]
   },
   {
-    tier: "CLINIC", price: "From ₦45,000", fee: "/month", cta: "Talk to sales", dark: false, popular: false,
+    tier: "CLINIC", price: "From ₦45,000", fee: "/month", cta: "Talk to sales", ctaHref: SALES_MAILTO, dark: false, popular: false,
     blurb: "For multi-therapist clinics that need shared visibility and operational support.",
     features: ["2-5 therapists", "Owner/admin/therapist/reception roles", "Clinic-wide revenue analytics", "Priority support", "Dedicated onboarding"]
   }
 ];
+
+/**
+ * Where "Talk to sales" goes.
+ *
+ * It was an <a href={registerUrl}> like every other plan's button, so a clinic
+ * that clicked "Talk to sales" landed on a signup form instead of reaching a
+ * person — not a dead link, a mislabelled one, which is harder to notice.
+ *
+ * Pointed at the address already published in the footer rather than a sales@
+ * mailbox that does not exist yet. When one does, this is the line to change.
+ */
+const CONTACT_EMAIL = 'support@unclutterdesk.com';
+const SALES_MAILTO =
+  `mailto:${CONTACT_EMAIL}` +
+  '?subject=Group%20Clinic%20enquiry' +
+  '&body=Practice%20name%3A%0APractitioners%3A%0APreferred%20start%20date%3A%0A';
 
 const FAQS = [
   ["What is included in each plan?", "Starter includes core scheduling, Jitsi telehealth, and email support. Pro Solo adds unlimited sessions, custom domain, and auto-scored assessments. Clinic plans include team access, role management, and analytics."],
@@ -158,9 +174,13 @@ export function LandingPage() {
               Start Free 14-Day Trial
               <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14"></path><path d="m13 6 6 6-6 6"></path></svg>
             </a>
+            {/*
+              Said "Watch 2-Min Demo" behind a play triangle and scrolled to the
+              features section. There is no video. It now says what it does.
+            */}
             <a href="#features" className="w-full sm:w-auto h-[52px] px-6 rounded-[16px] bg-white border border-[#CBD5E1] text-[#24614F] text-[15px] font-[700] flex items-center justify-center gap-2.5 hover:bg-gray-50 transition-colors cursor-pointer">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#24614F" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m6 4 14 8-14 8z"></path></svg>
-              Watch 2-Min Demo
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#24614F" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14"></path><path d="m12 5 7 7-7 7"></path></svg>
+              Explore features
             </a>
           </div>
           <div className="flex items-center justify-center gap-[22px] flex-wrap mt-2">
@@ -177,13 +197,17 @@ export function LandingPage() {
         <div className="max-w-[980px] w-full mx-auto mt-12 rounded-[24px] overflow-hidden bg-white shadow-[0_24px_80px_rgba(15,23,42,0.14)] hidden md:block group cursor-pointer relative transition-all duration-300 hover:shadow-[0_30px_90px_rgba(15,23,42,0.20)] hover:-translate-y-1">
           <div className="absolute inset-0 z-10 pointer-events-none rounded-[24px] ring-2 ring-transparent group-hover:ring-[#24614F] transition-all"></div>
           
+          <span className="absolute top-[52px] right-4 z-20 h-[22px] px-2.5 rounded-full bg-[#0F172A]/80 text-white text-[10px] font-[800] tracking-[0.12em] inline-flex items-center">
+            EXAMPLE
+          </span>
+
           <div className="h-11 bg-[#F1F5F9] border-b border-[#E2E8F0] flex items-center px-4 gap-[7px]">
             <span className="w-[11px] h-[11px] rounded-full bg-[#FB7185]"></span>
             <span className="w-[11px] h-[11px] rounded-full bg-[#FCD34D]"></span>
             <span className="w-[11px] h-[11px] rounded-full bg-[#6EE7B7]"></span>
             <div className="mx-auto h-[26px] px-3.5 rounded-full bg-white border border-[#E2E8F0] flex items-center gap-[7px] text-[11.5px] text-[#64748B]">
               <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#16A34A" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><rect x="4" y="10" width="16" height="11" rx="2.5"></rect><path d="M8 10V7a4 4 0 0 1 8 0v3"></path></svg>
-              booking.smiththerapy.ng
+              booking.yourpractice.ng
             </div>
           </div>
 
@@ -195,16 +219,16 @@ export function LandingPage() {
               className="w-[82px] h-[82px] rounded-[26px] bg-white text-[26px] font-[800] flex items-center justify-center shadow-[0_10px_26px_rgba(15,23,42,0.1)] transition-colors duration-500"
               style={{ color: primary }}
             >
-              JS
+              ST
             </div>
             <div className="text-[11px] font-[900] tracking-[0.2em] transition-colors duration-500" style={{ color: primary }}>
-              DR. JANE SMITH THERAPY
+              SAMPLE THERAPY PRACTICE
             </div>
             <div className="h-[22px] px-2.5 rounded-full text-white text-[11px] font-[800] tracking-[0.06em] inline-flex items-center transition-colors duration-500" style={{ backgroundColor: secondary }}>
               CLINICAL PSYCHOLOGY
             </div>
             <h2 className="mt-0.5 mb-0 text-[30px] font-[800] tracking-[-0.03em] text-[#0F172A]">
-              Book a session with Dr. Jane Smith
+              Book a session with your therapist
             </h2>
             <div className="flex gap-2.5 pt-1">
               <span className="h-[30px] px-3.5 rounded-full bg-white/75 text-[12px] font-[600] text-[#334155] inline-flex items-center">
@@ -467,7 +491,7 @@ export function LandingPage() {
                   ))}
                 </div>
                 <a 
-                  href={registerUrl}
+                  href={pl.ctaHref ?? registerUrl}
                   onClick={(e) => e.stopPropagation()}
                   className="flex items-center justify-center h-12 rounded-[14px] text-[14px] font-[700] transition-colors hover:opacity-90"
                   style={{ backgroundColor: btnBg, border: btnBorder, color: btnFg, boxShadow: btnShadow }}
@@ -527,16 +551,15 @@ export function LandingPage() {
           <div className="flex flex-col gap-4">
             <img src="/unclutterdesk-lockup.svg" alt="unclutter desk" className="h-8 w-auto shrink-0 brightness-0 invert object-contain" />
             <p className="m-0 text-[13px] leading-[1.6] text-[#94A3B8] max-w-[280px]">Practice management and white-label booking for Nigerian therapists.</p>
-            <div className="flex gap-2.5">
-              <a href="#" className="w-[34px] h-[34px] rounded-full bg-[#1E293B] flex items-center justify-center cursor-pointer hover:bg-[#334155] transition-colors">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#F8FAFC" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="5"></rect><circle cx="12" cy="12" r="4"></circle><path d="M17.5 6.5h.01"></path></svg>
-              </a>
-              <a href="#" className="w-[34px] h-[34px] rounded-full bg-[#1E293B] flex items-center justify-center cursor-pointer hover:bg-[#334155] transition-colors">
-                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#F8FAFC" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m4 4 16 16M20 4 4 20"></path></svg>
-              </a>
-              <a href="#" className="w-[34px] h-[34px] rounded-full bg-[#1E293B] flex items-center justify-center cursor-pointer hover:bg-[#334155] transition-colors">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#F8FAFC" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 11.5a8.5 8.5 0 0 1-12.6 7.4L3 20.5l1.7-5.2A8.5 8.5 0 1 1 21 11.5z"></path></svg>
-              </a>
+            {/*
+              Three placeholder social icons — Instagram, X and WhatsApp — were
+              repointed at an email address, the privacy policy and the terms.
+              The destinations were real but the glyphs were not: a WhatsApp
+              icon that opens your terms of service is its own small lie. Plain
+              links until there are accounts to link to.
+            */}
+            <div className="flex flex-col gap-2 items-start">
+              <a href={`mailto:${CONTACT_EMAIL}`} className="text-[13px] text-[#94A3B8] hover:text-white transition-colors">{CONTACT_EMAIL}</a>
             </div>
           </div>
           <div className="flex flex-col gap-3">

@@ -11,6 +11,8 @@ export interface JwtPayload {
   tenantId?: string;
   type?: string;
   roles?: string[];
+  /** Refresh session id. Present on tokens issued once sessions existed. */
+  sid?: string;
 }
 
 @Injectable()
@@ -37,6 +39,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
       tenantId: payload.tenantId,
       type: payload.type || 'user',
       roles: payload.roles || ['client'],
+      sessionId: payload.sid,
     };
   }
 }

@@ -2,6 +2,7 @@ import { CanActivate, ExecutionContext, Injectable, ForbiddenException } from '@
 import { Reflector } from '@nestjs/core';
 import { PrismaService } from './prisma/prisma.service';
 import { ROLES_KEY, type PracticeRole } from './roles';
+import { assertSessionLive } from './session-validity';
 
 /**
  * Enforces practice roles on routes behind `JwtAuthGuard`.
@@ -43,10 +44,19 @@ export class RolesGuard implements CanActivate {
       throw new ForbiddenException('This endpoint requires a practice profile');
     }
 
-    const profile = await this.prisma.profile.findFirst({
-      where: { id: BigInt(user.profileId), tenantId: BigInt(user.tenantId) },
-      select: { role: true, status: true },
-    });
+    /*
+     * Read alongside the profile rather than after it: both are needed before
+     * the request proceeds, and neither should wait on the other. The session
+     * rule itself lives in session-validity.ts, shared with the platform-admin
+     * guard so one cannot be hardened and the other forgotten.
+     */
+    const [profile] = await Promise.all([
+      this.prisma.profile.findFirst({
+        where: { id: BigInt(user.profileId), tenantId: BigInt(user.tenantId) },
+        select: { role: true, status: true },
+      }),
+      assertSessionLive(this.prisma, user.sessionId),
+    ]);
 
     if (!profile) {
       throw new ForbiddenException('Profile not found in this practice');

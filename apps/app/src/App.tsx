@@ -7,38 +7,41 @@ import { BrandProvider, BottomNav } from '@unclutterdesk/ui';
 import { Home, Calendar, Users, Palette } from 'lucide-react';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { api, getSubdomainTenantSlug, getAppType } from './utils/apiClient';
+import { ExternalRedirect } from './components/ExternalRedirect';
+import { LEGAL_URLS } from './utils/legal';
 
 // ── Lazy-loaded pages (code-split per route) ──────────────────────────────────
-const NotFoundPage = lazy(() => import('./pages/NotFoundPage').then((m) => ({ default: m.NotFoundPage })));
-const DashboardPage = lazy(() => import('./pages/DashboardPage').then((m) => ({ default: m.DashboardPage })));
-const SchedulePage = lazy(() => import('./pages/SchedulePage').then((m) => ({ default: m.SchedulePage })));
-const ClientsPage = lazy(() => import('./pages/ClientsPage').then((m) => ({ default: m.ClientsPage })));
-const ClientDetailPage = lazy(() => import('./pages/ClientDetailPage').then((m) => ({ default: m.ClientDetailPage })));
-const AnalyticsPage = lazy(() => import('./pages/AnalyticsPage').then((m) => ({ default: m.AnalyticsPage })));
-const BrandSettingsPage = lazy(() => import('./pages/BrandSettingsPage').then((m) => ({ default: m.BrandSettingsPage })));
-const TeamSettingsPage = lazy(() => import('./pages/TeamSettingsPage').then((m) => ({ default: m.TeamSettingsPage })));
-const SubscriptionSettingsPage = lazy(() => import('./pages/SubscriptionSettingsPage').then((m) => ({ default: m.SubscriptionSettingsPage })));
-const PayoutSettingsPage = lazy(() => import('./pages/PayoutSettingsPage').then((m) => ({ default: m.PayoutSettingsPage })));
-const FormsManagerPage = lazy(() => import('./pages/FormsManagerPage').then((m) => ({ default: m.FormsManagerPage })));
-const FormEditorPage = lazy(() => import('./pages/FormEditorPage').then((m) => ({ default: m.FormEditorPage })));
-const DiscountSettingsPage = lazy(() => import('./pages/DiscountSettingsPage').then((m) => ({ default: m.DiscountSettingsPage })));
-const TelehealthVideoRoomPage = lazy(() => import('./pages/TelehealthVideoRoomPage').then((m) => ({ default: m.TelehealthVideoRoomPage })));
-const SessionPrepPage = lazy(() => import('./pages/SessionPrepPage').then((m) => ({ default: m.SessionPrepPage })));
-const ClientPortalPage = lazy(() => import('./pages/ClientPortalPage').then((m) => ({ default: m.ClientPortalPage })));
-const OnboardingWizardPage = lazy(() => import('./pages/OnboardingWizardPage').then((m) => ({ default: m.OnboardingWizardPage })));
-const ClientBookingPage = lazy(() => import('./pages/ClientBookingPage').then((m) => ({ default: m.ClientBookingPage })));
-const PublicProfilePage = lazy(() => import('./pages/PublicProfilePage').then((m) => ({ default: m.PublicProfilePage })));
-const PublicReviewFormPage = lazy(() => import('./pages/PublicReviewFormPage').then((m) => ({ default: m.PublicReviewFormPage })));
-const PrivacyPolicyPage = lazy(() => import('./pages/PrivacyPolicyPage').then((m) => ({ default: m.PrivacyPolicyPage })));
-const TermsOfServicePage = lazy(() => import('./pages/TermsOfServicePage').then((m) => ({ default: m.TermsOfServicePage })));
-const BookingConfirmedPage = lazy(() => import('./pages/BookingConfirmedPage').then((m) => ({ default: m.BookingConfirmedPage })));
-const InactivePracticePage = lazy(() => import('./pages/InactivePracticePage').then((m) => ({ default: m.InactivePracticePage })));
-const NotificationsPage = lazy(() => import('./pages/NotificationsPage').then((m) => ({ default: m.NotificationsPage })));
-const SubmissionsPage = lazy(() => import('./pages/SubmissionsPage').then((m) => ({ default: m.SubmissionsPage })));
-const AvailabilitySettingsPage = lazy(() => import('./pages/AvailabilitySettingsPage').then((m) => ({ default: m.AvailabilitySettingsPage })));
-const MyProfilePage = lazy(() => import('./pages/MyProfilePage').then((m) => ({ default: m.MyProfilePage })));
-const AccountPreferencesPage = lazy(() => import('./pages/AccountPreferencesPage').then((m) => ({ default: m.AccountPreferencesPage })));
-const PracticeProfilePage = lazy(() => import('./pages/PracticeProfilePage').then((m) => ({ default: m.PracticeProfilePage })));
+const NotFoundPage = lazy(() => import('./pages/shared/NotFoundPage').then((m) => ({ default: m.NotFoundPage })));
+const DashboardPage = lazy(() => import('./pages/practice/DashboardPage').then((m) => ({ default: m.DashboardPage })));
+const SchedulePage = lazy(() => import('./pages/practice/SchedulePage').then((m) => ({ default: m.SchedulePage })));
+const ClientsPage = lazy(() => import('./pages/practice/ClientsPage').then((m) => ({ default: m.ClientsPage })));
+const ClientDetailPage = lazy(() => import('./pages/practice/ClientDetailPage').then((m) => ({ default: m.ClientDetailPage })));
+const AnalyticsPage = lazy(() => import('./pages/practice/AnalyticsPage').then((m) => ({ default: m.AnalyticsPage })));
+const BrandSettingsPage = lazy(() => import('./pages/practice/settings/BrandSettingsPage').then((m) => ({ default: m.BrandSettingsPage })));
+const TeamSettingsPage = lazy(() => import('./pages/practice/settings/TeamSettingsPage').then((m) => ({ default: m.TeamSettingsPage })));
+const SubscriptionSettingsPage = lazy(() => import('./pages/practice/settings/SubscriptionSettingsPage').then((m) => ({ default: m.SubscriptionSettingsPage })));
+const PayoutSettingsPage = lazy(() => import('./pages/practice/settings/PayoutSettingsPage').then((m) => ({ default: m.PayoutSettingsPage })));
+const FormsManagerPage = lazy(() => import('./pages/practice/settings/FormsManagerPage').then((m) => ({ default: m.FormsManagerPage })));
+const FormEditorPage = lazy(() => import('./pages/practice/settings/FormEditorPage').then((m) => ({ default: m.FormEditorPage })));
+const DiscountSettingsPage = lazy(() => import('./pages/practice/settings/DiscountSettingsPage').then((m) => ({ default: m.DiscountSettingsPage })));
+const TelehealthVideoRoomPage = lazy(() => import('./pages/practice/TelehealthVideoRoomPage').then((m) => ({ default: m.TelehealthVideoRoomPage })));
+const SessionPrepPage = lazy(() => import('./pages/practice/SessionPrepPage').then((m) => ({ default: m.SessionPrepPage })));
+const ClientPortalPage = lazy(() => import('./pages/client/ClientPortalPage').then((m) => ({ default: m.ClientPortalPage })));
+const OnboardingWizardPage = lazy(() => import('./pages/practice/OnboardingWizardPage').then((m) => ({ default: m.OnboardingWizardPage })));
+const ClientBookingPage = lazy(() => import('./pages/public/ClientBookingPage').then((m) => ({ default: m.ClientBookingPage })));
+const PublicProfilePage = lazy(() => import('./pages/public/PublicProfilePage').then((m) => ({ default: m.PublicProfilePage })));
+const PublicReviewFormPage = lazy(() => import('./pages/public/PublicReviewFormPage').then((m) => ({ default: m.PublicReviewFormPage })));
+// The documents live on the marketing site — see utils/legal.ts. These routes
+// stay because they are linked and bookmarked, but they no longer hold a second
+// copy of the text to drift from.
+const BookingConfirmedPage = lazy(() => import('./pages/public/BookingConfirmedPage').then((m) => ({ default: m.BookingConfirmedPage })));
+const InactivePracticePage = lazy(() => import('./pages/public/InactivePracticePage').then((m) => ({ default: m.InactivePracticePage })));
+const NotificationsPage = lazy(() => import('./pages/practice/NotificationsPage').then((m) => ({ default: m.NotificationsPage })));
+const SubmissionsPage = lazy(() => import('./pages/practice/SubmissionsPage').then((m) => ({ default: m.SubmissionsPage })));
+const AvailabilitySettingsPage = lazy(() => import('./pages/practice/settings/AvailabilitySettingsPage').then((m) => ({ default: m.AvailabilitySettingsPage })));
+const MyProfilePage = lazy(() => import('./pages/practice/MyProfilePage').then((m) => ({ default: m.MyProfilePage })));
+const AccountPreferencesPage = lazy(() => import('./pages/practice/settings/AccountPreferencesPage').then((m) => ({ default: m.AccountPreferencesPage })));
+const PracticeProfilePage = lazy(() => import('./pages/practice/settings/PracticeProfilePage').then((m) => ({ default: m.PracticeProfilePage })));
 const LoginPage = lazy(() => import('./pages/auth/LoginPage').then((m) => ({ default: m.LoginPage })));
 const SignupPage = lazy(() => import('./pages/auth/SignupPage').then((m) => ({ default: m.SignupPage })));
 const ForgotPasswordPage = lazy(() => import('./pages/auth/ForgotPasswordPage').then((m) => ({ default: m.ForgotPasswordPage })));
@@ -107,7 +110,10 @@ export interface StaffMember {
   role: string;
   status: string;
   initials: string;
+  /** An invitation that has not been claimed — there is no account behind it. */
   pending?: boolean;
+  invitedAt?: string | null;
+  expiresAt?: string | null;
 }
 
 // ── Booking shape returned by API ─────────────────────────────────────────────
@@ -124,6 +130,8 @@ interface ApiBooking {
 
 // ── Staff shape returned by API ───────────────────────────────────────────────
 interface ApiStaff {
+  /** "member" has joined; "invite" is an invitation still outstanding. */
+  kind?: 'member' | 'invite';
   id: string;
   email: string;
   firstName?: string;
@@ -132,6 +140,8 @@ interface ApiStaff {
   status: string;
   avatarUrl?: string;
   specialty?: string;
+  invitedAt?: string | null;
+  expiresAt?: string | null;
 }
 
 // ── Map API booking → CalendarEvent ──────────────────────────────────────────
@@ -157,6 +167,8 @@ function bookingToEvent(b: ApiBooking): CalendarEvent {
 
 // ── Map API staff → StaffMember ───────────────────────────────────────────────
 function apiStaffToMember(s: ApiStaff): StaffMember {
+  // An invitation has no name yet, so the address is what identifies it.
+  const pending = s.kind === 'invite';
   const name = `${s.firstName || ''} ${s.lastName || ''}`.trim() || s.email;
   const initials = name
     .split(' ')
@@ -166,12 +178,16 @@ function apiStaffToMember(s: ApiStaff): StaffMember {
   return {
     id: s.id,
     name,
-    title: s.specialty || s.role.charAt(0) + s.role.slice(1).toLowerCase(),
+    title: pending
+      ? `Invited as ${s.role.charAt(0) + s.role.slice(1).toLowerCase()}`
+      : s.specialty || s.role.charAt(0) + s.role.slice(1).toLowerCase(),
     email: s.email,
     role: s.role,
-    status: s.status === 'active' ? 'Active' : s.status === 'pending' ? 'Pending' : 'Inactive',
+    status: pending ? 'Pending' : s.status === 'active' ? 'Active' : 'Inactive',
     initials,
-    pending: s.status === 'pending',
+    pending,
+    invitedAt: s.invitedAt ?? null,
+    expiresAt: s.expiresAt ?? null,
   };
 }
 
@@ -266,13 +282,6 @@ function AppLayout() {
   // Re-fetch from the API, as opposed to setSessions which only edits the cache.
   const refreshSessions = useCallback(() => mutateSessions(), [mutateSessions]);
 
-  const setStaff = useCallback(
-    (value: React.SetStateAction<StaffMember[]>) => {
-      void mutateStaff(value, { revalidate: false });
-    },
-    [mutateStaff],
-  );
-
   const refreshClients = useCallback(async () => {
     await mutateClients();
   }, [mutateClients]);
@@ -325,8 +334,8 @@ function AppLayout() {
             <Route path="/booking/confirmed" element={<BookingConfirmedPage />} />
             <Route path="/booking/inactive" element={<InactivePracticePage />} />
 
-            <Route path="/privacy" element={<PrivacyPolicyPage />} />
-            <Route path="/terms" element={<TermsOfServicePage />} />
+            <Route path="/privacy" element={<ExternalRedirect to={LEGAL_URLS.privacy} />} />
+            <Route path="/terms" element={<ExternalRedirect to={LEGAL_URLS.terms} />} />
 
             {/* Auth Routes */}
             <Route path="/auth/login" element={<LoginPage />} />
@@ -356,7 +365,18 @@ function AppLayout() {
 
   // Workspace routes are private.
   if (!isAuthenticated) {
-    return <Navigate to="/login" replace />;
+    return (
+      <Suspense fallback={<PageFallback />}>
+        <Routes>
+          <Route path="/login" element={<LoginPage />} />
+          <Route path="/register" element={<SignupPage />} />
+          <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+          <Route path="/reset-password/:token" element={<ResetPasswordPage />} />
+          <Route path="/verify-email" element={<VerifyEmailPage />} />
+          <Route path="*" element={<NotFoundPage homeHref="/login" />} />
+        </Routes>
+      </Suspense>
+    );
   }
 
   return (
@@ -418,7 +438,7 @@ function AppLayout() {
                   />
                 }
               />
-              <Route path="/dashboard/settings/team" element={<TeamSettingsPage staff={resolvedStaff} setStaff={setStaff} onRefresh={refreshStaff} />} />
+              <Route path="/dashboard/settings/team" element={<TeamSettingsPage staff={resolvedStaff} onRefresh={refreshStaff} />} />
               <Route path="/dashboard/settings/subscription" element={<SubscriptionSettingsPage />} />
               <Route path="/dashboard/settings/payouts" element={<PayoutSettingsPage />} />
               <Route path="/dashboard/settings/forms" element={<FormsManagerPage />} />
@@ -532,8 +552,8 @@ export function App() {
                 <Route path="/review" element={<PublicReviewFormPage />} />
                 <Route path="/booking/confirmed" element={<BookingConfirmedPage />} />
                 <Route path="/booking/inactive" element={<InactivePracticePage />} />
-                <Route path="/privacy" element={<PrivacyPolicyPage />} />
-                <Route path="/terms" element={<TermsOfServicePage />} />
+                <Route path="/privacy" element={<ExternalRedirect to={LEGAL_URLS.privacy} />} />
+                <Route path="/terms" element={<ExternalRedirect to={LEGAL_URLS.terms} />} />
                 <Route path="*" element={<NotFoundPage />} />
               </Routes>
             </Suspense>

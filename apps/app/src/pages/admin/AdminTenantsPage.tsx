@@ -47,7 +47,7 @@ export function AdminTenantsPage() {
         <div>
           <h1 className="text-[26px] font-bold tracking-[-0.03em] text-[#0F172A]">Tenants</h1>
           <p className="mt-1 text-[13.5px] text-[#64748B]">
-            Every practice on the unclutterOS platform.
+            Every practice on the Unclutter Desk platform.
           </p>
         </div>
         <div className="flex items-center gap-3 rounded-[14px] border border-[#E2E8F0] bg-white px-4 h-[44px] w-full sm:w-[280px]">

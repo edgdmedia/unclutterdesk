@@ -12,6 +12,7 @@ import * as bcrypt from 'bcryptjs';
 import { createHash, randomBytes } from 'crypto';
 import { PrismaService } from '../../common/prisma/prisma.service';
 import { JwtPayload } from './jwt.strategy';
+import { DeviceInfo, SessionService } from './session.service';
 import { JWT_EXPIRES_IN, REFRESH_SECRET, REFRESH_EXPIRES_IN } from '../../common/auth.config';
 import { NotificationService } from '../notifications/notification.service';
 
@@ -21,7 +22,30 @@ const BCRYPT_ROUNDS = 12;
 export class AuthService {
   private readonly logger = new Logger(AuthService.name);
 
+  /**
+   * Verbose auth tracing for a developer chasing a login problem.
+   *
+   * This used to be an unconditional logger.log, and its payloads carried
+   * password lengths and bcrypt hash prefixes. Anyone who could read logs — the
+   * host, an error tracker, a support tool, a contractor — could narrow an
+   * account's password, and a sibling log line printed the whole password-reset
+   * link, which is account takeover on its own.
+   *
+   * The secrets are gone from the payloads. What remains is still an email and
+   * a tenant/profile map per attempt, which is personal data under the NDPA, so
+   * it is off unless someone deliberately turns it on — and it is refused
+   * outright in production, where the flag being set by accident is exactly the
+   * failure this is meant to prevent.
+   */
+  static authDebugEnabled(): boolean {
+    // Read per call rather than once at import, so turning it on is a config
+    // change rather than a restart-and-hope, and so the payloads stay testable
+    // with it on — the gate is a second line of defence, not the only one.
+    return process.env.AUTH_DEBUG_LOGS === 'true' && process.env.NODE_ENV !== 'production';
+  }
+
   private authDebug(event: string, details: Record<string, unknown>) {
+    if (!AuthService.authDebugEnabled()) return;
     this.logger.log(`[AUTH_DEBUG] ${event} ${JSON.stringify(details)}`);
   }
 
@@ -37,6 +61,7 @@ export class AuthService {
     private readonly prisma: PrismaService,
     private readonly jwtService: JwtService,
     private readonly notifications: NotificationService,
+    private readonly sessions: SessionService,
   ) {}
 
   async register(tenantId: bigint | undefined, dto: {
@@ -163,9 +188,6 @@ export class AuthService {
       profileId: profile.id.toString(),
       profileStatus: profile.status,
       emailVerified: profile.emailVerified,
-      passwordLength: dto.password?.length ?? 0,
-      passwordHashPrefix: hashedPassword.slice(0, 7),
-      passwordHashLength: hashedPassword.length,
     });
 
     // New accounts must verify their email before they can sign in. If a
@@ -407,8 +429,10 @@ export class AuthService {
         profileId: profile?.id ?? null,
       });
       emailSent = result.success;
+      // The link was printed here in full. It is a bearer credential for the
+      // account: whoever reads it owns the account, no password required.
       this.logger.log(
-        `Password reset email processed for ${email}: success=${result.success} provider=${result.providerId ?? 'n/a'} link=${resetLink}`,
+        `Password reset email processed for ${email}: success=${result.success} provider=${result.providerId ?? 'n/a'}`,
       );
       if (!result.success) {
         this.logger.warn(
@@ -460,16 +484,17 @@ export class AuthService {
     const hashedPassword = await bcrypt.hash(password, BCRYPT_ROUNDS);
     await this.prisma.user.update({
       where: { id: reset.userId },
-      data: { password: hashedPassword },
+      data: { password: hashedPassword, passwordChangedAt: new Date() },
     });
+
+    // A reset is the recovery path from a compromised account, so no existing
+    // session survives it.
+    await this.sessions.revokeAllForUser(reset.userId);
 
     this.authDebug('reset_password', {
       userId: reset.userId.toString(),
       email: reset.user.email,
       tokenId: reset.id,
-      passwordLength: password.length,
-      passwordHashPrefix: hashedPassword.slice(0, 7),
-      passwordHashLength: hashedPassword.length,
     });
 
     await this.prisma.token.deleteMany({ where: { userId: reset.userId, type: 'password_reset' } });
@@ -477,7 +502,7 @@ export class AuthService {
     return { message: 'Password updated. You can now log in.', success: true };
   }
 
-  async loginPlatformAdmin(dto: { email: string; password: string }) {
+  async loginPlatformAdmin(dto: { email: string; password: string }, device: DeviceInfo = {}) {
     const email = dto.email.toLowerCase().trim();
     const user = await this.prisma.user.findUnique({ where: { email } });
     if (!user || !user.platformRole) {
@@ -491,7 +516,13 @@ export class AuthService {
       throw new UnauthorizedException('Invalid credentials');
     }
 
-    const { accessToken, refreshToken } = this.generatePlatformAdminTokens(user, user.platformRole);
+    const sessionId = SessionService.newSessionId();
+    const { accessToken, refreshToken } = this.generatePlatformAdminTokens(
+      user,
+      user.platformRole,
+      sessionId,
+    );
+    await this.sessions.startSession(sessionId, user.id, refreshToken, device);
     return {
       accessToken,
       refreshToken,
@@ -499,7 +530,11 @@ export class AuthService {
     };
   }
 
-  async login(tenantId: bigint | undefined, dto: { email: string; password: string }) {
+  async login(
+    tenantId: bigint | undefined,
+    dto: { email: string; password: string },
+    device: DeviceInfo = {},
+  ) {
     const email = dto.email.toLowerCase().trim();
 
     const user = await this.prisma.user.findUnique({ where: { email } });
@@ -514,14 +549,11 @@ export class AuthService {
       tenantId: tenantId?.toString() ?? null,
       userFound: true,
       userId: user.id.toString(),
-      inputPasswordLength: dto.password?.length ?? 0,
-      storedPasswordHashPrefix: user.password.slice(0, 7),
-      storedPasswordHashLength: user.password.length,
       passwordValid,
     });
     if (!passwordValid) {
       this.logger.warn(
-        `Login failed for ${email}: password mismatch for user ${user.id.toString()} (hash length ${user.password.length})`,
+        `Login failed for ${email}: password mismatch for user ${user.id.toString()}`,
       );
       this.unauthorized('Invalid email or password', 'AUTH_INVALID_CREDENTIALS');
     }
@@ -529,6 +561,7 @@ export class AuthService {
     const candidateProfiles = await this.prisma.profile.findMany({
       where: tenantId ? { tenantId, userId: user.id } : { userId: user.id },
       orderBy: [{ emailVerified: 'desc' }, { createdAt: 'desc' }],
+      include: { tenant: true, consultTherapistProfile: true },
     });
 
     this.authDebug('login_profiles', {
@@ -581,12 +614,15 @@ export class AuthService {
       );
     }
 
+    const sessionId = SessionService.newSessionId();
     const { accessToken, refreshToken } = this.generateTokens(
       user.id,
       profile.id,
       profile.tenantId,
       profile.type,
+      sessionId,
     );
+    await this.sessions.startSession(sessionId, user.id, refreshToken, device);
 
     this.authDebug('login_success', {
       email,
@@ -598,6 +634,112 @@ export class AuthService {
       accessTokenIssued: !!accessToken,
       refreshTokenIssued: !!refreshToken,
     });
+
+    return {
+      accessToken,
+      refreshToken,
+      profile: this.practiceProfile(profile),
+    };
+  }
+
+  /**
+   * Turns an invitation into a staff account and signs the person in.
+   *
+   * The claim page previously called nothing at all — it navigated to
+   * /dashboard, so an invited colleague ended up with no profile and no
+   * practice. The whole exchange happens in one transaction: consume the
+   * invite, create or attach the login, create the profile with the role the
+   * inviter chose. A half-completed claim would leave a token that looks unused
+   * against an account that already exists.
+   */
+  async claimInvite(
+    dto: {
+      token: string;
+      password: string;
+      firstName?: string;
+      lastName?: string;
+    },
+    device: DeviceInfo = {},
+  ) {
+    if (!dto?.token) throw new BadRequestException('Invitation token is required');
+    if (!dto.password || dto.password.length < 8) {
+      throw new BadRequestException('Choose a password of at least 8 characters');
+    }
+
+    const invite = await this.prisma.consultPendingInvite.findUnique({
+      where: { claimToken: dto.token },
+    });
+
+    if (!invite || invite.expiresAt < new Date()) {
+      // Identical for an unknown token and an expired one, so the endpoint
+      // cannot be used to tell which invitations exist.
+      throw new BadRequestException('This invitation is no longer valid');
+    }
+
+    const email = invite.email.toLowerCase().trim();
+
+    const existingProfile = await this.prisma.profile.findFirst({
+      where: { tenantId: invite.tenantId, email },
+    });
+    if (existingProfile) {
+      throw new BadRequestException('That address already has a profile in this practice');
+    }
+
+    const passwordHash = await bcrypt.hash(dto.password, 10);
+
+    const { profile } = await this.prisma.$transaction(async (tx) => {
+      // Consume the invite first. deleteMany returning zero means another
+      // request claimed it in the meantime, and this one loses cleanly.
+      const consumed = await tx.consultPendingInvite.deleteMany({
+        where: { id: invite.id },
+      });
+      if (consumed.count === 0) {
+        throw new BadRequestException('This invitation has already been used');
+      }
+
+      // The address may already have a login from another practice.
+      let user = await tx.user.findUnique({ where: { email } });
+      if (!user) {
+        user = await tx.user.create({
+          data: {
+            email,
+            username: email.split('@')[0] + '-' + invite.tenantId.toString(),
+            password: passwordHash,
+          },
+        });
+      }
+
+      const created = await tx.profile.create({
+        data: {
+          tenantId: invite.tenantId,
+          userId: user.id,
+          email,
+          username: email.split('@')[0],
+          type: 'staff',
+          role: invite.role,
+          firstName: dto.firstName?.trim() || null,
+          lastName: dto.lastName?.trim() || null,
+          status: 'active',
+          // The invitation was sent to this address, so reaching it proves control.
+          emailVerified: true,
+          emailVerifiedAt: new Date(),
+        },
+      });
+
+      return { user, profile: created };
+    });
+
+    const sessionId = SessionService.newSessionId();
+    const { accessToken, refreshToken } = this.generateTokens(
+      profile.userId!,
+      profile.id,
+      profile.tenantId,
+      profile.type,
+      sessionId,
+    );
+    await this.sessions.startSession(sessionId, profile.userId!, refreshToken, device);
+
+    this.logger.log(`Invite claimed: profile ${profile.id} joined tenant ${profile.tenantId} as ${profile.role}`);
 
     return {
       accessToken,
@@ -615,6 +757,130 @@ export class AuthService {
     };
   }
 
+  /**
+   * Only values the UI actually offers are accepted. Anything else is dropped
+   * rather than stored, so a malformed locale cannot come back out and break
+   * Intl.DateTimeFormat on every page that formats a date.
+   */
+  private static readonly ALLOWED_PREFERENCES: Record<string, readonly string[]> = {
+    locale: ['en-NG', 'en-GB', 'en-US', 'fr-FR'],
+    timezone: ['Africa/Lagos', 'Europe/London', 'Africa/Nairobi', 'Africa/Accra'],
+    dateFormat: ['DD/MM/YYYY', 'MM/DD/YYYY', 'YYYY-MM-DD', 'D MMM YYYY'],
+    timeFormat: ['24-hour', '12-hour'],
+    weekStartsOn: ['Monday', 'Sunday'],
+    numberFormat: ['1,234.56', '1.234,56'],
+  };
+
+  private static readonly PREFERENCE_FIELDS = {
+    locale: true,
+    timezone: true,
+    dateFormat: true,
+    timeFormat: true,
+    weekStartsOn: true,
+    numberFormat: true,
+  } as const;
+
+  async getPreferences(tenantId: bigint, profileId: bigint) {
+    const profile = await this.prisma.profile.findFirst({
+      where: { id: profileId, tenantId },
+      select: {
+        email: true,
+        emailVerified: true,
+        ...AuthService.PREFERENCE_FIELDS,
+        user: { select: { passwordChangedAt: true } },
+      },
+    });
+
+    if (!profile) throw new NotFoundException('Profile not found');
+
+    const { user, ...rest } = profile;
+    return {
+      ...rest,
+      // Null for an account whose password predates this being recorded; the
+      // page says "Not recorded" rather than inventing a date.
+      passwordChangedAt: user?.passwordChangedAt?.toISOString() ?? null,
+    };
+  }
+
+  async updatePreferences(
+    tenantId: bigint,
+    profileId: bigint,
+    dto: Record<string, unknown>,
+  ) {
+    const data: Record<string, string> = {};
+
+    for (const [field, allowed] of Object.entries(AuthService.ALLOWED_PREFERENCES)) {
+      const value = dto?.[field];
+      if (value === undefined) continue;
+      if (typeof value !== 'string' || !allowed.includes(value)) {
+        throw new BadRequestException(`${field} must be one of: ${allowed.join(', ')}`);
+      }
+      data[field] = value;
+    }
+
+    if (Object.keys(data).length === 0) {
+      throw new BadRequestException('No preferences to update');
+    }
+
+    // updateMany so the tenant stays in the WHERE: update() takes a unique
+    // where, which would leave this addressable by profile id alone.
+    const updated = await this.prisma.profile.updateMany({
+      where: { id: profileId, tenantId },
+      data,
+    });
+    if (updated.count === 0) throw new NotFoundException('Profile not found');
+
+    return this.getPreferences(tenantId, profileId);
+  }
+
+  /**
+   * Changing a password from inside a session.
+   *
+   * The current password is required: a session left open on a shared machine
+   * should not be enough to lock the real owner out of their account.
+   */
+  async changePassword(
+    profileId: bigint,
+    dto: { currentPassword: string; newPassword: string },
+    currentSessionId?: string,
+  ) {
+    if (!dto?.currentPassword || !dto?.newPassword) {
+      throw new BadRequestException('Both your current and new password are required');
+    }
+    if (dto.newPassword.length < 8) {
+      throw new BadRequestException('Choose a new password of at least 8 characters');
+    }
+    if (dto.newPassword === dto.currentPassword) {
+      throw new BadRequestException('That is the password you are already using');
+    }
+
+    const profile = await this.prisma.profile.findUnique({
+      where: { id: profileId },
+      include: { user: true },
+    });
+
+    if (!profile?.user) throw new NotFoundException('Account not found');
+
+    const matches = await bcrypt.compare(dto.currentPassword, profile.user.password);
+    if (!matches) throw new BadRequestException('Your current password is not correct');
+
+    await this.prisma.user.update({
+      where: { id: profile.user.id },
+      data: {
+        password: await bcrypt.hash(dto.newPassword, 10),
+        passwordChangedAt: new Date(),
+      },
+    });
+
+    // Someone changing their password usually means they suspect someone else
+    // has it. Every other session is ended; the one making the request is
+    // spared so the change does not sign them out of the page they are on.
+    const ended = await this.sessions.revokeAllForUser(profile.user.id, currentSessionId);
+
+    this.logger.log(`Password changed for user ${profile.user.id}`);
+    return { success: true, otherSessionsEnded: ended };
+  }
+
   async getPlatformAdminStatus(userId: bigint) {
     const user = await this.prisma.user.findUnique({ where: { id: userId } });
     if (!user || !user.platformRole) throw new NotFoundException('Session profile not found');
@@ -624,26 +890,60 @@ export class AuthService {
   async getSessionStatus(profileId: bigint) {
     const profile = await this.prisma.profile.findUnique({
       where: { id: profileId },
-      include: { consultTherapistProfile: true },
+      include: { consultTherapistProfile: true, tenant: true },
     });
 
     if (!profile) throw new NotFoundException('Session profile not found');
 
-    return {
-      id: profile.id.toString(),
-      tenantId: profile.tenantId.toString(),
-      email: profile.email,
-      username: profile.username,
-      firstName: profile.firstName,
-      lastName: profile.lastName,
-      type: profile.type,
-      status: profile.status,
-      avatarUrl: profile.avatarUrl,
-      isTherapist: !!profile.consultTherapistProfile,
-    };
+    return this.practiceProfile(profile);
   }
 
-  async refresh(refreshToken: string) {
+  /** The live sessions of the signed-in account, newest use first. */
+  listSessions(userId: bigint, currentSessionId?: string) {
+    return this.sessions.listForUser(userId, currentSessionId);
+  }
+
+  /**
+   * Ends one named session. The user id is part of the match, so an id
+   * belonging to somebody else simply does not exist as far as this call is
+   * concerned.
+   */
+  async endSession(userId: bigint, sessionId: string, currentSessionId?: string) {
+    const ended = await this.sessions.revokeSession(sessionId, userId);
+    if (ended === 0) {
+      throw new NotFoundException('That session has already ended');
+    }
+    return { success: true, endedCurrentSession: sessionId === currentSessionId };
+  }
+
+  /** "Sign out everywhere else" — every session but the one asking. */
+  async endOtherSessions(userId: bigint, currentSessionId?: string) {
+    const ended = await this.sessions.revokeAllForUser(userId, currentSessionId);
+    return { success: true, sessionsEnded: ended };
+  }
+
+  /**
+   * Ends the session behind an access token, best effort.
+   *
+   * Logout has to work with an expired access token — otherwise someone whose
+   * token lapsed could never clear their cookies — so expiry is ignored here
+   * while the signature is still required. A valid signature means the caller
+   * held this session, and ending your own session is what they asked for.
+   */
+  async endSessionForAccessToken(accessToken: string | undefined) {
+    if (!accessToken) return;
+    try {
+      const payload = await this.jwtService.verifyAsync<JwtPayload>(accessToken, {
+        ignoreExpiration: true,
+      });
+      if (payload.sid) await this.sessions.revokeSession(payload.sid);
+    } catch {
+      // An unreadable token means there is no session to end; the caller still
+      // gets its cookies cleared.
+    }
+  }
+
+  async refresh(refreshToken: string, device: DeviceInfo = {}) {
     let payload: JwtPayload;
     try {
       payload = await this.jwtService.verifyAsync<JwtPayload>(refreshToken, {
@@ -658,9 +958,12 @@ export class AuthService {
       if (!user || !user.platformRole) {
         throw new UnauthorizedException('Session is no longer valid');
       }
-      const { accessToken, refreshToken: nextRefreshToken } = this.generatePlatformAdminTokens(
-        user,
-        user.platformRole,
+      const { accessToken, refreshToken: nextRefreshToken } = await this.rotateSession(
+        payload,
+        user.id,
+        refreshToken,
+        (next) => this.generatePlatformAdminTokens(user, user.platformRole!, next),
+        device,
       );
       return {
         accessToken,
@@ -675,44 +978,127 @@ export class AuthService {
 
     const profile = await this.prisma.profile.findUnique({
       where: { id: BigInt(payload.profileId) },
-      include: { user: true, tenant: true },
+      include: { user: true, tenant: true, consultTherapistProfile: true },
     });
 
     if (!profile || !profile.user) {
       throw new UnauthorizedException('Session is no longer valid');
     }
 
-    const { accessToken, refreshToken: nextRefreshToken } = this.generateTokens(
+    const { accessToken, refreshToken: nextRefreshToken } = await this.rotateSession(
+      payload,
       profile.user.id,
-      profile.id,
-      profile.tenantId,
-      profile.type,
+      refreshToken,
+      (next) => this.generateTokens(profile.user!.id, profile.id, profile.tenantId, profile.type, next),
+      device,
     );
 
     return {
       accessToken,
       refreshToken: nextRefreshToken,
-      profile: {
-        id: profile.id.toString(),
-        email: profile.email,
-        username: profile.username,
-        firstName: profile.firstName,
-        lastName: profile.lastName,
-        type: profile.type,
-        status: profile.status,
-        avatarUrl: profile.avatarUrl,
-        practiceName: profile.tenant?.name,
-        tenantSlug: profile.tenant?.slug,
-      },
+      profile: this.practiceProfile(profile),
     };
   }
 
-  private generateTokens(userId: bigint, profileId: bigint, tenantId: bigint, type: string) {
+  /**
+   * Exchanges a presented refresh token for the next pair in the same session.
+   *
+   * `issue` is called with the session id so the new tokens carry it, and the
+   * session row is only updated if the presented token is the one currently
+   * outstanding — a token that was already exchanged means two parties hold
+   * the session, and rotate() ends it rather than renewing it.
+   */
+  private async rotateSession(
+    payload: JwtPayload,
+    userId: bigint,
+    presentedToken: string,
+    issue: (sessionId: string) => { accessToken: string; refreshToken: string },
+    device: DeviceInfo = {},
+  ) {
+    // Refresh tokens minted before sessions existed carry no sid. Rather than
+    // signing everyone out on deploy, the first refresh of such a token opens
+    // a real session for it. They all expire within the refresh TTL, after
+    // which every token in circulation is session-backed.
+    if (!payload.sid) {
+      const sessionId = SessionService.newSessionId();
+      const tokens = issue(sessionId);
+      await this.sessions.startSession(sessionId, userId, tokens.refreshToken, device);
+      return tokens;
+    }
+
+    const tokens = issue(payload.sid);
+    const rotated = await this.sessions.rotate(
+      payload.sid,
+      presentedToken,
+      tokens.refreshToken,
+      device,
+    );
+    if (!rotated) {
+      throw new UnauthorizedException('Session is no longer valid');
+    }
+    return tokens;
+  }
+
+  /**
+   * Signs a pair of tokens bound to `sessionId`, which is the id of the Token
+   * row backing the session. The refresh token is only usable while that row
+   * still holds its hash, which is what makes it revocable.
+   */
+  /**
+   * The signed-in profile, as every endpoint that returns one should describe it.
+   *
+   * Login, refresh and /status each built their own shape and disagreed.
+   * Refresh carried practiceName and tenantSlug; login carried neither;
+   * /status carried tenantId but neither of those, and added isTherapist. So a
+   * client reading tenantSlug after signing in got nothing until a token
+   * refresh happened — and tenantSlug is what the booking link and the
+   * practice branding are built from.
+   */
+  private practiceProfile(profile: {
+    id: bigint;
+    tenantId: bigint;
+    email: string;
+    username: string | null;
+    firstName: string | null;
+    lastName: string | null;
+    type: string;
+    status: string;
+    avatarUrl: string | null;
+    // Required, not optional: a caller that forgets the include would otherwise
+    // hand back tenantSlug: null, which is worse than the inconsistency this
+    // replaces — silently wrong instead of visibly absent.
+    tenant: { name: string; slug: string } | null;
+    consultTherapistProfile: unknown | null;
+  }) {
+    return {
+      id: profile.id.toString(),
+      tenantId: profile.tenantId.toString(),
+      email: profile.email,
+      username: profile.username,
+      firstName: profile.firstName,
+      lastName: profile.lastName,
+      type: profile.type,
+      status: profile.status,
+      avatarUrl: profile.avatarUrl,
+      practiceName: profile.tenant?.name ?? null,
+      tenantSlug: profile.tenant?.slug ?? null,
+      isTherapist: !!profile.consultTherapistProfile,
+    };
+  }
+
+  private generateTokens(
+    userId: bigint,
+    profileId: bigint,
+    tenantId: bigint,
+    type: string,
+    sessionId: string,
+  ) {
     const payload: JwtPayload = {
       sub: userId.toString(),
       profileId: profileId.toString(),
       tenantId: tenantId.toString(),
       type,
+      sid: sessionId,
     };
 
     const accessToken = this.jwtService.sign(payload, { expiresIn: JWT_EXPIRES_IN });
@@ -727,12 +1113,14 @@ export class AuthService {
   private generatePlatformAdminTokens(
     user: { id: bigint; email: string },
     platformRole: string,
+    sessionId: string,
   ) {
     const payload: JwtPayload = {
       sub: user.id.toString(),
       email: user.email,
       type: 'platform_admin',
       roles: [platformRole],
+      sid: sessionId,
     };
 
     const accessToken = this.jwtService.sign(payload, { expiresIn: JWT_EXPIRES_IN });

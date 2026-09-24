@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Patch, Body, Param, Query, Req, UseGuards } from '@nestjs/common';
+import { Controller, Get, Post, Patch, Body, Param, Query, Req, UseGuards, NotFoundException } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { IntakeService } from './intake.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
@@ -15,14 +15,18 @@ export class IntakeController {
   @Get('public/forms')
   @ApiOperation({ summary: 'Get intake questionnaires for client portal' })
   getPublicForms(@Req() req: TenantRequest, @Query('targetType') targetType?: string) {
-    if (!req.tenantId) throw new Error('Practice tenant context required');
+    if (!req.tenantId) throw new NotFoundException(
+        'This practice could not be found. Check the web address, or ask the practice for their booking link.',
+      );
     return this.intakeService.getPublicForms(req.tenantId, targetType);
   }
 
   @Get('public/reviews')
   @ApiOperation({ summary: 'Get published public practice reviews' })
   getPublicReviews(@Req() req: TenantRequest) {
-    if (!req.tenantId) throw new Error('Practice tenant context required');
+    if (!req.tenantId) throw new NotFoundException(
+        'This practice could not be found. Check the web address, or ask the practice for their booking link.',
+      );
     return this.intakeService.getPublishedReviews(req.tenantId);
   }
 
@@ -69,7 +73,9 @@ export class IntakeController {
   @Post('public/submissions')
   @ApiOperation({ summary: 'Client submit intake questionnaire answers' })
   submitAnswers(@Req() req: TenantRequest, @Body() dto: any) {
-    if (!req.tenantId) throw new Error('Practice tenant context required');
+    if (!req.tenantId) throw new NotFoundException(
+        'This practice could not be found. Check the web address, or ask the practice for their booking link.',
+      );
     return this.intakeService.submitIntakeAnswers(req.tenantId, dto);
   }
 

@@ -72,7 +72,7 @@ export function LoginPage() {
       variant="login"
       headline="Practice management for modern therapists"
       tagline="Log in to manage your bookings, clinical SOAP notes, telehealth rooms, and practice branding."
-      footer="© 2026 unclutterOS Inc."
+      footer="© 2026 Unclutter Desk"
       stats={[
         { value: '1,240+', label: 'practices in Nigeria' },
         { value: '0%', label: 'platform fee on payouts' },

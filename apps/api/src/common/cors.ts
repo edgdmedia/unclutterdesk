@@ -1,16 +1,7 @@
 import { PrismaService } from './prisma/prisma.service';
-
-// Exact-match origins that are always allowed in every environment.
-const ROOT_ORIGINS = ['https://unclutterdesk.com', 'https://www.unclutterdesk.com'];
-
-// Tenant booking surfaces: https://<slug>.unclutterdesk.com — single label only, so
-// this cannot be satisfied by an attacker-controlled host such as
-// "https://evil.com/x.unclutterdesk.com" or "https://unclutterdesk.com.evil.com".
-const TENANT_SUBDOMAIN = /^https:\/\/[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.unclutterdesk\.com$/;
-
-// Dev-only. Never consulted when NODE_ENV=production.
-const LOCAL_ORIGIN = /^https?:\/\/(?:[a-z0-9-]+\.)*localhost(?::\d+)?$/;
-const PAGES_PREVIEW_ORIGIN = /^https:\/\/[a-z0-9-]+\.[a-z0-9-]+\.pages\.dev$/;
+// Shared with checkout redirect validation, so the two cannot drift into
+// disagreeing about which hosts are ours.
+import { LOCAL_ORIGIN, PAGES_PREVIEW_ORIGIN, ROOT_ORIGINS, TENANT_SUBDOMAIN } from './origins';
 
 // Verified tenant custom domains live in the database, so they are cached rather
 // than queried on every preflight.

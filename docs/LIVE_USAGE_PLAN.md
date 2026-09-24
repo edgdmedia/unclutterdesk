@@ -71,14 +71,18 @@ Complete this before onboarding real users:
 2. Remove fictional billing, client, session, staff, bank, and clinical data from
    private pages. Keep illustrative data only inside clearly labeled marketing
    mockups.
-3. Wire invite claiming to the backend, validate the token, persist the profile,
-   and redirect only after success. Use the invited tenant's name and email.
+3. ~~Wire invite claiming to the backend, validate the token, persist the profile,
+   and redirect only after success. Use the invited tenant's name and email.~~
+   **Done.** `POST /v1/auth/invite/claim` consumes the invite and creates the
+   profile in one transaction; the page loads the real invitation and lands on
+   the practice's own subdomain. The claim token is now 32 random bytes.
 4. ~~Persist schedule creation, cancellation, and status changes through the API;
    re-fetch after mutation and show loading/failure states.~~ **Done.**
 5. Wire or remove every visible action: Notes, notifications, reschedule,
    payment history, profile upload, practice status, and settings shortcuts.
-   **Mostly done** — Notes wired, reschedule and payment history removed,
-   brand settings route corrected. Dashboard notification button still unwired.
+   **Mostly done** — Notes wired, brand settings route corrected, and reschedule
+   and payment history are now built rather than removed (see item 6 in the
+   audit). Dashboard notification button still unwired.
 6. Add a route/link audit for every `Link`, `href`, and button in the primary
    signup, onboarding, booking, portal, and workspace flows.
 7. Replace all user-visible and generated “Unclutter OS”, “unclutterOS”, and
@@ -90,7 +94,8 @@ Complete this before onboarding real users:
    “Explore features”.
 
 **Status:** Item 1 is complete. Verified with the private-data regression test;
-the remaining items are still open.
+item 7 is partly complete on auth/admin surfaces; item 9 is partly complete for
+the landing footer social links; the remaining items are still open.
 
 ### Mockup data policy
 
@@ -125,6 +130,17 @@ the server before rerunning `./deploy.sh`. Confirm the backup file exists first.
 refreshing after every supported mutation preserves the result; every visible
 primary action either works or is removed; branding and links pass a scripted
 route/content scan.
+
+### Latest local audit notes
+
+- Verified: `demo.owner@unclutterdesk.com` can be provisioned locally through
+  `scripts/provision-demo-account.mjs`.
+- Verified: login/auth shell branding and landing footer placeholder links are fixed.
+- Verified: unauthenticated unknown app routes show the app 404 screen.
+- Still open: local `.localhost` booking-host routing fails because
+  `TenantMiddleware` does not resolve `.localhost` subdomains.
+- Still open: local DB has schema drift around `ConsultBooking.amountKobo`, which
+  breaks the booking-expiry cron during startup.
 
 ## Phase 5: Controlled launch
 
