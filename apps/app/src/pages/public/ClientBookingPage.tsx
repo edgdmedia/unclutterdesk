@@ -50,6 +50,9 @@ export function ClientBookingPage({ previewSlug }: { previewSlug?: string } = {}
   const [loading, setLoading] = useState(true);
   const [bookingError, setBookingError] = useState<string | null>(null);
   const [bookingLoading, setBookingLoading] = useState(false);
+  // Bank transfer is offered only when the practice turned it on (Pro and Clinic).
+  const [bankTransfer, setBankTransfer] = useState(false);
+  const [payBy, setPayBy] = useState<'ONLINE' | 'MANUAL'>('ONLINE');
   const [tenantId, setTenantId] = useState('');
   const [tenantInfo, setTenantInfo] = useState<PublicTenantInfo | null>(null);
   const [discountCode, setDiscountCode] = useState('');
@@ -173,13 +176,26 @@ export function ClientBookingPage({ previewSlug }: { previewSlug?: string } = {}
     }
   };
 
+  useEffect(() => {
+    let cancelled = false;
+    const path = '/v1/consult/public/payment-options';
+    (previewSlug ? apiRequest<{ bankTransfer: boolean }>(path, { method: 'GET', headers: { 'X-Tenant-Slug': previewSlug } }) : api.get<{ bankTransfer: boolean }>(path))
+      .then((options) => {
+        if (!cancelled) setBankTransfer(Boolean(options?.bankTransfer));
+      })
+      .catch(() => undefined);
+    return () => {
+      cancelled = true;
+    };
+  }, [previewSlug]);
+
   const handleConfirmBooking = async () => {
     if (!selectedService || !selectedSlot) return;
     setBookingLoading(true);
     setBookingError(null);
     try {
       const [firstName, ...rest] = fullName.trim().split(/\s+/).filter(Boolean);
-      const booking = await api.post<{ bookingId: string; startsAt: string; endsAt: string; serviceTitle: string; therapistName: string; videoRoomLink: string; status: string; paymentUrl?: string }>('/v1/consult/public/bookings', {
+      const booking = await api.post<{ bookingId: string; startsAt: string; endsAt: string; serviceTitle: string; therapistName: string; videoRoomLink: string; status: string; paymentUrl?: string; manualPayment?: unknown }>('/v1/consult/public/bookings', {
         serviceId: selectedService.id,
         availabilityId: selectedSlot.id,
         firstName,
@@ -188,6 +204,7 @@ export function ClientBookingPage({ previewSlug }: { previewSlug?: string } = {}
         phone,
         notes: concerns,
         discountCode: discountPreview ? discountPreview.code : undefined,
+        ...(bankTransfer && payBy === 'MANUAL' ? { paymentMethod: 'MANUAL' } : {}),
       });
 
       if (booking.paymentUrl) {
@@ -344,6 +361,23 @@ export function ClientBookingPage({ previewSlug }: { previewSlug?: string } = {}
               <div className="flex items-center justify-between"><span className="text-[12.5px] font-semibold text-[#94A3B8]">Original</span><span className="font-bold text-[#0F172A]">{selectedService ? formatMoney(originalKobo) : '--'}</span></div>
               <div className="flex items-center justify-between"><span className="text-[12.5px] font-semibold text-[#94A3B8]">Discount</span><span className="font-bold text-emerald-700">-{formatMoney(amountSavedKobo)}</span></div>
               <div className="flex items-baseline justify-between pt-1"><span className="text-[13px] font-bold text-[#475569]">Final total</span><span className="text-[26px] font-extrabold tracking-[-0.035em] text-[#0F172A]">{selectedService ? formatMoney(finalKobo) : '--'}</span></div>
+              {bankTransfer && Number(finalKobo) > 0 ? (
+                <fieldset className="pt-2 space-y-2">
+                  <legend className="text-[12.5px] font-bold text-[#475569] mb-2">How would you like to pay?</legend>
+                  {([
+                    ['ONLINE', 'Pay online now', 'Card, bank transfer or USSD. Confirmed straight away.'],
+                    ['MANUAL', 'Bank transfer to the practice', 'We hold your time for up to 48 hours while you pay.'],
+                  ] as const).map(([value, title, hint]) => (
+                    <label key={value} className="flex items-start gap-2.5 rounded-[14px] border px-3 py-2.5 cursor-pointer" style={payBy === value ? { borderColor: primaryColor, backgroundColor: `${primaryColor}0D` } : { borderColor: '#E2E8F0' }}>
+                      <input type="radio" name="payBy" value={value} checked={payBy === value} onChange={() => setPayBy(value)} className="mt-0.5" style={{ accentColor: primaryColor }} />
+                      <span>
+                        <span className="block text-[13px] font-bold text-[#0F172A]">{title}</span>
+                        <span className="block text-[11.5px] text-[#64748B]">{hint}</span>
+                      </span>
+                    </label>
+                  ))}
+                </fieldset>
+              ) : null}
             </div>
             
             {/* Action Bar (Sticky on Mobile) */}

@@ -33,7 +33,7 @@ function makeService(rows: ReturnType<typeof row>[]) {
     consultBooking: { findMany: vi.fn().mockResolvedValue(rows) },
   };
   const service = new ConsultService(
-    prisma, {} as any, {} as any, {} as any, {} as any, {} as any,
+    prisma, {} as any, {} as any, {} as any, {} as any, {} as any, {} as any,
   );
   return { service, prisma };
 }

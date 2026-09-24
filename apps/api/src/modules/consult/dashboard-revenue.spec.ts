@@ -34,7 +34,7 @@ function makeService(bookings: unknown[]) {
     bankSubaccount: { count: vi.fn().mockResolvedValue(1) },
   };
   const service = new ConsultService(
-    prisma, {} as any, {} as any, {} as any, {} as any, {} as any,
+    prisma, {} as any, {} as any, {} as any, {} as any, {} as any, {} as any,
   );
   return { service, prisma };
 }

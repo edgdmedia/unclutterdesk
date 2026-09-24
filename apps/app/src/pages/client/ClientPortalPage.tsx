@@ -7,6 +7,7 @@ import { RescheduleDialog } from '../../components/RescheduleDialog';
 import { initialsOf } from '../../utils/initials';
 import { useAuth } from '../../context/AuthContext';
 import type { MyAssessment } from '../../utils/assessments';
+import { TransferDetails, type ManualPayment } from '../../components/payments/TransferDetails';
 
 type PortalTab = 'upcoming' | 'past' | 'assessments' | 'payments' | 'settings';
 
@@ -20,6 +21,8 @@ type PortalSession = {
   priceKobo: string;
   therapistName: string;
   videoRoomLink: string | null;
+  paymentMethod?: string;
+  manualPayment?: ManualPayment | null;
 };
 
 type PortalPayload = {
@@ -240,7 +243,18 @@ export function ClientPortalPage() {
             <h1 className="mt-1 text-[28px] font-bold tracking-[-0.03em] text-[#0F172A]">{portal.clientName ? `Hello, ${portal.clientName.split(' ')[0]}` : 'Client portal'}</h1>
           </div>
 
-          {portal.upcoming.some(s => s.status === 'PENDING_PAYMENT') && (
+          {portal.upcoming
+            .filter((s) => s.status === 'PENDING_PAYMENT' && s.manualPayment)
+            .map((s) => (
+              <div key={s.id} className="space-y-2">
+                <p className="text-[13px] font-semibold text-[#475569]">
+                  {s.serviceTitle} on {formatDay(s.startsAt)} with {s.therapistName}
+                </p>
+                <TransferDetails payment={s.manualPayment!} bookingId={s.id} email={lookupEmail} color={primary} />
+              </div>
+            ))}
+
+          {portal.upcoming.some(s => s.status === 'PENDING_PAYMENT' && !s.manualPayment) && (
             <div className="rounded-[18px] border border-amber-200 bg-amber-50 p-4 flex items-center justify-between shadow-sm">
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-full bg-amber-100 flex items-center justify-center text-amber-600">
@@ -253,7 +267,7 @@ export function ClientPortalPage() {
               </div>
               <button
                 onClick={async () => {
-                  const pending = portal.upcoming.find(s => s.status === 'PENDING_PAYMENT');
+                  const pending = portal.upcoming.find(s => s.status === 'PENDING_PAYMENT' && !s.manualPayment);
                   if (!pending) return;
 
                   if (!isAuthenticated || profile?.type !== 'user') {

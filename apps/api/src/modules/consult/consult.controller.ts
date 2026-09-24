@@ -1,16 +1,20 @@
 import { Controller, Get, Post, Patch, Delete, Body, Param, Query, Req, UseGuards, NotFoundException } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { ConsultService } from './consult.service';
+import { ManualPaymentService } from './manual-payment.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { RolesGuard } from '../../common/roles.guard';
-import { AnyAuthenticated, CLINICAL, PRACTICE_ADMIN, Roles, STAFF } from '../../common/roles';
+import { AnyAuthenticated, CLINICAL, FRONT_DESK, PRACTICE_ADMIN, Roles, STAFF } from '../../common/roles';
 import { TenantRequest } from '../../common/middleware/tenant.middleware';
 import { authenticatedProfileId, authenticatedTenantId } from '../../common/authenticated-tenant';
 
 @ApiTags('Consult')
 @Controller('v1/consult')
 export class ConsultController {
-  constructor(private readonly consultService: ConsultService) {}
+  constructor(
+    private readonly consultService: ConsultService,
+    private readonly manualPayments: ManualPaymentService,
+  ) {}
 
   @Get('public/therapists')
   @ApiOperation({ summary: 'Get active bookable therapists for client portal' })
@@ -195,6 +199,58 @@ export class ConsultController {
         'This practice could not be found. Check the web address, or ask the practice for their booking link.',
       );
     return this.consultService.createBooking(req.tenantId, dto);
+  }
+
+  @Get('public/payment-options')
+  @ApiOperation({ summary: 'How clients can pay this practice (bank details are only given with a booking)' })
+  async paymentOptions(@Req() req: TenantRequest) {
+    if (!req.tenantId) throw new NotFoundException('Practice not found');
+    const manual = await this.manualPayments.available(req.tenantId);
+    return { online: true, bankTransfer: manual !== null };
+  }
+
+  @Post('public/bookings/:bookingId/transfer-sent')
+  @ApiOperation({ summary: 'The client says they have sent the bank transfer' })
+  transferSent(@Req() req: TenantRequest, @Param('bookingId') bookingId: string, @Body() dto: { email?: string }) {
+    if (!req.tenantId) throw new NotFoundException('Practice not found');
+    if (!/^\d+$/.test(bookingId)) throw new NotFoundException('Booking not found');
+    return this.manualPayments.clientReportsPaid(req.tenantId, BigInt(bookingId), dto?.email ?? '');
+  }
+
+  @Roles(...PRACTICE_ADMIN)
+  @Get('manual-payments/settings')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @ApiBearerAuth('access-token')
+  manualSettings(@Req() req: any) {
+    return this.manualPayments.getSettings(authenticatedTenantId(req));
+  }
+
+  @Roles(...PRACTICE_ADMIN)
+  @Patch('manual-payments/settings')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @ApiBearerAuth('access-token')
+  @ApiOperation({ summary: 'Turn bank transfer payments on or off, and set the bank details' })
+  updateManualSettings(@Req() req: any, @Body() dto: { enabled?: boolean; details?: unknown }) {
+    return this.manualPayments.updateSettings(authenticatedTenantId(req), dto ?? {});
+  }
+
+  @Roles(...FRONT_DESK)
+  @Get('manual-payments/pending')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @ApiBearerAuth('access-token')
+  @ApiOperation({ summary: 'Bookings waiting for a bank transfer' })
+  pendingTransfers(@Req() req: any) {
+    return this.manualPayments.pending(authenticatedTenantId(req));
+  }
+
+  @Roles(...FRONT_DESK)
+  @Post('bookings/:bookingId/mark-paid')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @ApiBearerAuth('access-token')
+  @ApiOperation({ summary: 'Confirm a bank transfer arrived; confirms the session and emails the client' })
+  markPaid(@Req() req: any, @Param('bookingId') bookingId: string) {
+    if (!/^\d+$/.test(bookingId)) throw new NotFoundException('Booking not found');
+    return this.manualPayments.markPaid(authenticatedTenantId(req), authenticatedProfileId(req), BigInt(bookingId));
   }
 
   @Post('public/bookings/:bookingId/pay')

@@ -36,8 +36,13 @@ model Tenant {
   address           String?
   category          String?
 
-  subscriptionTier String  @default("STARTER") // "STARTER", "PRO", "CLINIC"
-  isActive         Boolean @default(true)
+  subscriptionTier      String  @default("STARTER") // "STARTER", "PRO", "CLINIC"
+  /// Clients may pay by bank transfer straight to the practice (Pro and
+  /// Clinic only). Off unless the practice turns it on.
+  manualPaymentsEnabled Boolean @default(false)
+  /// { bankName, accountName, accountNumber, instructions }
+  manualPaymentDetails  Json?
+  isActive              Boolean @default(true)
 
   // Account closure. Requesting closure deactivates the practice immediately
   // and starts the retention window; the irreversible purge is a separate,
@@ -275,23 +280,32 @@ model ConsultAvailability {
 }
 
 model ConsultBooking {
-  id               BigInt    @id @default(autoincrement())
-  tenantId         BigInt
-  serviceId        BigInt
-  availabilityId   BigInt
-  clientProfileId  BigInt
-  status           String    @default("PENDING_PAYMENT") // "PENDING_PAYMENT", "CONFIRMED", "COMPLETED", "CANCELLED"
-  paymentRef       String?   @unique
-  paidAt           DateTime?
+  id                          BigInt    @id @default(autoincrement())
+  tenantId                    BigInt
+  serviceId                   BigInt
+  availabilityId              BigInt
+  clientProfileId             BigInt
+  status                      String    @default("PENDING_PAYMENT") // "PENDING_PAYMENT", "CONFIRMED", "COMPLETED", "CANCELLED"
+  /// "PAYSTACK" (paid online) or "MANUAL" (bank transfer straight to the
+  /// practice, confirmed by its staff).
+  paymentMethod               String    @default("PAYSTACK") @db.VarChar(20)
+  /// A manual booking holds its slot until this time, then is released.
+  holdExpiresAt               DateTime?
+  /// The client said they had sent the transfer.
+  clientReportedPaidAt        DateTime?
+  /// Who marked a manual payment as received.
+  paymentConfirmedByProfileId BigInt?
+  paymentRef                  String?   @unique
+  paidAt                      DateTime?
   // What was actually charged, after any discount. The service price is not a
   // substitute: it moves when the practice reprices, and it is simply wrong for
   // a discounted booking.
-  amountKobo       BigInt?
-  discountCodeUsed String?
-  notes            String?
-  videoRoomName    String?
-  createdAt        DateTime  @default(now())
-  updatedAt        DateTime?
+  amountKobo                  BigInt?
+  discountCodeUsed            String?
+  notes                       String?
+  videoRoomName               String?
+  createdAt                   DateTime  @default(now())
+  updatedAt                   DateTime?
 
   tenant          Tenant                    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   service         ConsultService            @relation(fields: [serviceId], references: [id])

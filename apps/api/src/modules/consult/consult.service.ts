@@ -9,6 +9,7 @@ import { CalendarService } from '../calendar/calendar.service';
 import { changePercent, chargedKobo, revenueByMonth, startOfMonth } from '../../common/revenue';
 import { tenantWebOrigin } from '../../common/origins';
 import { decryptNoteFields } from '../../common/field-encryption';
+import { holdExpiry, ManualPaymentService, transferReference } from './manual-payment.service';
 
 @Injectable()
 export class ConsultService {
@@ -21,6 +22,7 @@ export class ConsultService {
     private readonly billing: BillingService,
     private readonly paystack: PaystackService,
     private readonly calendar: CalendarService,
+    private readonly manualPayments: ManualPaymentService,
   ) { }
 
   async getPublicTherapists(tenantId: bigint) {
@@ -527,10 +529,21 @@ export class ConsultService {
     phone?: string;
     notes?: string;
     discountCode?: string;
+    /** "MANUAL" to pay by bank transfer, where the practice offers it. */
+    paymentMethod?: string;
   }) {
+    // Checked before anything else: a missing name or a malformed id used to
+    // crash deep inside the transaction and reach the client as a 500.
+    if (!/^\d+$/.test(String(dto?.serviceId ?? '')) || !/^\d+$/.test(String(dto?.availabilityId ?? ''))) {
+      throw new BadRequestException('Choose a service and a time.');
+    }
+    const email = String(dto.email ?? '').toLowerCase().trim();
+    if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) throw new BadRequestException('Enter a valid email address.');
+    const firstName = String(dto.firstName ?? '').trim();
+    if (!firstName) throw new BadRequestException('Enter your name.');
+    const lastName = String(dto.lastName ?? '').trim();
     const serviceId = BigInt(dto.serviceId);
     const availabilityId = BigInt(dto.availabilityId);
-    const email = dto.email.toLowerCase().trim();
 
     // Verify availability slot exists and is active
     const slot = await this.prisma.consultAvailability.findFirst({
@@ -584,6 +597,13 @@ export class ConsultService {
       }
     }
 
+    // Checked here, never trusted from the page: the practice must offer it now.
+    const wantsManual = String(dto.paymentMethod ?? '').toUpperCase() === 'MANUAL';
+    const manualDetails = wantsManual ? await this.manualPayments.available(tenantId) : null;
+    if (wantsManual && !manualDetails) {
+      throw new BadRequestException('This practice is not taking bank transfers right now. Please pay online.');
+    }
+
     // Atomic transaction: claim the slot, find or create the client profile,
     // create the booking, and record discount usage.
     const result = await this.prisma.$transaction(async (tx) => {
@@ -615,8 +635,8 @@ export class ConsultService {
             tenantId,
             email,
             username: email.split('@')[0],
-            firstName: dto.firstName.trim(),
-            lastName: dto.lastName.trim(),
+            firstName,
+            lastName,
             phone: dto.phone,
             type: 'user',
             status: 'active',
@@ -640,6 +660,8 @@ export class ConsultService {
         ? dto.discountCode!.toUpperCase().trim()
         : null;
 
+      // A free booking has nothing to transfer, so it confirms as usual below.
+      const manual = manualDetails !== null && finalPriceKobo > 0n;
       const booking = await tx.consultBooking.create({
         data: {
           tenantId,
@@ -651,6 +673,7 @@ export class ConsultService {
           videoRoomName,
           amountKobo: finalPriceKobo,
           discountCodeUsed,
+          ...(manual ? { paymentMethod: 'MANUAL', holdExpiresAt: holdExpiry(new Date(), slot.startsAt) } : {}),
         },
       });
 
@@ -663,8 +686,16 @@ export class ConsultService {
       }
 
       let paymentUrl = null;
+      let manualPayment = null;
 
-      if (finalPriceKobo > 0n) {
+      if (manual) {
+        manualPayment = {
+          ...manualDetails!,
+          amountKobo: finalPriceKobo.toString(),
+          reference: transferReference(booking.id),
+          holdExpiresAt: booking.holdExpiresAt!.toISOString(),
+        };
+      } else if (finalPriceKobo > 0n) {
         const splitConfig = await this.billing.calculateSplitPayout(tenantId, finalPriceKobo);
         const reference = `booking-${booking.id}-${Date.now()}`;
         
@@ -714,9 +745,16 @@ export class ConsultService {
         therapistName: `${slot.therapist.profile.firstName || ''} ${slot.therapist.profile.lastName || ''}`.trim(),
         videoRoomLink,
         paymentUrl,
+        manualPayment,
       };
     });
 
+    if (result.manualPayment) {
+      // After commit, and never failing the booking: the details are on screen too.
+      await this.manualPayments.announce(BigInt(result.bookingId)).catch((err) =>
+        this.logger.warn(`Could not announce transfer booking ${result.bookingId}: ${(err as Error).message}`),
+      );
+    }
     return result;
   }
 
@@ -1074,6 +1112,9 @@ export class ConsultService {
     });
 
     const now = new Date();
+    const manualDetails = bookings.some((b) => b.paymentMethod === 'MANUAL' && b.status === 'PENDING_PAYMENT')
+      ? await this.manualPayments.available(tenantId)
+      : null;
     const mapped = bookings.map((booking) => ({
       id: booking.id.toString(),
       icalToken: CalendarService.icalToken(booking.id),
@@ -1084,6 +1125,18 @@ export class ConsultService {
       priceKobo: booking.service.priceKobo.toString(),
       therapistName: `${booking.availability.therapist.profile.firstName || ''} ${booking.availability.therapist.profile.lastName || ''}`.trim() || 'Your therapist',
       videoRoomLink: booking.videoRoomName ? (booking.videoRoomName.startsWith('http') ? booking.videoRoomName : `https://meet.jit.si/${booking.videoRoomName}`) : null,
+      paymentMethod: booking.paymentMethod,
+      // How to pay a transfer that is still due.
+      manualPayment:
+        booking.paymentMethod === 'MANUAL' && booking.status === 'PENDING_PAYMENT'
+          ? {
+              ...(manualDetails ?? {}),
+              amountKobo: chargedKobo(booking).toString(),
+              reference: transferReference(booking.id),
+              holdExpiresAt: booking.holdExpiresAt?.toISOString() ?? null,
+              reportedPaidAt: booking.clientReportedPaidAt?.toISOString() ?? null,
+            }
+          : null,
     }));
 
     const upcoming = mapped.filter((booking) => new Date(booking.startsAt) >= now && booking.status !== 'CANCELLED');

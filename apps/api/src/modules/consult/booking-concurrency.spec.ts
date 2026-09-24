@@ -53,7 +53,7 @@ function makeService({ claimCount = 1 }: { claimCount?: number } = {}) {
     { validateDiscount: vi.fn() } as any,
     { calculateSplitPayout: vi.fn() } as any,
     {} as any,
-    { pushBookingToGoogle: vi.fn() } as any,
+    { pushBookingToGoogle: vi.fn() } as any, {} as any,
   );
   return { service, prisma, tx };
 }

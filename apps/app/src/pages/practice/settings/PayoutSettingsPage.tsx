@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { ShieldCheck, X } from 'lucide-react';
 import { Eyebrow, Card, useToast } from '@unclutterdesk/ui';
+import { ManualPaymentSettingsCard } from '../../../components/payments/ManualPaymentSettingsCard';
 import { useBrand } from '@unclutterdesk/ui';
 import { api } from '../../../utils/apiClient';
 
@@ -107,6 +108,8 @@ export function PayoutSettingsPage() {
             </div>
           </Card>
         )}
+
+        <ManualPaymentSettingsCard color={primaryColor} />
 
         <Card padding="p-[24px_26px]" className="max-w-[560px] space-y-3 bg-white border border-slate-100">
           <div className="text-sm font-bold text-[#0F172A]">Payout history</div>
