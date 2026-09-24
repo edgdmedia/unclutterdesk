@@ -38,3 +38,11 @@ export const Roles = (...roles: PracticeRole[]) => SetMetadata(ROLES_KEY, roles)
  * considered and opened up, rather than never annotated.
  */
 export const AnyAuthenticated = () => SetMetadata(ROLES_KEY, [...PRACTICE_ROLES]);
+
+export const PLATFORM_ADMIN_KEY = 'allowPlatformAdmin';
+
+/**
+ * Also admits a platform admin, who has no practice profile and so fails every
+ * role check. Only for endpoints that handle that case themselves.
+ */
+export const AllowPlatformAdmin = () => SetMetadata(PLATFORM_ADMIN_KEY, true);

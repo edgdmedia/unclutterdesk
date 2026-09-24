@@ -3,6 +3,7 @@ import { NavLink, Outlet, Link, useNavigate } from 'react-router-dom';
 import {
   LayoutDashboard,
   Building2,
+  Ticket,
   LogOut,
   Loader2,
   ChevronDown,
@@ -10,6 +11,7 @@ import {
   ArrowLeft,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
+import { UnclutterMark } from '@unclutterdesk/ui';
 
 interface AdminNavItem {
   to: string;
@@ -21,6 +23,7 @@ interface AdminNavItem {
 const ADMIN_NAV: AdminNavItem[] = [
   { to: '/admin', label: 'Overview', icon: LayoutDashboard, end: true },
   { to: '/admin/tenants', label: 'Tenants', icon: Building2 },
+  { to: '/admin/invites', label: 'Invite codes', icon: Ticket },
 ];
 
 function AdminNavLink({ item, isCollapsed }: { item: AdminNavItem; isCollapsed?: boolean }) {
@@ -108,9 +111,8 @@ export function PlatformAdminLayout() {
       >
         <div className="space-y-6">
           <div className={`px-2 py-1 mb-4 flex items-center ${isCollapsed ? 'justify-center' : 'gap-2.5'}`}>
-            <div className="h-7 w-7 shrink-0 rounded-[9px] bg-[#0F3A53] text-[#E3B341] flex items-center justify-center font-extrabold text-sm border border-[#E3B341]/30 shadow-xs">
-              O
-            </div>
+            {/* Was a gold "O" tile: the old product's initial. */}
+            <UnclutterMark size={28} showBadge={false} className="shrink-0 rounded-[9px]" />
             {!isCollapsed && (
               <div className="flex items-center gap-1.5">
                 <span className="font-semibold text-[17px] tracking-[-0.02em] text-[#F8FAFC] truncate">

@@ -3,6 +3,7 @@ import { useNavigate, Link } from 'react-router-dom';
 import { ArrowRight, Eye, EyeOff, Loader2, Lock, Mail, ShieldCheck } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { authInputCls } from '../../components/AuthField';
+import { UnclutterMark } from '@unclutterdesk/ui';
 
 export function PlatformAdminLoginPage() {
   const navigate = useNavigate();
@@ -32,9 +33,7 @@ export function PlatformAdminLoginPage() {
 
       <div className="relative w-full max-w-[420px]">
         <div className="flex items-center gap-2.5 mb-8 justify-center">
-          <div className="h-9 w-9 rounded-[12px] bg-[#0F3A53] text-[#E3B341] flex items-center justify-center font-extrabold text-base border border-[#E3B341]/30 shadow-sm">
-            O
-          </div>
+          <UnclutterMark size={36} showBadge={false} className="rounded-[12px]" />
           <div className="flex items-center gap-1.5">
             <span className="font-bold text-[19px] tracking-[-0.02em] text-[#F8FAFC]">Unclutter Desk</span>
             <span className="h-[18px] px-2 rounded-full text-[9px] font-extrabold tracking-[0.08em] bg-[#E3B341] text-[#0F172A] flex items-center justify-center uppercase">
