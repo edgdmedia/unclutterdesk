@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Globe, Palette, Sparkles } from 'lucide-react';
-import { Eyebrow, Card, BookingLinkField } from '@unclutterdesk/ui';
+import { Eyebrow, Card, BookingLinkField, useToast } from '@unclutterdesk/ui';
 import { ClientBookingPage } from '../../public/ClientBookingPage';
 import { BookingConfirmedPage } from '../../public/BookingConfirmedPage';
 import { api, practiceBookingUrl } from '../../../utils/apiClient';
@@ -24,6 +24,7 @@ type BrandRecord = {
 };
 
 export function BrandSettingsPage(props: BrandSettingsPageProps) {
+  const toast = useToast();
   const primaryColor = props.primaryColor || '#0F3A53';
   const secondaryColor = props.secondaryColor || '#E3B341';
   const [practiceName, setPracticeName] = useState('Your Practice Name');
@@ -75,7 +76,9 @@ export function BrandSettingsPage(props: BrandSettingsPageProps) {
         primaryColor,
         secondaryColor,
       });
+      toast.success('Brand settings saved');
     } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Could not save brand settings');
       setError(err instanceof Error ? err.message : 'Unable to save brand settings');
     } finally {
       setSaving(false);
@@ -89,6 +92,7 @@ export function BrandSettingsPage(props: BrandSettingsPageProps) {
       const verified = await api.post<{ customDomain: string | null; customDomainStatus: string }>('/v1/tenant/brand/custom-domain/verify', {});
       setCustomDomain(verified.customDomain || '');
       setCustomDomainStatus(verified.customDomainStatus || 'ACTIVE');
+      toast.success('Domain verified and live');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Unable to verify custom domain');
       // The API records why: FAILED for DNS, PENDING while the certificate issues.

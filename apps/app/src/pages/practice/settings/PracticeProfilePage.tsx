@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Save, Info } from 'lucide-react';
-import { Eyebrow } from '@unclutterdesk/ui';
+import { Eyebrow, useToast } from '@unclutterdesk/ui';
 import { api } from '../../../utils/apiClient';
 
 type PracticeProfile = {
@@ -17,6 +17,7 @@ type PracticeProfile = {
 const inputCls = 'h-[46px] w-full px-[14px] rounded-[14px] bg-[#F8FAFC] border border-[#E2E8F0] text-sm text-[#0F172A] outline-none focus:bg-white focus:border-[#94A3B8]';
 
 export function PracticeProfilePage() {
+  const toast = useToast();
   const [profile, setProfile] = useState<PracticeProfile>({});
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -44,7 +45,9 @@ export function PracticeProfilePage() {
     setError(null);
     try {
       await api.patch('/v1/tenant/brand', profile);
+      toast.success('Practice profile saved');
     } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Could not save the practice profile');
       setError(err instanceof Error ? err.message : 'Unable to save practice profile');
     } finally {
       setSaving(false);

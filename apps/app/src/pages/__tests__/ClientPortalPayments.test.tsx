@@ -32,6 +32,7 @@ vi.mock('../../context/AuthContext', () => ({
 }));
 
 vi.mock('@unclutterdesk/ui', () => ({
+  useToast: () => ({ success: () => undefined, error: () => undefined, info: () => undefined }),
   useBrand: () => ({ name: 'Ade Wellness', primaryColor: '#0F3A53' }),
 }));
 

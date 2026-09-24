@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { UserPlus, MoreHorizontal, Info, X, Check, Mail, Loader2 } from 'lucide-react';
-import { Eyebrow, Card, StatusBadge, Button } from '@unclutterdesk/ui';
+import { Eyebrow, Card, StatusBadge, Button, useToast } from '@unclutterdesk/ui';
 import { useBrand } from '@unclutterdesk/ui';
 import { api } from '../../../utils/apiClient';
 import type { StaffMember } from '../../../App';
@@ -38,6 +38,7 @@ function formatDate(iso: string): string {
 }
 
 export function TeamSettingsPage({ staff, onRefresh }: TeamSettingsPageProps) {
+  const toast = useToast();
   const brand = useBrand();
   const primaryColor = brand.primaryColor || '#0F3A53';
 
@@ -86,7 +87,9 @@ export function TeamSettingsPage({ staff, onRefresh }: TeamSettingsPageProps) {
       // it did not it is the only way the person can accept.
       setInviteUrl(invite?.inviteUrl ?? null);
       await onRefresh();
+      toast.success('Invitation created');
     } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Could not create the invitation');
       // The free plan rejects staff invites with a message explaining the
       // upgrade. That message is the useful part, so it is shown rather than
       // being replaced by a roster entry for someone who was never invited.
@@ -125,7 +128,9 @@ export function TeamSettingsPage({ staff, onRefresh }: TeamSettingsPageProps) {
     try {
       await api.patch(`/v1/consult/admin/therapists/${member.id}/status`, { status: nextStatus });
       await onRefresh();
+      toast.success('Staff status updated');
     } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Could not update staff status');
       setStatusError(
         err instanceof Error
           ? `${member.name}: ${err.message}`
@@ -149,7 +154,9 @@ export function TeamSettingsPage({ staff, onRefresh }: TeamSettingsPageProps) {
       await api.delete(`/v1/tenant/staff/invite/${member.id}`);
       setRosterNotice(`The invitation to ${member.email} has been withdrawn.`);
       await onRefresh();
+      toast.success('Invitation cancelled');
     } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Could not cancel the invitation');
       setStatusError(
         err instanceof Error ? err.message : `Could not withdraw the invitation to ${member.email}`,
       );
@@ -178,7 +185,9 @@ export function TeamSettingsPage({ staff, onRefresh }: TeamSettingsPageProps) {
           : `A fresh invitation was created for ${member.email}, but the email could not be sent.`,
       );
       await onRefresh();
+      toast.success('Invitation sent again');
     } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Could not resend the invitation');
       setStatusError(
         err instanceof Error ? err.message : `Could not send that invitation again`,
       );

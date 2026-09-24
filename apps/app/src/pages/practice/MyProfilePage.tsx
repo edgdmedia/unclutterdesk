@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Save } from 'lucide-react';
-import { Eyebrow } from '@unclutterdesk/ui';
+import { Eyebrow, useToast } from '@unclutterdesk/ui';
 import { api } from '../../utils/apiClient';
 
 type ProfileRecord = {
@@ -22,6 +22,7 @@ type ProfileRecord = {
 const inputCls = 'h-[46px] w-full px-[14px] rounded-[14px] bg-[#F8FAFC] border border-[#E2E8F0] text-sm font-medium text-[#0F172A] outline-none focus:bg-white focus:border-[#94A3B8]';
 
 export function MyProfilePage() {
+  const toast = useToast();
   const [profile, setProfile] = useState<ProfileRecord>({ modalities: [], languages: [] });
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -49,7 +50,9 @@ export function MyProfilePage() {
     setError(null);
     try {
       await api.post('/v1/consult/therapist/profile', profile);
+      toast.success('Profile saved');
     } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Could not save your profile');
       setError(err instanceof Error ? err.message : 'Unable to save profile');
     } finally {
       setSaving(false);

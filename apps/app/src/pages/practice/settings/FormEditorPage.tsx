@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { ArrowLeft, GripVertical, Trash2, Plus } from 'lucide-react';
-import { Eyebrow } from '@unclutterdesk/ui';
+import { Eyebrow, useToast } from '@unclutterdesk/ui';
 import { api } from '../../../utils/apiClient';
 
 type Question = {
@@ -47,6 +47,7 @@ function createQuestion(type: string, label: string): Question {
 }
 
 export function FormEditorPage() {
+  const toast = useToast();
   const navigate = useNavigate();
   const { id } = useParams<{ id: string }>();
   const isNew = id === 'new';
@@ -164,7 +165,9 @@ export function FormEditorPage() {
         await api.patch(`/v1/intake/forms/${id}`, payload);
       }
       navigate('/dashboard/settings/forms');
+      toast.success('Form saved');
     } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Could not save the form');
       setError(err instanceof Error ? err.message : 'Unable to save form');
     } finally {
       setSaving(false);

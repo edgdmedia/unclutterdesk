@@ -3,12 +3,13 @@ import { Link, useParams } from 'react-router-dom';
 import useSWR from 'swr';
 import { ArrowLeft, Loader2, Mail, Phone, MapPin } from 'lucide-react';
 import { api } from '../../utils/apiClient';
-import { Card, CardHeader, Eyebrow, StatusBadge, AvatarChip } from '@unclutterdesk/ui';
+import { Card, CardHeader, Eyebrow, StatusBadge, AvatarChip, useToast } from '@unclutterdesk/ui';
 import { AdminTenantDetail, formatNaira, formatDate } from './adminTypes';
 
 const TIERS = ['STARTER', 'PRO', 'CLINIC'] as const;
 
 export function AdminTenantDetailPage() {
+  const toast = useToast();
   const { id } = useParams<{ id: string }>();
   const { data: tenant, isLoading, mutate } = useSWR<AdminTenantDetail>(
     id ? `/v1/admin/tenants/${id}` : null,
@@ -29,7 +30,9 @@ export function AdminTenantDetailPage() {
         (t) => (t ? { ...t, subscriptionTier: updated.subscriptionTier } : t),
         { revalidate: false },
       );
+      toast.success('Plan updated');
     } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Could not update the plan');
       setError(err instanceof Error ? err.message : 'Update failed');
     } finally {
       setUpdating(null);
@@ -48,7 +51,9 @@ export function AdminTenantDetailPage() {
         (t) => (t ? { ...t, isActive: updated.isActive } : t),
         { revalidate: false },
       );
+      toast.success('Practice status updated');
     } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Could not update the practice');
       setError(err instanceof Error ? err.message : 'Update failed');
     } finally {
       setUpdating(null);

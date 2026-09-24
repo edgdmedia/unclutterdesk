@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { AlertCircle, Loader2, X } from 'lucide-react';
 import { api } from '../utils/apiClient';
+import { useToast } from '@unclutterdesk/ui';
 
 interface Slot {
   id: string;
@@ -50,6 +51,7 @@ export function RescheduleDialog({
   onClose: () => void;
   onRescheduled: () => void;
 }) {
+  const toast = useToast();
   const [options, setOptions] = useState<Options | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [selected, setSelected] = useState<string | null>(null);
@@ -92,7 +94,9 @@ export function RescheduleDialog({
         availabilityId: selected,
       });
       onRescheduled();
+      toast.success('Session rescheduled');
     } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Could not reschedule the session');
       // Most often the slot went while the client was choosing. Reload the
       // list so they are not staring at a time that is already gone.
       setSubmitError(err instanceof Error ? err.message : 'We could not move your session.');
