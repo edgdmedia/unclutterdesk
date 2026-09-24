@@ -43,7 +43,7 @@ export default {
       case 'misrouted':
         // Deliberately not falling back to the SPA: answering an API host with
         // HTML produces confusing downstream failures. See the Cloudflare route
-        // exclusions in docs/CLOUDFLARE_SETUP.md §1.
+        // exclusion in docs/CLOUDFLARE_SETUP.md §2 step 1.
         return new Response(
           `No application is configured for ${decision.host}.`,
           { status: 404, headers: { 'content-type': 'text/plain; charset=utf-8' } },
