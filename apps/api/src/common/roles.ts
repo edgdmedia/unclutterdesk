@@ -19,6 +19,9 @@ export const CLINICAL: PracticeRole[] = ['OWNER', 'ADMIN', 'THERAPIST'];
 /** Roles that administer the practice itself: staff, billing, branding. */
 export const PRACTICE_ADMIN: PracticeRole[] = ['OWNER', 'ADMIN'];
 
+/** Roles that handle money at the front desk, e.g. confirming a bank transfer. */
+export const FRONT_DESK: PracticeRole[] = ['OWNER', 'ADMIN', 'RECEPTIONIST'];
+
 export const ROLES_KEY = 'requiredRoles';
 
 /**

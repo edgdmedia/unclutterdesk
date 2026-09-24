@@ -1,6 +1,6 @@
 import { readFileSync, readdirSync, statSync } from 'node:fs';
 import { resolve, join } from 'node:path';
-import { CLINICAL, PRACTICE_ADMIN, PRACTICE_ROLES, STAFF, type PracticeRole } from '../common/roles';
+import { CLINICAL, FRONT_DESK, PRACTICE_ADMIN, PRACTICE_ROLES, STAFF, type PracticeRole } from '../common/roles';
 
 /**
  * The route table, read from the controllers.
@@ -37,6 +37,7 @@ const ROLE_SETS: Record<string, PracticeRole[]> = {
   STAFF,
   CLINICAL,
   PRACTICE_ADMIN,
+  FRONT_DESK,
 };
 
 /** Resolves `@Roles(...STAFF, 'CLIENT')` and `@AnyAuthenticated()` to a role list. */
