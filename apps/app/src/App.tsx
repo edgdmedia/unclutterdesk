@@ -55,6 +55,9 @@ const PlatformAdminLayout = lazy(() => import('./pages/admin/PlatformAdminLayout
 const AdminOverviewPage = lazy(() => import('./pages/admin/AdminOverviewPage').then((m) => ({ default: m.AdminOverviewPage })));
 const AdminTenantsPage = lazy(() => import('./pages/admin/AdminTenantsPage').then((m) => ({ default: m.AdminTenantsPage })));
 const AdminInvitesPage = lazy(() => import('./pages/admin/AdminInvitesPage').then((m) => ({ default: m.AdminInvitesPage })));
+const AdminAssessmentRequestsPage = lazy(() => import('./pages/admin/AdminAssessmentRequestsPage').then((m) => ({ default: m.AdminAssessmentRequestsPage })));
+const AssessmentsPage = lazy(() => import('./pages/practice/AssessmentsPage').then((m) => ({ default: m.AssessmentsPage })));
+const AssessmentPage = lazy(() => import('./pages/public/AssessmentPage').then((m) => ({ default: m.AssessmentPage })));
 const AdminTenantDetailPage = lazy(() => import('./pages/admin/AdminTenantDetailPage').then((m) => ({ default: m.AdminTenantDetailPage })));
 
 // ── Types ──────────────────────────────────────────────────────────────────────
@@ -313,6 +316,7 @@ function AppLayout() {
   const isFullscreen =
     location.pathname.startsWith('/session') ||
     location.pathname.startsWith('/booking') ||
+    location.pathname.startsWith('/assessment/') ||
     location.pathname.startsWith('/onboarding') ||
     location.pathname.startsWith('/auth') ||
     location.pathname.startsWith('/invite') ||
@@ -335,6 +339,7 @@ function AppLayout() {
             <Route path="/onboarding" element={<OnboardingWizardPage />} />
             <Route path="/booking/confirmed" element={<BookingConfirmedPage />} />
             <Route path="/booking/inactive" element={<InactivePracticePage />} />
+            <Route path="/assessment/:token" element={<AssessmentPage />} />
 
             <Route path="/privacy" element={<ExternalRedirect to={LEGAL_URLS.privacy} />} />
             <Route path="/terms" element={<ExternalRedirect to={LEGAL_URLS.terms} />} />
@@ -424,6 +429,7 @@ function AppLayout() {
               <Route path="/dashboard/clients/:id" element={<ClientDetailPage clients={resolvedClients} setClients={setClients} />} />
               <Route path="/dashboard/analytics" element={<AnalyticsPage clients={resolvedClients} sessions={resolvedSessions} />} />
               <Route path="/dashboard/submissions" element={<SubmissionsPage />} />
+              <Route path="/dashboard/assessments" element={<AssessmentsPage />} />
               <Route path="/dashboard/notifications" element={<NotificationsPage />} />
               <Route path="/dashboard/settings/notifications" element={<NotificationsPage />} />
               <Route path="/dashboard/profile" element={<MyProfilePage />} />
@@ -506,6 +512,7 @@ function AdminShell() {
           <Route path="/admin/tenants" element={<AdminTenantsPage />} />
           <Route path="/admin/tenants/:id" element={<AdminTenantDetailPage />} />
           <Route path="/admin/invites" element={<AdminInvitesPage />} />
+          <Route path="/admin/assessment-requests" element={<AdminAssessmentRequestsPage />} />
           <Route path="*" element={<NotFoundPage homeHref="/admin" />} />
         </Route>
       </Routes>
@@ -558,6 +565,7 @@ export function App() {
                 <Route path="/" element={<PublicProfilePage />} />
                 <Route path="/book" element={<ClientBookingPage />} />
                 <Route path="/review" element={<PublicReviewFormPage />} />
+                <Route path="/assessment/:token" element={<AssessmentPage />} />
                 <Route path="/booking/confirmed" element={<BookingConfirmedPage />} />
                 <Route path="/booking/inactive" element={<InactivePracticePage />} />
                 <Route path="/privacy" element={<ExternalRedirect to={LEGAL_URLS.privacy} />} />

@@ -5,6 +5,7 @@ import { Eyebrow, Card, StatusBadge, Button, useToast } from '@unclutterdesk/ui'
 import { useBrand } from '@unclutterdesk/ui';
 import { api } from '../../utils/apiClient';
 import type { Client } from '../../App';
+import { ClientAssessmentsPanel } from '../../components/ClientAssessmentsPanel';
 
 interface ClientDetailPageProps {
   clients: Client[];
@@ -21,7 +22,7 @@ export function ClientDetailPage({ clients, setClients }: ClientDetailPageProps)
   const propClient = clients.find((c) => c.id === id) || clients[0];
   const [client, setClient] = useState<Client>(propClient);
 
-  const [activeTab, setActiveTab] = useState<'history' | 'notes' | 'intake'>('history');
+  const [activeTab, setActiveTab] = useState<'history' | 'notes' | 'intake' | 'assessments'>('history');
   const [selectedNoteId, setSelectedNoteId] = useState<string | null>(
     propClient.notes.length > 0 ? propClient.notes[0].id : null
   );
@@ -207,6 +208,7 @@ export function ClientDetailPage({ clients, setClients }: ClientDetailPageProps)
               { id: 'history', label: 'Session history' },
               { id: 'notes', label: 'SOAP notes' },
               { id: 'intake', label: 'Intake answers' },
+              { id: 'assessments', label: 'Assessments' },
             ].map((t) => (
               <button
                 key={t.id}
@@ -400,6 +402,10 @@ export function ClientDetailPage({ clients, setClients }: ClientDetailPageProps)
                 </div>
               )}
             </Card>
+          )}
+
+          {activeTab === 'assessments' && (
+            <ClientAssessmentsPanel clientId={client.id} clientName={client.name} primaryColor={primaryColor} />
           )}
         </div>
       </main>

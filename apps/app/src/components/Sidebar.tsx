@@ -19,6 +19,7 @@ import {
   ChevronDown,
   Tag,
   X,
+  Activity,
 } from 'lucide-react';
 import { useBrand, UnclutterLockup } from '@unclutterdesk/ui';
 import { useAuth } from '../context/AuthContext';
@@ -44,6 +45,7 @@ const NAV_ITEMS: NavItem[] = [
   { to: '/dashboard', label: 'Overview', icon: LayoutDashboard },
   { to: '/dashboard/schedule', label: 'Schedule', icon: Calendar },
   { to: '/dashboard/clients', label: 'Clients', icon: Users },
+  { to: '/dashboard/assessments', label: 'Assessments', icon: Activity },
   { to: '/dashboard/submissions', label: 'Submissions', icon: ClipboardCheck },
   { to: '/dashboard/analytics', label: 'Analytics', icon: BarChart3 },
   { to: '/dashboard/notifications', label: 'Notifications', icon: Bell },
@@ -71,7 +73,7 @@ const PRACTICE_GROUPS_OWNER: { label: string; items: NavItem[] }[] = [
       { to: '/dashboard/settings/team', label: 'Team & staff', icon: Users, tier: 'clinic' },
       { to: '/dashboard/settings/subscription', label: 'Subscription', icon: CreditCard },
       { to: '/dashboard/settings/payouts', label: 'Payouts', icon: CreditCard },
-      { to: '/dashboard/settings/forms', label: 'Forms & assessments', icon: FileText, tier: 'pro' },
+      { to: '/dashboard/settings/forms', label: 'Forms', icon: FileText, tier: 'pro' },
       { to: '/dashboard/settings/discounts', label: 'Discounts & promos', icon: Tag, tier: 'pro' },
     ],
   },
