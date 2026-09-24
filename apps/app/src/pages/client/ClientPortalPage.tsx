@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Video, Calendar, Check } from 'lucide-react';
-import { useBrand } from '@unclutterdesk/ui';
+import { useBrand, useToast } from '@unclutterdesk/ui';
 import { api, getBookingUrl, TENANT_SLUG } from '../../utils/apiClient';
 import { RescheduleDialog } from '../../components/RescheduleDialog';
 import { initialsOf } from '../../utils/initials';
@@ -104,6 +104,7 @@ function DateTile({ startsAt, size = 'md' }: { startsAt: string; size?: 'md' | '
 }
 
 export function ClientPortalPage() {
+  const toast = useToast();
   const brand = useBrand();
   const { profile, isAuthenticated } = useAuth();
   const navigate = useNavigate();
@@ -248,7 +249,7 @@ export function ClientPortalPage() {
                     const res = await api.post<{ paymentUrl: string }>(`/v1/consult/public/bookings/${pending.id}/pay`, { email: lookupEmail });
                     if (res.paymentUrl) window.location.href = res.paymentUrl;
                   } catch (e: any) {
-                    alert('Failed to get payment URL: ' + e.message);
+                    toast.error(e.message || 'Could not open payment. Please try again.');
                   }
                 }}
                 className="px-5 h-[38px] rounded-[10px] bg-amber-500 text-white text-[13px] font-bold shadow-[0_4px_12px_rgba(245,158,11,0.3)] hover:bg-amber-600 cursor-pointer transition-colors"

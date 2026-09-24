@@ -24,6 +24,7 @@ vi.mock('react-router-dom', async () => {
 });
 
 vi.mock('@unclutterdesk/ui', () => ({
+  useToast: () => ({ success: () => undefined, error: () => undefined, info: () => undefined }),
   useBrand: () => ({ name: 'Demo Practice', primaryColor: '#0F3A53' }),
 }));
 

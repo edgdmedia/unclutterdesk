@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Plus, Pencil, Power, PowerOff, Clock } from 'lucide-react';
-import { Card, Eyebrow, useBrand } from '@unclutterdesk/ui';
+import { Card, Eyebrow, useBrand, useToast } from '@unclutterdesk/ui';
 import { api } from '../../../utils/apiClient';
 
 interface Service {
@@ -40,6 +40,7 @@ const labelCls = 'text-[11.5px] font-bold text-[#475569]';
  * by the onboarding wizard, and the sidebar link to it went nowhere.
  */
 export function ServicesSettingsPage() {
+  const toast = useToast();
   const brand = useBrand();
   const primaryColor = brand.primaryColor || '#0F3A53';
   const [services, setServices] = useState<Service[]>([]);
@@ -97,7 +98,9 @@ export function ServicesSettingsPage() {
         setServices((current) => [...current, { description: null, isActive: true, ...created }]);
       }
       setDraft(null);
+      toast.success('Service saved');
     } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Could not save the service');
       setError(err instanceof Error ? err.message : 'Unable to save this service.');
     } finally {
       setSaving(false);
@@ -109,7 +112,9 @@ export function ServicesSettingsPage() {
     try {
       const updated = await api.patch<Service>(`/v1/consult/services/${service.id}`, { isActive });
       setServices((current) => current.map((s) => (s.id === updated.id ? updated : s)));
+      toast.success('Service updated');
     } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Could not update the service');
       setError(err instanceof Error ? err.message : 'Unable to update this service.');
     }
   }

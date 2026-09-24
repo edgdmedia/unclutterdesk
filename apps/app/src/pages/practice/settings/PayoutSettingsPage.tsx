@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { ShieldCheck, X } from 'lucide-react';
-import { Eyebrow, Card } from '@unclutterdesk/ui';
+import { Eyebrow, Card, useToast } from '@unclutterdesk/ui';
 import { useBrand } from '@unclutterdesk/ui';
 import { api } from '../../../utils/apiClient';
 
@@ -8,6 +8,7 @@ type PayoutAccount = { bankCode: string; bankName: string; accountNumber: string
 type BillingSummary = { bankSubaccount: PayoutAccount; history: Array<{ date: string; title: string; detail: string; type: string }> };
 
 export function PayoutSettingsPage() {
+  const toast = useToast();
   const brand = useBrand();
   const primaryColor = brand.primaryColor || '#0F3A53';
   const [account, setAccount] = useState<PayoutAccount>(null);
@@ -61,7 +62,9 @@ export function PayoutSettingsPage() {
       setAccount(refreshed.bankSubaccount);
       setHistory(refreshed.history.filter((item) => item.type === 'payout' || item.type === 'system'));
       setShowBankModal(false);
+      toast.success('Payout account saved');
     } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Could not save the payout account');
       setError(err instanceof Error ? err.message : 'Unable to save payout account');
     } finally {
       setSaving(false);

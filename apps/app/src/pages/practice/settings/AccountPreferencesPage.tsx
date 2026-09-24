@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { AlertCircle, Check, Info, Loader2, Monitor, Save } from 'lucide-react';
-import { Eyebrow } from '@unclutterdesk/ui';
+import { Eyebrow, useToast } from '@unclutterdesk/ui';
 import { api } from '../../../utils/apiClient';
 import { useAuth } from '../../../context/AuthContext';
 
@@ -210,6 +210,7 @@ interface ChannelPref {
 }
 
 export function AccountPreferencesPage() {
+  const toast = useToast();
   const { profile } = useAuth();
 
   const [prefs, setPrefs] = useState<Preferences | null>(null);
@@ -296,7 +297,9 @@ export function AccountPreferencesPage() {
       // Show what was stored, not what was sent.
       setPrefs(updated);
       setSaved(true);
+      toast.success('Preferences saved');
     } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Could not save preferences');
       setSaveError(err instanceof Error ? err.message : 'Could not save your preferences');
     } finally {
       setSaving(false);
@@ -309,7 +312,9 @@ export function AccountPreferencesPage() {
     setChannelError(null);
     try {
       await api.put('/v1/notifications/preferences', { module: 'all', channel, enabled: next });
+      toast.success('Notification settings updated');
     } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Could not update notification settings');
       // Put it back: a toggle that springs back is honest about not having saved.
       setChannels((c) => ({ ...c, [channel]: !next }));
       setChannelError(err instanceof Error ? err.message : 'Could not save that channel');
@@ -341,7 +346,9 @@ export function AccountPreferencesPage() {
       // The change ends every other session and stamps the date, so both the
       // list and "last changed" are now stale.
       await Promise.all([load(), loadSessions()]);
+      toast.success('Password changed');
     } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Could not change the password');
       setPwError(err instanceof Error ? err.message : 'Could not change your password');
       setPwState('idle');
     }
@@ -363,7 +370,9 @@ export function AccountPreferencesPage() {
         return;
       }
       await loadSessions();
+      toast.success('Session ended');
     } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Could not end that session');
       setSessionError(err instanceof Error ? err.message : 'Could not sign out that device');
     } finally {
       setEndingSession(null);
@@ -377,7 +386,9 @@ export function AccountPreferencesPage() {
     try {
       await api.post('/v1/auth/sessions/revoke-others', {});
       await loadSessions();
+      toast.success('Signed out of your other devices');
     } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Could not sign out the other devices');
       setSessionError(err instanceof Error ? err.message : 'Could not sign out your other devices');
     } finally {
       setEndingSession(null);

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { Download, ChevronRight, FileText, Printer, Lock, Plus, X, Loader2 } from 'lucide-react';
-import { Eyebrow, Card, StatusBadge, Button } from '@unclutterdesk/ui';
+import { Eyebrow, Card, StatusBadge, Button, useToast } from '@unclutterdesk/ui';
 import { useBrand } from '@unclutterdesk/ui';
 import { api } from '../../utils/apiClient';
 import type { Client } from '../../App';
@@ -12,6 +12,7 @@ interface ClientDetailPageProps {
 }
 
 export function ClientDetailPage({ clients, setClients }: ClientDetailPageProps) {
+  const toast = useToast();
   const { id } = useParams();
   const brand = useBrand();
   const primaryColor = brand.primaryColor || '#0F3A53';
@@ -111,7 +112,9 @@ export function ClientDetailPage({ clients, setClients }: ClientDetailPageProps)
       setNoteObjective('');
       setNoteAssessment('');
       setNotePlan('');
+      toast.success('Note saved');
     } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Could not save the note');
       setNoteError(err instanceof Error ? err.message : 'Failed to save note');
     } finally {
       setIsSavingNote(false);

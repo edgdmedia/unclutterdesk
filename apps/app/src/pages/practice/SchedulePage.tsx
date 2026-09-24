@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ChevronLeft, ChevronRight, Plus, Settings, X, Calendar, Clock, User, Trash2, CheckCircle2 } from 'lucide-react';
-import { useBrand } from '@unclutterdesk/ui';
+import { useBrand, useToast } from '@unclutterdesk/ui';
 import { api, getBookingUrl, TENANT_SLUG } from '../../utils/apiClient';
 
 interface Client {
@@ -34,6 +34,7 @@ interface SchedulePageProps {
 }
 
 export function SchedulePage({ sessions, setSessions, clients, tenantSlug, onRefresh }: SchedulePageProps) {
+  const toast = useToast();
   const brand = useBrand();
   const primaryColor = brand.primaryColor || '#0F3A53';
   const secondaryColor = brand.secondaryColor || '#E3B341';
@@ -174,7 +175,9 @@ export function SchedulePage({ sessions, setSessions, clients, tenantSlug, onRef
       });
       await onRefresh?.();
       setShowNewSessionModal(false);
+      toast.success('Time slot added');
     } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Could not add the time slot');
       setScheduleError(err instanceof Error ? err.message : 'Could not save that slot');
     } finally {
       setSaving(false);
@@ -190,7 +193,9 @@ export function SchedulePage({ sessions, setSessions, clients, tenantSlug, onRef
       await api.delete(`/v1/consult/therapist/availability/${id}`);
       await onRefresh?.();
       setShowDetailModal(false);
+      toast.success('Time slot removed');
     } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Could not remove the time slot');
       setScheduleError(err instanceof Error ? err.message : 'Could not remove that slot');
     } finally {
       setSaving(false);
@@ -205,6 +210,7 @@ export function SchedulePage({ sessions, setSessions, clients, tenantSlug, onRef
       setSessions((current) => current.map((session) => (session.id === selectedEvent.id ? { ...session, status: 'COMPLETED' } : session)));
       setSelectedEvent((current) => (current ? { ...current, status: 'COMPLETED' } : current));
       setSessionCompleteEvent(selectedEvent);
+      toast.success('Session marked complete');
     } finally {
       setUpdatingStatusId(null);
     }

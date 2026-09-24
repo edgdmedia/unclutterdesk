@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Save, Plus, Info } from 'lucide-react';
-import { Eyebrow } from '@unclutterdesk/ui';
+import { Eyebrow, useToast } from '@unclutterdesk/ui';
 import { api } from '../../../utils/apiClient';
 
 type DayKey = 'mon' | 'tue' | 'wed' | 'thu' | 'fri' | 'sat' | 'sun';
@@ -66,6 +66,7 @@ function Switch({ on, onChange }: { on: boolean; onChange: () => void }) {
 }
 
 export function AvailabilitySettingsPage() {
+  const toast = useToast();
   const [days, setDays] = useState<Record<DayKey, DayState>>(EMPTY_DAYS);
   const [sessionLengthMinutes, setSessionLengthMinutes] = useState(50);
   const [gapMinutes, setGapMinutes] = useState(10);
@@ -116,7 +117,9 @@ export function AvailabilitySettingsPage() {
         gapMinutes,
         cancellationHours,
       });
+      toast.success('Availability saved');
     } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Could not save availability');
       setError(err instanceof Error ? err.message : 'Unable to save availability');
     } finally {
       setSaving(false);
