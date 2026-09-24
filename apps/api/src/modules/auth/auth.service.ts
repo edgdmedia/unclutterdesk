@@ -22,6 +22,7 @@ const BCRYPT_ROUNDS = 12;
 
 @Injectable()
 export class AuthService {
+
   private readonly logger = new Logger(AuthService.name);
 
   /**
@@ -66,6 +67,17 @@ export class AuthService {
     private readonly sessions: SessionService,
     private readonly invites?: InviteService,
   ) {}
+
+  /** `base`, or `base-xxxx` when an account already has that username. */
+  private async freeUsername(base: string): Promise<string> {
+    const root = base || 'user';
+    for (let attempt = 0; attempt < 5; attempt++) {
+      const candidate = attempt === 0 ? root : `${root}-${randomBytes(2).toString('hex')}`;
+      const taken = await this.prisma.user.findUnique({ where: { username: candidate }, select: { id: true } });
+      if (!taken) return candidate;
+    }
+    return `${root}-${randomBytes(6).toString('hex')}`;
+  }
 
   async register(tenantId: bigint | undefined, dto: {
     email: string;
@@ -117,7 +129,10 @@ export class AuthService {
       await this.invites.assertUsable(inviteCode);
     }
 
-    const username = (dto.username || email.split('@')[0]).toLowerCase().trim();
+    // User.username is unique across the platform, and the app sends the
+    // practice name as the handle, so two practices called "Grace Therapy"
+    // would collide. Resolve a free one before creating anything.
+    const username = await this.freeUsername((dto.username || email.split('@')[0]).toLowerCase().trim());
 
     let targetTenantId = tenantId;
     if (!targetTenantId) {
