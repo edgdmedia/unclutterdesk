@@ -79,9 +79,9 @@ export function AuthCardShell({
 
       <div className="w-full max-w-[480px] bg-white rounded-[24px] p-[36px_38px_30px] shadow-[0_30px_80px_rgba(0,0,0,0.4)] relative">
         <div className={center ? 'flex items-center justify-center gap-[10px]' : 'flex items-center gap-[10px]'}>
-          <UnclutterMark size={30} className="rounded-[10px]" />
+          <UnclutterMark size={30} showBadge={false} className="rounded-[10px]" />
           <span className="text-[16px] font-semibold text-[#0F172A] tracking-[-0.02em]">
-            unclutter<span className="opacity-45">OS</span>
+            unclutter <span className="opacity-45">desk</span>
           </span>
         </div>
 

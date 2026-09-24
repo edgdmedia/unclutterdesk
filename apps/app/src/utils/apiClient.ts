@@ -81,6 +81,26 @@ export function getBookingUrl(slug: string): string {
   return `https://${slug}.unclutterdesk.com`;
 }
 
+/**
+ * The address clients book this practice at.
+ *
+ * Takes the slug from the signed-in session, never from the page's own host:
+ * staff work on app.unclutterdesk.com, which has no practice subdomain, so
+ * reading it from the host produced https://.unclutterdesk.com. A custom
+ * domain is only used once verified; until then it does not reach the app.
+ */
+export function practiceBookingUrl(
+  slug: string | null | undefined,
+  customDomain?: string | null,
+  customDomainStatus?: string | null,
+): string {
+  const domain = customDomain?.trim();
+  if (domain && customDomainStatus === 'ACTIVE') {
+    return domain.startsWith('http') ? domain : `https://${domain}`;
+  }
+  return getBookingUrl(slug || TENANT_SLUG);
+}
+
 const CSRF_COOKIE = 'unclutter_csrf';
 
 const SAFE_METHODS = new Set(['GET', 'HEAD', 'OPTIONS']);
@@ -99,13 +119,6 @@ const AUTH_PUBLIC_PATHS = new Set([
   '/v1/auth/verify-email',
   '/v1/auth/resend-verification',
 ]);
-
-const PUBLIC_TENANT_PATH_PREFIXES = [
-  '/v1/tenant/public/',
-  '/v1/consult/public/',
-  '/v1/intake/public/',
-  '/v1/discount/validate',
-];
 
 type SessionExpiredHandler = () => void;
 let onSessionExpired: SessionExpiredHandler | null = null;
@@ -203,8 +216,10 @@ export async function apiRequest<T = unknown>(
   const method = rest.method || 'GET';
   const headers = buildHeaders(extraHeaders as Record<string, string> | undefined, method);
 
-  const isPublicTenantPath = PUBLIC_TENANT_PATH_PREFIXES.some((prefix) => path.startsWith(prefix));
-  if (!('X-Tenant-Slug' in headers) && !AUTH_PUBLIC_PATHS.has(path) && !isPublicTenantPath && TENANT_SLUG) {
+  // Public booking calls need this most of all: the API is reached at
+  // api.unclutterdesk.com, so its Host never names the practice, and without
+  // the header a client's booking page could load neither services nor times.
+  if (!('X-Tenant-Slug' in headers) && !AUTH_PUBLIC_PATHS.has(path) && TENANT_SLUG) {
     headers['X-Tenant-Slug'] = TENANT_SLUG;
   }
 

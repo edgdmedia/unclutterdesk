@@ -10,8 +10,8 @@ interface UnclutterLockupProps {
 }
 
 /**
- * Official Unclutter Desk Full Lockup Component
- * Renders the official geometric crystal mark + bold unclutter typography + gold OS pill badge.
+ * The Unclutter Desk lockup, matching assets/unclutterdesk-lockup.svg:
+ * the mark, the "unclutter" wordmark, and the DESK badge.
  */
 export function UnclutterLockup({
   markSize = 34,
@@ -20,23 +20,27 @@ export function UnclutterLockup({
   className = '',
 }: UnclutterLockupProps) {
   const isDark = variant === 'dark';
-  const textColor = isDark ? 'text-white' : 'text-[#0F3A53]';
-  const osPillCls = isDark
-    ? 'bg-[#E3B341] text-[#0F172A]'
-    : 'border border-[#E3B341] text-[#0F3A53] bg-transparent';
+  // Inline rather than utility classes: this component is rendered by apps
+  // whose Tailwind builds differ, and the badge colours must not depend on
+  // each one generating the same arbitrary values.
+  const textColor = isDark ? '#FFFFFF' : '#143A2F';
+  const badgeStyle = isDark
+    ? { backgroundColor: '#B6D8CC', color: '#0E2A22' }
+    : { border: '1.5px solid #24614F', color: '#143A2F', backgroundColor: 'transparent' };
 
   return (
     <div className={`inline-flex items-center gap-2.5 ${className}`}>
-      <UnclutterMark size={markSize} className="shrink-0" />
+      <UnclutterMark size={markSize} showBadge={!showText} className="shrink-0" />
       {showText && (
         <div className="flex items-center gap-2">
-          <span className={`font-bold tracking-[-0.03em] text-[20px] ${textColor}`}>
+          <span className="font-semibold tracking-[-0.03em] text-[20px]" style={{ color: textColor }}>
             unclutter
           </span>
           <span
-            className={`h-[22px] px-2.5 rounded-full text-[11px] font-extrabold tracking-[0.06em] inline-flex items-center justify-center ${osPillCls}`}
+            className="h-[22px] px-2.5 rounded-full text-[10.5px] font-extrabold tracking-[0.08em] inline-flex items-center justify-center"
+            style={badgeStyle}
           >
-            OS
+            DESK
           </span>
         </div>
       )}

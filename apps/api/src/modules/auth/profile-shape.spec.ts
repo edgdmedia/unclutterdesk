@@ -19,6 +19,7 @@ const FIELDS = [
   'firstName',
   'lastName',
   'type',
+  'role',
   'status',
   'avatarUrl',
   'practiceName',
@@ -34,6 +35,7 @@ const PROFILE = {
   firstName: 'Ada',
   lastName: 'Ola',
   type: 'therapist',
+  role: 'OWNER',
   status: 'active',
   avatarUrl: null,
   tenant: { name: 'Ada Therapy', slug: 'ada-therapy' },
@@ -48,6 +50,12 @@ function build(profile: unknown) {
 }
 
 describe('the signed-in profile', () => {
+  // The sidebar picks the owner's menu from this. Without it every owner got
+  // the therapist menu and could not reach brand, services, team or billing.
+  it('carries the practice role', () => {
+    expect(build(PROFILE).role).toBe('OWNER');
+  });
+
   it('carries every field the app reads', () => {
     expect(Object.keys(build(PROFILE)).sort()).toEqual(FIELDS);
   });

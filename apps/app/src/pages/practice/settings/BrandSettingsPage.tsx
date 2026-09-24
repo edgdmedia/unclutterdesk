@@ -3,7 +3,8 @@ import { Globe, Palette, Sparkles } from 'lucide-react';
 import { Eyebrow, Card, BookingLinkField } from '@unclutterdesk/ui';
 import { ClientBookingPage } from '../../public/ClientBookingPage';
 import { BookingConfirmedPage } from '../../public/BookingConfirmedPage';
-import { api, TENANT_SLUG } from '../../../utils/apiClient';
+import { api, practiceBookingUrl } from '../../../utils/apiClient';
+import { useAuth } from '../../../context/AuthContext';
 
 interface BrandSettingsPageProps {
   primaryColor?: string;
@@ -16,6 +17,7 @@ type BrandRecord = {
   name?: string;
   customDomain?: string | null;
   customDomainStatus?: string;
+  customDomainTarget?: string | null;
   publicEmail?: string | null;
   primaryColor?: string;
   secondaryColor?: string;
@@ -27,6 +29,7 @@ export function BrandSettingsPage(props: BrandSettingsPageProps) {
   const [practiceName, setPracticeName] = useState('Your Practice Name');
   const [customDomain, setCustomDomain] = useState('');
   const [customDomainStatus, setCustomDomainStatus] = useState('PENDING');
+  const [customDomainTarget, setCustomDomainTarget] = useState<string | null>(null);
   const [publicEmail, setPublicEmail] = useState('');
   const [previewTab, setPreviewTab] = useState<'booking' | 'confirmed'>('booking');
   const [loading, setLoading] = useState(true);
@@ -34,9 +37,8 @@ export function BrandSettingsPage(props: BrandSettingsPageProps) {
   const [verifyingCustomDomain, setVerifyingCustomDomain] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const bookingUrl = customDomain
-    ? (customDomain.startsWith('http') ? customDomain : `https://${customDomain}`)
-    : `https://${TENANT_SLUG || 'practice'}.unclutterdesk.com`;
+  const { profile } = useAuth();
+  const bookingUrl = practiceBookingUrl(profile?.tenantSlug, customDomain, customDomainStatus);
 
   useEffect(() => {
     let cancelled = false;
@@ -48,6 +50,7 @@ export function BrandSettingsPage(props: BrandSettingsPageProps) {
         setPracticeName(brand.name || 'Your Practice Name');
         setCustomDomain(brand.customDomain || '');
         setCustomDomainStatus(brand.customDomainStatus || 'PENDING');
+        setCustomDomainTarget(brand.customDomainTarget ?? null);
         setPublicEmail(brand.publicEmail || '');
         if (brand.primaryColor) props.setPrimaryColor?.(brand.primaryColor);
         if (brand.secondaryColor) props.setSecondaryColor?.(brand.secondaryColor);
@@ -88,7 +91,9 @@ export function BrandSettingsPage(props: BrandSettingsPageProps) {
       setCustomDomainStatus(verified.customDomainStatus || 'ACTIVE');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Unable to verify custom domain');
-      setCustomDomainStatus('FAILED');
+      // The API records why: FAILED for DNS, PENDING while the certificate issues.
+      const brand = await api.get<BrandRecord>('/v1/tenant/brand').catch(() => null);
+      setCustomDomainStatus(brand?.customDomainStatus || 'FAILED');
     } finally {
       setVerifyingCustomDomain(false);
     }
@@ -125,7 +130,19 @@ export function BrandSettingsPage(props: BrandSettingsPageProps) {
               <div className="space-y-3">
                 <div className="space-y-1.5"><label className="text-[11.5px] font-bold text-[#475569]">Practice name</label><input type="text" value={practiceName} onChange={(e) => setPracticeName(e.target.value)} className="w-full h-[44px] px-3.5 rounded-[14px] bg-[#F8FAFC] border border-[#E2E8F0] text-[13px] font-medium text-[#0F172A] outline-none" /></div>
                 <div className="space-y-1.5"><label className="text-[11.5px] font-bold text-[#475569]">Custom hostname</label><input type="text" value={customDomain} onChange={(e) => setCustomDomain(e.target.value)} placeholder="booking.yourpractice.com" className="w-full h-[44px] px-3.5 rounded-[14px] bg-[#F8FAFC] border border-[#E2E8F0] text-[13px] font-mono font-bold text-[#0F172A] outline-none" /></div>
-                {customDomain ? (
+                {!customDomainTarget ? (
+                  <p className="text-[11.5px] text-[#64748B] leading-relaxed">
+                    Custom domains are not available yet. Clients book you at your unclutterdesk.com address,
+                    shown at the top of this page.
+                  </p>
+                ) : customDomain && customDomainStatus !== 'ACTIVE' ? (
+                  <p className="text-[11.5px] text-[#64748B] leading-relaxed">
+                    Save, then at your domain provider add a <span className="font-bold">CNAME</span> record for{' '}
+                    <span className="font-mono font-bold text-[#0F172A]">{customDomain}</span> with the value{' '}
+                    <span className="font-mono font-bold text-[#0F172A]">{customDomainTarget}</span>, and press Verify.
+                  </p>
+                ) : null}
+                {customDomain && customDomainTarget ? (
                   <div className="flex items-center justify-between gap-3 rounded-[12px] bg-[#F8FAFC] border border-[#E2E8F0] px-3 py-2.5">
                     <div className="text-[11.5px] font-medium text-[#475569]">
                       Status:{' '}
@@ -160,7 +177,7 @@ export function BrandSettingsPage(props: BrandSettingsPageProps) {
               </div>
             </div>
             <div className="rounded-[20px] border border-[#E2E8F0] bg-[#F8FAFC] p-4 min-h-[500px] flex items-center justify-center overflow-hidden">
-              <div className="w-full h-[580px] overflow-auto relative rounded-[16px] bg-slate-50 border border-[#E2E8F0]"><div className="absolute origin-top-left" style={{ width: '1180px', transform: 'scale(0.62)' }}>{previewTab === 'booking' ? <ClientBookingPage /> : <BookingConfirmedPage />}</div></div>
+              <div className="w-full h-[580px] overflow-auto relative rounded-[16px] bg-slate-50 border border-[#E2E8F0]"><div className="absolute origin-top-left pointer-events-none select-none" aria-hidden="true" style={{ width: '1180px', transform: 'scale(0.62)' }}>{previewTab === 'booking' ? <ClientBookingPage previewSlug={profile?.tenantSlug} /> : <BookingConfirmedPage />}</div></div>
             </div>
           </Card>
         </div>

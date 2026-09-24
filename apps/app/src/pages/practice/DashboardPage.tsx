@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Copy, Check, Bell, Link2, Calendar, FileText, Video, Upload, Globe, Palette, Sparkles, TrendingUp, CheckCircle2, ArrowRight, Menu } from 'lucide-react';
 import { Button } from '@unclutterdesk/ui';
 import { useAuth } from '../../context/AuthContext';
-import { api, TENANT_SLUG } from '../../utils/apiClient';
+import { api, practiceBookingUrl } from '../../utils/apiClient';
 
 interface DashboardPageProps {
   tenantStatus?: 'ACTIVE' | 'PAUSED';
@@ -31,6 +31,7 @@ export function DashboardPage(props: DashboardPageProps) {
   const primaryColor = props.primaryColor || '#0F3A53';
   const secondaryColor = props.secondaryColor || '#E3B341';
   const [customDomain, setCustomDomain] = useState('');
+  const [customDomainStatus, setCustomDomainStatus] = useState<string | null>(null);
 
   const [summary, setSummary] = useState<{
     revenueThisMonthNaira: number;
@@ -55,16 +56,14 @@ export function DashboardPage(props: DashboardPageProps) {
     upcomingSessions: [],
   });
 
-  const bookingUrl = customDomain
-    ? (customDomain.startsWith('http') ? customDomain : `https://${customDomain}`)
-    : `https://${TENANT_SLUG}.unclutterdesk.com`;
+  const bookingUrl = practiceBookingUrl(authUser?.tenantSlug, customDomain, customDomainStatus);
 
   useEffect(() => {
     let cancelled = false;
 
     async function loadDashboardMeta() {
       const [brandRes, profileRes, notificationsRes, dashSummaryRes] = await Promise.allSettled([
-        api.get<{ customDomain?: string | null }>('/v1/tenant/brand'),
+        api.get<{ customDomain?: string | null; customDomainStatus?: string | null }>('/v1/tenant/brand'),
         api.get<{ firstName?: string; lastName?: string; specialty?: string; avatarUrl?: string | null }>('/v1/consult/therapist/profile'),
         api.get<Array<{ unread: boolean }>>('/v1/tenant/notifications'),
         api.get<{
@@ -86,6 +85,7 @@ export function DashboardPage(props: DashboardPageProps) {
 
       if (brandRes.status === 'fulfilled') {
         setCustomDomain(brandRes.value.customDomain || '');
+        setCustomDomainStatus(brandRes.value.customDomainStatus ?? null);
       }
 
       if (profileRes.status === 'fulfilled') {
@@ -108,7 +108,13 @@ export function DashboardPage(props: DashboardPageProps) {
           monthlyRevenue: dashSummaryRes.value.monthlyRevenue ?? [],
           revenueChangePercent: dashSummaryRes.value.revenueChangePercent ?? null,
         });
-        if (dashSummaryRes.value.onboardingCompleted === false) {
+        // Only a practice with nothing bookable yet is sent back to the wizard.
+        // Payouts are optional in the wizard and tracked by the banner above;
+        // counting them here bounced everyone who skipped that step straight
+        // back to onboarding, even from the wizard's own "Go to dashboard".
+        const nothingBookable =
+          dashSummaryRes.value.hasService === false || dashSummaryRes.value.hasAvailability === false;
+        if (dashSummaryRes.value.onboardingCompleted === false && nothingBookable) {
           const skipped = sessionStorage.getItem('unclutter_skip_onboarding') === 'true';
           if (!skipped) {
             navigate('/onboarding');
