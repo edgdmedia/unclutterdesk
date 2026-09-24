@@ -4,7 +4,7 @@ import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { AssessmentService } from './assessment.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { RolesGuard } from '../../common/roles.guard';
-import { CLINICAL, PRACTICE_ADMIN, Roles, STAFF } from '../../common/roles';
+import { AnyAuthenticated, CLINICAL, PRACTICE_ADMIN, Roles, STAFF } from '../../common/roles';
 import { authenticatedProfileId, authenticatedTenantId } from '../../common/authenticated-tenant';
 
 const id = (raw: string) => {
@@ -15,7 +15,7 @@ const id = (raw: string) => {
 /**
  * Standard, scored instruments (PHQ-9, GAD-7, ...). Unlike forms they are not
  * editable: a practice switches them on, sends them to clients and reads the
- * scored results. The platform admin side of requests lives on AdminController.
+ * scored results. Platform admins maintain the instruments on AdminController.
  */
 @ApiTags('Assessments')
 @Controller('v1/assessments')
@@ -73,21 +73,40 @@ export class AssessmentController {
     return this.assessments.clientResults(authenticatedTenantId(req), id(raw));
   }
 
-  @Roles(...PRACTICE_ADMIN)
-  @Get('requests')
+  @Roles(...CLINICAL)
+  @Get('assignments')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @ApiBearerAuth('access-token')
-  requests(@Req() req: any) {
-    return this.assessments.practiceRequests(authenticatedTenantId(req));
+  @ApiOperation({ summary: 'Assessments sent across the practice, newest first' })
+  assignments(@Req() req: any) {
+    return this.assessments.practiceAssignments(authenticatedTenantId(req));
   }
 
-  @Roles(...PRACTICE_ADMIN)
-  @Post('requests')
+  // ── The signed-in client ──
+
+  @AnyAuthenticated()
+  @Get('mine')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @ApiBearerAuth('access-token')
-  @ApiOperation({ summary: 'Ask for an instrument the library does not have yet' })
-  request(@Req() req: any, @Body() dto: any) {
-    return this.assessments.request(authenticatedTenantId(req), authenticatedProfileId(req), dto ?? {});
+  @ApiOperation({ summary: "The signed-in client's assessments and what they may see of their results" })
+  mine(@Req() req: any) {
+    return this.assessments.mine(authenticatedTenantId(req), authenticatedProfileId(req));
+  }
+
+  @AnyAuthenticated()
+  @Get('mine/:id')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @ApiBearerAuth('access-token')
+  openMine(@Req() req: any, @Param('id') raw: string) {
+    return this.assessments.openMine(authenticatedTenantId(req), authenticatedProfileId(req), id(raw));
+  }
+
+  @AnyAuthenticated()
+  @Post('mine/:id')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @ApiBearerAuth('access-token')
+  submitMine(@Req() req: any, @Param('id') raw: string, @Body() dto: any) {
+    return this.assessments.submitMine(authenticatedTenantId(req), authenticatedProfileId(req), id(raw), dto?.answers);
   }
 
   // ── Public: the client opens the link from their email ──

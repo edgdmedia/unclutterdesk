@@ -1,15 +1,28 @@
-import { BadRequestException, Injectable, Logger, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ForbiddenException, Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { createHash, randomBytes } from 'crypto';
 import { PrismaService } from '../../common/prisma/prisma.service';
 import { tenantWebOrigin } from '../../common/origins';
 import { NotificationService } from '../notifications/notification.service';
-import { INSTRUMENTS, instrument, publicDefinition, validateAnswers } from './instruments';
-
-/** How long a client has to complete an assessment they were sent. */
-export const ASSESSMENT_LINK_DAYS = 14;
+import { InstrumentService, type StoredInstrument } from './instrument.service';
+import { publicDefinition, score, tierIncludes, validateAnswers, type AssessmentResult } from './engine';
 
 const hashToken = (token: string) => createHash('sha256').update(token).digest('hex');
+
+const PLAN_NAME = { STARTER: 'Starter', PRO: 'Pro', CLINIC: 'Clinic' } as const;
+
+type AssignmentWithParties = Prisma.AssessmentAssignmentGetPayload<{
+  include: {
+    tenant: { select: { name: true; logoUrl: true; primaryColor: true; secondaryColor: true } };
+    client: { select: { firstName: true } };
+    response: true;
+  };
+}>;
+
+/** The part of a stored result a client may see. */
+function clientView(result: Prisma.JsonValue) {
+  return ((result as unknown as AssessmentResult | null)?.client ?? { show: 'none', messages: [] }) as AssessmentResult['client'];
+}
 
 @Injectable()
 export class AssessmentService {
@@ -18,20 +31,44 @@ export class AssessmentService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly notifications: NotificationService,
+    private readonly instruments: InstrumentService,
   ) {}
+
+  private async plan(tenantId: bigint) {
+    const tenant = await this.prisma.tenant.findUnique({ where: { id: tenantId }, select: { subscriptionTier: true } });
+    return tenant?.subscriptionTier ?? 'STARTER';
+  }
+
+  private assertOnPlan(plan: string, inst: StoredInstrument) {
+    if (!tierIncludes(plan, inst.definition.tier)) {
+      throw new ForbiddenException(
+        `${inst.definition.shortName} is part of the ${PLAN_NAME[inst.definition.tier]} plan. Upgrade in Settings → Subscription to use it.`,
+      );
+    }
+  }
 
   // ── The practice's library ───────────────────────────────────────────
 
-  /** Every instrument on the platform, with whether this practice uses it. */
+  /** Every published instrument, whether this practice uses it, and whether its plan allows it. */
   async library(tenantId: bigint) {
-    const enabled = await this.prisma.tenantAssessment.findMany({ where: { tenantId } });
+    const [instruments, enabled, plan] = await Promise.all([
+      this.instruments.published(),
+      this.prisma.tenantAssessment.findMany({ where: { tenantId } }),
+      this.plan(tenantId),
+    ]);
     const on = new Set(enabled.map((e) => e.instrumentKey));
-    return INSTRUMENTS.map((inst) => ({ ...publicDefinition(inst), enabled: on.has(inst.key) }));
+    return instruments.map((inst) => ({
+      ...publicDefinition(inst.definition),
+      enabled: on.has(inst.key),
+      onPlan: tierIncludes(plan, inst.definition.tier),
+    }));
   }
 
   async setEnabled(tenantId: bigint, key: string, enabled: boolean) {
-    if (!instrument(key)) throw new NotFoundException('That assessment is not in the library.');
+    const inst = await this.instruments.find(key);
+    if (!inst || inst.status !== 'PUBLISHED') throw new NotFoundException('That assessment is not in the library.');
     if (enabled) {
+      this.assertOnPlan(await this.plan(tenantId), inst);
       await this.prisma.tenantAssessment.upsert({
         where: { tenantId_instrumentKey: { tenantId, instrumentKey: key } },
         create: { tenantId, instrumentKey: key },
@@ -50,13 +87,16 @@ export class AssessmentService {
     senderProfileId: bigint,
     dto: { instrumentKey?: string; clientProfileId?: string; bookingId?: string; message?: string },
   ) {
-    const inst = instrument(String(dto?.instrumentKey ?? ''));
-    if (!inst) throw new BadRequestException('Choose an assessment from the library.');
+    const inst = await this.instruments.find(String(dto?.instrumentKey ?? ''));
+    if (!inst || inst.status !== 'PUBLISHED') throw new BadRequestException('Choose an assessment from the library.');
+    const def = inst.definition;
 
     const isEnabled = await this.prisma.tenantAssessment.findUnique({
       where: { tenantId_instrumentKey: { tenantId, instrumentKey: inst.key } },
     });
-    if (!isEnabled) throw new BadRequestException(`Switch ${inst.shortName} on in Assessments before sending it.`);
+    if (!isEnabled) throw new BadRequestException(`Switch ${def.shortName} on in Assessments before sending it.`);
+    // Checked again here: the practice may have moved to a lower plan since.
+    this.assertOnPlan(await this.plan(tenantId), inst);
 
     if (!/^\d+$/.test(String(dto.clientProfileId ?? ''))) throw new BadRequestException('Choose a client.');
     // The client id comes from the request; the practice comes from the session.
@@ -74,8 +114,7 @@ export class AssessmentService {
     if (!tenant) throw new NotFoundException('Practice not found');
 
     const token = randomBytes(32).toString('base64url');
-    const expiresAt = new Date(Date.now() + ASSESSMENT_LINK_DAYS * 24 * 60 * 60 * 1000);
-    const message = dto.message?.trim().slice(0, 500) || null;
+    const message = dto.message?.trim().slice(0, 1000) || null;
     const assignment = await this.prisma.assessmentAssignment.create({
       data: {
         tenantId,
@@ -85,7 +124,6 @@ export class AssessmentService {
         bookingId: dto.bookingId && /^\d+$/.test(dto.bookingId) ? BigInt(dto.bookingId) : null,
         tokenHash: hashToken(token),
         message,
-        expiresAt,
       },
     });
 
@@ -98,10 +136,10 @@ export class AssessmentService {
         title: `${tenant.name} has sent you a short questionnaire`,
         message:
           `${message ? `${message}\n\n` : ''}` +
-          `It takes about ${inst.estimatedMinutes} minutes. Your answers go only to your practitioner. ` +
-          `The link works for ${ASSESSMENT_LINK_DAYS} days.`,
+          `It takes about ${def.estimatedMinutes} minutes. Your answers go only to your practitioner. ` +
+          `You can also find it in your client portal.`,
         link,
-        actionLabel: `Start ${inst.shortName}`,
+        actionLabel: `Start ${def.shortName}`,
         tenantId,
         profileId: client.id,
       });
@@ -114,7 +152,6 @@ export class AssessmentService {
       id: assignment.id.toString(),
       instrumentKey: inst.key,
       status: assignment.status,
-      expiresAt: expiresAt.toISOString(),
       emailSent,
       // Returned so staff can share it another way if the email does not arrive.
       link,
@@ -130,101 +167,164 @@ export class AssessmentService {
     return { id: assignmentId.toString(), status: 'CANCELLED' };
   }
 
-  // ── The client's side, reached by link ───────────────────────────────
+  // ── Completing: by emailed link, or signed in to the portal ──────────
 
-  private async byToken(token: string) {
+  private readonly withParties = {
+    tenant: { select: { name: true, logoUrl: true, primaryColor: true, secondaryColor: true } },
+    client: { select: { firstName: true } },
+    response: true,
+  } as const;
+
+  private async byToken(token: string): Promise<AssignmentWithParties> {
     if (!token || token.length < 20) throw new NotFoundException('This link is not valid.');
-    const assignment = await this.prisma.assessmentAssignment.findUnique({
-      where: { tokenHash: hashToken(token) },
-      include: {
-        tenant: { select: { name: true, logoUrl: true, primaryColor: true, secondaryColor: true } },
-        client: { select: { firstName: true } },
-      },
-    });
-    if (!assignment) throw new NotFoundException('This link is not valid.');
-    return assignment;
+    const a = await this.prisma.assessmentAssignment.findUnique({ where: { tokenHash: hashToken(token) }, include: this.withParties });
+    if (!a) throw new NotFoundException('This link is not valid.');
+    return a;
   }
 
-  /** The questionnaire, without any scoring, for the client to fill in. */
-  async open(token: string) {
-    const a = await this.byToken(token);
+  private async ownAssignment(tenantId: bigint, profileId: bigint, id: bigint): Promise<AssignmentWithParties> {
+    const a = await this.prisma.assessmentAssignment.findFirst({
+      where: { id, tenantId, clientProfileId: profileId },
+      include: this.withParties,
+    });
+    if (!a) throw new NotFoundException('Assessment not found');
+    return a;
+  }
+
+  private async describe(a: AssignmentWithParties, { showResult }: { showResult: boolean }) {
     const practice = {
       name: a.tenant.name,
       logoUrl: a.tenant.logoUrl,
       primaryColor: a.tenant.primaryColor,
       secondaryColor: a.tenant.secondaryColor,
     };
-    if (a.status === 'COMPLETED') return { status: 'COMPLETED', practice };
-    if (a.status === 'CANCELLED' || a.expiresAt <= new Date()) return { status: 'EXPIRED', practice };
+    if (a.status === 'CANCELLED') return { status: 'CANCELLED' as const, practice };
+    const inst = await this.instruments.find(a.instrumentKey);
+    if (!inst) return { status: 'CANCELLED' as const, practice };
+    if (a.status === 'COMPLETED') {
+      return {
+        status: 'COMPLETED' as const,
+        practice,
+        shortName: inst.definition.shortName,
+        completedAt: a.completedAt?.toISOString() ?? null,
+        ...(showResult && a.response ? { result: clientView(a.response.result) } : {}),
+      };
+    }
     return {
-      status: 'OPEN',
+      status: 'OPEN' as const,
       practice,
       firstName: a.client.firstName,
       message: a.message,
-      assessment: publicDefinition(instrument(a.instrumentKey)!),
+      assessment: publicDefinition(inst.definition),
     };
   }
 
   /**
-   * Scores and stores the client's answers. The client never sees the score:
-   * results are for the clinician to interpret.
+   * The questionnaire behind an emailed link. A completed link shows no result:
+   * links get forwarded, so results are only shown straight after submitting,
+   * and in the client's portal.
    */
-  async submit(token: string, rawAnswers: unknown) {
-    const a = await this.byToken(token);
-    const inst = instrument(a.instrumentKey);
-    if (!inst) throw new NotFoundException('This assessment is no longer available.');
+  async open(token: string) {
+    return this.describe(await this.byToken(token), { showResult: false });
+  }
 
-    const answers = validateAnswers(inst, rawAnswers);
+  async submit(token: string, rawAnswers: unknown) {
+    return this.complete(await this.byToken(token), rawAnswers);
+  }
+
+  /** The signed-in client's own assessments: waiting, and done with what they may see. */
+  async mine(tenantId: bigint, profileId: bigint) {
+    const rows = await this.prisma.assessmentAssignment.findMany({
+      where: { tenantId, clientProfileId: profileId, status: { in: ['SENT', 'COMPLETED'] } },
+      include: { response: true },
+      orderBy: { createdAt: 'desc' },
+      take: 100,
+    });
+    const instruments = await this.instruments.findMany(rows.map((r) => r.instrumentKey));
+    return rows
+      .filter((r) => instruments.has(r.instrumentKey))
+      .map((r) => {
+        const def = instruments.get(r.instrumentKey)!.definition;
+        return {
+          id: r.id.toString(),
+          shortName: def.shortName,
+          name: def.name,
+          measures: def.measures,
+          estimatedMinutes: def.estimatedMinutes,
+          status: r.status,
+          message: r.message,
+          sentAt: r.createdAt.toISOString(),
+          completedAt: r.completedAt?.toISOString() ?? null,
+          result: r.response ? clientView(r.response.result) : null,
+        };
+      });
+  }
+
+  async openMine(tenantId: bigint, profileId: bigint, id: bigint) {
+    return this.describe(await this.ownAssignment(tenantId, profileId, id), { showResult: true });
+  }
+
+  async submitMine(tenantId: bigint, profileId: bigint, id: bigint, rawAnswers: unknown) {
+    return this.complete(await this.ownAssignment(tenantId, profileId, id), rawAnswers);
+  }
+
+  /** Scores, stores, alerts the practice, and returns only what the client may see. */
+  private async complete(a: AssignmentWithParties, rawAnswers: unknown) {
+    if (a.status !== 'SENT') throw new BadRequestException('This assessment has already been completed or was cancelled.');
+    const inst = await this.instruments.find(a.instrumentKey);
+    if (!inst) throw new NotFoundException('This assessment is no longer available.');
+    const def = inst.definition;
+
+    const answers = validateAnswers(def, rawAnswers);
     if (typeof answers === 'string') throw new BadRequestException(answers);
-    const result = inst.score(answers);
+    const result = score(def, answers);
 
     const response = await this.prisma.$transaction(async (tx) => {
       // Claimed in the UPDATE itself, so a double submit cannot store twice.
       const claimed = await tx.assessmentAssignment.updateMany({
-        where: { id: a.id, status: 'SENT', expiresAt: { gt: new Date() } },
+        where: { id: a.id, status: 'SENT' },
         data: { status: 'COMPLETED', completedAt: new Date() },
       });
-      if (claimed.count === 0) throw new BadRequestException('This assessment has already been completed or has expired.');
+      if (claimed.count === 0) throw new BadRequestException('This assessment has already been completed or was cancelled.');
       return tx.assessmentResponse.create({
         data: {
           tenantId: a.tenantId,
           assignmentId: a.id,
           instrumentKey: inst.key,
+          instrumentVersion: inst.version,
           clientProfileId: a.clientProfileId,
           answers: answers as Prisma.InputJsonValue,
           totalScore: result.totalScore,
           severityLabel: result.severity.label,
           severityLevel: result.severity.level,
-          result: { subscales: result.subscales, flags: result.flags, maxScore: result.maxScore } as unknown as Prisma.InputJsonValue,
+          result: result as unknown as Prisma.InputJsonValue,
           hasFlags: result.flags.length > 0,
         },
       });
     });
 
-    await this.tellClinicians(a, inst.shortName, result.severity.label, result.flags);
-    return { status: 'COMPLETED', id: response.id.toString() };
+    await this.tellClinicians(a, def.shortName, result);
+    return { status: 'COMPLETED' as const, id: response.id.toString(), result: result.client };
   }
 
   /**
-   * Lets the practice know a result is in. A flagged answer (e.g. PHQ-9
-   * item 9) goes to the sender and the practice's owners and admins by every
-   * channel they have, not just the bell.
+   * Lets the practice know a result is in. A flagged answer goes to the
+   * sender and the practice's owners and admins; an urgent one (e.g. PHQ-9
+   * item 9) by every channel they have, not just the bell.
    */
-  private async tellClinicians(
-    a: { id: bigint; tenantId: bigint; sentByProfileId: bigint | null; clientProfileId: bigint; client: { firstName: string | null } },
-    shortName: string,
-    severity: string,
-    flags: Array<{ message: string }>,
-  ) {
+  private async tellClinicians(a: AssignmentWithParties, shortName: string, result: AssessmentResult) {
     try {
+      const flags = result.flags;
+      const urgent = flags.some((f) => f.level === 'urgent');
       const leads = await this.prisma.profile.findMany({
         where: { tenantId: a.tenantId, role: { in: ['OWNER', 'ADMIN'] }, status: 'active' },
         select: { id: true },
       });
+      const sender = a.sentByProfileId ? [a.sentByProfileId] : [];
       const recipients = flags.length
-        ? [...new Set([...(a.sentByProfileId ? [a.sentByProfileId] : []), ...leads.map((l) => l.id)].map(String))].map(BigInt)
-        : a.sentByProfileId
-          ? [a.sentByProfileId]
+        ? [...new Set([...sender, ...leads.map((l) => l.id)].map(String))].map(BigInt)
+        : sender.length
+          ? sender
           : leads.map((l) => l.id);
       if (!recipients.length) return;
       const who = a.client.firstName || 'A client';
@@ -233,44 +333,45 @@ export class AssessmentService {
         profileIds: recipients,
         type: flags.length ? 'assessments.flagged' : 'assessments.completed',
         title: flags.length ? `${who}'s ${shortName} needs your attention` : `${who} completed ${shortName}`,
-        message: flags.length ? flags.map((f) => f.message).join(' ') : `Result: ${severity}.`,
+        message: flags.length ? flags.map((f) => f.message).join(' ') : `Result: ${result.severity.label}.`,
         link: `/dashboard/clients/${a.clientProfileId}`,
         actionLabel: 'View result',
-        ...(flags.length ? { channels: { in_app: true, email: true, push: true } } : {}),
+        ...(urgent ? { channels: { in_app: true, email: true, push: true } } : {}),
       });
     } catch (err) {
       this.logger.warn(`Could not notify about assessment ${a.id}: ${(err as Error).message}`);
     }
   }
 
-  // ── Results ──────────────────────────────────────────────────────────
+  // ── Results, for the practice ────────────────────────────────────────
 
-  /** A client's results over time, and anything still waiting to be completed. */
+  /** A client's results over time, with the clinician's and the client's analysis, and what is still open. */
   async clientResults(tenantId: bigint, clientProfileId: bigint) {
     const [responses, pending] = await Promise.all([
-      this.prisma.assessmentResponse.findMany({
-        where: { tenantId, clientProfileId },
-        orderBy: { completedAt: 'asc' },
-      }),
+      this.prisma.assessmentResponse.findMany({ where: { tenantId, clientProfileId }, orderBy: { completedAt: 'asc' } }),
       this.prisma.assessmentAssignment.findMany({
-        where: { tenantId, clientProfileId, status: 'SENT', expiresAt: { gt: new Date() } },
+        where: { tenantId, clientProfileId, status: 'SENT' },
         orderBy: { createdAt: 'desc' },
       }),
     ]);
+    const instruments = await this.instruments.findMany([...responses, ...pending].map((r) => r.instrumentKey));
+    const name = (key: string) => instruments.get(key)?.definition.shortName ?? key;
     return {
       results: responses.map((r) => {
-        const inst = instrument(r.instrumentKey);
-        const detail = r.result as { subscales?: unknown[]; flags?: unknown[]; maxScore?: number };
+        const detail = r.result as unknown as Partial<AssessmentResult>;
         return {
           id: r.id.toString(),
           instrumentKey: r.instrumentKey,
-          shortName: inst?.shortName ?? r.instrumentKey,
+          instrumentVersion: r.instrumentVersion,
+          shortName: name(r.instrumentKey),
           totalScore: r.totalScore,
           maxScore: detail.maxScore ?? null,
           severity: r.severityLabel,
           severityLevel: r.severityLevel,
+          clinicianText: detail.clinicianText ?? null,
           subscales: detail.subscales ?? [],
           flags: detail.flags ?? [],
+          clientView: detail.client ?? null,
           answers: r.answers,
           completedAt: r.completedAt.toISOString(),
         };
@@ -278,59 +379,35 @@ export class AssessmentService {
       pending: pending.map((p) => ({
         id: p.id.toString(),
         instrumentKey: p.instrumentKey,
-        shortName: instrument(p.instrumentKey)?.shortName ?? p.instrumentKey,
+        shortName: name(p.instrumentKey),
+        message: p.message,
         sentAt: p.createdAt.toISOString(),
-        expiresAt: p.expiresAt.toISOString(),
       })),
     };
   }
 
-  // ── Requests for new instruments ─────────────────────────────────────
-
-  async request(tenantId: bigint, profileId: bigint, dto: { name?: string; details?: string }) {
-    const name = String(dto?.name ?? '').trim();
-    if (name.length < 2) throw new BadRequestException('Name the assessment you would like added.');
-    const created = await this.prisma.assessmentRequest.create({
-      data: {
-        tenantId,
-        requestedByProfileId: profileId,
-        name: name.slice(0, 160),
-        details: dto.details?.trim().slice(0, 2000) || null,
+  /** Everything sent across the practice, newest first: who has answered and what needs attention. */
+  async practiceAssignments(tenantId: bigint) {
+    const rows = await this.prisma.assessmentAssignment.findMany({
+      where: { tenantId, status: { in: ['SENT', 'COMPLETED'] } },
+      include: {
+        client: { select: { id: true, firstName: true, lastName: true } },
+        response: { select: { totalScore: true, severityLabel: true, severityLevel: true, hasFlags: true } },
       },
+      orderBy: { createdAt: 'desc' },
+      take: 200,
     });
-    return { id: created.id.toString(), name: created.name, status: created.status };
-  }
-
-  async practiceRequests(tenantId: bigint) {
-    const rows = await this.prisma.assessmentRequest.findMany({ where: { tenantId }, orderBy: { createdAt: 'desc' } });
-    return rows.map((r) => ({ id: r.id.toString(), name: r.name, details: r.details, status: r.status, adminNote: r.adminNote, createdAt: r.createdAt.toISOString() }));
-  }
-
-  async allRequests() {
-    const rows = await this.prisma.assessmentRequest.findMany({
-      orderBy: [{ status: 'asc' }, { createdAt: 'desc' }],
-      include: { tenant: { select: { name: true, slug: true } } },
-    });
+    const instruments = await this.instruments.findMany(rows.map((r) => r.instrumentKey));
     return rows.map((r) => ({
       id: r.id.toString(),
-      name: r.name,
-      details: r.details,
+      shortName: instruments.get(r.instrumentKey)?.definition.shortName ?? r.instrumentKey,
+      client: { id: r.client.id.toString(), name: [r.client.firstName, r.client.lastName].filter(Boolean).join(' ') || 'Client' },
       status: r.status,
-      adminNote: r.adminNote,
-      createdAt: r.createdAt.toISOString(),
-      practice: { id: r.tenantId.toString(), name: r.tenant.name, slug: r.tenant.slug },
+      sentAt: r.createdAt.toISOString(),
+      completedAt: r.completedAt?.toISOString() ?? null,
+      result: r.response
+        ? { totalScore: r.response.totalScore, severity: r.response.severityLabel, severityLevel: r.response.severityLevel, hasFlags: r.response.hasFlags }
+        : null,
     }));
-  }
-
-  async updateRequest(id: bigint, dto: { status?: string; adminNote?: string }) {
-    const status = String(dto?.status ?? '').toUpperCase();
-    if (!['OPEN', 'PLANNED', 'ADDED', 'DECLINED'].includes(status)) throw new BadRequestException('Unknown status.');
-    const existing = await this.prisma.assessmentRequest.findUnique({ where: { id } });
-    if (!existing) throw new NotFoundException('Request not found');
-    const updated = await this.prisma.assessmentRequest.update({
-      where: { id },
-      data: { status, ...(dto.adminNote !== undefined ? { adminNote: dto.adminNote?.trim() || null } : {}) },
-    });
-    return { id: updated.id.toString(), status: updated.status, adminNote: updated.adminNote };
   }
 }
