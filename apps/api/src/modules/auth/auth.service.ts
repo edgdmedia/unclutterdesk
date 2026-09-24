@@ -16,6 +16,7 @@ import { DeviceInfo, SessionService } from './session.service';
 import { JWT_EXPIRES_IN, REFRESH_SECRET, REFRESH_EXPIRES_IN } from '../../common/auth.config';
 import { NotificationService } from '../notifications/notification.service';
 import { InviteService } from '../invites/invite.service';
+import { appOrigin } from '../../common/origins';
 
 const BCRYPT_ROUNDS = 12;
 
@@ -432,12 +433,8 @@ export class AuthService {
       orderBy: [{ emailVerified: 'desc' }, { createdAt: 'desc' }],
     });
 
-    const baseUrl = (
-      process.env.APP_BASE_URL ||
-      process.env.VITE_APP_URL ||
-      process.env.WEB_BASE_URL ||
-      'https://app.unclutterdesk.com'
-    ).replace(/\/+$/, '');
+    // One way to build app links everywhere: APP_URL, else the production app.
+    const baseUrl = appOrigin();
     const resetLink = `${baseUrl}/reset-password/${token}`;
 
     let emailSent = false;
