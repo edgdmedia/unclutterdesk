@@ -24,6 +24,7 @@ const FIELDS = [
   'avatarUrl',
   'practiceName',
   'tenantSlug',
+  'plan',
   'isTherapist',
 ].sort();
 
@@ -38,7 +39,7 @@ const PROFILE = {
   role: 'OWNER',
   status: 'active',
   avatarUrl: null,
-  tenant: { name: 'Ada Therapy', slug: 'ada-therapy' },
+  tenant: { name: 'Ada Therapy', slug: 'ada-therapy', subscriptionTier: 'PRO' },
   consultTherapistProfile: { id: 9n },
 };
 
@@ -54,6 +55,12 @@ describe('the signed-in profile', () => {
   // the therapist menu and could not reach brand, services, team or billing.
   it('carries the practice role', () => {
     expect(build(PROFILE).role).toBe('OWNER');
+  });
+
+  // The sidebar marks features outside the plan; without this it assumed
+  // Starter for everyone and showed Pro practices their features as locked.
+  it('carries the practice plan', () => {
+    expect(build(PROFILE).plan).toBe('PRO');
   });
 
   it('carries every field the app reads', () => {
