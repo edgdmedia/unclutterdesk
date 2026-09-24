@@ -12,7 +12,7 @@ Checked against public DNS on 2026-09-24.
 | `www.unclutterdesk.com` | ✅ Live, proxied |
 | `app.unclutterdesk.com` | ✅ Live, proxied |
 | `<practice>.unclutterdesk.com` | ✅ Live: wildcard record plus the tenant-router Worker (§1) |
-| `api.unclutterdesk.com` | ⚠️ Works, but **DNS only**: the server's IP is public and nothing filters traffic (§2) |
+| `api.unclutterdesk.com` | ✅ Proxied (2026-09-24). Remaining: real-IP nginx change and origin firewall (§2 steps 3 and 6) |
 | GitHub deploy token | ❌ App and landing deploys fail with auth error 10000 (§3) |
 | HSTS at the zone | ⬜ Not yet (§4) |
 | CSP enforced | ⬜ Report-only for now (§4) |
@@ -53,24 +53,20 @@ About 15 minutes; **do the steps in this order**. To undo at any point, set the
    valid certificate (the app would not work otherwise), so strict connects.
    Never *Flexible*: it sends traffic to the server unencrypted.
 
-3. **Install the nginx config** from `deploy/nginx/` on the server:
+3. **nginx: pass the visitor's real address.** Install
+   `deploy/nginx/cloudflare-realip.conf` as `/etc/nginx/conf.d/cloudflare-realip.conf`,
+   and in the API's server block change
+   `proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;` to
+   `proxy_set_header X-Forwarded-For $remote_addr;`. Then
+   `sudo nginx -t && sudo systemctl reload nginx`.
+   `deploy/nginx/api-unclutterdesk.com.conf` is the server's block with that
+   change. Keep its `listen 169.58.3.186:443`: other sites on the server bind to
+   specific addresses, and a bare `listen 443` would not be picked for `api`.
 
-   ```bash
-   sudo cp /etc/nginx/conf.d/api-unclutterdesk.com.conf ~/api-nginx.backup
-   sudo cp deploy/nginx/cloudflare-realip.conf deploy/nginx/api-unclutterdesk.com.conf /etc/nginx/conf.d/
-   sudo nginx -t && sudo systemctl reload nginx
-   ```
-
-   `cloudflare-realip.conf` makes nginx take the visitor's address from
-   Cloudflare's `CF-Connecting-IP` header, trusting it only from Cloudflare's
-   own ranges. Without it the login rate limiter sees a few Cloudflare
-   addresses and treats every user as one person. It is safe to install before
-   step 4: until the record is proxied, no traffic comes from those ranges.
-   Tested on nginx 1.24 (the server's version): forged `X-Forwarded-For` and
-   `CF-Connecting-IP` headers from outside Cloudflare are ignored.
-
-   If your existing file has anything the new one lacks (another `location`,
-   different certificate paths), carry it over before reloading.
+   Without this, once proxied, the API sees a Cloudflare address for every
+   visitor and the login rate limiter treats them as a handful of people.
+   Tested on nginx 1.24: forged `X-Forwarded-For` and `CF-Connecting-IP`
+   headers from outside Cloudflare are ignored.
 
 4. **Proxy the record.** DNS → `api` → Proxy status **Proxied** (orange cloud).
 
