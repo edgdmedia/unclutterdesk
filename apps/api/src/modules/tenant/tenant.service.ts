@@ -5,6 +5,9 @@ import { Logger } from '@nestjs/common';
 import { PrismaService } from '../../common/prisma/prisma.service';
 import { NotificationService } from '../notifications/notification.service';
 import { decryptNoteFields } from '../../common/field-encryption';
+import { isPlatformHostname, isReservedSlug, normalizeSlug } from './reserved-slugs';
+
+const RESERVED_SLUG_MESSAGE = 'That booking handle is reserved. Try another one.';
 
 /**
  * Invite ids are prefixed on the way out so they cannot be mistaken for a
@@ -65,16 +68,7 @@ export class TenantService {
       throw new BadRequestException('Custom domain must not include query strings or fragments');
     }
 
-    const reserved = new Set([
-      'unclutterdesk.com',
-      'www.unclutterdesk.com',
-      'api.unclutterdesk.com',
-      'app.unclutterdesk.com',
-      'admin.unclutterdesk.com',
-      'localhost',
-    ]);
-
-    if (reserved.has(value)) {
+    if (isPlatformHostname(value)) {
       throw new BadRequestException('That domain cannot be used as a practice custom domain.');
     }
 
@@ -95,8 +89,9 @@ export class TenantService {
     secondaryColor?: string;
     currency?: string;
   }) {
-    const slug = dto.slug.toLowerCase().trim().replace(/[^a-z0-9-]/g, '');
+    const slug = normalizeSlug(dto.slug);
     if (!slug) throw new BadRequestException('Valid practice slug is required');
+    if (isReservedSlug(slug)) throw new BadRequestException(RESERVED_SLUG_MESSAGE);
 
     const existing = await this.prisma.tenant.findUnique({ where: { slug } });
     if (existing) throw new BadRequestException('This practice slug is already taken');
@@ -116,7 +111,7 @@ export class TenantService {
   }
 
   async checkSlugAvailability(slug: string, tenantId?: bigint) {
-    const cleanSlug = slug.toLowerCase().trim().replace(/[^a-z0-9-]/g, '');
+    const cleanSlug = normalizeSlug(slug);
     if (!cleanSlug) return { available: false, reason: 'Slug is empty' };
 
     const existing = await this.prisma.tenant.findUnique({
@@ -124,7 +119,14 @@ export class TenantService {
       select: { id: true },
     });
 
-    if (!existing || (tenantId && existing.id === tenantId)) {
+    // A tenant keeps the slug it already holds, even a reserved one (demo).
+    if (tenantId && existing?.id === tenantId) {
+      return { available: true, slug: cleanSlug };
+    }
+    if (isReservedSlug(cleanSlug)) {
+      return { available: false, slug: cleanSlug, reason: RESERVED_SLUG_MESSAGE };
+    }
+    if (!existing) {
       return { available: true, slug: cleanSlug };
     }
     return { available: false, slug: cleanSlug, reason: 'Slug is already taken' };
@@ -214,9 +216,22 @@ export class TenantService {
       }
     }
 
+    let slug: string | undefined;
+    if (dto.slug) {
+      slug = normalizeSlug(dto.slug);
+      if (!slug) throw new BadRequestException('Valid practice slug is required');
+      if (isReservedSlug(slug)) {
+        const current = await this.prisma.tenant.findUnique({
+          where: { id: tenantId },
+          select: { slug: true },
+        });
+        if (current?.slug !== slug) throw new BadRequestException(RESERVED_SLUG_MESSAGE);
+      }
+    }
+
     const data: Prisma.TenantUpdateInput = {
       ...(dto.name ? { name: dto.name.trim() } : {}),
-      ...(dto.slug ? { slug: dto.slug.toLowerCase().trim() } : {}),
+      ...(slug ? { slug } : {}),
       ...(dto.shortName !== undefined ? { shortName: dto.shortName?.trim() || null } : {}),
       ...(dto.logoUrl !== undefined ? { logoUrl: dto.logoUrl } : {}),
       ...(dto.faviconUrl !== undefined ? { faviconUrl: dto.faviconUrl } : {}),
