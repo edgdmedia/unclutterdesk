@@ -65,12 +65,27 @@ export class PaystackService {
     if (dto.subaccount) {
       payload.subaccount = dto.subaccount;
       payload.bearer = dto.bearer || 'subaccount';
-      if (dto.split) {
-        payload.transaction_charge = Math.round(dto.amount * (dto.split / 100));
-      }
+      // Always explicit, including 0. Without it Paystack applies the
+      // subaccount's own percentage_charge, and older subaccounts were created
+      // with 5%: Pro and Clinic practices, promised 0%, were charged 5%.
+      payload.transaction_charge = Math.round(dto.amount * ((dto.split ?? 0) / 100));
     }
 
     return this.request('POST', '/transaction/initialize', payload);
+  }
+
+  private banksCache: { at: number; banks: Array<{ name: string; code: string }> } | null = null;
+
+  /** Nigerian banks as Paystack knows them, so the codes always match. Cached for a day. */
+  async listBanks(): Promise<Array<{ name: string; code: string }>> {
+    if (this.banksCache && Date.now() - this.banksCache.at < 24 * 60 * 60 * 1000) return this.banksCache.banks;
+    const rows = (await this.request('GET', '/bank?country=nigeria&perPage=500')) as Array<{ name: string; code: string; active?: boolean; is_deleted?: boolean }>;
+    const banks = rows
+      .filter((b) => b.active !== false && !b.is_deleted)
+      .map((b) => ({ name: b.name, code: b.code }))
+      .sort((a, b) => a.name.localeCompare(b.name));
+    this.banksCache = { at: Date.now(), banks };
+    return banks;
   }
 
   async resolveAccountNumber(accountNumber: string, bankCode: string) {
