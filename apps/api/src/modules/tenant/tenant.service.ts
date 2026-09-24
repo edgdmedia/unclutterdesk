@@ -7,6 +7,7 @@ import { PrismaService } from '../../common/prisma/prisma.service';
 import { NotificationService } from '../notifications/notification.service';
 import { decryptNoteFields } from '../../common/field-encryption';
 import { isPlatformHostname, isReservedSlug, normalizeSlug } from './reserved-slugs';
+import { appOrigin } from '../../common/origins';
 
 const RESERVED_SLUG_MESSAGE = 'That booking handle is reserved. Try another one.';
 
@@ -630,7 +631,9 @@ export class TenantService {
       },
     });
 
-    const inviteUrl = `${process.env.APP_URL || 'https://unclutterdesk.com'}/invite/claim?token=${claimToken}`;
+    // The claim page is in the app. The old fallback was the marketing site,
+    // which has no such page, so invitations could link to a 404.
+    const inviteUrl = `${appOrigin()}/invite/claim?token=${claimToken}`;
 
     /*
      * The invitation was minted and the link handed back to the caller, so
