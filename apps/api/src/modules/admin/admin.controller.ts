@@ -5,6 +5,7 @@ import { Response } from 'express';
 import { randomBytes } from 'crypto';
 import { AdminService } from './admin.service';
 import { InviteService } from '../invites/invite.service';
+import { AssessmentService } from '../assessments/assessment.service';
 import { AuthService } from '../auth/auth.service';
 import { PlatformAdminGuard } from './platform-admin.guard';
 import {
@@ -24,6 +25,7 @@ export class AdminController {
     private readonly adminService: AdminService,
     private readonly authService: AuthService,
     private readonly invites: InviteService,
+    private readonly assessments: AssessmentService,
   ) {}
 
   @Post('auth/login')
@@ -92,6 +94,21 @@ export class AdminController {
   updateInvite(@Param('id') id: string, @Body() dto: { isActive?: boolean }) {
     if (!/^\d+$/.test(id)) throw new NotFoundException('Invite code not found');
     return this.invites.setActive(BigInt(id), dto?.isActive !== false);
+  }
+
+  @Get('assessment-requests')
+  @UseGuards(PlatformAdminGuard)
+  @ApiOperation({ summary: 'Instruments practices have asked to be added to the library' })
+  listAssessmentRequests() {
+    return this.assessments.allRequests();
+  }
+
+  @Patch('assessment-requests/:id')
+  @UseGuards(PlatformAdminGuard)
+  @ApiOperation({ summary: 'Mark an assessment request planned, added or declined' })
+  updateAssessmentRequest(@Param('id') id: string, @Body() dto: { status?: string; adminNote?: string }) {
+    if (!/^\d+$/.test(id)) throw new NotFoundException('Request not found');
+    return this.assessments.updateRequest(BigInt(id), dto ?? {});
   }
 
   private setSessionCookies(res: Response, accessToken: string, refreshToken: string) {

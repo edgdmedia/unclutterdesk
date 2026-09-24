@@ -10,6 +10,7 @@ function makePrisma(overrides: any = {}) {
     notification: { deleteMany: vi.fn() },
     emailLog: { deleteMany: vi.fn() },
     consultBooking: { updateMany: vi.fn() },
+    assessmentAssignment: { updateMany: vi.fn() },
     profile: { update: vi.fn(), count: vi.fn().mockResolvedValue(0) },
     token: { deleteMany: vi.fn() },
     user: { update: vi.fn() },

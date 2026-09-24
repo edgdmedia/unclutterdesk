@@ -33,7 +33,7 @@ export function AdminOverviewPage() {
     { label: 'Staff members', value: stats ? formatCount(stats.staffCount) : '—', icon: Users },
     { label: 'Clients', value: stats ? formatCount(stats.clientCount) : '—', icon: Users },
     { label: 'Bookings', value: stats ? formatCount(stats.bookings) : '—', icon: CalendarDays },
-    { label: 'Forms & assessments', value: stats ? formatCount(stats.forms) : '—', icon: ClipboardList },
+    { label: 'Forms', value: stats ? formatCount(stats.forms) : '—', icon: ClipboardList },
   ];
 
   return (

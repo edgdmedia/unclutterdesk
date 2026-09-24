@@ -18,6 +18,7 @@ import { ScheduleModule } from '@nestjs/schedule';
 import { CalendarModule } from './modules/calendar/calendar.module';
 import { PrivacyModule } from './modules/privacy/privacy.module';
 import { InviteModule } from './modules/invites/invite.module';
+import { AssessmentModule } from './modules/assessments/assessment.module';
 
 @Module({
   imports: [
@@ -48,6 +49,7 @@ import { InviteModule } from './modules/invites/invite.module';
     CalendarModule,
     PrivacyModule,
     InviteModule,
+    AssessmentModule,
   ],
   controllers: [HealthController],
   providers: [

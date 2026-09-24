@@ -59,6 +59,10 @@ model Tenant {
   complimentaryUntil       DateTime?
   inviteCodeId             BigInt?
   inviteCode               InviteCode? @relation(fields: [inviteCodeId], references: [id], onDelete: SetNull)
+  enabledAssessments       TenantAssessment[]
+  assessmentAssignments    AssessmentAssignment[]
+  assessmentResponses      AssessmentResponse[]
+  assessmentRequests       AssessmentRequest[]
 
   // Notification plug-in: which channels this tenant has enabled at all.
   // JSON map, e.g. { "email": true, "in_app": true, "push": true, "sms": false }
@@ -190,6 +194,8 @@ model Profile {
   emailLogs               EmailLog[]
   pushSubscriptions       WebPushSubscription[]
 
+  assessmentAssignments AssessmentAssignment[]
+  assessmentResponses   AssessmentResponse[]
   @@unique([tenantId, email])
   @@unique([tenantId, username])
   @@index([tenantId, status])
@@ -532,4 +538,81 @@ model WebPushSubscription {
   profile Profile @relation(fields: [profileId], references: [id], onDelete: Cascade)
 
   @@index([profileId])
+}
+
+/// A standard assessment (see apps/api/src/modules/assessments/instruments.ts)
+/// switched on for a practice. The instrument itself is platform-wide and
+/// not editable; this row only says the practice uses it.
+model TenantAssessment {
+  tenantId      BigInt
+  instrumentKey String   @db.VarChar(40)
+  enabledAt     DateTime @default(now())
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@id([tenantId, instrumentKey])
+}
+
+/// An assessment sent to a client. The client opens it through a link whose
+/// token is stored only as a hash.
+model AssessmentAssignment {
+  id              BigInt    @id @default(autoincrement())
+  tenantId        BigInt
+  instrumentKey   String    @db.VarChar(40)
+  clientProfileId BigInt
+  sentByProfileId BigInt?
+  bookingId       BigInt?
+  tokenHash       String    @unique @db.VarChar(64)
+  status          String    @default("SENT") @db.VarChar(20) // "SENT", "COMPLETED", "CANCELLED"
+  message         String?
+  expiresAt       DateTime
+  createdAt       DateTime  @default(now())
+  completedAt     DateTime?
+
+  tenant   Tenant              @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  client   Profile             @relation(fields: [clientProfileId], references: [id], onDelete: Cascade)
+  response AssessmentResponse?
+
+  @@index([tenantId, clientProfileId])
+  @@index([tenantId, status])
+}
+
+/// A completed assessment, scored when it was submitted.
+model AssessmentResponse {
+  id              BigInt   @id @default(autoincrement())
+  tenantId        BigInt
+  assignmentId    BigInt?  @unique
+  instrumentKey   String   @db.VarChar(40)
+  clientProfileId BigInt
+  answers         Json
+  totalScore      Int
+  severityLabel   String
+  severityLevel   Int
+  /// Subscales and flags, as returned by the instrument's scoring.
+  result          Json
+  hasFlags        Boolean  @default(false)
+  completedAt     DateTime @default(now())
+
+  tenant     Tenant                @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  client     Profile               @relation(fields: [clientProfileId], references: [id], onDelete: Cascade)
+  assignment AssessmentAssignment? @relation(fields: [assignmentId], references: [id], onDelete: SetNull)
+
+  @@index([tenantId, clientProfileId, instrumentKey])
+}
+
+/// A practice asking for an instrument the library does not have yet.
+model AssessmentRequest {
+  id                   BigInt   @id @default(autoincrement())
+  tenantId             BigInt
+  requestedByProfileId BigInt?
+  name                 String   @db.VarChar(160)
+  details              String?
+  status               String   @default("OPEN") @db.VarChar(20) // "OPEN", "PLANNED", "ADDED", "DECLINED"
+  adminNote            String?
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([status])
 }

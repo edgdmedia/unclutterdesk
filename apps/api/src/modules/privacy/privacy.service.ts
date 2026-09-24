@@ -88,6 +88,14 @@ export class PrivacyService {
       await tx.notification.deleteMany({ where: { profileId: clientProfileId } });
       await tx.emailLog.deleteMany({ where: { profileId: clientProfileId } });
 
+      // An unfinished assessment link would still accept answers from
+      // someone who asked to be forgotten; completed results are clinical
+      // records and stay, like the notes.
+      await tx.assessmentAssignment.updateMany({
+        where: { tenantId, clientProfileId, status: 'SENT' },
+        data: { status: 'CANCELLED', message: null },
+      });
+
       // Booking free-text often repeats personal detail; the booking itself is
       // a financial record and stays.
       await tx.consultBooking.updateMany({
