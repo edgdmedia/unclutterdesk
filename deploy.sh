@@ -108,8 +108,40 @@ find "$BACKUP_DIR" -name 'pre-deploy-*.dump' -type f -mtime "+$BACKUP_RETENTION_
 # 6. Apply migrations.
 # `migrate deploy` only applies committed migration files and never drops data
 # to resolve drift — unlike `db push`, which this used to run on every deploy.
+#
+# A migration that failed on an earlier deploy blocks every later one (P3009)
+# until it is marked rolled back. That is only safe when the migration can be
+# re-run from scratch, so recovery is limited to the migrations listed here,
+# each of which has been written to be idempotent. Anything else still stops
+# the deploy for a human to look at.
+RETRYABLE_MIGRATIONS=(
+    20260903230000_demo_workspace
+)
+
 echo "🗄️ Applying database migrations..."
-npx prisma migrate deploy
+for pass in 1 2; do
+    set +e
+    MIGRATE_OUTPUT="$(npx prisma migrate deploy 2>&1)"
+    MIGRATE_STATUS=$?
+    set -e
+    echo "$MIGRATE_OUTPUT"
+    [ "$MIGRATE_STATUS" -eq 0 ] && break
+
+    FAILED_MIGRATION="$(printf '%s\n' "$MIGRATE_OUTPUT" | grep -oE 'The `[^`]+` migration started at .* failed' | head -n 1 | cut -d'`' -f2 || true)"
+    RETRYABLE=false
+    for m in "${RETRYABLE_MIGRATIONS[@]}"; do
+        [ "$m" = "$FAILED_MIGRATION" ] && RETRYABLE=true
+    done
+
+    if [ "$pass" = "1" ] && [ "$RETRYABLE" = "true" ] && printf '%s' "$MIGRATE_OUTPUT" | grep -q 'P3009'; then
+        echo "   ! $FAILED_MIGRATION failed on an earlier deploy; marking it rolled back and retrying"
+        npx prisma migrate resolve --rolled-back "$FAILED_MIGRATION"
+        continue
+    fi
+
+    echo "❌ Migrations failed. Restore point: $BACKUP_FILE"
+    exit "$MIGRATE_STATUS"
+done
 
 # Only seed if explicitly requested via SEED_DB=true
 if [ "${SEED_DB:-}" = "true" ]; then

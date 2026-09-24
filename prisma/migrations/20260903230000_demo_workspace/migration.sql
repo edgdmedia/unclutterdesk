@@ -2,7 +2,7 @@
 -- This migration intentionally does not contain a usable password. Provision it
 -- with scripts/provision-demo-account.mjs using a server-side DEMO_PASSWORD.
 
-ALTER TABLE "Tenant" ADD COLUMN "isDemo" BOOLEAN NOT NULL DEFAULT false;
+ALTER TABLE "Tenant" ADD COLUMN IF NOT EXISTS "isDemo" BOOLEAN NOT NULL DEFAULT false;
 
 DO $$
 DECLARE
