@@ -55,8 +55,11 @@ const PlatformAdminLayout = lazy(() => import('./pages/admin/PlatformAdminLayout
 const AdminOverviewPage = lazy(() => import('./pages/admin/AdminOverviewPage').then((m) => ({ default: m.AdminOverviewPage })));
 const AdminTenantsPage = lazy(() => import('./pages/admin/AdminTenantsPage').then((m) => ({ default: m.AdminTenantsPage })));
 const AdminInvitesPage = lazy(() => import('./pages/admin/AdminInvitesPage').then((m) => ({ default: m.AdminInvitesPage })));
-const AdminAssessmentRequestsPage = lazy(() => import('./pages/admin/AdminAssessmentRequestsPage').then((m) => ({ default: m.AdminAssessmentRequestsPage })));
+const AdminRequestsPage = lazy(() => import('./pages/admin/AdminRequestsPage').then((m) => ({ default: m.AdminRequestsPage })));
+const AdminAssessmentsPage = lazy(() => import('./pages/admin/AdminAssessmentsPage').then((m) => ({ default: m.AdminAssessmentsPage })));
+const RequestsPage = lazy(() => import('./pages/practice/RequestsPage').then((m) => ({ default: m.RequestsPage })));
 const AssessmentsPage = lazy(() => import('./pages/practice/AssessmentsPage').then((m) => ({ default: m.AssessmentsPage })));
+const PortalAssessmentPage = lazy(() => import('./pages/client/PortalAssessmentPage').then((m) => ({ default: m.PortalAssessmentPage })));
 const AssessmentPage = lazy(() => import('./pages/public/AssessmentPage').then((m) => ({ default: m.AssessmentPage })));
 const AdminTenantDetailPage = lazy(() => import('./pages/admin/AdminTenantDetailPage').then((m) => ({ default: m.AdminTenantDetailPage })));
 
@@ -242,7 +245,9 @@ function AppLayout() {
   const isAdminRoute =
     location.pathname === '/admin' || location.pathname.startsWith('/admin/');
 
-  const hasTenantSession = isAuthenticated && profile?.type !== 'platform_admin';
+  // Clients (type "user") have no workspace either: these endpoints are staff
+  // only, so fetching them for a client just produced 403s on every page.
+  const hasTenantSession = isAuthenticated && profile?.type !== 'platform_admin' && profile?.type !== 'user';
   const clientsKey = hasTenantSession && !isAdminRoute ? '/v1/tenant/clients' : null;
   const bookingsKey = hasTenantSession && !isAdminRoute ? '/v1/consult/therapist/bookings' : null;
   const staffKey = hasTenantSession && !isAdminRoute ? '/v1/tenant/staff' : null;
@@ -322,6 +327,7 @@ function AppLayout() {
     location.pathname.startsWith('/invite') ||
     location.pathname.startsWith('/client/') ||
     location.pathname === '/portal' ||
+    location.pathname.startsWith('/portal/') ||
     location.pathname === '/login' ||
     location.pathname === '/register' ||
     location.pathname === '/forgot-password' ||
@@ -336,6 +342,7 @@ function AppLayout() {
             <Route path="/session/:id/prep" element={<SessionPrepPage />} />
             <Route path="/session/:id" element={<TelehealthVideoRoomPage />} />
             <Route path="/portal" element={<ClientPortalPage />} />
+            <Route path="/portal/assessments/:id" element={<PortalAssessmentPage />} />
             <Route path="/onboarding" element={<OnboardingWizardPage />} />
             <Route path="/booking/confirmed" element={<BookingConfirmedPage />} />
             <Route path="/booking/inactive" element={<InactivePracticePage />} />
@@ -430,6 +437,7 @@ function AppLayout() {
               <Route path="/dashboard/analytics" element={<AnalyticsPage clients={resolvedClients} sessions={resolvedSessions} />} />
               <Route path="/dashboard/submissions" element={<SubmissionsPage />} />
               <Route path="/dashboard/assessments" element={<AssessmentsPage />} />
+              <Route path="/dashboard/requests" element={<RequestsPage />} />
               <Route path="/dashboard/notifications" element={<NotificationsPage />} />
               <Route path="/dashboard/settings/notifications" element={<NotificationsPage />} />
               <Route path="/dashboard/profile" element={<MyProfilePage />} />
@@ -512,7 +520,8 @@ function AdminShell() {
           <Route path="/admin/tenants" element={<AdminTenantsPage />} />
           <Route path="/admin/tenants/:id" element={<AdminTenantDetailPage />} />
           <Route path="/admin/invites" element={<AdminInvitesPage />} />
-          <Route path="/admin/assessment-requests" element={<AdminAssessmentRequestsPage />} />
+          <Route path="/admin/requests" element={<AdminRequestsPage />} />
+          <Route path="/admin/assessments" element={<AdminAssessmentsPage />} />
           <Route path="*" element={<NotFoundPage homeHref="/admin" />} />
         </Route>
       </Routes>

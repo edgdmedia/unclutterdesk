@@ -84,7 +84,7 @@ export function ClientAssessmentsPanel({ clientId, clientName, primaryColor }: P
     () => Object.fromEntries(library.flatMap((e) => e.items.map((i) => [i.id, i.text]))),
     [library],
   );
-  const scaleFor = (key: string) => library.find((e) => e.key === key)?.scale ?? [];
+  const answerLabel = (key: string, value: number) => library.find((e) => e.key === key)?.scale.find((c) => c.value === value)?.label ?? String(value);
 
   // Newest result per instrument, with its history for the trend line.
   const byInstrument = useMemo(() => {
@@ -98,7 +98,7 @@ export function ClientAssessmentsPanel({ clientId, clientName, primaryColor }: P
     setSending(true);
     setFallbackLink(null);
     try {
-      const sent = await api.post<{ emailSent: boolean; link: string; instrumentKey: string; id: string; expiresAt: string }>(
+      const sent = await api.post<{ emailSent: boolean; link: string; instrumentKey: string; id: string }>(
         '/v1/assessments/assignments',
         { instrumentKey: choice, clientProfileId: clientId, message: note || undefined },
       );
@@ -111,7 +111,7 @@ export function ClientAssessmentsPanel({ clientId, clientName, primaryColor }: P
       }
       setNote('');
       setPending((current) => [
-        { id: sent.id, instrumentKey: sent.instrumentKey, shortName: name, sentAt: new Date().toISOString(), expiresAt: sent.expiresAt },
+        { id: sent.id, instrumentKey: sent.instrumentKey, shortName: name, message: note || null, sentAt: new Date().toISOString() },
         ...current,
       ]);
     } catch (err) {
@@ -195,8 +195,9 @@ export function ClientAssessmentsPanel({ clientId, clientName, primaryColor }: P
           <ul className="mt-4 border-t border-[#E2E8F0] pt-3 space-y-1.5">
             {pending.map((p) => (
               <li key={p.id} className="flex items-center justify-between text-xs">
-                <span className="text-[#475569]">
+                <span className="text-[#475569] min-w-0">
                   <strong className="text-[#0F172A]">{p.shortName}</strong> sent {date(p.sentAt)}, waiting for answers
+                  {p.message ? <span className="block text-[#64748B] truncate">Your note: “{p.message}”</span> : null}
                 </span>
                 <button type="button" onClick={() => void cancel(p)} className="text-[#64748B] hover:text-rose-600 flex items-center gap-1 font-semibold cursor-pointer">
                   <X className="h-3.5 w-3.5" /> Cancel
@@ -228,10 +229,22 @@ export function ClientAssessmentsPanel({ clientId, clientName, primaryColor }: P
               <Trend points={history.map((r) => r.totalScore)} max={latest.maxScore ?? 0} color={primaryColor} />
             </div>
 
-            {latest.flags.length ? (
-              <div className="flex items-start gap-2 rounded-[12px] bg-[#FEF2F2] border border-rose-200 px-3 py-2 text-xs font-semibold text-rose-800">
+            {latest.flags.map((f) => (
+              <div
+                key={f.key}
+                className={`flex items-start gap-2 rounded-[12px] border px-3 py-2 text-xs font-semibold ${
+                  f.level === 'urgent' ? 'bg-[#FEF2F2] border-rose-200 text-rose-800' : 'bg-[#FFFBEB] border-amber-200 text-amber-900'
+                }`}
+              >
                 <AlertTriangle className="h-4 w-4 shrink-0 mt-px" />
-                <span>{latest.flags.map((f) => f.message).join(' ')}</span>
+                <span>{f.level === 'urgent' ? 'Urgent: ' : ''}{f.message}</span>
+              </div>
+            ))}
+
+            {latest.clinicianText ? (
+              <div className="rounded-[12px] bg-[#F8FAFC] border border-[#E2E8F0] px-3 py-2">
+                <span className="text-[10.5px] font-black uppercase tracking-[0.08em] text-[#64748B]">Clinical analysis</span>
+                <p className="mt-0.5 text-[13px] text-[#0F172A]">{latest.clinicianText}</p>
               </div>
             ) : null}
 
@@ -242,10 +255,29 @@ export function ClientAssessmentsPanel({ clientId, clientName, primaryColor }: P
                     <span className="text-[11px] font-bold text-[#475569] block">{s.label}</span>
                     <span className="text-[15px] font-extrabold text-[#0F172A]">{s.score}</span>
                     <span className="text-[11px] text-[#94A3B8]"> / {s.max}</span>
-                    <div className="mt-1"><Badge level={s.severity.level}>{s.severity.label}</Badge></div>
+                    {s.severity ? <div className="mt-1"><Badge level={s.severity.level}>{s.severity.label}</Badge></div> : null}
                   </div>
                 ))}
               </div>
+            ) : null}
+
+            {latest.clientView ? (
+              <details className="rounded-[12px] border border-[#E2E8F0] px-3 py-2">
+                <summary className="text-xs font-bold text-[#475569] cursor-pointer">What {clientName.split(' ')[0]} sees</summary>
+                <div className="mt-2 text-[13px] text-[#334155] space-y-1">
+                  {latest.clientView.show === 'none' ? (
+                    <p>Only a thank-you: this assessment does not show clients a result.</p>
+                  ) : (
+                    <>
+                      {latest.clientView.headline ? <p className="font-bold text-[#0F172A]">{latest.clientView.headline}</p> : null}
+                      {latest.clientView.summary ? <p>{latest.clientView.summary}</p> : null}
+                      {latest.clientView.score !== undefined ? <p className="text-xs text-[#64748B]">Score shown: {latest.clientView.score} / {latest.clientView.maxScore}</p> : null}
+                      {latest.clientView.subscales?.map((s) => <p key={s.label}><strong>{s.label}:</strong> {s.text}</p>)}
+                    </>
+                  )}
+                  {latest.clientView.messages.map((m) => <p key={m} className="text-rose-700 font-semibold">{m}</p>)}
+                </div>
+              </details>
             ) : null}
 
             <div className="border-t border-[#E2E8F0] pt-2">
@@ -270,7 +302,7 @@ export function ClientAssessmentsPanel({ clientId, clientName, primaryColor }: P
                         {Object.entries(r.answers).map(([itemId, value]) => (
                           <li key={itemId} className="text-[#0F172A]">
                             {itemText[itemId] ?? itemId}{' '}
-                            <strong className="text-[#475569]">{scaleFor(r.instrumentKey)[value] ?? value}</strong>
+                            <strong className="text-[#475569]">{answerLabel(r.instrumentKey, value)}</strong>
                           </li>
                         ))}
                       </ol>

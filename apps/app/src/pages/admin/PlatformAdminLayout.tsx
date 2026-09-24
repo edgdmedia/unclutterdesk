@@ -5,6 +5,7 @@ import {
   Building2,
   Ticket,
   ClipboardList,
+  Inbox,
   LogOut,
   Loader2,
   ChevronDown,
@@ -25,7 +26,8 @@ const ADMIN_NAV: AdminNavItem[] = [
   { to: '/admin', label: 'Overview', icon: LayoutDashboard, end: true },
   { to: '/admin/tenants', label: 'Tenants', icon: Building2 },
   { to: '/admin/invites', label: 'Invite codes', icon: Ticket },
-  { to: '/admin/assessment-requests', label: 'Assessment requests', icon: ClipboardList },
+  { to: '/admin/assessments', label: 'Assessment library', icon: ClipboardList },
+  { to: '/admin/requests', label: 'Requests', icon: Inbox },
 ];
 
 function AdminNavLink({ item, isCollapsed }: { item: AdminNavItem; isCollapsed?: boolean }) {

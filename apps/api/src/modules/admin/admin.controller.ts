@@ -6,6 +6,7 @@ import { randomBytes } from 'crypto';
 import { AdminService } from './admin.service';
 import { InviteService } from '../invites/invite.service';
 import { InstrumentService } from '../assessments/instrument.service';
+import { score, validateAnswers, validateDefinition, type InstrumentDefinition } from '../assessments/engine';
 import { RequestService } from '../requests/request.service';
 import { AuthService } from '../auth/auth.service';
 import { PlatformAdminGuard } from './platform-admin.guard';
@@ -125,6 +126,18 @@ export class AdminController {
   @ApiOperation({ summary: 'Add an instrument as a draft' })
   createInstrument(@Body() dto: { definition?: unknown }) {
     return this.instruments.create(dto?.definition);
+  }
+
+  @Post('assessment-instruments/preview')
+  @UseGuards(PlatformAdminGuard)
+  @ApiOperation({ summary: 'Check a definition and score sample answers with it, without saving' })
+  previewInstrument(@Body() dto: { definition?: unknown; answers?: unknown }) {
+    const errors = validateDefinition(dto?.definition);
+    if (errors.length) return { errors };
+    const def = dto.definition as InstrumentDefinition;
+    const answers = validateAnswers(def, dto?.answers);
+    if (typeof answers === 'string') return { errors: [], result: null, answersError: answers };
+    return { errors: [], result: score(def, answers) };
   }
 
   @Patch('assessment-instruments/:key')
