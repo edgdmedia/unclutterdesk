@@ -387,7 +387,7 @@ function AppLayout() {
           <Route path="/forgot-password" element={<ForgotPasswordPage />} />
           <Route path="/reset-password/:token" element={<ResetPasswordPage />} />
           <Route path="/verify-email" element={<VerifyEmailPage />} />
-          <Route path="*" element={<NotFoundPage homeHref="/login" />} />
+          <Route path="*" element={<SignInToContinue />} />
         </Routes>
       </Suspense>
     );
@@ -527,6 +527,17 @@ function AdminShell() {
       </Routes>
     </Suspense>
   );
+}
+
+/**
+ * A workspace page reached while signed out: usually the session expired
+ * while the tab was open, or a bookmarked link. It used to show "page not
+ * found"; send the person to sign in and bring them back afterwards.
+ */
+function SignInToContinue() {
+  const location = useLocation();
+  const returnTo = `${location.pathname}${location.search}`;
+  return <Navigate to="/login" replace state={returnTo.startsWith('/dashboard') ? { returnTo } : undefined} />;
 }
 
 function RootRedirect() {
