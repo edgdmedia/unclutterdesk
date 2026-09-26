@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { ShieldCheck, X } from 'lucide-react';
+import { AlertTriangle, ShieldCheck, X } from 'lucide-react';
 import { Eyebrow, Card, useToast } from '@unclutterdesk/ui';
 import { ManualPaymentSettingsCard } from '../../../components/payments/ManualPaymentSettingsCard';
 import { useBrand } from '@unclutterdesk/ui';
@@ -22,6 +22,35 @@ export function PayoutSettingsPage() {
   const [tempBankCode, setTempBankCode] = useState('058');
   const [tempAccountNumber, setTempAccountNumber] = useState('');
   const [tempAccountName, setTempAccountName] = useState('');
+  // Paystack's own list, so the bank code always matches what it expects.
+  const [banks, setBanks] = useState<Array<{ name: string; code: string }>>([]);
+  const [resolving, setResolving] = useState(false);
+
+  useEffect(() => {
+    if (!showBankModal || banks.length) return;
+    api.get<Array<{ name: string; code: string }>>('/v1/billing/banks').then(setBanks).catch(() => setBanks([]));
+  }, [showBankModal, banks.length]);
+
+  // Look the account holder up as soon as the number is complete.
+  useEffect(() => {
+    if (!showBankModal || tempAccountNumber.length !== 10 || !tempBankCode) return;
+    let cancelled = false;
+    setResolving(true);
+    api
+      .get<{ account_name: string }>(`/v1/billing/resolve-account?accountNumber=${tempAccountNumber}&bankCode=${tempBankCode}`)
+      .then((r) => {
+        if (!cancelled && r?.account_name) setTempAccountName(r.account_name);
+      })
+      .catch(() => {
+        if (!cancelled) setTempAccountName('');
+      })
+      .finally(() => {
+        if (!cancelled) setResolving(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [showBankModal, tempAccountNumber, tempBankCode]);
 
   useEffect(() => {
     let cancelled = false;
@@ -85,11 +114,20 @@ export function PayoutSettingsPage() {
 
       <main className="p-[24px_26px_30px] space-y-6 flex-1">
         {error ? <div className="rounded-[18px] border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-medium text-rose-700">{error}</div> : null}
+        {account && !account.isVerified ? (
+          <div role="alert" className="max-w-[560px] rounded-[18px] border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-800 flex items-start gap-2.5">
+            <AlertTriangle className="h-4 w-4 mt-0.5 shrink-0" />
+            <span>
+              <strong>Clients cannot pay online right now.</strong> Paystack rejected this payout account. Choose{' '}
+              <strong>Change account</strong> and save it again to reconnect.
+            </span>
+          </div>
+        ) : null}
         {loading ? <div className="rounded-[24px] border border-[#E2E8F0] bg-white px-6 py-10 text-sm font-medium text-[#64748B]">Loading payout account...</div> : (
           <Card padding="p-[24px_26px]" className="max-w-[560px] space-y-4 bg-white border border-slate-100">
             <div className="flex items-center justify-between border-b border-[#E2E8F0] pb-3">
               <div><Eyebrow>PAYOUT ACCOUNT</Eyebrow><h3 className="text-[16px] font-bold text-[#0F172A]">Paystack Bank Subaccount</h3></div>
-              <span className={`h-6 px-3 rounded-full font-bold text-xs border flex items-center ${account?.isVerified ? 'bg-[#ECFDF5] text-[#059669] border-[#A7F3D0]' : 'bg-[#F1F5F9] text-[#64748B] border-[#E2E8F0]'}`}>{account?.isVerified ? 'VERIFIED' : 'NOT SET'}</span>
+              <span className={`h-6 px-3 rounded-full font-bold text-xs border flex items-center ${account?.isVerified ? 'bg-[#ECFDF5] text-[#059669] border-[#A7F3D0]' : account ? 'bg-rose-50 text-rose-700 border-rose-200' : 'bg-[#F1F5F9] text-[#64748B] border-[#E2E8F0]'}`}>{account?.isVerified ? 'VERIFIED' : account ? 'NEEDS ATTENTION' : 'NOT SET'}</span>
             </div>
 
             <div className="p-5 rounded-[20px] bg-[#0F3A53] text-white space-y-3 shadow-md">
@@ -129,9 +167,9 @@ export function PayoutSettingsPage() {
             <button type="button" onClick={() => setShowBankModal(false)} className="absolute top-5 right-5 text-slate-400 hover:text-slate-600 cursor-pointer"><X className="h-5 w-5" /></button>
             <h3 className="text-lg font-bold text-[#0F172A]">Update Payout Bank Account</h3>
             <div className="space-y-3">
-              <div className="space-y-1"><label className="text-xs font-bold text-[#475569]">Bank Name</label><select value={tempBankName} onChange={(e) => { setTempBankName(e.target.value); setTempBankCode(e.target.value === 'Guaranty Trust Bank' ? '058' : e.target.value === 'Access Bank' ? '044' : e.target.value === 'Zenith Bank' ? '057' : '090267'); }} className="w-full h-11 px-3.5 rounded-[12px] bg-[#F8FAFC] border border-[#E2E8F0] text-xs font-bold text-[#0F172A] outline-none"><option value="Guaranty Trust Bank">Guaranty Trust Bank (GTB)</option><option value="Access Bank">Access Bank</option><option value="Zenith Bank">Zenith Bank</option><option value="Kuda Bank">Kuda Bank</option></select></div>
-              <div className="space-y-1"><label className="text-xs font-bold text-[#475569]">10-Digit NUBAN Account Number</label><input type="text" maxLength={10} required value={tempAccountNumber} onChange={(e) => setTempAccountNumber(e.target.value)} className="w-full h-11 px-3.5 rounded-[12px] bg-[#F8FAFC] border border-[#E2E8F0] text-xs font-mono font-bold text-[#0F172A] outline-none" /></div>
-              <div className="space-y-1"><label className="text-xs font-bold text-[#475569]">Account Holder Name</label><input type="text" required value={tempAccountName} onChange={(e) => setTempAccountName(e.target.value)} className="w-full h-11 px-3.5 rounded-[12px] bg-[#F8FAFC] border border-[#E2E8F0] text-xs font-bold text-[#0F172A] outline-none" /></div>
+              <div className="space-y-1"><label className="text-xs font-bold text-[#475569]">Bank Name</label><select value={tempBankCode} onChange={(e) => { const bank = banks.find((b) => b.code === e.target.value); setTempBankCode(e.target.value); setTempBankName(bank?.name ?? ''); setTempAccountName(''); }} className="w-full h-11 px-3.5 rounded-[12px] bg-[#F8FAFC] border border-[#E2E8F0] text-xs font-bold text-[#0F172A] outline-none">{banks.length === 0 ? <option value={tempBankCode}>{tempBankName || 'Loading banks…'}</option> : null}{banks.map((b) => <option key={b.code} value={b.code}>{b.name}</option>)}</select></div>
+              <div className="space-y-1"><label className="text-xs font-bold text-[#475569]">10-Digit NUBAN Account Number</label><input type="text" maxLength={10} required inputMode="numeric" value={tempAccountNumber} onChange={(e) => setTempAccountNumber(e.target.value.replace(/\D/g, '').slice(0, 10))} className="w-full h-11 px-3.5 rounded-[12px] bg-[#F8FAFC] border border-[#E2E8F0] text-xs font-mono font-bold text-[#0F172A] outline-none" /></div>
+              <div className="space-y-1"><label className="text-xs font-bold text-[#475569]">Account Holder Name {resolving ? <span className="font-medium text-[#94A3B8]">checking with the bank…</span> : null}</label><input type="text" required readOnly placeholder="Filled in from the bank" value={tempAccountName} className="w-full h-11 px-3.5 rounded-[12px] bg-[#F8FAFC] border border-[#E2E8F0] text-xs font-bold text-[#0F172A] outline-none" /></div>
             </div>
             <div className="flex items-center gap-3 pt-2"><button type="button" onClick={() => setShowBankModal(false)} className="flex-1 h-11 rounded-[14px] bg-[#F1F5F9] text-[#475569] font-bold text-xs cursor-pointer">Cancel</button><button type="submit" disabled={saving} className="flex-1 h-11 rounded-[14px] font-bold text-xs cursor-pointer text-white disabled:opacity-60" style={{ backgroundColor: primaryColor }}>{saving ? 'Saving...' : 'Save Account'}</button></div>
           </form>

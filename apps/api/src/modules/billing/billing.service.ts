@@ -4,6 +4,7 @@ import {
   NotFoundException,
   ServiceUnavailableException,
   Logger,
+  Optional,
 } from '@nestjs/common';
 import { PrismaService } from '../../common/prisma/prisma.service';
 import {
@@ -16,6 +17,7 @@ import {
 } from './subscription-plans';
 import { PaystackService } from './paystack.service';
 import { CalendarService } from '../calendar/calendar.service';
+import { NotificationService } from '../notifications/notification.service';
 import { appOrigin } from '../../common/origins';
 
 @Injectable()
@@ -26,6 +28,7 @@ export class BillingService {
     private readonly prisma: PrismaService,
     private readonly paystack: PaystackService,
     private readonly calendar: CalendarService,
+    @Optional() private readonly notifications?: NotificationService,
   ) {}
 
   async getBankSubaccount(tenantId: bigint) {
@@ -193,20 +196,33 @@ export class BillingService {
     const tenant = await this.prisma.tenant.findUnique({ where: { id: tenantId } });
     if (!tenant) throw new NotFoundException('Practice tenant not found');
 
+    const accountNumber = dto.accountNumber.trim();
+    if (!/^\d{10}$/.test(accountNumber)) throw new BadRequestException('Enter the 10-digit account number.');
+
+    // Paystack confirms the account exists and whose it is; that name is what
+    // gets stored, not whatever was typed.
+    let accountName = dto.accountName.trim();
+    try {
+      const resolved = await this.paystack.resolveAccountNumber(accountNumber, dto.bankCode);
+      if (resolved?.account_name) accountName = resolved.account_name;
+    } catch {
+      throw new BadRequestException('Paystack could not find that account at that bank. Check the bank and account number.');
+    }
+
     let paystackCode = '';
-    
     try {
       const psResponse = await this.paystack.createSubaccount({
         business_name: tenant.name,
         settlement_bank: dto.bankCode,
-        account_number: dto.accountNumber.trim(),
-        percentage_charge: 5, // 5% platform fee for example
+        account_number: accountNumber,
+        // 0: the platform fee is set on each transaction (5% on Starter, 0% on
+        // Pro and Clinic), never by the subaccount.
+        percentage_charge: 0,
         description: `Subaccount for ${tenant.name}`,
       });
-      
       paystackCode = psResponse.subaccount_code;
     } catch (e: any) {
-      throw new BadRequestException('Failed to verify bank account with Paystack. Please check details.');
+      throw new BadRequestException(`Paystack could not set up payouts to this account: ${e?.message ?? 'unknown error'}`);
     }
 
     const subaccount = await this.prisma.bankSubaccount.upsert({
@@ -215,16 +231,16 @@ export class BillingService {
         tenantId,
         bankCode: dto.bankCode,
         bankName: dto.bankName,
-        accountNumber: dto.accountNumber.trim(),
-        accountName: dto.accountName.trim(),
+        accountNumber,
+        accountName,
         paystackCode,
         isVerified: true,
       },
       update: {
         bankCode: dto.bankCode,
         bankName: dto.bankName,
-        accountNumber: dto.accountNumber.trim(),
-        accountName: dto.accountName.trim(),
+        accountNumber,
+        accountName,
         paystackCode,
         isVerified: true,
       },
@@ -369,6 +385,40 @@ export class BillingService {
     this.logger.log(`Tenant ${tenantId} subscription activated on ${plan}`);
   }
 
+  /**
+   * Paystack refused the practice's payout subaccount (deleted, or created
+   * with a different Paystack key). Flag it so the Payouts page asks for the
+   * account again, and tell the people who can fix it. Returns the message
+   * for the client, who cannot.
+   */
+  async payoutAccountRejected(tenantId: bigint, reason: string): Promise<string> {
+    try {
+      const account = await this.prisma.bankSubaccount.findUnique({ where: { tenantId } });
+      if (account?.isVerified) {
+        await this.prisma.bankSubaccount.update({ where: { tenantId }, data: { isVerified: false } });
+        const leads = await this.prisma.profile.findMany({
+          where: { tenantId, role: { in: ['OWNER', 'ADMIN'] }, status: 'active' },
+          select: { id: true },
+        });
+        if (leads.length) {
+          await this.notifications?.notify({
+            tenantId,
+            profileIds: leads.map((l) => l.id),
+            type: 'billing.payout_account_invalid',
+            title: 'Clients cannot pay online: re-add your payout account',
+            message: `Paystack rejected your payout account (${reason}). Add it again under Settings → Payouts so clients can pay.`,
+            link: '/dashboard/settings/payouts',
+            actionLabel: 'Fix payouts',
+            channels: { in_app: true, email: true, push: true },
+          });
+        }
+      }
+    } catch (err) {
+      this.logger.warn(`Could not flag payout account for tenant ${tenantId}: ${(err as Error).message}`);
+    }
+    return "Online payment isn't available for this practice right now. The practice has been told; please try again later or contact them.";
+  }
+
   async calculateSplitPayout(tenantId: bigint, amountKobo: bigint) {
     const tenant = await this.prisma.tenant.findUnique({
       where: { id: tenantId },
@@ -387,6 +437,9 @@ export class BillingService {
       platformFeeKobo: platformFeeKobo.toString(),
       therapistPayoutKobo: therapistPayoutKobo.toString(),
       paystackSubaccountCode: tenant?.bankSubaccount?.paystackCode || null,
+      // Rejected by Paystack before: charging without it would send the
+      // practice's money to the platform account instead.
+      payoutAccountBroken: Boolean(tenant?.bankSubaccount && !tenant.bankSubaccount.isVerified),
       tier,
     };
   }

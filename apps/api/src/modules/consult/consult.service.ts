@@ -696,35 +696,22 @@ export class ConsultService {
           holdExpiresAt: booking.holdExpiresAt!.toISOString(),
         };
       } else if (finalPriceKobo > 0n) {
-        const splitConfig = await this.billing.calculateSplitPayout(tenantId, finalPriceKobo);
         const reference = `booking-${booking.id}-${Date.now()}`;
-        
-        try {
-          const pTx = await this.paystack.initializeTransaction({
-            amount: Number(splitConfig.therapistPayoutKobo) + Number(splitConfig.platformFeeKobo),
-            email: clientProfile.email,
-            reference,
-            subaccount: splitConfig.paystackSubaccountCode || undefined,
-            bearer: 'subaccount',
-            split: splitConfig.tier === 'STARTER' ? 5 : undefined,
-            // Was dto.callbackUrl, straight from the request body. Paystack
-            // redirects the payer to whatever it is given, so an unchecked
-            // value is a phishing page wearing this checkout as its approach:
-            // the client pays the practice, then lands somewhere else still
-            // believing they are with their therapist. Built from the
-            // practice's own site instead.
-            callback_url: `${tenantWebOrigin(slot.tenant)}/booking/confirmed`,
-          });
-
-          paymentUrl = pTx.authorization_url;
-
-          await tx.consultBooking.update({
-            where: { id: booking.id },
-            data: { paymentRef: reference },
-          });
-        } catch (e: any) {
-          throw new BadRequestException('Failed to initialize payment: ' + (e.message || 'Unknown error'));
-        }
+        // Was dto.callbackUrl, straight from the request body. Paystack
+        // redirects the payer to whatever it is given, so an unchecked value is
+        // a phishing page wearing this checkout as its approach. Built from the
+        // practice's own site instead.
+        paymentUrl = await this.startOnlinePayment(
+          tenantId,
+          finalPriceKobo,
+          clientProfile.email,
+          reference,
+          `${tenantWebOrigin(slot.tenant)}/booking/confirmed`,
+        );
+        await tx.consultBooking.update({
+          where: { id: booking.id },
+          data: { paymentRef: reference },
+        });
       } else {
         // Free or fully discounted, confirm immediately
         await tx.consultBooking.update({
@@ -758,6 +745,45 @@ export class ConsultService {
     return result;
   }
 
+  /**
+   * Starts a Paystack checkout routed to the practice's payout subaccount.
+   * A subaccount Paystack rejects (deleted, or made with another Paystack key)
+   * used to reach the client as "Failed to initialize payment: Invalid
+   * Subaccount" on every booking; now the practice is told to fix it and the
+   * client gets a plain message.
+   */
+  private async startOnlinePayment(
+    tenantId: bigint,
+    amountKobo: bigint,
+    email: string,
+    reference: string,
+    callbackUrl: string,
+  ): Promise<string> {
+    const split = await this.billing.calculateSplitPayout(tenantId, amountKobo);
+    if (split.payoutAccountBroken) {
+      throw new BadRequestException(await this.billing.payoutAccountRejected(tenantId, 'previously rejected'));
+    }
+    try {
+      const pTx = await this.paystack.initializeTransaction({
+        amount: Number(split.therapistPayoutKobo) + Number(split.platformFeeKobo),
+        email,
+        reference,
+        subaccount: split.paystackSubaccountCode || undefined,
+        bearer: 'subaccount',
+        split: split.tier === 'STARTER' ? 5 : 0,
+        callback_url: callbackUrl,
+      });
+      return pTx.authorization_url;
+    } catch (e: any) {
+      const message = String(e?.message ?? '');
+      if (/subaccount/i.test(message)) {
+        this.logger.warn(`Paystack rejected the payout subaccount for tenant ${tenantId}: ${message}`);
+        throw new BadRequestException(await this.billing.payoutAccountRejected(tenantId, message));
+      }
+      throw new BadRequestException('Failed to initialize payment: ' + (message || 'Unknown error'));
+    }
+  }
+
   async getBookingPaymentUrl(tenantId: bigint, bookingId: bigint, email: string) {
     const booking = await this.prisma.consultBooking.findFirst({
       where: { id: bookingId, tenantId, client: { email }, status: 'PENDING_PAYMENT' },
@@ -772,28 +798,25 @@ export class ConsultService {
     // today: paying from the portal used to re-price at full list, so anyone who
     // booked with a discount code and paid later was charged the full amount.
     const chargeKobo = chargedKobo(booking);
-    const splitConfig = await this.billing.calculateSplitPayout(tenantId, chargeKobo);
     const reference = `booking-${booking.id}-${Date.now()}`;
-
+    const tenant = await this.prisma.tenant.findUnique({
+      where: { id: tenantId },
+      select: { slug: true, customDomain: true, customDomainStatus: true },
+    });
+    const paymentUrl = await this.startOnlinePayment(
+      tenantId,
+      chargeKobo,
+      booking.client.email,
+      reference,
+      `${tenantWebOrigin(tenant ?? { slug: '' })}/booking/confirmed`,
+    );
+    // Only once Paystack accepted it: a failed attempt must not overwrite
+    // the reference of one that may still complete.
     await this.prisma.consultBooking.update({
       where: { id: booking.id },
       data: { paymentRef: reference },
     });
-
-    try {
-      const pTx = await this.paystack.initializeTransaction({
-        amount: Number(splitConfig.therapistPayoutKobo) + Number(splitConfig.platformFeeKobo),
-        email: booking.client.email,
-        reference,
-        subaccount: splitConfig.paystackSubaccountCode || undefined,
-        bearer: 'subaccount',
-        split: splitConfig.tier === 'STARTER' ? 5 : undefined,
-      });
-
-      return { paymentUrl: pTx.authorization_url };
-    } catch (e: any) {
-      throw new BadRequestException('Failed to initialize payment: ' + (e.message || 'Unknown error'));
-    }
+    return { paymentUrl };
   }
 
   async getTherapistBookings(tenantId: bigint, providerProfileId: bigint) {
