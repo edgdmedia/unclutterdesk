@@ -8,6 +8,7 @@ import { NotificationService } from '../notifications/notification.service';
 import { decryptNoteFields } from '../../common/field-encryption';
 import { isPlatformHostname, isReservedSlug, normalizeSlug } from './reserved-slugs';
 import { appOrigin, ROOT_DOMAIN } from '../../common/origins';
+import { EmergencyContactInput, emergencyContactData, emergencyContactOf, emergencyContactText } from './emergency-contact';
 
 const RESERVED_SLUG_MESSAGE = 'That booking handle is reserved. Try another one.';
 
@@ -870,7 +871,8 @@ export class TenantService {
       status: client.status === 'active' ? 'Active' : client.status === 'inactive' ? 'Paused' : 'Pending Intake',
       initials,
       since: new Intl.DateTimeFormat('en-GB', { month: 'short', year: 'numeric' }).format(client.createdAt),
-      emergency: '',
+      emergencyContact: emergencyContactOf(client),
+      emergency: emergencyContactText(emergencyContactOf(client)),
       notes: notes.map((n) => ({
         id: n.id.toString(),
         date: new Intl.DateTimeFormat('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }).format(n.createdAt),
@@ -895,8 +897,10 @@ export class TenantService {
     phone?: string;
     care?: string;
     emergency?: string;
+    emergencyContact?: EmergencyContactInput;
   }) {
     const email = dto.email.toLowerCase().trim();
+    const contact = emergencyContactData(dto.emergencyContact, dto.emergency);
 
     const existing = await this.prisma.profile.findFirst({
       where: { tenantId, email },
@@ -914,6 +918,7 @@ export class TenantService {
         type: 'user',
         role: 'CLIENT',
         status: 'active',
+        ...contact,
       },
     });
 
@@ -936,7 +941,8 @@ export class TenantService {
       status: 'Active',
       initials,
       since: new Intl.DateTimeFormat('en-GB', { month: 'short', year: 'numeric' }).format(profile.createdAt),
-      emergency: dto.emergency || '',
+      emergencyContact: emergencyContactOf(profile),
+      emergency: emergencyContactText(emergencyContactOf(profile)),
       notes: [],
       intake: [],
     };

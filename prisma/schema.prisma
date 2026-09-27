@@ -179,6 +179,11 @@ model Profile {
   phone           String?
   gender          String?
   dateOfBirth     DateTime?
+
+  // Who to call in a crisis. Seen by clinical staff only.
+  emergencyContactName         String? @db.VarChar(120)
+  emergencyContactRelationship String? @db.VarChar(60)
+  emergencyContactPhone        String? @db.VarChar(40)
   avatarUrl       String?
   emailVerified   Boolean   @default(false)
   emailVerifiedAt DateTime?
