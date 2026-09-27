@@ -22,9 +22,11 @@ import {
   Activity,
   MessageSquarePlus,
   Clock,
+  ShieldCheck,
 } from 'lucide-react';
 import { useBrand, UnclutterLockup } from '@unclutterdesk/ui';
 import { useAuth } from '../context/AuthContext';
+import { AdminSwitchDialog } from './AdminSwitchDialog';
 
 interface NavItem {
   to: string;
@@ -225,6 +227,7 @@ export function Sidebar({ plan = 'starter', isOpen, onClose, isCollapsed = false
     () => localStorage.getItem(PRACTICE_OPEN_KEY) !== '0',
   );
   const [menuOpen, setMenuOpen] = useState(false);
+  const [adminSwitchOpen, setAdminSwitchOpen] = useState(false);
   const practiceGroups = getPracticeGroups(profile);
   const userMenuRef = useRef<HTMLDivElement>(null);
 
@@ -423,6 +426,20 @@ export function Sidebar({ plan = 'starter', isOpen, onClose, isCollapsed = false
                 onNavigate={() => setMenuOpen(false)}
               />
             ))}
+            {profile?.platformAdmin ? (
+              <button
+                type="button"
+                role="menuitem"
+                onClick={() => {
+                  setMenuOpen(false);
+                  setAdminSwitchOpen(true);
+                }}
+                className="w-full flex items-center gap-2.5 px-3 h-[38px] rounded-[10px] text-[13.5px] font-semibold text-[#CBD5E1] hover:text-white hover:bg-[#334155] cursor-pointer"
+              >
+                <ShieldCheck className="h-4 w-4 shrink-0" />
+                Platform admin
+              </button>
+            ) : null}
             <div className="h-px bg-white/10 my-1.5" />
             <button
               type="button"
@@ -438,6 +455,7 @@ export function Sidebar({ plan = 'starter', isOpen, onClose, isCollapsed = false
         )}
       </div>
     </aside>
+    {adminSwitchOpen ? <AdminSwitchDialog onClose={() => setAdminSwitchOpen(false)} /> : null}
     </>
   );
 }

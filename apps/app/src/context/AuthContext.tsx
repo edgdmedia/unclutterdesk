@@ -17,6 +17,10 @@ interface AuthProfile {
   /** The practice's plan: STARTER, PRO or CLINIC. */
   plan?: string;
   platformRole?: string;
+  /** A practice session whose user is also a platform admin. */
+  platformAdmin?: boolean;
+  /** An admin session whose user also has a practice to go back to. */
+  hasPractice?: boolean;
 }
 
 interface AuthContextValue {
@@ -42,6 +46,10 @@ interface AuthContextValue {
     inviteCode?: string;
   }) => Promise<RegisterResult>;
   logout: () => Promise<void>;
+  /** Practice session → admin console. Asks for the password again. */
+  switchToAdmin: (password: string) => Promise<AuthProfile>;
+  /** Admin console → the user's own practice. */
+  switchToPractice: () => Promise<AuthProfile>;
 }
 
 export interface RegisterResult {
@@ -171,6 +179,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     [],
   );
 
+  const switchToAdmin = useCallback(async (password: string) => {
+    const res = await api.post<{ profile: AuthProfile }>('/v1/auth/switch/admin', { password });
+    setProfile(res.profile);
+    cacheProfile(res.profile);
+    return res.profile;
+  }, []);
+
+  const switchToPractice = useCallback(async () => {
+    const res = await api.post<{ profile: AuthProfile }>('/v1/admin/auth/switch/practice', {});
+    setProfile(res.profile);
+    cacheProfile(res.profile);
+    return res.profile;
+  }, []);
+
   const logout = useCallback(async () => {
     setProfile(null);
     cacheProfile(null);
@@ -189,6 +211,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         claimInvite,
         register,
         logout,
+        switchToAdmin,
+        switchToPractice,
       }}
     >
       {children}

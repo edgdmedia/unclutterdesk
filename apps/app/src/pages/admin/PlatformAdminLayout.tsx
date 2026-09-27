@@ -1,5 +1,5 @@
 import React, { useRef, useState, useEffect } from 'react';
-import { NavLink, Outlet, Link, useNavigate } from 'react-router-dom';
+import { NavLink, Outlet, useNavigate } from 'react-router-dom';
 import {
   LayoutDashboard,
   Building2,
@@ -61,9 +61,21 @@ function AdminNavLink({ item, isCollapsed }: { item: AdminNavItem; isCollapsed?:
 }
 
 export function PlatformAdminLayout() {
-  const { profile, logout } = useAuth();
+  const { profile, logout, switchToPractice } = useAuth();
   const navigate = useNavigate();
   const [loggingOut, setLoggingOut] = useState(false);
+  const [switching, setSwitching] = useState(false);
+
+  const handleBackToPractice = async () => {
+    setSwitching(true);
+    try {
+      await switchToPractice();
+      // A full load, so nothing cached from the admin console carries over.
+      window.location.assign('/dashboard');
+    } catch {
+      setSwitching(false);
+    }
+  };
   const [menuOpen, setMenuOpen] = useState(false);
   const [isCollapsed, setIsCollapsed] = useState(
     () => localStorage.getItem('unclutter_admin_sidebar_collapsed') === '1'
@@ -140,14 +152,18 @@ export function PlatformAdminLayout() {
               <AdminNavLink key={item.to} item={item} isCollapsed={isCollapsed} />
             ))}
 
-            <Link
-              to="/login"
-              title={isCollapsed ? 'Back to practice' : undefined}
-              className={`flex items-center h-[44px] ${isCollapsed ? 'justify-center w-[44px] mx-auto px-0' : 'gap-2.5 px-3'} rounded-[14px] text-[13.5px] font-semibold text-[#64748B] hover:text-[#E2E8F0] hover:bg-[#1E293B] transition-all`}
-            >
-              <ArrowLeft className="h-[18px] w-[18px] shrink-0" />
-              {!isCollapsed && <span>Back to practice</span>}
-            </Link>
+            {profile?.hasPractice ? (
+              <button
+                type="button"
+                onClick={() => void handleBackToPractice()}
+                disabled={switching}
+                title={isCollapsed ? 'Back to my practice' : undefined}
+                className={`flex items-center h-[44px] ${isCollapsed ? 'justify-center w-[44px] mx-auto px-0' : 'w-full gap-2.5 px-3'} rounded-[14px] text-[13.5px] font-semibold text-[#64748B] hover:text-[#E2E8F0] hover:bg-[#1E293B] transition-all cursor-pointer disabled:opacity-50`}
+              >
+                {switching ? <Loader2 className="h-[18px] w-[18px] shrink-0 animate-spin" /> : <ArrowLeft className="h-[18px] w-[18px] shrink-0" />}
+                {!isCollapsed && <span>Back to my practice</span>}
+              </button>
+            ) : null}
             
             <button
               type="button"

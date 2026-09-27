@@ -46,6 +46,18 @@ export class AdminController {
     return { profile: result.profile };
   }
 
+  @Post('auth/switch/practice')
+  @UseGuards(PlatformAdminGuard)
+  @ApiOperation({ summary: "Switch from the admin console back to the admin's own practice" })
+  async switchToPractice(@Req() req: any, @Res({ passthrough: true }) res: Response) {
+    const result = await this.authService.switchToPractice(BigInt(req.user.userId), req.user.sessionId, {
+      userAgent: req.headers?.['user-agent'] ?? null,
+      ipAddress: req.ip ?? null,
+    });
+    this.setSessionCookies(res, result.accessToken, result.refreshToken);
+    return { profile: result.profile };
+  }
+
   @Get('stats')
   @UseGuards(PlatformAdminGuard)
   @ApiOperation({ summary: 'Platform-wide aggregate statistics' })

@@ -26,6 +26,7 @@ const FIELDS = [
   'tenantSlug',
   'plan',
   'isTherapist',
+  'platformAdmin',
 ].sort();
 
 const PROFILE = {

@@ -29,7 +29,7 @@ import {
 } from '../../common/auth.config';
 import { RolesGuard } from '../../common/roles.guard';
 import { authenticatedProfileId, authenticatedTenantId } from '../../common/authenticated-tenant';
-import { AllowPlatformAdmin, AnyAuthenticated } from '../../common/roles';
+import { AllowPlatformAdmin, AnyAuthenticated, Roles, STAFF } from '../../common/roles';
 import { DeviceInfo } from './session.service';
 
 @ApiTags('Auth')
@@ -178,6 +178,24 @@ export class AuthController {
     }
     const result = await this.authService.getSessionStatus(BigInt(req.user.profileId || req.user.userId));
     return { ...result, csrfToken };
+  }
+
+  // Staff only: clients never hold platform roles, so they get no route here.
+  @Roles(...STAFF)
+  @Post('switch/admin')
+  @Throttle({ default: { limit: 5, ttl: 60000, blockDuration: 300000 } })
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @ApiBearerAuth('access-token')
+  @ApiOperation({ summary: 'Switch from a practice session to the platform admin console (password required)' })
+  async switchToAdmin(@Req() req: any, @Body() dto: { password?: string }, @Res({ passthrough: true }) res: Response) {
+    const result = await this.authService.switchToPlatformAdmin(
+      BigInt(req.user.userId),
+      req.user.sessionId,
+      dto?.password ?? '',
+      deviceOf(req),
+    );
+    const csrfToken = this.setSessionCookies(res, result.accessToken, result.refreshToken);
+    return { profile: result.profile, csrfToken };
   }
 
   @AnyAuthenticated()
