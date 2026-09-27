@@ -76,6 +76,10 @@ export interface CalendarEvent {
   category: 'individual' | 'couples' | 'admin';
   status?: string;
   clientEmail?: string;
+  paymentMethod?: string;
+  holdExpiresAt?: string | null;
+  bookedBy?: string | null;
+  bookingStatus?: string;
 }
 
 export interface EmergencyContact {
@@ -142,6 +146,10 @@ interface ApiBooking {
   startsAt: string;
   endsAt: string;
   status: string;
+  paymentMethod?: string;
+  amountKobo?: string | null;
+  holdExpiresAt?: string | null;
+  bookedBy?: string | null;
 }
 
 // ── Staff shape returned by API ───────────────────────────────────────────────
@@ -178,6 +186,10 @@ function bookingToEvent(b: ApiBooking): CalendarEvent {
     category,
     status: b.status,
     clientEmail: b.clientEmail,
+    paymentMethod: b.paymentMethod,
+    holdExpiresAt: b.holdExpiresAt,
+    bookedBy: b.bookedBy,
+    bookingStatus: b.status,
   };
 }
 

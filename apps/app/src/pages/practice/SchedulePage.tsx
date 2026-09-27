@@ -4,6 +4,7 @@ import { ChevronLeft, ChevronRight, Plus, Settings, X, Calendar, Clock, User, Tr
 import { useBrand, useToast } from '@unclutterdesk/ui';
 import { StaffBookingDialog } from '../../components/booking/StaffBookingDialog';
 import { api, getBookingUrl, TENANT_SLUG } from '../../utils/apiClient';
+import { PaymentChip } from '../../components/booking/PaymentChip';
 
 interface Client {
   id: string;
@@ -23,6 +24,10 @@ interface CalendarEvent {
   category: 'individual' | 'couples' | 'admin';
   status?: string;
   clientEmail?: string;
+  paymentMethod?: string;
+  holdExpiresAt?: string | null;
+  bookedBy?: string | null;
+  bookingStatus?: string;
 }
 
 interface SchedulePageProps {
@@ -413,6 +418,10 @@ export function SchedulePage({ sessions, setSessions, clients, tenantSlug, onRef
                           <p className="text-[10px] font-medium text-[#64748B] truncate">
                             {ev.type} · {duration}m
                           </p>
+                          <div className="mt-0.5">
+                            {ev.bookingStatus ? <PaymentChip status={ev.bookingStatus} paymentMethod={ev.paymentMethod} holdExpiresAt={ev.holdExpiresAt} /> : null}
+                            {ev.bookedBy ? <span className="text-[10px] text-[#64748B] block truncate">Booked by {ev.bookedBy}</span> : null}
+                          </div>
                         </div>
                       );
                     })}
@@ -692,7 +701,14 @@ export function SchedulePage({ sessions, setSessions, clients, tenantSlug, onRef
               <div className="flex items-center gap-2.5">
                 <User className="h-4 w-4 text-[#94A3B8]" />
                 <span>Status: {selectedEvent.status || 'CONFIRMED'}</span>
+                {selectedEvent.bookingStatus ? <PaymentChip status={selectedEvent.bookingStatus} paymentMethod={selectedEvent.paymentMethod} holdExpiresAt={selectedEvent.holdExpiresAt} /> : null}
               </div>
+              {selectedEvent.bookedBy ? (
+                <div className="flex items-center gap-2.5">
+                  <span className="h-4 w-4 inline-flex items-center justify-center text-[#94A3B8] text-[13px] font-bold">·</span>
+                  <span className="text-[11px] text-[#64748B]">Booked by {selectedEvent.bookedBy}</span>
+                </div>
+              ) : null}
             </div>
 
             <div className="rounded-[16px] border border-[#E2E8F0] bg-[#F8FAFC] px-4 py-3 text-xs font-medium text-[#475569]">
