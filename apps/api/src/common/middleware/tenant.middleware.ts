@@ -18,16 +18,14 @@ export class TenantMiddleware implements NestMiddleware {
     }
 
     const host = req.headers['host'] || '';
-    const tenantHeaderId = req.headers['x-tenant-id'] as string;
+    // A practice is named by its slug or address only. There used to be an
+    // X-Tenant-Id header here as well: nothing sent it, it let a request pick
+    // any practice by guessing an id, and a non-numeric value threw a 500.
     const tenantHeaderSlug = req.headers['x-tenant-slug'] as string;
 
     let tenant = null;
 
-    if (tenantHeaderId) {
-      tenant = await this.prisma.tenant.findUnique({
-        where: { id: BigInt(tenantHeaderId) },
-      });
-    } else if (tenantHeaderSlug) {
+    if (tenantHeaderSlug) {
       // The app sends the practice it is serving, read from the page's own
       // address. Browsers call api.unclutterdesk.com, so the Host header here
       // never names a practice; without this, public booking calls could not

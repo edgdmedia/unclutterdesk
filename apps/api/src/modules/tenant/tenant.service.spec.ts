@@ -1,6 +1,6 @@
 import { BadRequestException, ForbiddenException, NotFoundException } from '@nestjs/common';
 import { afterEach, describe, expect, test, vi } from 'vitest';
-import { TenantService } from './tenant.service';
+import { TenantService, publicTenantFields } from './tenant.service';
 
 function createPrismaMock() {
   return {
@@ -159,7 +159,7 @@ describe('TenantService.getPublicTenantExistence', () => {
 
     await expect(service.getPublicTenantExistence('Dr-Smith.unclutterdesk.com')).resolves.toEqual({ exists: true, active: true });
     expect(prisma.tenant.findFirst.mock.calls[0][0].where).toEqual({
-      OR: [{ slug: 'dr-smith' }, { customDomain: 'dr-smith' }],
+      OR: [{ slug: 'dr-smith' }, { customDomain: 'dr-smith', customDomainStatus: 'ACTIVE' }],
     });
   });
 
@@ -170,7 +170,7 @@ describe('TenantService.getPublicTenantExistence', () => {
 
     await service.getPublicTenantExistence('book.calmpractice.ng');
     expect(prisma.tenant.findFirst.mock.calls[0][0].where).toEqual({
-      OR: [{ slug: 'book.calmpractice.ng' }, { customDomain: 'book.calmpractice.ng' }],
+      OR: [{ slug: 'book.calmpractice.ng' }, { customDomain: 'book.calmpractice.ng', customDomainStatus: 'ACTIVE' }],
     });
   });
 
@@ -228,8 +228,20 @@ describe('TenantService.getPublicTenantExistence', () => {
     await service.getPublicTenantExistence('  Booking.DrJane.com  ');
     expect(prisma.tenant.findFirst.mock.calls[0][0].where.OR).toEqual([
       { slug: 'booking.drjane.com' },
-      { customDomain: 'booking.drjane.com' },
+      { customDomain: 'booking.drjane.com', customDomainStatus: 'ACTIVE' },
     ]);
+  });
+
+  // A domain someone typed into Brand settings but never pointed at us must
+  // not make the edge router serve that host as the practice.
+  test('only counts a custom domain once it is verified', async () => {
+    const prisma = createPrismaMock();
+    prisma.tenant.findFirst.mockResolvedValue(null);
+    const service = new TenantService(prisma, notificationsMock());
+
+    await service.getPublicTenantExistence('book.pending.ng');
+    const domainClause = prisma.tenant.findFirst.mock.calls[0][0].where.OR[1];
+    expect(domainClause.customDomainStatus).toBe('ACTIVE');
   });
 
   test('returns only existence flags, never practice detail', async () => {
@@ -240,5 +252,39 @@ describe('TenantService.getPublicTenantExistence', () => {
     const result = await service.getPublicTenantExistence('dr-smith');
     expect(Object.keys(result).sort()).toEqual(['active', 'exists']);
     expect(prisma.tenant.findFirst.mock.calls[0][0].select).toEqual({ isActive: true });
+  });
+});
+
+describe('TenantService.getPublicTenantInfo', () => {
+  // The booking page brands itself from this. An unverified domain must not
+  // resolve to a practice, the same rule the middleware and CORS apply.
+  test('only resolves a custom domain once it is verified', async () => {
+    const prisma = createPrismaMock();
+    prisma.tenant.findFirst.mockResolvedValue(null);
+    const service = new TenantService(prisma, notificationsMock());
+
+    await service.getPublicTenantInfo('Book.Pending.ng').catch(() => undefined);
+    expect(prisma.tenant.findFirst.mock.calls[0][0].where.OR).toEqual([
+      { slug: 'book.pending.ng' },
+      { customDomain: 'book.pending.ng', customDomainStatus: 'ACTIVE' },
+    ]);
+  });
+});
+
+describe('publicTenantFields', () => {
+  test('keeps branding and drops billing codes and internal flags', () => {
+    const row = {
+      id: 9n,
+      name: 'Calm Harbor',
+      slug: 'calm-harbor',
+      primaryColor: '#123456',
+      paystackCustomerCode: 'CUS_secret',
+      paystackSubscriptionCode: 'SUB_secret',
+      notificationChannels: { email: true },
+      ecosystemIntegrationEnabled: true,
+      manualPaymentDetails: { accountNumber: '0123456789' },
+    };
+    const out = publicTenantFields(row);
+    expect(out).toEqual({ id: '9', name: 'Calm Harbor', slug: 'calm-harbor', primaryColor: '#123456' });
   });
 });

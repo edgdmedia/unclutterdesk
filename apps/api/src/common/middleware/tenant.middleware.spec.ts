@@ -75,6 +75,23 @@ describe('TenantMiddleware', () => {
     });
   });
 
+  it('does not let an X-Tenant-Id header pick a practice', async () => {
+    const { middleware, prisma } = makeMiddleware();
+    prisma.tenant.findFirst.mockResolvedValue(null);
+    prisma.tenant.findUnique.mockResolvedValue(null);
+    const req = {
+      path: '/v1/consult/public/services',
+      headers: { host: 'api.unclutterdesk.com', 'x-tenant-id': 'not-a-number' },
+    } as unknown as TenantRequest;
+    const next = vi.fn() as unknown as NextFunction;
+
+    await middleware.use(req, {} as Response, next);
+
+    expect(req.tenantId).toBeUndefined();
+    expect(prisma.tenant.findUnique).not.toHaveBeenCalledWith(expect.objectContaining({ where: { id: expect.anything() } }));
+    expect(next).toHaveBeenCalled();
+  });
+
   it('ignores a custom domain on the Host until it is verified', async () => {
     const { middleware, prisma } = makeMiddleware();
     prisma.tenant.findFirst.mockResolvedValue(null);

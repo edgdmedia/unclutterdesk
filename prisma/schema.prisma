@@ -43,6 +43,10 @@ model Tenant {
   /// { bankName, accountName, accountNumber, instructions }
   manualPaymentDetails  Json?
   isActive              Boolean @default(true)
+  // Links this practice to the Unclutter Suite (Journal referrals, the
+  // post-session Suite invite, bridge tokens). Off for every practice except
+  // the founder's; only platform admin can change it.
+  ecosystemIntegrationEnabled Boolean @default(false)
 
   // Account closure. Requesting closure deactivates the practice immediately
   // and starts the retention window; the irreversible purge is a separate,

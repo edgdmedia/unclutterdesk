@@ -41,6 +41,43 @@ function describeRole(role: string): string {
   }
 }
 
+/**
+ * The practice fields anyone may see: what the booking pages need to brand
+ * themselves. Everything else on Tenant (billing codes, notification settings,
+ * plan detail, ecosystem flags) stays server-side.
+ */
+export const PUBLIC_TENANT_SELECT = {
+  id: true,
+  name: true,
+  slug: true,
+  customDomain: true,
+  customDomainStatus: true,
+  logoUrl: true,
+  faviconUrl: true,
+  primaryColor: true,
+  secondaryColor: true,
+  currency: true,
+  shortName: true,
+  cancellationHours: true,
+  welcomeTitle: true,
+  welcomeMessage: true,
+  publicEmail: true,
+  publicPhone: true,
+  city: true,
+  address: true,
+  category: true,
+} as const;
+
+/** Copies only the public fields off a full Tenant row, with the id as a string. */
+export function publicTenantFields(tenant: Record<string, unknown>): Record<string, unknown> {
+  const out: Record<string, unknown> = {};
+  for (const key of Object.keys(PUBLIC_TENANT_SELECT)) {
+    if (key in tenant) out[key] = tenant[key];
+  }
+  out.id = String(tenant.id);
+  return out;
+}
+
 @Injectable()
 export class TenantService {
   private readonly logger = new Logger(TenantService.name);
@@ -147,7 +184,7 @@ export class TenantService {
     // Matching only bare slugs made every practice subdomain 404.
     const key = practiceKeyFromHost(slugOrDomain);
     const tenant = await this.prisma.tenant.findFirst({
-      where: { OR: [{ slug: key }, { customDomain: key }] },
+      where: { OR: [{ slug: key }, { customDomain: key, customDomainStatus: 'ACTIVE' }] },
       select: { isActive: true },
     });
 
@@ -158,33 +195,15 @@ export class TenantService {
     const key = slugOrDomain.toLowerCase().trim();
     const tenant = await this.prisma.tenant.findFirst({
       where: {
+        // A custom domain only names a practice once it has been verified,
+        // the same rule the tenant middleware and CORS apply.
         OR: [
           { slug: key },
-          { customDomain: key },
+          { customDomain: key, customDomainStatus: 'ACTIVE' },
         ],
         isActive: true,
       },
-      select: {
-        id: true,
-        name: true,
-        slug: true,
-        customDomain: true,
-        customDomainStatus: true,
-        logoUrl: true,
-        faviconUrl: true,
-        primaryColor: true,
-        secondaryColor: true,
-        currency: true,
-        shortName: true,
-        cancellationHours: true,
-        welcomeTitle: true,
-        welcomeMessage: true,
-        publicEmail: true,
-        publicPhone: true,
-        city: true,
-        address: true,
-        category: true,
-      },
+      select: PUBLIC_TENANT_SELECT,
     });
 
     if (!tenant) throw new NotFoundException('Practice not found');
