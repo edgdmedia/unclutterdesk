@@ -263,6 +263,43 @@ export async function apiRequest<T = unknown>(
   return data as T;
 }
 
+/**
+ * Downloads a file from an authenticated GET endpoint (CSV, PDF…) and hands
+ * it to the browser as a save. Refreshes the session once on a 401, like
+ * apiRequest.
+ */
+export async function apiDownload(path: string, filename: string, _retried = false): Promise<void> {
+  const headers = buildHeaders(undefined, 'GET');
+  if (TENANT_SLUG) headers['X-Tenant-Slug'] = TENANT_SLUG;
+  const response = await fetch(`${API_BASE}${path}`, { method: 'GET', headers, credentials: 'include' });
+
+  if (response.status === 401 && !_retried) {
+    if (await requestRefresh()) return apiDownload(path, filename, true);
+    onSessionExpired?.();
+    await clearSession();
+    throw new Error('Your session has expired. Please sign in again.');
+  }
+  if (!response.ok) {
+    let message = `Download failed (${response.status})`;
+    try {
+      message = (await response.json())?.message || message;
+    } catch {
+      // not JSON
+    }
+    throw new Error(message);
+  }
+
+  const blob = await response.blob();
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = filename;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
 // ── Shorthand helpers ─────────────────────────────────────────────────────────
 export const api = {
   get: <T>(path: string) => apiRequest<T>(path, { method: 'GET' }),

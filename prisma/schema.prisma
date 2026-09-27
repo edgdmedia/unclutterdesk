@@ -36,13 +36,17 @@ model Tenant {
   address           String?
   category          String?
 
-  subscriptionTier      String  @default("STARTER") // "STARTER", "PRO", "CLINIC"
+  subscriptionTier            String  @default("STARTER") // "STARTER", "PRO", "CLINIC"
   /// Clients may pay by bank transfer straight to the practice (Pro and
   /// Clinic only). Off unless the practice turns it on.
-  manualPaymentsEnabled Boolean @default(false)
+  manualPaymentsEnabled       Boolean @default(false)
   /// { bankName, accountName, accountNumber, instructions }
-  manualPaymentDetails  Json?
-  isActive              Boolean @default(true)
+  manualPaymentDetails        Json?
+  isActive                    Boolean @default(true)
+  // Links this practice to the Unclutter Suite (Journal referrals, the
+  // post-session Suite invite, bridge tokens). Off for every practice except
+  // the founder's; only platform admin can change it.
+  ecosystemIntegrationEnabled Boolean @default(false)
 
   // Account closure. Requesting closure deactivates the practice immediately
   // and starts the retention window; the irreversible purge is a separate,
@@ -51,8 +55,8 @@ model Tenant {
   closureRequestedBy BigInt?
 
   // Paystack subscription billing
-  paystackCustomerCode      String?                @unique
-  paystackSubscriptionCode  String?                @unique
+  paystackCustomerCode      String?                   @unique
+  paystackSubscriptionCode  String?                   @unique
   // Paystack's per-subscription email token, required to disable a subscription.
   paystackSubscriptionToken String?
   // "active", "past_due", "cancelled", or null before the first payment.
@@ -63,11 +67,14 @@ model Tenant {
   // has started paying. Null for everyone else.
   complimentaryUntil        DateTime?
   inviteCodeId              BigInt?
-  inviteCode                InviteCode?            @relation(fields: [inviteCodeId], references: [id], onDelete: SetNull)
+  inviteCode                InviteCode?               @relation(fields: [inviteCodeId], references: [id], onDelete: SetNull)
   enabledAssessments        TenantAssessment[]
   assessmentAssignments     AssessmentAssignment[]
   assessmentResponses       AssessmentResponse[]
   platformRequests          PlatformRequest[]
+  sendingDomain             TenantSendingDomain?
+  hoursEntries              PractitionerHoursEntry[]
+  hoursTargets              PractitionerHoursTarget[]
 
   // Notification plug-in: which channels this tenant has enabled at all.
   // JSON map, e.g. { "email": true, "in_app": true, "push": true, "sms": false }
@@ -439,6 +446,28 @@ model BankSubaccount {
   tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 }
 
+// A practice's own email domain, verified through Resend. While it is VERIFIED
+// the practice's mail goes out from it; in any other state mail falls back to
+// the platform's shared sender, so a broken DNS record never stops email.
+model TenantSendingDomain {
+  id             BigInt    @id @default(autoincrement())
+  tenantId       BigInt    @unique
+  domain         String    @unique
+  resendDomainId String    @unique
+  // Resend's status: NOT_STARTED, PENDING, VERIFIED, PARTIALLY_VERIFIED,
+  // PARTIALLY_FAILED, FAILED or TEMPORARY_FAILURE.
+  status         String    @default("NOT_STARTED")
+  // The DNS rows the practice has to add, as Resend reported them last.
+  records        Json      @default("[]")
+  fromLocalPart  String    @default("notifications")
+  verifiedAt     DateTime?
+  lastCheckedAt  DateTime?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+}
+
 // ── Notifications & Messaging ────────────────────────────────────────────────
 // Notification system: in-app rows, a dispatch queue (immediate + scheduled
 // reminders), per-profile channel preferences, an email delivery log, and
@@ -654,4 +683,47 @@ model PlatformRequest {
 
   @@index([status])
   @@index([tenantId])
+}
+
+// ── Hours log ────────────────────────────────────────────────────────────────
+// A practitioner's clinical hours, for training, licensing or CPD. Entries
+// from completed bookings are kept in step automatically (source BOOKING, one
+// per booking); anything else is added by hand (source MANUAL).
+model PractitionerHoursEntry {
+  id                    BigInt   @id @default(autoincrement())
+  tenantId              BigInt
+  practitionerProfileId BigInt
+  bookingId             BigInt?  @unique
+  clientProfileId       BigInt?
+  date                  DateTime
+  durationMinutes       Int
+  // DIRECT_CLIENT, GROUP, SUPERVISION, INDIRECT or OTHER.
+  category              String   @default("DIRECT_CLIENT")
+  // BOOKING or MANUAL.
+  source                String   @default("MANUAL")
+  notes                 String?
+  supervisorName        String?
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId, practitionerProfileId, date])
+}
+
+// The goal a practitioner is working towards, e.g. "Diploma practicum: 200
+// hours, 20 of them supervision". Set by the practitioner; nothing is fixed.
+model PractitionerHoursTarget {
+  id                     BigInt   @id @default(autoincrement())
+  tenantId               BigInt
+  practitionerProfileId  BigInt
+  label                  String?
+  totalTargetHours       Int?
+  supervisionTargetHours Int?
+  createdAt              DateTime @default(now())
+  updatedAt              DateTime @updatedAt
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@unique([tenantId, practitionerProfileId])
 }

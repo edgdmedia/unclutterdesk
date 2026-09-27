@@ -69,10 +69,10 @@ export class AdminController {
 
   @Patch('tenants/:id')
   @UseGuards(PlatformAdminGuard)
-  @ApiOperation({ summary: 'Update tenant activation status or subscription tier' })
+  @ApiOperation({ summary: 'Update tenant activation, subscription tier or ecosystem integration' })
   updateTenant(
     @Param('id') id: string,
-    @Body() dto: { isActive?: boolean; subscriptionTier?: 'STARTER' | 'PRO' | 'CLINIC' },
+    @Body() dto: { isActive?: boolean; subscriptionTier?: 'STARTER' | 'PRO' | 'CLINIC'; ecosystemIntegrationEnabled?: boolean },
   ) {
     return this.adminService.updateTenant(BigInt(id), dto);
   }

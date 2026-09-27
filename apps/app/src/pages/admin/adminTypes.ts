@@ -37,6 +37,8 @@ export interface AdminTenantStaff {
 }
 
 export interface AdminTenantDetail extends AdminTenant {
+  /** Links the practice to the Unclutter Suite. Platform admin only. */
+  ecosystemIntegrationEnabled?: boolean;
   address?: string | null;
   publicEmail?: string | null;
   publicPhone?: string | null;

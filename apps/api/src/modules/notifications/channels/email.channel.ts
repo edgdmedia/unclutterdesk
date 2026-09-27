@@ -32,6 +32,7 @@ export class EmailChannel implements NotificationChannel {
     const result = await this.mail.sendMail(recipient.email, payload.title, html, text, {
       fromName: payload.brand?.practiceName || undefined,
       replyTo: payload.brand?.publicEmail || undefined,
+      tenantId: recipient.tenantId,
     });
 
     if (result.sent) return { success: true, providerId: result.messageId ?? null };

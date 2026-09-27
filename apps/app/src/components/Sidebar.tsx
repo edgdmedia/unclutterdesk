@@ -21,6 +21,7 @@ import {
   X,
   Activity,
   MessageSquarePlus,
+  Clock,
 } from 'lucide-react';
 import { useBrand, UnclutterLockup } from '@unclutterdesk/ui';
 import { useAuth } from '../context/AuthContext';
@@ -32,6 +33,8 @@ interface NavItem {
   counter?: string;
   counterType?: 'gold' | 'neutral' | 'rose';
   tier?: 'pro' | 'clinic';
+  /** Only for roles that see clients clinically (owner, admin, therapist). */
+  clinicalOnly?: boolean;
 }
 
 interface SidebarProps {
@@ -47,6 +50,7 @@ const NAV_ITEMS: NavItem[] = [
   { to: '/dashboard/schedule', label: 'Schedule', icon: Calendar },
   { to: '/dashboard/clients', label: 'Clients', icon: Users },
   { to: '/dashboard/assessments', label: 'Assessments', icon: Activity },
+  { to: '/dashboard/hours', label: 'Hours log', icon: Clock, clinicalOnly: true },
   { to: '/dashboard/submissions', label: 'Submissions', icon: ClipboardCheck },
   { to: '/dashboard/analytics', label: 'Analytics', icon: BarChart3 },
   { to: '/dashboard/notifications', label: 'Notifications', icon: Bell },
@@ -214,6 +218,7 @@ function UserMenuLink({
 export function Sidebar({ plan = 'starter', isOpen, onClose, isCollapsed = false, onToggleCollapse }: SidebarProps) {
   const brand = useBrand();
   const { profile, logout } = useAuth();
+  const isReceptionist = [profile?.role, (profile as any)?.type].some((r) => String(r ?? '').toUpperCase() === 'RECEPTIONIST');
   const navigate = useNavigate();
   const [loggingOut, setLoggingOut] = useState(false);
   const [practiceOpen, setPracticeOpen] = useState(
@@ -295,7 +300,7 @@ export function Sidebar({ plan = 'starter', isOpen, onClose, isCollapsed = false
 
         {/* Navigation Links */}
         <nav className={`space-y-1 ${isCollapsed ? 'flex flex-col items-center' : ''}`}>
-          {NAV_ITEMS.map((item) => (
+          {NAV_ITEMS.filter((item) => !item.clinicalOnly || !isReceptionist).map((item) => (
             <NavLinkItem key={item.to} item={item} currentPlan={plan} collapsed={isCollapsed} />
           ))}
 

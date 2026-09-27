@@ -2,7 +2,7 @@ import { Controller, Get, Post, Patch, Delete, Body, Param, Req, Res, UseGuards 
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { Response } from 'express';
 import { SkipThrottle } from '@nestjs/throttler';
-import { TenantService } from './tenant.service';
+import { TenantService, publicTenantFields } from './tenant.service';
 import { TenantRequest } from '../../common/middleware/tenant.middleware';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { RolesGuard } from '../../common/roles.guard';
@@ -74,12 +74,9 @@ export class TenantController {
   @Get('public/info')
   @ApiOperation({ summary: 'Get public brand config from resolved request host' })
   getPublicInfoFromHost(@Req() req: TenantRequest) {
-    if (req.tenant) {
-      return {
-        ...req.tenant,
-        id: req.tenant.id.toString(),
-      };
-    }
+    // req.tenant is the whole Tenant row; returning it as-is published billing
+    // codes and internal settings to anyone who asked.
+    if (req.tenant) return publicTenantFields(req.tenant);
     return { name: 'Unclutter Desk', slug: 'default', primaryColor: '#0F3A53', secondaryColor: '#E3B341' };
   }
 

@@ -8,6 +8,8 @@ import { NOTIFICATION_CHANNELS } from './channels/notification.channel';
 import { MailService } from './mail/mail.service';
 import { NotificationController } from './notification.controller';
 import { NotificationService } from './notification.service';
+import { ResendWebhookController, SendingDomainController } from './sending-domain/sending-domain.controller';
+import { SendingDomainService } from './sending-domain/sending-domain.service';
 
 /**
  * The notification system. @Global so any module can inject NotificationService
@@ -20,9 +22,10 @@ import { NotificationService } from './notification.service';
  */
 @Global()
 @Module({
-  controllers: [NotificationController],
+  controllers: [NotificationController, SendingDomainController, ResendWebhookController],
   providers: [
     NotificationService,
+    SendingDomainService,
     PrismaService,
     MailService,
     EmailChannel,

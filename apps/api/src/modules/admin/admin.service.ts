@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../../common/prisma/prisma.service';
 import { chargedKobo, collectedKobo } from '../../common/revenue';
 
@@ -174,6 +174,7 @@ export class AdminService {
       publicPhone: tenant.publicPhone,
       subscriptionTier: tenant.subscriptionTier,
       isActive: tenant.isActive,
+      ecosystemIntegrationEnabled: tenant.ecosystemIntegrationEnabled,
       primaryColor: tenant.primaryColor,
       secondaryColor: tenant.secondaryColor,
       createdAt: tenant.createdAt.toISOString(),
@@ -207,15 +208,26 @@ export class AdminService {
 
   async updateTenant(
     id: bigint,
-    dto: { isActive?: boolean; subscriptionTier?: 'STARTER' | 'PRO' | 'CLINIC' },
+    dto: { isActive?: boolean; subscriptionTier?: 'STARTER' | 'PRO' | 'CLINIC'; ecosystemIntegrationEnabled?: boolean },
   ) {
+    if (dto.ecosystemIntegrationEnabled !== undefined && typeof dto.ecosystemIntegrationEnabled !== 'boolean') {
+      throw new BadRequestException('ecosystemIntegrationEnabled must be true or false');
+    }
     const tenant = await this.prisma.tenant.update({
       where: { id },
       data: {
         ...(dto.isActive !== undefined ? { isActive: dto.isActive } : {}),
         ...(dto.subscriptionTier ? { subscriptionTier: dto.subscriptionTier } : {}),
+        ...(dto.ecosystemIntegrationEnabled !== undefined
+          ? { ecosystemIntegrationEnabled: dto.ecosystemIntegrationEnabled }
+          : {}),
       },
     });
-    return { id: tenant.id.toString(), isActive: tenant.isActive, subscriptionTier: tenant.subscriptionTier };
+    return {
+      id: tenant.id.toString(),
+      isActive: tenant.isActive,
+      subscriptionTier: tenant.subscriptionTier,
+      ecosystemIntegrationEnabled: tenant.ecosystemIntegrationEnabled,
+    };
   }
 }

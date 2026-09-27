@@ -60,6 +60,32 @@ export function AdminTenantDetailPage() {
     }
   };
 
+  const toggleEcosystem = async () => {
+    if (!id || !tenant) return;
+    const next = !tenant.ecosystemIntegrationEnabled;
+    if (next && !window.confirm(`Link ${tenant.name} to the Unclutter Suite? Its clients will see Suite invitations.`)) {
+      return;
+    }
+    setUpdating('ecosystem');
+    setError(null);
+    try {
+      const updated = await api.patch<{ id: string; ecosystemIntegrationEnabled: boolean }>(
+        `/v1/admin/tenants/${id}`,
+        { ecosystemIntegrationEnabled: next },
+      );
+      await mutate(
+        (t) => (t ? { ...t, ecosystemIntegrationEnabled: updated.ecosystemIntegrationEnabled } : t),
+        { revalidate: false },
+      );
+      toast.success(updated.ecosystemIntegrationEnabled ? 'Suite integration on' : 'Suite integration off');
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Could not update Suite integration');
+      setError(err instanceof Error ? err.message : 'Update failed');
+    } finally {
+      setUpdating(null);
+    }
+  };
+
   if (isLoading || !tenant) {
     return (
       <div className="flex-1 flex items-center justify-center text-[#94A3B8]">
@@ -175,6 +201,36 @@ export function AdminTenantDetailPage() {
             {tenant.address ? `, ${tenant.address}` : ''}
           </div>
         </div>
+      </Card>
+
+      <Card className="mt-4">
+        <CardHeader
+          eyebrow="Ecosystem"
+          title="Unclutter Suite integration"
+          action={
+            <button
+              type="button"
+              role="switch"
+              aria-checked={Boolean(tenant.ecosystemIntegrationEnabled)}
+              aria-label="Unclutter Suite integration"
+              onClick={toggleEcosystem}
+              disabled={updating === 'ecosystem'}
+              className={`relative h-6 w-11 rounded-full transition-colors cursor-pointer disabled:opacity-50 ${
+                tenant.ecosystemIntegrationEnabled ? 'bg-[#0F3A53]' : 'bg-[#CBD5E1]'
+              }`}
+            >
+              <span
+                className="absolute top-0.5 h-5 w-5 rounded-full bg-white shadow transition-all"
+                style={{ left: tenant.ecosystemIntegrationEnabled ? 22 : 2 }}
+              />
+            </button>
+          }
+        />
+        <p className="text-[13px] text-[#475569] leading-relaxed">
+          {tenant.ecosystemIntegrationEnabled
+            ? 'On. Journal can send clients to this practice, and its clients are invited to link an Unclutter account after their first session summary.'
+            : 'Off. This practice has no link to the Unclutter Suite: no Journal referrals, no Suite invitations, no bridge endpoints.'}
+        </p>
       </Card>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mt-4">
