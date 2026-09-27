@@ -78,6 +78,12 @@ export interface CalendarEvent {
   clientEmail?: string;
 }
 
+export interface EmergencyContact {
+  name: string;
+  relationship: string | null;
+  phone: string | null;
+}
+
 export interface Client {
   id: string;
   name: string;
@@ -90,6 +96,7 @@ export interface Client {
   phone: string;
   since: string;
   emergency: string;
+  emergencyContact?: EmergencyContact | null;
   notes: {
     id: string;
     date: string;

@@ -32,7 +32,9 @@ export function ClientsPage({ clients, setClients, onRefresh }: ClientsPageProps
   const [formPhone, setFormPhone] = useState('');
   const [formCare, setFormCare] = useState('Individual Therapy');
   const [formStatus, setFormStatus] = useState('Active');
-  const [formEmergency, setFormEmergency] = useState('');
+  const [formEcName, setFormEcName] = useState('');
+  const [formEcRelationship, setFormEcRelationship] = useState('');
+  const [formEcPhone, setFormEcPhone] = useState('');
 
   // Filter clients
   const filteredClients = clients.filter(
@@ -109,7 +111,7 @@ export function ClientsPage({ clients, setClients, onRefresh }: ClientsPageProps
         email: formEmail,
         phone: formPhone || undefined,
         care: formCare,
-        emergency: formEmergency || undefined,
+        emergencyContact: formEcName ? { name: formEcName, relationship: formEcRelationship, phone: formEcPhone } : undefined,
       });
 
       // Optimistically add to local list, then trigger a refresh
@@ -122,7 +124,9 @@ export function ClientsPage({ clients, setClients, onRefresh }: ClientsPageProps
       setFormPhone('');
       setFormCare('Individual Therapy');
       setFormStatus('Active');
-      setFormEmergency('');
+      setFormEcName('');
+      setFormEcRelationship('');
+      setFormEcPhone('');
       toast.success('Client added');
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Could not add the client');
@@ -361,12 +365,32 @@ export function ClientsPage({ clients, setClients, onRefresh }: ClientsPageProps
 
             {/* Emergency Contact */}
             <div className="space-y-1">
-              <label className="text-[11.5px] font-bold text-slate-500 block uppercase">Emergency Contact</label>
+              <label className="text-[11.5px] font-bold text-slate-500 block uppercase">Emergency contact name</label>
               <input
                 type="text"
-                value={formEmergency}
-                onChange={(e) => setFormEmergency(e.target.value)}
-                placeholder="e.g. Brother · Chidi Okoye · 0803 552 8814"
+                value={formEcName}
+                onChange={(e) => setFormEcName(e.target.value)}
+                placeholder="e.g. Chidi Okoye"
+                className="w-full h-11 px-3 rounded-[12px] bg-[#F8FAFC] border border-[#E2E8F0] text-xs font-semibold outline-none"
+              />
+            </div>
+            <div className="space-y-1">
+              <label className="text-[11.5px] font-bold text-slate-500 block uppercase">Relationship</label>
+              <input
+                type="text"
+                value={formEcRelationship}
+                onChange={(e) => setFormEcRelationship(e.target.value)}
+                placeholder="e.g. Brother"
+                className="w-full h-11 px-3 rounded-[12px] bg-[#F8FAFC] border border-[#E2E8F0] text-xs font-semibold outline-none"
+              />
+            </div>
+            <div className="space-y-1">
+              <label className="text-[11.5px] font-bold text-slate-500 block uppercase">Phone</label>
+              <input
+                type="tel"
+                value={formEcPhone}
+                onChange={(e) => setFormEcPhone(e.target.value)}
+                placeholder="e.g. 0803 552 8814"
                 className="w-full h-11 px-3 rounded-[12px] bg-[#F8FAFC] border border-[#E2E8F0] text-xs font-semibold outline-none"
               />
             </div>

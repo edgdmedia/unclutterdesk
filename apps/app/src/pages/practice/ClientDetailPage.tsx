@@ -6,6 +6,7 @@ import { useBrand } from '@unclutterdesk/ui';
 import { api } from '../../utils/apiClient';
 import type { Client } from '../../App';
 import { ClientAssessmentsPanel } from '../../components/ClientAssessmentsPanel';
+import { EmergencyContactCard } from '../../components/clients/EmergencyContactCard';
 
 interface ClientDetailPageProps {
   clients: Client[];
@@ -192,12 +193,11 @@ export function ClientDetailPage({ clients, setClients }: ClientDetailPageProps)
                 {client.next}
               </span>
             </div>
-            <div className="p-3.5 rounded-[16px] bg-[#FEF3C7] border border-[#E3B341]/40">
-              <Eyebrow className="mb-1 text-[#92400E]">EMERGENCY CONTACT</Eyebrow>
-              <span className="text-[12px] font-bold text-[#92400E] block leading-tight">
-                {client.emergency}
-              </span>
-            </div>
+            <EmergencyContactCard
+              clientId={client.id}
+              contact={client.emergencyContact ?? null}
+              onSaved={(c) => setClient((prev) => ({ ...prev, emergencyContact: c }))}
+            />
           </div>
         </Card>
 
