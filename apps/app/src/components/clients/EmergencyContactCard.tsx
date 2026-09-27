@@ -38,12 +38,20 @@ export function EmergencyContactCard({
     }
   }
 
+  function startEdit() {
+    setName(contact?.name ?? '');
+    setRelationship(contact?.relationship ?? '');
+    setPhone(contact?.phone ?? '');
+    setError(null);
+    setEditing(true);
+  }
+
   return (
     <div className="p-3.5 rounded-[16px] bg-[#FEF3C7] border border-[#E3B341]/40">
       <div className="flex items-center justify-between mb-1">
         <span className="text-[10.5px] font-bold tracking-wider text-[#92400E]">EMERGENCY CONTACT</span>
         {!editing && (
-          <button type="button" aria-label="Edit emergency contact" onClick={() => setEditing(true)} className="h-6 w-6 inline-flex items-center justify-center rounded-[6px] text-[#92400E] hover:bg-[#FDE68A] cursor-pointer">
+          <button type="button" aria-label="Edit emergency contact" onClick={startEdit} className="h-6 w-6 inline-flex items-center justify-center rounded-[6px] text-[#92400E] hover:bg-[#FDE68A] cursor-pointer">
             <Pencil className="h-3.5 w-3.5" />
           </button>
         )}

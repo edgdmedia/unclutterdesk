@@ -45,4 +45,16 @@ describe('EmergencyContactCard', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Save' }));
     await waitFor(() => expect(screen.getByText('Add the emergency contact’s name too.')).toBeTruthy());
   });
+
+  it('opens the edit form with the contact it loaded after mount', () => {
+    // The client page first renders the card from the list (no contact), then
+    // re-renders it once the full record arrives. Editing must show the real
+    // values, not the empty ones the form mounted with.
+    const { rerender } = render(<EmergencyContactCard clientId="40" contact={null} onSaved={() => {}} />);
+    rerender(<EmergencyContactCard clientId="40" contact={{ name: 'Tolu Ade', relationship: 'Sister', phone: '0801' }} onSaved={() => {}} />);
+    fireEvent.click(screen.getByRole('button', { name: 'Edit emergency contact' }));
+    expect((screen.getByLabelText('Name') as HTMLInputElement).value).toBe('Tolu Ade');
+    expect((screen.getByLabelText('Relationship') as HTMLInputElement).value).toBe('Sister');
+    expect((screen.getByLabelText('Phone') as HTMLInputElement).value).toBe('0801');
+  });
 });
