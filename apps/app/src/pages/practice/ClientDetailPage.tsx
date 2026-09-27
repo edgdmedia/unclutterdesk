@@ -1,12 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useParams } from 'react-router-dom';
-import { Download, ChevronRight, FileText, Printer, Lock, Plus, X, Loader2 } from 'lucide-react';
+import { Download, ChevronRight, FileText, Printer, Lock, Plus, X, Loader2, CalendarPlus } from 'lucide-react';
 import { Eyebrow, Card, StatusBadge, Button, useToast } from '@unclutterdesk/ui';
 import { useBrand } from '@unclutterdesk/ui';
 import { api } from '../../utils/apiClient';
 import type { Client } from '../../App';
 import { ClientAssessmentsPanel } from '../../components/ClientAssessmentsPanel';
 import { EmergencyContactCard } from '../../components/clients/EmergencyContactCard';
+import { StaffBookingDialog } from '../../components/booking/StaffBookingDialog';
 
 interface ClientDetailPageProps {
   clients: Client[];
@@ -37,6 +38,7 @@ export function ClientDetailPage({ clients, setClients }: ClientDetailPageProps)
   const [notePlan, setNotePlan] = useState('');
   const [isSavingNote, setIsSavingNote] = useState(false);
   const [noteError, setNoteError] = useState<string | null>(null);
+  const [showBooking, setShowBooking] = useState(false);
 
   // Fetch fresh client data with live notes from API
   useEffect(() => {
@@ -136,6 +138,13 @@ export function ClientDetailPage({ clients, setClients }: ClientDetailPageProps)
         </div>
 
         <div className="flex items-center gap-3">
+          <button
+            type="button"
+            onClick={() => setShowBooking(true)}
+            className="h-[38px] px-3.5 rounded-[12px] bg-[#0F3A53] text-white text-[12.5px] font-bold inline-flex items-center gap-2 cursor-pointer"
+          >
+            <CalendarPlus className="h-4 w-4" /> Book a session
+          </button>
           <button
             onClick={handlePrintPDF}
             className="h-[40px] px-4 rounded-[14px] bg-white border border-[#CBD5E1] text-[#0F172A] text-xs font-bold hover:bg-[#F8FAFC] flex items-center gap-1.5 cursor-pointer"
@@ -511,6 +520,13 @@ export function ClientDetailPage({ clients, setClients }: ClientDetailPageProps)
             </div>
           </form>
         </div>
+      )}
+      {showBooking && (
+        <StaffBookingDialog
+          client={{ id: client.id, name: client.name }}
+          onClose={() => setShowBooking(false)}
+          onBooked={() => { setShowBooking(false); window.location.reload(); }}
+        />
       )}
     </div>
   );
