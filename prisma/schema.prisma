@@ -36,13 +36,13 @@ model Tenant {
   address           String?
   category          String?
 
-  subscriptionTier      String  @default("STARTER") // "STARTER", "PRO", "CLINIC"
+  subscriptionTier            String  @default("STARTER") // "STARTER", "PRO", "CLINIC"
   /// Clients may pay by bank transfer straight to the practice (Pro and
   /// Clinic only). Off unless the practice turns it on.
-  manualPaymentsEnabled Boolean @default(false)
+  manualPaymentsEnabled       Boolean @default(false)
   /// { bankName, accountName, accountNumber, instructions }
-  manualPaymentDetails  Json?
-  isActive              Boolean @default(true)
+  manualPaymentDetails        Json?
+  isActive                    Boolean @default(true)
   // Links this practice to the Unclutter Suite (Journal referrals, the
   // post-session Suite invite, bridge tokens). Off for every practice except
   // the founder's; only platform admin can change it.
@@ -72,6 +72,7 @@ model Tenant {
   assessmentAssignments     AssessmentAssignment[]
   assessmentResponses       AssessmentResponse[]
   platformRequests          PlatformRequest[]
+  sendingDomain             TenantSendingDomain?
 
   // Notification plug-in: which channels this tenant has enabled at all.
   // JSON map, e.g. { "email": true, "in_app": true, "push": true, "sms": false }
@@ -439,6 +440,28 @@ model BankSubaccount {
   isVerified    Boolean  @default(true)
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+}
+
+// A practice's own email domain, verified through Resend. While it is VERIFIED
+// the practice's mail goes out from it; in any other state mail falls back to
+// the platform's shared sender, so a broken DNS record never stops email.
+model TenantSendingDomain {
+  id             BigInt    @id @default(autoincrement())
+  tenantId       BigInt    @unique
+  domain         String    @unique
+  resendDomainId String    @unique
+  // Resend's status: NOT_STARTED, PENDING, VERIFIED, PARTIALLY_VERIFIED,
+  // PARTIALLY_FAILED, FAILED or TEMPORARY_FAILURE.
+  status         String    @default("NOT_STARTED")
+  // The DNS rows the practice has to add, as Resend reported them last.
+  records        Json      @default("[]")
+  fromLocalPart  String    @default("notifications")
+  verifiedAt     DateTime?
+  lastCheckedAt  DateTime?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
 
   tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 }

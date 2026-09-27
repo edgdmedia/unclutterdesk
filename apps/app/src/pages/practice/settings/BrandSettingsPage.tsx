@@ -5,6 +5,7 @@ import { ClientBookingPage } from '../../public/ClientBookingPage';
 import { BookingConfirmedPage } from '../../public/BookingConfirmedPage';
 import { api, practiceBookingUrl } from '../../../utils/apiClient';
 import { useAuth } from '../../../context/AuthContext';
+import { SendingDomainCard } from '../../../components/email/SendingDomainCard';
 
 interface BrandSettingsPageProps {
   primaryColor?: string;
@@ -169,6 +170,8 @@ export function BrandSettingsPage(props: BrandSettingsPageProps) {
               </div>
             )}
           </Card>
+
+          <SendingDomainCard />
         </div>
 
         <div className="lg:col-span-7 space-y-4">
