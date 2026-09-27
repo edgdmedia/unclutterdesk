@@ -1,6 +1,7 @@
 import { BadRequestException, ForbiddenException, Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../../common/prisma/prisma.service';
 import { chargedKobo } from '../../common/revenue';
+import { emergencyContactOf } from '../tenant/emergency-contact';
 
 export const ERASED_STATUS = 'erased';
 
@@ -138,6 +139,7 @@ export class DataExportService {
         phone: client.phone,
         gender: client.gender,
         dateOfBirth: client.dateOfBirth ? client.dateOfBirth.toISOString() : null,
+        emergencyContact: emergencyContactOf(client),
         avatarUrl: client.avatarUrl,
         status: client.status,
         emailVerified: client.emailVerified,

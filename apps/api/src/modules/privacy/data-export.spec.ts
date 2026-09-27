@@ -30,6 +30,9 @@ function makeService(over: Record<string, any> = {}) {
     phone: '+2348000000000',
     gender: null,
     dateOfBirth: null,
+    emergencyContactName: null,
+    emergencyContactRelationship: null,
+    emergencyContactPhone: null,
     avatarUrl: null,
     emailVerified: true,
     createdAt: new Date('2026-08-01T09:00:00Z'),
@@ -234,5 +237,21 @@ describe('what the person gets', () => {
     const serialised = JSON.stringify(out);
     expect(serialised).not.toMatch(/password/i);
     expect(serialised).not.toMatch(/tokenHash/);
+  });
+});
+
+describe('the emergency contact', () => {
+  it('is part of what the practice holds about the person', async () => {
+    const { service } = makeService({
+      client: { emergencyContactName: 'Tolu Ade', emergencyContactRelationship: 'Sister', emergencyContactPhone: '0801' },
+    });
+    const out: any = await service.exportClientData(TENANT, OWNER, CLIENT);
+    expect(out.about.emergencyContact).toEqual({ name: 'Tolu Ade', relationship: 'Sister', phone: '0801' });
+  });
+
+  it('is null when none was recorded', async () => {
+    const { service } = makeService();
+    const out: any = await service.exportClientData(TENANT, OWNER, CLIENT);
+    expect(out.about.emergencyContact).toBeNull();
   });
 });

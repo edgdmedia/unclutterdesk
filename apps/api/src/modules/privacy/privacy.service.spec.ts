@@ -105,6 +105,9 @@ describe('PrivacyService.eraseClientPersonalData', () => {
         avatarUrl: null,
         emailVerified: false,
         status: ERASED_STATUS,
+        emergencyContactName: null,
+        emergencyContactRelationship: null,
+        emergencyContactPhone: null,
       });
       expect(data.email).toBe('erased-9@erased.invalid');
       expect(data.username).toBe('erased-9');
