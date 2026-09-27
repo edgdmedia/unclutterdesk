@@ -2,6 +2,7 @@ import { Controller, Get, Post, Patch, Delete, Body, Param, Query, Req, UseGuard
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { ConsultService } from './consult.service';
 import { ManualPaymentService } from './manual-payment.service';
+import { StaffBookingService, StaffBookingInput } from './staff-booking.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { RolesGuard } from '../../common/roles.guard';
 import { AnyAuthenticated, CLINICAL, FRONT_DESK, PRACTICE_ADMIN, Roles, STAFF } from '../../common/roles';
@@ -14,6 +15,7 @@ export class ConsultController {
   constructor(
     private readonly consultService: ConsultService,
     private readonly manualPayments: ManualPaymentService,
+    private readonly staffBookings: StaffBookingService,
   ) {}
 
   @Get('public/therapists')
@@ -251,6 +253,29 @@ export class ConsultController {
   markPaid(@Req() req: any, @Param('bookingId') bookingId: string) {
     if (!/^\d+$/.test(bookingId)) throw new NotFoundException('Booking not found');
     return this.manualPayments.markPaid(authenticatedTenantId(req), authenticatedProfileId(req), BigInt(bookingId));
+  }
+
+  @Roles(...STAFF)
+  @Post('practice/bookings')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @ApiBearerAuth('access-token')
+  @ApiOperation({ summary: 'Staff book a session for an existing client' })
+  createStaffBooking(@Req() req: any, @Body() dto: StaffBookingInput) {
+    return this.staffBookings.createForClient(authenticatedTenantId(req), authenticatedProfileId(req), dto);
+  }
+
+  @Get('public/bookings/:bookingId/pay-link')
+  @ApiOperation({ summary: 'What a staff-sent payment link is for' })
+  payLinkSummary(@Req() req: TenantRequest, @Param('bookingId') bookingId: string, @Query('t') t: string) {
+    if (!req.tenantId || !/^\d+$/.test(bookingId)) throw new NotFoundException('This payment link is not valid.');
+    return this.staffBookings.payLinkSummary(req.tenantId, BigInt(bookingId), t);
+  }
+
+  @Post('public/bookings/:bookingId/pay-link')
+  @ApiOperation({ summary: 'Start paying a staff-sent payment link' })
+  payLinkCheckout(@Req() req: TenantRequest, @Param('bookingId') bookingId: string, @Body() dto: { t?: string }) {
+    if (!req.tenantId || !/^\d+$/.test(bookingId)) throw new NotFoundException('This payment link is not valid.');
+    return this.staffBookings.payLinkCheckout(req.tenantId, BigInt(bookingId), String(dto?.t ?? ''));
   }
 
   @Post('public/bookings/:bookingId/pay')

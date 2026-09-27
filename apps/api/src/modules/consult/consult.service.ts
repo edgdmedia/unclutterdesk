@@ -824,6 +824,12 @@ export class ConsultService {
       orderBy: { availability: { startsAt: 'desc' } },
     });
 
+    const creatorIds = [...new Set(bookings.map((b) => b.createdByProfileId).filter((v): v is bigint => v !== null))];
+    const creators = creatorIds.length
+      ? await this.prisma.profile.findMany({ where: { tenantId, id: { in: creatorIds } }, select: { id: true, firstName: true, lastName: true } })
+      : [];
+    const creatorName = new Map(creators.map((c) => [c.id.toString(), `${c.firstName ?? ''} ${c.lastName ?? ''}`.trim()]));
+
     return bookings.map((b) => ({
       id: b.id.toString(),
       clientId: b.client.id.toString(),
@@ -837,6 +843,10 @@ export class ConsultService {
       status: b.status,
       videoRoomLink: b.videoRoomName ? (b.videoRoomName.startsWith('http') ? b.videoRoomName : `https://meet.jit.si/${b.videoRoomName}`) : null,
       notes: b.notes,
+      paymentMethod: b.paymentMethod,
+      amountKobo: b.amountKobo !== null ? b.amountKobo.toString() : null,
+      holdExpiresAt: b.holdExpiresAt ? b.holdExpiresAt.toISOString() : null,
+      bookedBy: b.createdByProfileId ? creatorName.get(b.createdByProfileId.toString()) || 'Staff' : null,
     }));
   }
 

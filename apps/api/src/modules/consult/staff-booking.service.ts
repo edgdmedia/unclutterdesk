@@ -41,6 +41,10 @@ const id = (v: unknown, what: string): bigint => {
 const fullName = (p: { firstName?: string | null; lastName?: string | null } | null | undefined) =>
   `${p?.firstName ?? ''} ${p?.lastName ?? ''}`.trim();
 
+type StaffBookingTime =
+  | { kind: 'slot'; slotId: bigint; startsAt: Date; endsAt: Date }
+  | { kind: 'custom'; startsAt: Date; endsAt: Date };
+
 /**
  * Staff booking a session for a client already on the books: from the client's
  * page or the schedule, into an open slot or a time they choose, paid by a link
@@ -256,7 +260,7 @@ export class StaffBookingService {
     providerId: bigint,
     service: { id: bigint; durationMinutes: number },
     dto: StaffBookingInput,
-  ): Promise<{ kind: 'slot'; slotId: bigint; startsAt: Date; endsAt: Date } | { kind: 'custom'; startsAt: Date; endsAt: Date }> {
+  ): Promise<StaffBookingTime> {
     if (dto.availabilityId) {
       const slot = await this.prisma.consultAvailability.findFirst({
         where: { id: id(dto.availabilityId, 'a time'), tenantId, providerProfileId: providerId, isActive: true },
