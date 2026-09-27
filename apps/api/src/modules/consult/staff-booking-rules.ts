@@ -1,4 +1,6 @@
 import { BadRequestException } from '@nestjs/common';
+import { createHmac, timingSafeEqual } from 'crypto';
+import { JWT_SECRET } from '../../common/auth.config';
 
 export type StaffPayment = 'LINK' | 'PAID' | 'NONE';
 
@@ -40,4 +42,16 @@ export function paidAmount(input: string | undefined, priceKobo: bigint): bigint
   const kobo = BigInt(input);
   if (kobo > priceKobo) throw new BadRequestException('The amount received cannot be more than the session price.');
   return kobo;
+}
+
+/** Proves a /pay link was issued by us for this booking. Same pattern as the .ics token. */
+export function payLinkToken(bookingId: bigint): string {
+  return createHmac('sha256', JWT_SECRET).update(`pay:${bookingId}`).digest('hex').slice(0, 32);
+}
+
+export function payLinkTokenValid(bookingId: bigint, token: unknown): boolean {
+  if (typeof token !== 'string') return false;
+  const a = Buffer.from(payLinkToken(bookingId), 'utf8');
+  const b = Buffer.from(token, 'utf8');
+  return a.length === b.length && timingSafeEqual(a, b);
 }

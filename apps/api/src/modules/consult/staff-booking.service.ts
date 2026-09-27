@@ -4,7 +4,9 @@ import { NotificationService } from '../notifications/notification.service';
 import { CalendarService } from '../calendar/calendar.service';
 import { ConsultService } from './consult.service';
 import { assertWithinMonthlyLimit } from './booking-limits';
-import { paidAmount, parseStaffPayment, paymentsAllowed, staffLinkHold } from './staff-booking-rules';
+import { paidAmount, parseStaffPayment, paymentsAllowed, payLinkTokenValid, staffLinkHold } from './staff-booking-rules';
+import { chargedKobo } from '../../common/revenue';
+import { tenantWebOrigin } from '../../common/origins';
 
 export interface StaffBookingInput {
   clientProfileId: string;
@@ -151,6 +153,55 @@ export class StaffBookingService {
 
   /** Emails and calendar sync. Filled in by Task 10. */
   protected async afterCreate(_bookingId: bigint, _result: StaffBookingResult, _notifyClient: boolean): Promise<void> {}
+
+  private async payLinkBooking(tenantId: bigint, bookingId: bigint, token: string) {
+    // The token is checked before any lookup, so a guess learns nothing.
+    if (!payLinkTokenValid(bookingId, token)) throw new NotFoundException('This payment link is not valid.');
+    const b = await this.prisma.consultBooking.findFirst({
+      where: { id: bookingId, tenantId },
+      include: {
+        service: true,
+        client: { select: { email: true } },
+        tenant: { select: { name: true, slug: true, customDomain: true, customDomainStatus: true } },
+        availability: { include: { therapist: { include: { profile: true } } } },
+      },
+    });
+    if (!b) throw new NotFoundException('This payment link is not valid.');
+    return b;
+  }
+
+  async payLinkSummary(tenantId: bigint, bookingId: bigint, token: string) {
+    const b: any = await this.payLinkBooking(tenantId, bookingId, token);
+    const state = b.status === 'PENDING_PAYMENT' ? 'PAYABLE' : b.status === 'CANCELLED' ? 'LAPSED' : 'PAID';
+    return {
+      state: state as 'PAYABLE' | 'PAID' | 'LAPSED',
+      serviceTitle: b.service.title,
+      practitionerName: fullName(b.availability.therapist?.profile),
+      startsAt: b.availability.startsAt.toISOString(),
+      amountKobo: chargedKobo(b).toString(),
+      practiceName: b.tenant.name,
+    };
+  }
+
+  async payLinkCheckout(tenantId: bigint, bookingId: bigint, token: string) {
+    const b: any = await this.payLinkBooking(tenantId, bookingId, token);
+    if (b.status !== 'PENDING_PAYMENT') {
+      throw new BadRequestException(
+        b.status === 'CANCELLED' ? 'This booking is no longer held. Contact the practice to book again.' : 'This session is already paid.',
+      );
+    }
+    const reference = `booking-${b.id}-${Date.now()}`;
+    const paymentUrl = await this.consult.startOnlinePayment(
+      tenantId,
+      chargedKobo(b),
+      b.client.email,
+      reference,
+      `${tenantWebOrigin(b.tenant)}/booking/confirmed`,
+    );
+    // Only once Paystack accepted it, as getBookingPaymentUrl does.
+    await this.prisma.consultBooking.update({ where: { id: b.id }, data: { paymentRef: reference } });
+    return { paymentUrl };
+  }
 
   /** Where the session sits: an open slot, or (Task 7) a time staff choose. */
   protected async resolveTime(
