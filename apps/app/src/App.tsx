@@ -59,6 +59,7 @@ const AdminRequestsPage = lazy(() => import('./pages/admin/AdminRequestsPage').t
 const AdminAssessmentsPage = lazy(() => import('./pages/admin/AdminAssessmentsPage').then((m) => ({ default: m.AdminAssessmentsPage })));
 const RequestsPage = lazy(() => import('./pages/practice/RequestsPage').then((m) => ({ default: m.RequestsPage })));
 const AssessmentsPage = lazy(() => import('./pages/practice/AssessmentsPage').then((m) => ({ default: m.AssessmentsPage })));
+const HoursLogPage = lazy(() => import('./pages/practice/HoursLogPage').then((m) => ({ default: m.HoursLogPage })));
 const PortalAssessmentPage = lazy(() => import('./pages/client/PortalAssessmentPage').then((m) => ({ default: m.PortalAssessmentPage })));
 const AssessmentPage = lazy(() => import('./pages/public/AssessmentPage').then((m) => ({ default: m.AssessmentPage })));
 const AdminTenantDetailPage = lazy(() => import('./pages/admin/AdminTenantDetailPage').then((m) => ({ default: m.AdminTenantDetailPage })));
@@ -437,6 +438,7 @@ function AppLayout() {
               <Route path="/dashboard/analytics" element={<AnalyticsPage clients={resolvedClients} sessions={resolvedSessions} />} />
               <Route path="/dashboard/submissions" element={<SubmissionsPage />} />
               <Route path="/dashboard/assessments" element={<AssessmentsPage />} />
+              <Route path="/dashboard/hours" element={<HoursLogPage />} />
               <Route path="/dashboard/requests" element={<RequestsPage />} />
               <Route path="/dashboard/notifications" element={<NotificationsPage />} />
               <Route path="/dashboard/settings/notifications" element={<NotificationsPage />} />

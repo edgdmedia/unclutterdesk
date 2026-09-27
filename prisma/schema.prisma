@@ -55,8 +55,8 @@ model Tenant {
   closureRequestedBy BigInt?
 
   // Paystack subscription billing
-  paystackCustomerCode      String?                @unique
-  paystackSubscriptionCode  String?                @unique
+  paystackCustomerCode      String?                   @unique
+  paystackSubscriptionCode  String?                   @unique
   // Paystack's per-subscription email token, required to disable a subscription.
   paystackSubscriptionToken String?
   // "active", "past_due", "cancelled", or null before the first payment.
@@ -67,12 +67,14 @@ model Tenant {
   // has started paying. Null for everyone else.
   complimentaryUntil        DateTime?
   inviteCodeId              BigInt?
-  inviteCode                InviteCode?            @relation(fields: [inviteCodeId], references: [id], onDelete: SetNull)
+  inviteCode                InviteCode?               @relation(fields: [inviteCodeId], references: [id], onDelete: SetNull)
   enabledAssessments        TenantAssessment[]
   assessmentAssignments     AssessmentAssignment[]
   assessmentResponses       AssessmentResponse[]
   platformRequests          PlatformRequest[]
   sendingDomain             TenantSendingDomain?
+  hoursEntries              PractitionerHoursEntry[]
+  hoursTargets              PractitionerHoursTarget[]
 
   // Notification plug-in: which channels this tenant has enabled at all.
   // JSON map, e.g. { "email": true, "in_app": true, "push": true, "sms": false }
@@ -681,4 +683,47 @@ model PlatformRequest {
 
   @@index([status])
   @@index([tenantId])
+}
+
+// ── Hours log ────────────────────────────────────────────────────────────────
+// A practitioner's clinical hours, for training, licensing or CPD. Entries
+// from completed bookings are kept in step automatically (source BOOKING, one
+// per booking); anything else is added by hand (source MANUAL).
+model PractitionerHoursEntry {
+  id                    BigInt   @id @default(autoincrement())
+  tenantId              BigInt
+  practitionerProfileId BigInt
+  bookingId             BigInt?  @unique
+  clientProfileId       BigInt?
+  date                  DateTime
+  durationMinutes       Int
+  // DIRECT_CLIENT, GROUP, SUPERVISION, INDIRECT or OTHER.
+  category              String   @default("DIRECT_CLIENT")
+  // BOOKING or MANUAL.
+  source                String   @default("MANUAL")
+  notes                 String?
+  supervisorName        String?
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId, practitionerProfileId, date])
+}
+
+// The goal a practitioner is working towards, e.g. "Diploma practicum: 200
+// hours, 20 of them supervision". Set by the practitioner; nothing is fixed.
+model PractitionerHoursTarget {
+  id                     BigInt   @id @default(autoincrement())
+  tenantId               BigInt
+  practitionerProfileId  BigInt
+  label                  String?
+  totalTargetHours       Int?
+  supervisionTargetHours Int?
+  createdAt              DateTime @default(now())
+  updatedAt              DateTime @updatedAt
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@unique([tenantId, practitionerProfileId])
 }
