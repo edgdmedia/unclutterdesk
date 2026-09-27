@@ -63,7 +63,16 @@ function setup(over: Record<string, any> = {}) {
       ),
     },
     consultAvailability: { findFirst: vi.fn().mockResolvedValue(over.slot === undefined ? slot : over.slot) },
-    consultBooking: { count: vi.fn().mockResolvedValue(over.monthCount ?? 0) },
+    consultBooking: {
+      count: vi.fn().mockResolvedValue(over.monthCount ?? 0),
+      findFirst: vi.fn().mockResolvedValue({
+        id: 900n,
+        tenantId: TENANT,
+        clientProfileId: CLIENT,
+        client: { email: 'ada@example.com' },
+        tenant: { name: 'Smith Therapy', slug: 'dr-smith', customDomain: null, customDomainStatus: null },
+      }),
+    },
     tenant: { findUnique: vi.fn().mockResolvedValue({ id: TENANT, subscriptionTier: over.tier ?? 'PRO', name: 'Smith Therapy', slug: 'dr-smith' }) },
     $transaction: vi.fn(async (fn: any) => fn(tx)),
   };
@@ -241,5 +250,36 @@ describe('a custom time', () => {
     await expect(
       service.createForClient(TENANT, OWNER, { clientProfileId: String(CLIENT), serviceId: '20', startsAt: 'tomorrow', payment: 'NONE' }),
     ).rejects.toThrow(/valid time/);
+  });
+});
+
+describe('after the booking', () => {
+  it('emails the client a payment link for a link booking', async () => {
+    const { service, notifications, calendar } = setup();
+    await service.createForClient(TENANT, OWNER, { ...base, payment: 'LINK' });
+    const email = notifications.sendEmail.mock.calls[0][0];
+    expect(email).toMatchObject({ to: 'ada@example.com', type: 'bookings.staff_payment_link', tenantId: TENANT, profileId: CLIENT });
+    expect(email.link).toMatch(/\/pay\/900\?t=[0-9a-f]{32}$/);
+    expect(calendar.pushBookingToGoogle).not.toHaveBeenCalled();
+  });
+
+  it('emails a confirmation and syncs the calendar for a confirmed booking', async () => {
+    const { service, notifications, calendar } = setup();
+    await service.createForClient(TENANT, OWNER, { ...base, payment: 'NONE' });
+    expect(notifications.sendEmail.mock.calls[0][0]).toMatchObject({ type: 'bookings.staff_confirmed', link: expect.stringMatching(/\/portal$/) });
+    expect(calendar.pushBookingToGoogle).toHaveBeenCalledWith(900n);
+  });
+
+  it('sends nothing to the client when staff untick "email the client"', async () => {
+    const { service, notifications, calendar } = setup();
+    await service.createForClient(TENANT, OWNER, { ...base, payment: 'NONE', notifyClient: false });
+    expect(notifications.sendEmail).not.toHaveBeenCalled();
+    expect(calendar.pushBookingToGoogle).toHaveBeenCalledWith(900n);
+  });
+
+  it('keeps the booking when the email fails', async () => {
+    const { service, notifications } = setup();
+    notifications.sendEmail.mockRejectedValue(new Error('provider down'));
+    await expect(service.createForClient(TENANT, OWNER, { ...base, payment: 'LINK' })).resolves.toMatchObject({ bookingId: '900' });
   });
 });

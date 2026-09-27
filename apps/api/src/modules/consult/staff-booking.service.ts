@@ -4,9 +4,10 @@ import { NotificationService } from '../notifications/notification.service';
 import { CalendarService } from '../calendar/calendar.service';
 import { ConsultService } from './consult.service';
 import { assertWithinMonthlyLimit } from './booking-limits';
-import { paidAmount, parseStaffPayment, paymentsAllowed, payLinkTokenValid, staffLinkHold } from './staff-booking-rules';
+import { paidAmount, parseStaffPayment, paymentsAllowed, payLinkToken, payLinkTokenValid, staffLinkHold } from './staff-booking-rules';
 import { chargedKobo } from '../../common/revenue';
 import { tenantWebOrigin } from '../../common/origins';
+import { formatNaira } from '../billing/subscription-plans';
 
 export interface StaffBookingInput {
   clientProfileId: string;
@@ -151,8 +152,54 @@ export class StaffBookingService {
     return result;
   }
 
-  /** Emails and calendar sync. Filled in by Task 10. */
-  protected async afterCreate(_bookingId: bigint, _result: StaffBookingResult, _notifyClient: boolean): Promise<void> {}
+  /** Emails and calendar sync, after the transaction commits. */
+  protected async afterCreate(bookingId: bigint, r: StaffBookingResult, notifyClient: boolean): Promise<void> {
+    const b = await this.prisma.consultBooking.findFirst({
+      where: { id: bookingId },
+      include: { client: true, tenant: true },
+    });
+    if (!b) return;
+    const origin = tenantWebOrigin(b.tenant as any);
+    const when = new Intl.DateTimeFormat('en-GB', {
+      weekday: 'long', day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit', timeZone: 'Africa/Lagos',
+    }).format(new Date(r.startsAt));
+
+    if (r.status === 'CONFIRMED') {
+      await this.calendar.pushBookingToGoogle(bookingId).catch(() => undefined);
+    }
+    if (!notifyClient) return;
+
+    try {
+      if (r.status === 'PENDING_PAYMENT') {
+        const deadline = r.holdExpiresAt
+          ? new Intl.DateTimeFormat('en-GB', { day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit', timeZone: 'Africa/Lagos' }).format(new Date(r.holdExpiresAt))
+          : '';
+        await this.notifications.sendEmail({
+          to: b.client.email,
+          type: 'bookings.staff_payment_link',
+          title: `Pay for your session on ${when}`,
+          message: `${b.tenant.name} has booked your ${r.serviceTitle} with ${r.practitionerName} on ${when}. Please pay ${formatNaira(Number(r.amountKobo))} by ${deadline} to keep this time.`,
+          link: `${origin}/pay/${bookingId}?t=${payLinkToken(bookingId)}`,
+          actionLabel: 'Pay now',
+          tenantId: b.tenantId,
+          profileId: b.clientProfileId,
+        });
+      } else {
+        await this.notifications.sendEmail({
+          to: b.client.email,
+          type: 'bookings.staff_confirmed',
+          title: 'Your session is booked',
+          message: `${b.tenant.name} has booked your ${r.serviceTitle} with ${r.practitionerName} on ${when}.`,
+          link: `${origin}/portal`,
+          actionLabel: 'View my booking',
+          tenantId: b.tenantId,
+          profileId: b.clientProfileId,
+        });
+      }
+    } catch (err) {
+      this.logger.warn(`Could not email the client about booking ${bookingId}: ${(err as Error).message}`);
+    }
+  }
 
   private async payLinkBooking(tenantId: bigint, bookingId: bigint, token: string) {
     // The token is checked before any lookup, so a guess learns nothing.
