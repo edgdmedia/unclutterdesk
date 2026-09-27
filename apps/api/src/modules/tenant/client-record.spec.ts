@@ -105,3 +105,38 @@ describe('reading a client', () => {
     await expect(service.getClientById(TENANT, 99n)).rejects.toBeInstanceOf(NotFoundException);
   });
 });
+
+describe('editing a client', () => {
+  it('updates the contact on a client of this practice', async () => {
+    const { service, prisma } = makeService({ findFirst: { id: 40n } });
+    const res = await service.updateClient(TENANT, 40n, { emergencyContact: { name: 'Bola', relationship: 'Friend', phone: '0802' } });
+    expect(prisma.profile.findFirst).toHaveBeenCalledWith({ where: { id: 40n, tenantId: TENANT, role: 'CLIENT' }, select: { id: true } });
+    expect(prisma.profile.update.mock.calls[0][0]).toMatchObject({
+      where: { id: 40n },
+      data: { emergencyContactName: 'Bola', emergencyContactRelationship: 'Friend', emergencyContactPhone: '0802' },
+    });
+    expect(res.emergencyContact).toEqual({ name: 'Bola', relationship: 'Friend', phone: '0802' });
+  });
+
+  it('clears the contact when the name is emptied', async () => {
+    const { service, prisma } = makeService({ findFirst: { id: 40n } });
+    await service.updateClient(TENANT, 40n, { emergencyContact: { name: '', relationship: '', phone: '' } });
+    expect(prisma.profile.update.mock.calls[0][0].data).toMatchObject({
+      emergencyContactName: null,
+      emergencyContactRelationship: null,
+      emergencyContactPhone: null,
+    });
+  });
+
+  it('will not touch a staff profile or another practice’s client', async () => {
+    // The scoped lookup finds nothing for either, so both are "not found".
+    const { service, prisma } = makeService({ findFirst: null });
+    await expect(service.updateClient(TENANT, 5n, { phone: '0803' })).rejects.toBeInstanceOf(NotFoundException);
+    expect(prisma.profile.update).not.toHaveBeenCalled();
+  });
+
+  it('refuses a blank first name', async () => {
+    const { service } = makeService({ findFirst: { id: 40n } });
+    await expect(service.updateClient(TENANT, 40n, { firstName: '  ' })).rejects.toBeInstanceOf(BadRequestException);
+  });
+});

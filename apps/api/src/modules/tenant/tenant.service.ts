@@ -947,6 +947,38 @@ export class TenantService {
       intake: [],
     };
   }
+
+  /** Staff edit a client's contact details. Never a staff profile, never another practice. */
+  async updateClient(
+    tenantId: bigint,
+    clientProfileId: bigint,
+    dto: { firstName?: string; lastName?: string | null; phone?: string | null; emergencyContact?: EmergencyContactInput },
+  ) {
+    const found = await this.prisma.profile.findFirst({
+      where: { id: clientProfileId, tenantId, role: 'CLIENT' },
+      select: { id: true },
+    });
+    if (!found) throw new NotFoundException('Client not found');
+
+    const data: Record<string, unknown> = { ...emergencyContactData(dto?.emergencyContact) };
+    if (dto?.firstName !== undefined) {
+      const firstName = String(dto.firstName ?? '').trim();
+      if (!firstName) throw new BadRequestException('Enter the client’s first name.');
+      data.firstName = firstName.slice(0, 100);
+    }
+    if (dto?.lastName !== undefined) data.lastName = String(dto.lastName ?? '').trim().slice(0, 100) || null;
+    if (dto?.phone !== undefined) data.phone = String(dto.phone ?? '').trim().slice(0, 40) || null;
+
+    const p = await this.prisma.profile.update({ where: { id: clientProfileId }, data });
+    const contact = emergencyContactOf(p);
+    return {
+      id: p.id.toString(),
+      name: `${p.firstName || ''} ${p.lastName || ''}`.trim() || p.email,
+      phone: p.phone || '',
+      emergencyContact: contact,
+      emergency: emergencyContactText(contact),
+    };
+  }
 }
 
 /**
