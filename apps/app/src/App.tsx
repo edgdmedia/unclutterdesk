@@ -37,6 +37,7 @@ const PublicReviewFormPage = lazy(() => import('./pages/public/PublicReviewFormP
 // copy of the text to drift from.
 const BookingConfirmedPage = lazy(() => import('./pages/public/BookingConfirmedPage').then((m) => ({ default: m.BookingConfirmedPage })));
 const InactivePracticePage = lazy(() => import('./pages/public/InactivePracticePage').then((m) => ({ default: m.InactivePracticePage })));
+const PayBookingPage = lazy(() => import('./pages/public/PayBookingPage').then((m) => ({ default: m.PayBookingPage })));
 const NotificationsPage = lazy(() => import('./pages/practice/NotificationsPage').then((m) => ({ default: m.NotificationsPage })));
 const SubmissionsPage = lazy(() => import('./pages/practice/SubmissionsPage').then((m) => ({ default: m.SubmissionsPage })));
 const AvailabilitySettingsPage = lazy(() => import('./pages/practice/settings/AvailabilitySettingsPage').then((m) => ({ default: m.AvailabilitySettingsPage })));
@@ -365,6 +366,7 @@ function AppLayout() {
             <Route path="/portal/assessments/:id" element={<PortalAssessmentPage />} />
             <Route path="/onboarding" element={<OnboardingWizardPage />} />
             <Route path="/booking/confirmed" element={<BookingConfirmedPage />} />
+            <Route path="/pay/:bookingId" element={<PayBookingPage />} />
             <Route path="/booking/inactive" element={<InactivePracticePage />} />
             <Route path="/assessment/:token" element={<AssessmentPage />} />
 
@@ -608,6 +610,7 @@ export function App() {
                 <Route path="/review" element={<PublicReviewFormPage />} />
                 <Route path="/assessment/:token" element={<AssessmentPage />} />
                 <Route path="/booking/confirmed" element={<BookingConfirmedPage />} />
+                <Route path="/pay/:bookingId" element={<PayBookingPage />} />
                 <Route path="/booking/inactive" element={<InactivePracticePage />} />
                 <Route path="/privacy" element={<ExternalRedirect to={LEGAL_URLS.privacy} />} />
                 <Route path="/terms" element={<ExternalRedirect to={LEGAL_URLS.terms} />} />
