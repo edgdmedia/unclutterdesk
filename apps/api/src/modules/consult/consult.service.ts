@@ -10,6 +10,7 @@ import { changePercent, chargedKobo, revenueByMonth, startOfMonth } from '../../
 import { tenantWebOrigin } from '../../common/origins';
 import { decryptNoteFields } from '../../common/field-encryption';
 import { holdExpiry, ManualPaymentService, transferReference } from './manual-payment.service';
+import { assertWithinMonthlyLimit } from './booking-limits';
 
 @Injectable()
 export class ConsultService {
@@ -583,19 +584,7 @@ export class ConsultService {
       discountResult = await this.discountService.validateDiscount(tenantId, dto.discountCode, service.priceKobo);
     }
 
-    const tier = (slot.tenant.subscriptionTier || 'STARTER').toUpperCase();
-    if (tier === 'STARTER') {
-      const monthStart = new Date();
-      monthStart.setDate(1);
-      monthStart.setHours(0, 0, 0, 0);
-
-      const count = await this.prisma.consultBooking.count({
-        where: { tenantId, createdAt: { gte: monthStart }, status: { not: 'CANCELLED' } },
-      });
-      if (count >= 20) {
-        throw new BadRequestException('Monthly booking limit reached. Upgrade to Pro to accept unlimited bookings.');
-      }
-    }
+    await assertWithinMonthlyLimit(this.prisma, tenantId, slot.tenant.subscriptionTier);
 
     // Checked here, never trusted from the page: the practice must offer it now.
     const wantsManual = String(dto.paymentMethod ?? '').toUpperCase() === 'MANUAL';
@@ -752,7 +741,7 @@ export class ConsultService {
    * Subaccount" on every booking; now the practice is told to fix it and the
    * client gets a plain message.
    */
-  private async startOnlinePayment(
+  async startOnlinePayment(
     tenantId: bigint,
     amountKobo: bigint,
     email: string,
@@ -1329,7 +1318,7 @@ export class ConsultService {
    * learn the scheme from one link — and be waiting inside a therapy session
    * before the therapist arrives. The name now carries 128 bits of randomness.
    */
-  private async resolveVideoRoomLink(therapist: any, _bookingRef: number): Promise<{ roomName: string; roomLink: string }> {
+  async resolveVideoRoomLink(therapist: any, _bookingRef: number): Promise<{ roomName: string; roomLink: string }> {
     const provider = (therapist.videoProvider || 'JITSI').toUpperCase();
     const defaultRoomName = `unclutterdesk-session-${randomBytes(16).toString('hex')}`;
 

@@ -298,8 +298,8 @@ model ConsultBooking {
   availabilityId              BigInt
   clientProfileId             BigInt
   status                      String    @default("PENDING_PAYMENT") // "PENDING_PAYMENT", "CONFIRMED", "COMPLETED", "CANCELLED"
-  /// "PAYSTACK" (paid online) or "MANUAL" (bank transfer straight to the
-  /// practice, confirmed by its staff).
+  /// "PAYSTACK" (paid online), "MANUAL" (bank transfer or paid at the practice,
+  /// confirmed by staff), or "NONE" (the practice waived the fee).
   paymentMethod               String    @default("PAYSTACK") @db.VarChar(20)
   /// A manual booking holds its slot until this time, then is released.
   holdExpiresAt               DateTime?
@@ -307,6 +307,8 @@ model ConsultBooking {
   clientReportedPaidAt        DateTime?
   /// Who marked a manual payment as received.
   paymentConfirmedByProfileId BigInt?
+  /// Set when staff made the booking for the client; null when the client booked.
+  createdByProfileId          BigInt?
   paymentRef                  String?   @unique
   paidAt                      DateTime?
   // What was actually charged, after any discount. The service price is not a
