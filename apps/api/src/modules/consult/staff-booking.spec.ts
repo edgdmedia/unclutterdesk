@@ -183,3 +183,63 @@ describe('what is checked', () => {
     expect(chargedKobo({ amountKobo: 0n, service: { priceKobo: 2500000n } })).toBe(0n);
   });
 });
+
+describe('a custom time', () => {
+  const custom = (startsAt: Date) => ({ clientProfileId: String(CLIENT), serviceId: '20', startsAt: startsAt.toISOString(), payment: 'NONE' });
+
+  it('makes its own closed slot the length of the service', async () => {
+    const { service, tx } = setup();
+    const at = inDays(3);
+    const res = await service.createForClient(TENANT, OWNER, custom(at));
+    expect(tx.consultAvailability.create.mock.calls[0][0].data).toMatchObject({
+      tenantId: TENANT,
+      providerProfileId: OWNER,
+      serviceId: 20n,
+      startsAt: at,
+      endsAt: new Date(at.getTime() + 50 * 60_000),
+      isActive: false,
+    });
+    expect(tx.consultBooking.create.mock.calls[0][0].data.availabilityId).toBe(301n);
+    expect(res.endsAt).toBe(new Date(at.getTime() + 50 * 60_000).toISOString());
+  });
+
+  it('holds a per-practitioner lock so two custom bookings cannot interleave', async () => {
+    const { service, tx } = setup();
+    await service.createForClient(TENANT, OWNER, custom(inDays(3)));
+    expect(tx.$executeRaw).toHaveBeenCalledTimes(1);
+    expect(tx.$executeRaw.mock.calls[0].slice(1)).toEqual([`staff-booking:${TENANT}:${OWNER}`]);
+  });
+
+  it('deactivates overlapping open slots before it checks for clashes', async () => {
+    // Order matters. The slot update waits on a public booking that is
+    // claiming the same slot; the clash check after it then sees that
+    // booking, which it would miss if it ran first.
+    const { service, tx } = setup();
+    const at = inDays(3);
+    await service.createForClient(TENANT, OWNER, custom(at));
+    const deactivate = tx.consultAvailability.updateMany.mock.invocationCallOrder[0];
+    const clashCheck = tx.consultBooking.findFirst.mock.invocationCallOrder[0];
+    expect(deactivate).toBeLessThan(clashCheck);
+    expect(tx.consultAvailability.updateMany.mock.calls[0][0]).toEqual({
+      where: { tenantId: TENANT, providerProfileId: OWNER, isActive: true, startsAt: { lt: new Date(at.getTime() + 50 * 60_000) }, endsAt: { gt: at } },
+      data: { isActive: false },
+    });
+  });
+
+  it('refuses a time that clashes with another session', async () => {
+    const clashStart = inDays(3);
+    const { service, tx } = setup({
+      clash: { availability: { startsAt: clashStart, endsAt: new Date(clashStart.getTime() + 50 * 60_000) } },
+    });
+    await expect(service.createForClient(TENANT, OWNER, custom(clashStart))).rejects.toThrow(/already has a session/);
+    expect(tx.consultBooking.create).not.toHaveBeenCalled();
+  });
+
+  it('refuses a time in the past, or not a time at all', async () => {
+    const { service } = setup();
+    await expect(service.createForClient(TENANT, OWNER, custom(new Date(Date.now() - 60_000)))).rejects.toThrow(/future/);
+    await expect(
+      service.createForClient(TENANT, OWNER, { clientProfileId: String(CLIENT), serviceId: '20', startsAt: 'tomorrow', payment: 'NONE' }),
+    ).rejects.toThrow(/valid time/);
+  });
+});

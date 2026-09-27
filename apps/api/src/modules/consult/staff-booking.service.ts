@@ -172,6 +172,12 @@ export class StaffBookingService {
       }
       return { kind: 'slot', slotId: slot.id, startsAt: slot.startsAt, endsAt: slot.endsAt };
     }
+    if (dto.startsAt) {
+      const startsAt = new Date(String(dto.startsAt));
+      if (Number.isNaN(startsAt.getTime())) throw new BadRequestException('Enter a valid time.');
+      if (startsAt.getTime() <= Date.now()) throw new BadRequestException('Choose a time in the future.');
+      return { kind: 'custom', startsAt, endsAt: new Date(startsAt.getTime() + service.durationMinutes * 60_000) };
+    }
     throw new BadRequestException('Choose a time.');
   }
 
@@ -179,10 +185,10 @@ export class StaffBookingService {
   protected async claimTime(
     tx: any,
     tenantId: bigint,
-    _providerId: bigint,
-    _serviceId: bigint,
+    providerId: bigint,
+    serviceId: bigint,
     time: Awaited<ReturnType<StaffBookingService['resolveTime']>>,
-    _practitionerName: string,
+    practitionerName: string,
   ): Promise<bigint> {
     if (time.kind === 'slot') {
       const claimed = await tx.consultAvailability.updateMany({
@@ -192,6 +198,37 @@ export class StaffBookingService {
       if (claimed.count === 0) throw new BadRequestException('That time is no longer open. Choose another.');
       return time.slotId;
     }
-    throw new BadRequestException('Choose a time.');
+
+    // One custom booking at a time per practitioner, for this transaction.
+    const lockKey = `staff-booking:${tenantId}:${providerId}`;
+    await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtextextended(${lockKey}, 0))`;
+
+    // Close overlapping open slots FIRST. This update waits on any public
+    // booking mid-claim of one of them, so the clash check below, which runs
+    // after it, sees that booking once it commits.
+    await tx.consultAvailability.updateMany({
+      where: { tenantId, providerProfileId: providerId, isActive: true, startsAt: { lt: time.endsAt }, endsAt: { gt: time.startsAt } },
+      data: { isActive: false },
+    });
+
+    const clash = await tx.consultBooking.findFirst({
+      where: {
+        tenantId,
+        status: { not: 'CANCELLED' },
+        availability: { providerProfileId: providerId, startsAt: { lt: time.endsAt }, endsAt: { gt: time.startsAt } },
+      },
+      include: { availability: true },
+    });
+    if (clash) {
+      const hhmm = (d: Date) => d.toISOString().slice(11, 16);
+      throw new BadRequestException(
+        `${practitionerName || 'This practitioner'} already has a session from ${hhmm(clash.availability.startsAt)} to ${hhmm(clash.availability.endsAt)} (UTC). Choose another time.`,
+      );
+    }
+
+    const slot = await tx.consultAvailability.create({
+      data: { tenantId, providerProfileId: providerId, serviceId, startsAt: time.startsAt, endsAt: time.endsAt, channel: 'VIDEO', isActive: false },
+    });
+    return slot.id;
   }
 }
