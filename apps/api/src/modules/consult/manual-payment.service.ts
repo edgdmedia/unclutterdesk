@@ -164,7 +164,14 @@ export class ManualPaymentService {
   async markPaid(tenantId: bigint, actorProfileId: bigint, bookingId: bigint) {
     // Conditional, so it cannot race the hold expiring or a second click.
     const updated = await this.prisma.consultBooking.updateMany({
-      where: { id: bookingId, tenantId, paymentMethod: 'MANUAL', status: 'PENDING_PAYMENT' },
+      where: {
+        id: bookingId,
+        tenantId,
+        status: 'PENDING_PAYMENT',
+        // A transfer, or a booking staff made (the client may pay in person
+        // instead of using the link). Never a client's own online checkout.
+        OR: [{ paymentMethod: 'MANUAL' }, { createdByProfileId: { not: null } }],
+      },
       data: { status: 'CONFIRMED', paidAt: new Date(), paymentConfirmedByProfileId: actorProfileId },
     });
     if (updated.count === 0) {
