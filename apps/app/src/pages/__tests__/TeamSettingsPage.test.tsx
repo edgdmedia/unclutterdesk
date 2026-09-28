@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { render, screen, waitFor, cleanup, fireEvent } from '@testing-library/react';
+import { renderWithApp, screen, waitFor, cleanup, fireEvent } from '../../test/renderWithApp';
 import React from 'react';
 
 /**
@@ -25,15 +25,6 @@ vi.mock('../../utils/apiClient', () => ({
     put: vi.fn(),
     delete: (...a: unknown[]) => apiDelete(...a),
   },
-}));
-
-vi.mock('@unclutterdesk/ui', () => ({
-  useToast: () => ({ success: () => undefined, error: () => undefined, info: () => undefined }),
-  Eyebrow: ({ children }: any) => <span>{children}</span>,
-  Card: ({ children }: any) => <div>{children}</div>,
-  StatusBadge: ({ children }: any) => <span>{children}</span>,
-  Button: ({ children, ...rest }: any) => <button {...rest}>{children}</button>,
-  useBrand: () => ({ primaryColor: '#0F3A53' }),
 }));
 
 const { TeamSettingsPage } = await import('../practice/settings/TeamSettingsPage');
@@ -74,7 +65,7 @@ const INVITE = {
 const onRefresh = vi.fn().mockResolvedValue(undefined);
 
 function renderPage(staff = [OWNER, THERAPIST]) {
-  return render(<TeamSettingsPage staff={staff as any} onRefresh={onRefresh} />);
+  return renderWithApp(<TeamSettingsPage staff={staff as any} onRefresh={onRefresh} />);
 }
 
 beforeEach(() => {
@@ -87,6 +78,16 @@ beforeEach(() => {
 });
 
 afterEach(cleanup);
+
+describe('the shared page and table', () => {
+  it('fits the page, as a table with each member’s switch and menu shown once', () => {
+    const { container } = renderPage();
+    expect(container.innerHTML).not.toContain('min-w-[1192px]');
+    expect(screen.getByRole('table', { name: 'Team members' })).toBeTruthy();
+    expect(screen.getAllByLabelText('Segun Ade active')).toHaveLength(1);
+    expect(screen.getAllByLabelText('Actions for Segun Ade')).toHaveLength(1);
+  });
+});
 
 describe('deactivating a staff member', () => {
   // The bug: this only ever edited React state, so the person kept working.
@@ -131,7 +132,7 @@ describe('deactivating a staff member', () => {
     it('says so instead of leaving the toggle looking flipped', async () => {
       renderPage();
       fireEvent.click(screen.getByLabelText('Segun Ade active'));
-      expect((await screen.findByRole('alert')).textContent).toMatch(
+      expect((await screen.findAllByRole('alert')).map((e) => e.textContent).join(' ')).toMatch(
         /Only a practice owner or admin/,
       );
     });
@@ -139,14 +140,14 @@ describe('deactivating a staff member', () => {
     it('names who it could not change', async () => {
       renderPage();
       fireEvent.click(screen.getByLabelText('Segun Ade active'));
-      expect((await screen.findByRole('alert')).textContent).toMatch(/Segun Ade/);
+      expect((await screen.findAllByRole('alert')).map((e) => e.textContent).join(' ')).toMatch(/Segun Ade/);
     });
 
     it('leaves the row as the server still has it', async () => {
       renderPage();
       const toggle = screen.getByLabelText('Segun Ade active');
       fireEvent.click(toggle);
-      await screen.findByRole('alert');
+      await screen.findAllByRole('alert');
       expect(toggle.getAttribute('aria-checked')).toBe('true');
     });
   });
@@ -223,7 +224,7 @@ describe('inviting a staff member', () => {
     it('shows why, since the reason is the useful part', async () => {
       openInvite();
       fireEvent.click(screen.getByText('Create invite'));
-      expect((await screen.findByRole('alert')).textContent).toMatch(/Pro or Group Clinic/);
+      expect((await screen.findAllByRole('alert')).map((e) => e.textContent).join(' ')).toMatch(/Pro or Group Clinic/);
     });
 
     // It used to add the person to the roster anyway, so an owner saw a
@@ -231,7 +232,7 @@ describe('inviting a staff member', () => {
     it('does not put anyone on the roster who was never invited', async () => {
       openInvite();
       fireEvent.click(screen.getByText('Create invite'));
-      await screen.findByRole('alert');
+      await screen.findAllByRole('alert');
       expect(screen.queryByText('new@practice.ng')).toBeNull();
       expect(screen.queryByText(/INVITE PENDING/)).toBeNull();
     });
@@ -293,7 +294,7 @@ describe('invitations on the roster', () => {
     renderPage([OWNER, INVITE as any]);
     fireEvent.click(screen.getByLabelText('Actions for new@practice.ng'));
     fireEvent.click(screen.getByText('Withdraw invitation'));
-    expect((await screen.findByRole('alert')).textContent).toMatch(/Invitation not found/);
+    expect((await screen.findAllByRole('alert')).map((e) => e.textContent).join(' ')).toMatch(/Invitation not found/);
     expect(screen.getAllByText('new@practice.ng').length).toBeGreaterThan(0);
   });
 
@@ -314,9 +315,7 @@ describe('invitations on the roster', () => {
     renderPage([OWNER, INVITE as any]);
     fireEvent.click(screen.getByLabelText('Actions for new@practice.ng'));
     fireEvent.click(screen.getByText('Send invitation again'));
-    expect((await screen.findByRole('status')).textContent).toMatch(
-      /previous link no longer works/,
-    );
+    expect(await screen.findByText(/previous link no longer works/)).toBeTruthy();
   });
 
   it('are not offered deactivation, which would mean nothing', () => {

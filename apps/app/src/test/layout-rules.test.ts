@@ -17,6 +17,10 @@ const MIGRATED = [
   'pages/practice/ClientDetailPage.tsx',
   'pages/practice/AnalyticsPage.tsx',
   'pages/practice/DashboardPage.tsx',
+  'pages/practice/HoursLogPage.tsx',
+  'pages/practice/ClientsPage.tsx',
+  'pages/practice/settings/TeamSettingsPage.tsx',
+  'pages/practice/settings/DiscountSettingsPage.tsx',
 ];
 
 function files(dir: string): string[] {
@@ -71,5 +75,21 @@ describe('layout rules', () => {
       console.info(`Layout rules: ${pending.length} page(s) still to migrate:\n${pending.map((e) => `  ${e.file}: ${e.problems.length}`).join('\n')}`);
     }
     expect(true).toBe(true);
+  });
+});
+
+describe('tests use the real app', () => {
+  it('no test replaces the shared design system with fakes', () => {
+    const testFiles = (function walk(dir: string): string[] {
+      return readdirSync(dir).flatMap((name) => {
+        const path = join(dir, name);
+        if (statSync(path).isDirectory()) return walk(path);
+        return /\.test\.tsx?$/.test(name) ? [path] : [];
+      });
+    })(SRC);
+    const offenders = testFiles
+      .filter((f) => /vi\.mock\(\s*['"]@unclutterdesk\/ui['"]/.test(readFileSync(f, 'utf8')))
+      .map((f) => relative(SRC, f));
+    expect(offenders).toEqual([]);
   });
 });

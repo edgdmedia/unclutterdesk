@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
-import { Link } from 'react-router-dom';
-import { Search, Download, Plus, ChevronLeft, ChevronRight, X, User, Loader2 } from 'lucide-react';
-import { Eyebrow, Card, StatusBadge, AvatarChip, useToast } from '@unclutterdesk/ui';
+import { Download, Plus, ChevronLeft, ChevronRight, X, User, Loader2 } from 'lucide-react';
+import { Eyebrow, Card, StatusBadge, AvatarChip, useToast, Page, PageHeader, Grid, ResponsiveTable, sortRows, byText, byNumber, type Column, type SortState } from '@unclutterdesk/ui';
+import { RouterLink } from '../../components/shell/RouterLink';
 import { useBrand } from '@unclutterdesk/ui';
 import { api } from '../../utils/apiClient';
 import type { Client } from '../../App';
@@ -36,19 +36,48 @@ export function ClientsPage({ clients, setClients, onRefresh }: ClientsPageProps
   const [formEcRelationship, setFormEcRelationship] = useState('');
   const [formEcPhone, setFormEcPhone] = useState('');
 
-  // Filter clients
-  const filteredClients = clients.filter(
-    (c) =>
-      c.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      c.email.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  const [sort, setSort] = useState<SortState | null>(null);
+
+  const columns: Column<Client>[] = [
+    {
+      key: 'name',
+      header: 'Client',
+      sort: byText((c) => c.name),
+      // The flexible column: takes the remaining width and truncates, so a
+      // long email never forces the table past the screen.
+      className: 'w-full max-w-0',
+      cell: (c) => (
+        <span className="flex items-center gap-3 min-w-0">
+          <AvatarChip initials={c.initials} size="sm" />
+          <span className="min-w-0">
+            <span className="block text-[14px] font-bold text-[#0F172A] leading-tight truncate">{c.name}</span>
+            <span className="block text-[11.5px] text-[#94A3B8] font-medium truncate">{c.email}</span>
+          </span>
+        </span>
+      ),
+    },
+    { key: 'next', header: 'Next session', cell: (c) => <span className="text-[13px] font-medium text-[#475569]">{c.next}</span> },
+    { key: 'care', header: 'Care type', priority: 'md', cell: (c) => <span className="text-[13px] font-medium text-[#475569]">{c.care}</span>, sort: byText((c) => c.care) },
+    { key: 'sessions', header: 'Sessions', priority: 'md', align: 'end', cell: (c) => <span className="text-[13px] font-bold text-[#0F172A]">{c.sessions}</span>, sort: byNumber((c) => Number(c.sessions)) },
+    { key: 'status', header: 'Status', priority: 'lg', cell: (c) => <StatusBadge status={c.status} />, sort: byText((c) => c.status) },
+  ];
+
+  // Search, then sort, then page: sorting covers every client, not only the 25 on screen.
+  const q = searchQuery.trim().toLowerCase();
+  const filteredClients = q ? clients.filter((c) => c.name.toLowerCase().includes(q) || c.email.toLowerCase().includes(q)) : clients;
+  const sortedClients = sortRows(filteredClients, columns, sort);
 
   const PAGE_SIZE = 25;
-  const lastPage = Math.max(0, Math.ceil(filteredClients.length / PAGE_SIZE) - 1);
+  const lastPage = Math.max(0, Math.ceil(sortedClients.length / PAGE_SIZE) - 1);
   // A search that shortens the list can strand the reader past the end.
   const currentPage = Math.min(page, lastPage);
   const pageStart = currentPage * PAGE_SIZE;
-  const pageClients = filteredClients.slice(pageStart, pageStart + PAGE_SIZE);
+  const pageClients = sortedClients.slice(pageStart, pageStart + PAGE_SIZE);
+
+  const onSearch = (value: string) => {
+    setSearchQuery(value);
+    setPage(0);
+  };
 
   /**
    * The roster as a CSV.
@@ -63,7 +92,7 @@ export function ClientsPage({ clients, setClients, onRefresh }: ClientsPageProps
   function exportClients() {
     const rows = [
       ['Name', 'Email', 'Care type', 'Sessions', 'Next session', 'Status'],
-      ...filteredClients.map((c) => [c.name, c.email, c.care, String(c.sessions), c.next, c.status]),
+      ...sortedClients.map((c) => [c.name, c.email, c.care, String(c.sessions), c.next, c.status]),
     ];
     const csv = rows
       .map((row) =>
@@ -137,146 +166,90 @@ export function ClientsPage({ clients, setClients, onRefresh }: ClientsPageProps
   };
 
   return (
-    <div className="flex-1 min-w-0 flex flex-col bg-[#F8FAFC]">
-      {/* Top Header Bar */}
-      <header className="h-[80px] bg-white border-b border-[#E2E8F0] px-4 md:px-[26px] flex items-center justify-between gap-3 md:gap-5 shrink-0">
-        <div>
-          <Eyebrow>CASELOAD ROSTER</Eyebrow>
-          <h1 className="text-[16px] md:text-[20px] font-bold tracking-[-0.02em] text-[#0F172A]">Clients</h1>
-        </div>
+    <Page
+      header={
+        <PageHeader
+          eyebrow="CASELOAD ROSTER"
+          title="Clients"
+          actions={
+            <button
+              onClick={() => setShowAddModal(true)}
+              className="os-brand-btn h-[40px] px-3 md:px-4 rounded-[14px] font-bold text-xs flex items-center gap-1.5 cursor-pointer"
+              style={{ backgroundColor: primaryColor }}
+            >
+              <Plus className="h-4 w-4" />
+              <span>Add client</span>
+            </button>
+          }
+          secondaryActions={
+            <button
+              type="button"
+              onClick={exportClients}
+              disabled={filteredClients.length === 0}
+              className="flex h-[40px] px-4 rounded-[14px] bg-white border border-[#CBD5E1] text-[#0F172A] text-xs font-bold hover:bg-[#F8FAFC] items-center gap-1.5 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <Download className="h-3.5 w-3.5" />
+              <span>Export</span>
+            </button>
+          }
+        />
+      }
+    >
+      <Grid cols={{ base: 2, lg: 4 }}>
+        {kpis.map((kpi, idx) => (
+          <Card key={idx} padding="p-[16px_18px]">
+            <Eyebrow>{kpi.label}</Eyebrow>
+            <span className="text-[26px] font-extrabold tracking-[-0.03em] text-[#0F172A] block mt-1 leading-none">{kpi.value}</span>
+          </Card>
+        ))}
+      </Grid>
 
-        <div className="flex items-center gap-2 md:gap-3 ml-auto">
-          {/* Search Input */}
-          <div className="hidden sm:flex h-[40px] bg-[#F1F5F9] border border-[#E2E8F0] rounded-[14px] px-3 items-center gap-2 w-[220px]">
-            <Search className="h-4 w-4 text-[#64748B]" />
-            <input
-              type="text"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search clients..."
-              className="w-full bg-transparent text-xs font-medium text-[#0F172A] outline-none"
-            />
-          </div>
-
-          <button
-            type="button"
-            onClick={exportClients}
-            disabled={filteredClients.length === 0}
-            className="hidden sm:flex h-[40px] px-4 rounded-[14px] bg-white border border-[#CBD5E1] text-[#0F172A] text-xs font-bold hover:bg-[#F8FAFC] items-center gap-1.5 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            <Download className="h-3.5 w-3.5" />
-            <span>Export</span>
-          </button>
-
-          <button
-            onClick={() => setShowAddModal(true)}
-            className="os-brand-btn h-[40px] px-3 md:px-4 rounded-[14px] font-bold text-xs flex items-center gap-1.5 cursor-pointer"
-            style={{ backgroundColor: primaryColor }}
-          >
-            <Plus className="h-4 w-4" />
-            <span className="hidden sm:inline">+ Add client</span>
-            <span className="sm:hidden">Add</span>
-          </button>
-        </div>
-      </header>
-
-      {/* Main Workspace */}
-      <main className="p-4 md:p-[24px_26px_30px] space-y-4 md:space-y-5 flex-1">
-        {/* KPI Row */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-3.5">
-          {kpis.map((kpi, idx) => (
-            <Card key={idx} padding="p-[16px_18px]">
-              <Eyebrow>{kpi.label}</Eyebrow>
-              <span className="text-[26px] font-extrabold tracking-[-0.03em] text-[#0F172A] block mt-1 leading-none">
-                {kpi.value}
+      <Card padding="p-0" className="overflow-hidden border border-[#E2E8F0] bg-white">
+        <ResponsiveTable<Client>
+          caption="Clients"
+          rows={pageClients}
+          rowKey={(c) => c.id}
+          rowLabel={(c) => c.name}
+          columns={columns}
+          rowHref={(c) => `/dashboard/clients/${c.id}`}
+          LinkComponent={RouterLink}
+          sort={sort}
+          onSortChange={setSort}
+          filter={{ placeholder: 'Search clients', query: searchQuery, onQueryChange: onSearch }}
+          empty="No clients yet."
+          footer={
+            <div className="p-[14px_22px] bg-[#F8FAFC] border-t border-[#E2E8F0] flex flex-wrap items-center justify-between gap-2">
+              <span className="text-[12px] text-[#94A3B8] font-medium">
+                {sortedClients.length === 0
+                  ? `No clients${q ? ' match that search' : ' yet'}`
+                  : `Showing ${pageStart + 1}–${pageStart + pageClients.length} of ${sortedClients.length}${
+                      sortedClients.length !== clients.length ? ` (filtered from ${clients.length})` : ''
+                    }`}
               </span>
-            </Card>
-          ))}
-        </div>
-
-        {/* Client Roster Table */}
-        <Card padding="p-0" className="overflow-x-auto flex-none border border-[#E2E8F0] bg-white w-full">
-          <div className="min-w-[800px]">
-          {/* Table Header */}
-          <div className="bg-[#FCFDFE] border-b border-[#E2E8F0] px-[22px] py-[14px] grid grid-cols-[2.2fr_1fr_0.7fr_1.1fr_0.9fr_90px] gap-4 items-center">
-            <Eyebrow>CLIENT</Eyebrow>
-            <Eyebrow>CARE TYPE</Eyebrow>
-            <Eyebrow>SESSIONS</Eyebrow>
-            <Eyebrow>NEXT SESSION</Eyebrow>
-            <Eyebrow>STATUS</Eyebrow>
-            <Eyebrow className="text-right">ACTIONS</Eyebrow>
-          </div>
-
-          {/* Table Body */}
-          <div className="divide-y divide-[#F1F5F9]">
-            {pageClients.map((c) => (
-              <Link
-                key={c.id}
-                to={`/dashboard/clients/${c.id}`}
-                className="px-[22px] py-[14px] grid grid-cols-[2.2fr_1fr_0.7fr_1.1fr_0.9fr_90px] gap-4 items-center hover:bg-[#FCFDFE] transition-colors"
-              >
-                <div className="flex items-center gap-3">
-                  <AvatarChip initials={c.initials} size="sm" />
-                  <div>
-                    <h3 className="text-[14px] font-bold text-[#0F172A] leading-tight">{c.name}</h3>
-                    <p className="text-[11.5px] text-[#94A3B8] font-medium">{c.email}</p>
-                  </div>
-                </div>
-
-                <span className="text-[13px] font-medium text-[#475569]">{c.care}</span>
-                <span className="text-[13px] font-bold text-[#0F172A]">{c.sessions}</span>
-                <span className="text-[13px] font-medium text-[#475569]">{c.next}</span>
-
-                <div>
-                  <StatusBadge status={c.status} />
-                </div>
-
-                {/*
-                  Two icon buttons sat here with no handlers, nested inside the
-                  row's own <Link> — invalid markup, and a click did nothing but
-                  open the client the row already opens. The chevron says what
-                  the row actually does.
-                */}
-                <div className="flex items-center gap-1 justify-end text-[#94A3B8]">
-                  <ChevronRight className="h-4 w-4" />
-                </div>
-              </Link>
-            ))}
-          </div>
-
-          {/* Table Footer */}
-          <div className="p-[14px_22px] bg-[#F8FAFC] border-t border-[#E2E8F0] flex items-center justify-between">
-            <span className="text-[12px] text-[#94A3B8] font-medium">
-              {filteredClients.length === 0
-                ? `No clients${searchQuery ? ' match that search' : ' yet'}`
-                : `Showing ${pageStart + 1}–${pageStart + pageClients.length} of ${filteredClients.length}${
-                    filteredClients.length !== clients.length ? ` (filtered from ${clients.length})` : ''
-                  }`}
-            </span>
-            <div className="flex items-center gap-1">
-              <button
-                type="button"
-                onClick={() => setPage(Math.max(0, currentPage - 1))}
-                disabled={currentPage === 0}
-                className="h-[30px] px-3 rounded-[9px] bg-white border border-[#E2E8F0] text-xs font-bold text-[#475569] flex items-center gap-1 hover:bg-[#F8FAFC] cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
-              >
-                <ChevronLeft className="h-3.5 w-3.5" />
-                <span>Previous</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => setPage(Math.min(lastPage, currentPage + 1))}
-                disabled={currentPage >= lastPage}
-                className="h-[30px] px-3 rounded-[9px] bg-white border border-[#E2E8F0] text-xs font-bold text-[#475569] flex items-center gap-1 hover:bg-[#F8FAFC] cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
-              >
-                <span>Next</span>
-                <ChevronRight className="h-3.5 w-3.5" />
-              </button>
+              <div className="flex items-center gap-1">
+                <button
+                  type="button"
+                  onClick={() => setPage(Math.max(0, currentPage - 1))}
+                  disabled={currentPage === 0}
+                  className="h-[30px] px-3 rounded-[9px] bg-white border border-[#E2E8F0] text-xs font-bold text-[#475569] flex items-center gap-1 hover:bg-[#F8FAFC] cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
+                >
+                  <ChevronLeft className="h-3.5 w-3.5" />
+                  <span>Previous</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setPage(Math.min(lastPage, currentPage + 1))}
+                  disabled={currentPage >= lastPage}
+                  className="h-[30px] px-3 rounded-[9px] bg-white border border-[#E2E8F0] text-xs font-bold text-[#475569] flex items-center gap-1 hover:bg-[#F8FAFC] cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
+                >
+                  <span>Next</span>
+                  <ChevronRight className="h-3.5 w-3.5" />
+                </button>
+              </div>
             </div>
-          </div>
-          </div>
-        </Card>
-      </main>
+          }
+        />
+      </Card>
 
       {/* Add Client Modal */}
       {showAddModal && (
@@ -312,7 +285,7 @@ export function ClientsPage({ clients, setClients, onRefresh }: ClientsPageProps
             </div>
 
             {/* Email & Phone */}
-            <div className="grid grid-cols-2 gap-3">
+            <Grid cols={{ base: 1, sm: 2 }} gap="sm">
               <div className="space-y-1">
                 <label className="text-[11.5px] font-bold text-slate-500 block uppercase">Email Address</label>
                 <input
@@ -334,10 +307,10 @@ export function ClientsPage({ clients, setClients, onRefresh }: ClientsPageProps
                   className="w-full h-11 px-3 rounded-[12px] bg-[#F8FAFC] border border-[#E2E8F0] text-xs font-semibold outline-none"
                 />
               </div>
-            </div>
+            </Grid>
 
             {/* Care Type & Status */}
-            <div className="grid grid-cols-2 gap-3">
+            <Grid cols={{ base: 1, sm: 2 }} gap="sm">
               <div className="space-y-1">
                 <label className="text-[11.5px] font-bold text-slate-500 block uppercase">Care Type</label>
                 <select
@@ -361,7 +334,7 @@ export function ClientsPage({ clients, setClients, onRefresh }: ClientsPageProps
                   <option value="Paused">Paused</option>
                 </select>
               </div>
-            </div>
+            </Grid>
 
             {/* Emergency Contact */}
             <div className="space-y-1">
@@ -422,6 +395,6 @@ export function ClientsPage({ clients, setClients, onRefresh }: ClientsPageProps
           </form>
         </div>
       )}
-    </div>
+    </Page>
   );
 }

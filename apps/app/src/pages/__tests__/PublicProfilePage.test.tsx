@@ -1,6 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { render, waitFor, cleanup } from '@testing-library/react';
-import { MemoryRouter } from 'react-router-dom';
+import { renderWithApp, waitFor, cleanup } from '../../test/renderWithApp';
 import React from 'react';
 
 const apiGet = vi.fn();
@@ -23,19 +22,10 @@ vi.mock('react-router-dom', async () => {
   };
 });
 
-vi.mock('@unclutterdesk/ui', () => ({
-  useToast: () => ({ success: () => undefined, error: () => undefined, info: () => undefined }),
-  useBrand: () => ({ name: 'Demo Practice', primaryColor: '#0F3A53' }),
-}));
-
 const { PublicProfilePage } = await import('../public/PublicProfilePage');
 
 function renderPage() {
-  return render(
-    <MemoryRouter>
-      <PublicProfilePage />
-    </MemoryRouter>,
-  );
+  return renderWithApp(<PublicProfilePage />);
 }
 
 beforeEach(() => {

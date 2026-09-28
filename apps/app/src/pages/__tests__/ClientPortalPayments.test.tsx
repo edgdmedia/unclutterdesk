@@ -1,6 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { render, screen, waitFor, cleanup, fireEvent } from '@testing-library/react';
-import { MemoryRouter } from 'react-router-dom';
+import { renderWithApp, screen, waitFor, cleanup, fireEvent } from '../../test/renderWithApp';
 import React from 'react';
 
 /**
@@ -29,11 +28,6 @@ vi.mock('../../context/AuthContext', () => ({
     isAuthenticated: true,
     profile: { email: 'ada@example.com', type: 'user' },
   }),
-}));
-
-vi.mock('@unclutterdesk/ui', () => ({
-  useToast: () => ({ success: () => undefined, error: () => undefined, info: () => undefined }),
-  useBrand: () => ({ name: 'Ade Wellness', primaryColor: '#0F3A53' }),
 }));
 
 const { ClientPortalPage } = await import('../client/ClientPortalPage');
@@ -77,11 +71,7 @@ function route(path: string) {
 }
 
 function renderPortal() {
-  return render(
-    <MemoryRouter>
-      <ClientPortalPage />
-    </MemoryRouter>,
-  );
+  return renderWithApp(<ClientPortalPage />);
 }
 
 async function openPayments() {
