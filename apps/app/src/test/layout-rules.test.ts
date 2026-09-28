@@ -73,3 +73,19 @@ describe('layout rules', () => {
     expect(true).toBe(true);
   });
 });
+
+describe('tests use the real app', () => {
+  it('no test replaces the shared design system with fakes', () => {
+    const testFiles = (function walk(dir: string): string[] {
+      return readdirSync(dir).flatMap((name) => {
+        const path = join(dir, name);
+        if (statSync(path).isDirectory()) return walk(path);
+        return /\.test\.tsx?$/.test(name) ? [path] : [];
+      });
+    })(SRC);
+    const offenders = testFiles
+      .filter((f) => /vi\.mock\(\s*['"]@unclutterdesk\/ui['"]/.test(readFileSync(f, 'utf8')))
+      .map((f) => relative(SRC, f));
+    expect(offenders).toEqual([]);
+  });
+});

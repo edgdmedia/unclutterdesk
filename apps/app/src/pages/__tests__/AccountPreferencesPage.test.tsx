@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { render, screen, waitFor, cleanup, fireEvent } from '@testing-library/react';
+import { renderWithApp, screen, waitFor, cleanup, fireEvent } from '../../test/renderWithApp';
 import React from 'react';
 
 /**
@@ -28,11 +28,6 @@ vi.mock('../../utils/apiClient', () => ({
 
 vi.mock('../../context/AuthContext', () => ({
   useAuth: () => ({ profile: { email: 'ada@practice.ng' } }),
-}));
-
-vi.mock('@unclutterdesk/ui', () => ({
-  useToast: () => ({ success: () => undefined, error: () => undefined, info: () => undefined }),
-  Eyebrow: ({ children }: { children: React.ReactNode }) => <span>{children}</span>,
 }));
 
 const { AccountPreferencesPage } = await import('../practice/settings/AccountPreferencesPage');
@@ -79,7 +74,7 @@ function route(path: string) {
 }
 
 async function renderPage() {
-  render(<AccountPreferencesPage />);
+  renderWithApp(<AccountPreferencesPage />);
   await screen.findByText('ada@practice.ng');
 }
 
@@ -101,7 +96,7 @@ describe('loading', () => {
   });
 
   it('shows the signed-in address, not a fabricated one', async () => {
-    const { container } = render(<AccountPreferencesPage />);
+    const { container } = renderWithApp(<AccountPreferencesPage />);
     await screen.findByText('ada@practice.ng');
     expect(container.textContent).not.toContain('okonkwotherapy');
   });
@@ -112,7 +107,7 @@ describe('loading', () => {
         ? Promise.reject(new Error('Unable to load your preferences'))
         : route(p),
     );
-    render(<AccountPreferencesPage />);
+    renderWithApp(<AccountPreferencesPage />);
     expect(await screen.findByText(/Unable to load your preferences/i)).toBeTruthy();
   });
 });
@@ -160,7 +155,7 @@ describe('saving preferences', () => {
     apiPut.mockRejectedValue(new Error('Could not save your preferences'));
     await renderPage();
     fireEvent.click(screen.getByRole('button', { name: /save preferences/i }));
-    expect(await screen.findByRole('alert')).toBeTruthy();
+    expect((await screen.findAllByRole('alert')).length).toBeGreaterThan(0);
     expect(screen.queryByText('Saved')).toBeNull();
   });
 
@@ -187,7 +182,7 @@ describe('the preview', () => {
   // It used to show "THIS MONTH'S REVENUE" as ₦412,000 — an invented figure,
   // per currency, on a page about date formatting.
   it('quotes no revenue', async () => {
-    const { container } = render(<AccountPreferencesPage />);
+    const { container } = renderWithApp(<AccountPreferencesPage />);
     await screen.findByText('ada@practice.ng');
     expect(container.textContent).not.toMatch(/REVENUE/i);
     expect(container.textContent).not.toContain('412,000');
@@ -218,7 +213,7 @@ describe('changing the password', () => {
     await renderPage();
     fill('old-password', 'a-new-password', 'a-new-passwerd');
     fireEvent.click(screen.getByRole('button', { name: /change password/i }));
-    expect(await screen.findByRole('alert')).toBeTruthy();
+    expect((await screen.findAllByRole('alert')).length).toBeGreaterThan(0);
     expect(apiPost).not.toHaveBeenCalled();
   });
 
@@ -226,7 +221,7 @@ describe('changing the password', () => {
     await renderPage();
     fill('old-password', 'short', 'short');
     fireEvent.click(screen.getByRole('button', { name: /change password/i }));
-    expect(await screen.findByRole('alert')).toBeTruthy();
+    expect((await screen.findAllByRole('alert')).length).toBeGreaterThan(0);
     expect(apiPost).not.toHaveBeenCalled();
   });
 
@@ -235,7 +230,7 @@ describe('changing the password', () => {
     await renderPage();
     fill('wrong', 'a-new-password', 'a-new-password');
     fireEvent.click(screen.getByRole('button', { name: /change password/i }));
-    expect(await screen.findByText(/current password is not correct/i)).toBeTruthy();
+    expect((await screen.findAllByText(/current password is not correct/i))[0]).toBeTruthy();
   });
 
   it('clears the fields once it succeeds', async () => {
@@ -267,14 +262,14 @@ describe('notification channels', () => {
     await renderPage();
     const sms = screen.getByRole('switch', { name: /sms notifications/i });
     fireEvent.click(sms);
-    await screen.findByText(/Could not save that channel/i);
+    await screen.findAllByText(/Could not save that channel/i);
     expect(sms.getAttribute('aria-checked')).toBe('false');
   });
 });
 
 describe('claims the product cannot keep', () => {
   it('offers no two-factor toggle, since nothing enforces it', async () => {
-    const { container } = render(<AccountPreferencesPage />);
+    const { container } = renderWithApp(<AccountPreferencesPage />);
     await screen.findByText('ada@practice.ng');
     expect(container.textContent).not.toMatch(/two-factor/i);
     expect(container.textContent).not.toMatch(/required for clinical records/i);
@@ -284,14 +279,14 @@ describe('claims the product cannot keep', () => {
   // on earth. The list is real now, so what must not come back is the invention.
   it('shows only devices the server reported', async () => {
     sessionsResponse = () => Promise.resolve([]);
-    const { container } = render(<AccountPreferencesPage />);
+    const { container } = renderWithApp(<AccountPreferencesPage />);
     await screen.findByText('ada@practice.ng');
     await waitFor(() => expect(apiGet).toHaveBeenCalledWith('/v1/auth/sessions'));
     expect(container.textContent).not.toMatch(/MacBook Pro|iPhone 14|Lagos, Nigeria/);
   });
 
   it('offers no export or deactivate button with nothing behind it', async () => {
-    const { container } = render(<AccountPreferencesPage />);
+    const { container } = renderWithApp(<AccountPreferencesPage />);
     await screen.findByText('ada@practice.ng');
     expect(container.textContent).not.toMatch(/Export my data|Deactivate account/i);
   });
@@ -305,7 +300,7 @@ describe('active sessions', () => {
   });
 
   it('marks the device being used, so it is not signed out by mistake', async () => {
-    const { container } = render(<AccountPreferencesPage />);
+    const { container } = renderWithApp(<AccountPreferencesPage />);
     await screen.findByText('Chrome on Mac');
     const rows = container.querySelectorAll('li');
     expect(rows[0].textContent).toMatch(/This device/);
@@ -355,7 +350,7 @@ describe('active sessions', () => {
     apiDelete.mockRejectedValue(new Error('Could not reach the server'));
     await renderPage();
     fireEvent.click(await screen.findByLabelText('Sign out Safari on iPhone'));
-    expect(await screen.findByText('Could not reach the server')).toBeTruthy();
+    expect((await screen.findAllByText('Could not reach the server')).length).toBeGreaterThan(0);
     expect(screen.getByText('Safari on iPhone')).toBeTruthy();
   });
 });
