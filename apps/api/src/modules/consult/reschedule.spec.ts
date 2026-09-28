@@ -264,7 +264,8 @@ describe('rescheduling a booking', () => {
       const { service, tx } = makeService();
       await move(service);
       expect(tx.consultAvailability.updateMany).toHaveBeenNthCalledWith(2, {
-        where: { id: OLD_SLOT, tenantId: TENANT },
+        // A time staff made for one booking is never offered to the public.
+        where: { id: OLD_SLOT, tenantId: TENANT, createdForBooking: false },
         data: { isActive: true },
       });
     });

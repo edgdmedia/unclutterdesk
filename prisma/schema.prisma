@@ -280,6 +280,9 @@ model ConsultAvailability {
   endsAt            DateTime
   channel           String   @default("VIDEO")
   isActive          Boolean  @default(true)
+  /// Made by staff for one booking at a time they chose. Never reopened to the
+  /// public when that booking lapses or moves: it may sit outside working hours.
+  createdForBooking Boolean  @default(false)
   createdAt         DateTime @default(now())
   updatedAt         DateTime @updatedAt
 

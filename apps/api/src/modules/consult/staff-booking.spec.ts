@@ -207,6 +207,7 @@ describe('a custom time', () => {
       startsAt: at,
       endsAt: new Date(at.getTime() + 50 * 60_000),
       isActive: false,
+      createdForBooking: true,
     });
     expect(tx.consultBooking.create.mock.calls[0][0].data.availabilityId).toBe(301n);
     expect(res.endsAt).toBe(new Date(at.getTime() + 50 * 60_000).toISOString());

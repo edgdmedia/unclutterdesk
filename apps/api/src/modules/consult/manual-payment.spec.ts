@@ -150,7 +150,7 @@ describe('releasing unpaid holds', () => {
   it('uses 30 minutes for online payments and the hold time for transfers, and does not undo a payment', async () => {
     const tx: any = {
       consultBooking: { updateMany: vi.fn().mockResolvedValue({ count: 0 }) },
-      consultAvailability: { update: vi.fn() },
+      consultAvailability: { updateMany: vi.fn() },
     };
     const prisma: any = {
       consultBooking: { findMany: vi.fn().mockResolvedValue([{ id: 7n, availabilityId: 3n, paymentMethod: 'MANUAL' }]) },
@@ -166,7 +166,7 @@ describe('releasing unpaid holds', () => {
     expect(where.OR[2].paymentMethod).toBe('MANUAL');
     // Marked paid in the meantime: nothing released, nobody told.
     expect(tx.consultBooking.updateMany.mock.calls[0][0].where.status).toBe('PENDING_PAYMENT');
-    expect(tx.consultAvailability.update).not.toHaveBeenCalled();
+    expect(tx.consultAvailability.updateMany).not.toHaveBeenCalled();
     expect(manual.released).not.toHaveBeenCalled();
   });
 });
@@ -181,6 +181,22 @@ describe('staff payment-link bookings', () => {
       { paymentMethod: { not: 'MANUAL' }, holdExpiresAt: { lt: expect.any(Date) } },
       { paymentMethod: 'MANUAL', holdExpiresAt: { lt: expect.any(Date) } },
     ]);
+  });
+
+  it('a lapsed hold reopens an ordinary slot but never a time staff made for that booking', async () => {
+    const tx: any = {
+      consultBooking: { updateMany: vi.fn().mockResolvedValue({ count: 1 }) },
+      consultAvailability: { updateMany: vi.fn().mockResolvedValue({ count: 1 }) },
+    };
+    const prisma: any = {
+      consultBooking: { findMany: vi.fn().mockResolvedValue([{ id: 7n, availabilityId: 3n, paymentMethod: 'PAYSTACK' }]) },
+      $transaction: vi.fn(async (cb: any) => cb(tx)),
+    };
+    await new ConsultCron(prisma, { released: vi.fn() } as any).handleBookingExpiry();
+    expect(tx.consultAvailability.updateMany).toHaveBeenCalledWith({
+      where: { id: 3n, createdForBooking: false },
+      data: { isActive: true },
+    });
   });
 
   it('staff can mark a link booking paid when the client pays at the practice', async () => {

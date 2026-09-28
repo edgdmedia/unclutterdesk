@@ -50,7 +50,11 @@ export class ConsultCron {
             data: { status: 'CANCELLED' },
           });
           if (done.count === 0) return false;
-          await tx.consultAvailability.update({ where: { id: booking.availabilityId }, data: { isActive: true } });
+          // A time staff made for this booking stays closed: it may be outside working hours.
+          await tx.consultAvailability.updateMany({
+            where: { id: booking.availabilityId, createdForBooking: false },
+            data: { isActive: true },
+          });
           return true;
         });
         if (!released) continue;

@@ -470,6 +470,17 @@ export class ConsultService {
       },
     });
 
+    // Sessions still going ahead. A regenerated slot must never sit on one:
+    // booked slots survive the delete above, and without this a fresh open
+    // slot at the same time let a second client book the same hour.
+    const taken = (
+      await this.prisma.consultBooking.findMany({
+        where: { tenantId, status: { not: 'CANCELLED' }, availability: { providerProfileId, endsAt: { gt: now } } },
+        select: { availability: { select: { startsAt: true, endsAt: true } } },
+      })
+    ).map((b) => b.availability);
+    const isTaken = (start: Date, end: Date) => taken.some((t) => t.startsAt < end && t.endsAt > start);
+
     const slotData: Array<{ tenantId: bigint; providerProfileId: bigint; serviceId: bigint | null; startsAt: Date; endsAt: Date; channel: string; isActive: boolean }> = [];
 
     for (let cursor = new Date(now); cursor <= horizon; cursor.setDate(cursor.getDate() + 1)) {
@@ -489,7 +500,7 @@ export class ConsultService {
         for (let slotStart = new Date(windowStart); slotStart < windowEnd;) {
           const slotEnd = new Date(slotStart.getTime() + dto.sessionLengthMinutes * 60_000);
           if (slotEnd > windowEnd) break;
-          if (slotEnd > now) {
+          if (slotEnd > now && !isTaken(slotStart, slotEnd)) {
             slotData.push({
               tenantId,
               providerProfileId,
@@ -1041,9 +1052,10 @@ export class ConsultService {
         throw new BadRequestException('That time was taken while you were choosing it');
       }
 
-      // Only now is the old slot safe to give back.
+      // Only now is the old slot safe to give back, unless staff made it for
+      // this booking alone: it may be outside working hours.
       await tx.consultAvailability.updateMany({
-        where: { id: booking.availabilityId, tenantId },
+        where: { id: booking.availabilityId, tenantId, createdForBooking: false },
         data: { isActive: true },
       });
 

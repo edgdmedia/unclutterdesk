@@ -329,7 +329,7 @@ export class StaffBookingService {
     }
 
     const slot = await tx.consultAvailability.create({
-      data: { tenantId, providerProfileId: providerId, serviceId, startsAt: time.startsAt, endsAt: time.endsAt, channel: 'VIDEO', isActive: false },
+      data: { tenantId, providerProfileId: providerId, serviceId, startsAt: time.startsAt, endsAt: time.endsAt, channel: 'VIDEO', isActive: false, createdForBooking: true },
     });
     return slot.id;
   }
