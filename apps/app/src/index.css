@@ -1,6 +1,9 @@
 @import "tailwindcss";
 @import "../../../packages/ui/src/tokens/styles.css";
 
+/* Shared components live in packages/ui; without this their classes are never generated. */
+@source "../../../packages/ui/src";
+
 @theme {
   --color-brand-primary: var(--brand-primary);
   --color-brand-primary-hover: var(--brand-primary-hover);

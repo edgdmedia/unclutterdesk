@@ -1,8 +1,10 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ChevronLeft, ChevronRight, Plus, Settings, X, Calendar, Clock, User, Trash2, CheckCircle2 } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Plus, Settings, X, Calendar, Clock, User, Trash2, CheckCircle2, CalendarPlus } from 'lucide-react';
 import { useBrand, useToast } from '@unclutterdesk/ui';
+import { StaffBookingDialog } from '../../components/booking/StaffBookingDialog';
 import { api, getBookingUrl, TENANT_SLUG } from '../../utils/apiClient';
+import { PaymentChip } from '../../components/booking/PaymentChip';
 
 interface Client {
   id: string;
@@ -22,6 +24,10 @@ interface CalendarEvent {
   category: 'individual' | 'couples' | 'admin';
   status?: string;
   clientEmail?: string;
+  paymentMethod?: string;
+  holdExpiresAt?: string | null;
+  bookedBy?: string | null;
+  bookingStatus?: string;
 }
 
 interface SchedulePageProps {
@@ -40,6 +46,7 @@ export function SchedulePage({ sessions, setSessions, clients, tenantSlug, onRef
   const secondaryColor = brand.secondaryColor || '#E3B341';
 
   const [saving, setSaving] = useState(false);
+  const [showBooking, setShowBooking] = useState(false);
   const [scheduleError, setScheduleError] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<'week' | 'day' | 'month'>('week');
   const [currentDate, setCurrentDate] = useState<Date>(new Date('2026-08-03T09:00:00'));
@@ -274,6 +281,16 @@ export function SchedulePage({ sessions, setSessions, clients, tenantSlug, onRef
             <span className="hidden sm:inline">+ New session</span>
             <span className="sm:hidden">New</span>
           </button>
+
+          <button
+            type="button"
+            onClick={() => setShowBooking(true)}
+            className="flex h-[40px] px-3 md:px-4 rounded-[14px] bg-[#0F3A53] text-white text-xs font-bold items-center gap-1.5 cursor-pointer"
+          >
+            <CalendarPlus className="h-4 w-4" />
+            <span className="hidden sm:inline">New booking</span>
+            <span className="sm:hidden">Book</span>
+          </button>
         </div>
       </header>
 
@@ -401,6 +418,10 @@ export function SchedulePage({ sessions, setSessions, clients, tenantSlug, onRef
                           <p className="text-[10px] font-medium text-[#64748B] truncate">
                             {ev.type} · {duration}m
                           </p>
+                          <div className="mt-0.5">
+                            {ev.bookingStatus ? <PaymentChip status={ev.bookingStatus} paymentMethod={ev.paymentMethod} holdExpiresAt={ev.holdExpiresAt} /> : null}
+                            {ev.bookedBy ? <span className="text-[10px] text-[#64748B] block truncate">Booked by {ev.bookedBy}</span> : null}
+                          </div>
                         </div>
                       );
                     })}
@@ -680,7 +701,14 @@ export function SchedulePage({ sessions, setSessions, clients, tenantSlug, onRef
               <div className="flex items-center gap-2.5">
                 <User className="h-4 w-4 text-[#94A3B8]" />
                 <span>Status: {selectedEvent.status || 'CONFIRMED'}</span>
+                {selectedEvent.bookingStatus ? <PaymentChip status={selectedEvent.bookingStatus} paymentMethod={selectedEvent.paymentMethod} holdExpiresAt={selectedEvent.holdExpiresAt} /> : null}
               </div>
+              {selectedEvent.bookedBy ? (
+                <div className="flex items-center gap-2.5">
+                  <span className="h-4 w-4 inline-flex items-center justify-center text-[#94A3B8] text-[13px] font-bold">·</span>
+                  <span className="text-[11px] text-[#64748B]">Booked by {selectedEvent.bookedBy}</span>
+                </div>
+              ) : null}
             </div>
 
             <div className="rounded-[16px] border border-[#E2E8F0] bg-[#F8FAFC] px-4 py-3 text-xs font-medium text-[#475569]">
@@ -772,6 +800,13 @@ export function SchedulePage({ sessions, setSessions, clients, tenantSlug, onRef
             </div>
           </div>
         </div>
+      )}
+      {showBooking && (
+        <StaffBookingDialog
+          client={null}
+          onClose={() => setShowBooking(false)}
+          onBooked={async () => { setShowBooking(false); await onRefresh?.(); }}
+        />
       )}
     </div>
   );

@@ -2,9 +2,8 @@ import React, { lazy, Suspense, useState, useCallback, useMemo } from 'react';
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { SWRConfig } from 'swr';
 import useSWR from 'swr';
-import { Sidebar } from './components/Sidebar';
-import { BrandProvider, BottomNav } from '@unclutterdesk/ui';
-import { Home, Calendar, Users, Palette } from 'lucide-react';
+import { BrandProvider } from '@unclutterdesk/ui';
+import { PracticeShell } from './components/shell/PracticeShell';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { api, getSubdomainTenantSlug, getAppType } from './utils/apiClient';
 import { ExternalRedirect } from './components/ExternalRedirect';
@@ -37,6 +36,7 @@ const PublicReviewFormPage = lazy(() => import('./pages/public/PublicReviewFormP
 // copy of the text to drift from.
 const BookingConfirmedPage = lazy(() => import('./pages/public/BookingConfirmedPage').then((m) => ({ default: m.BookingConfirmedPage })));
 const InactivePracticePage = lazy(() => import('./pages/public/InactivePracticePage').then((m) => ({ default: m.InactivePracticePage })));
+const PayBookingPage = lazy(() => import('./pages/public/PayBookingPage').then((m) => ({ default: m.PayBookingPage })));
 const NotificationsPage = lazy(() => import('./pages/practice/NotificationsPage').then((m) => ({ default: m.NotificationsPage })));
 const SubmissionsPage = lazy(() => import('./pages/practice/SubmissionsPage').then((m) => ({ default: m.SubmissionsPage })));
 const AvailabilitySettingsPage = lazy(() => import('./pages/practice/settings/AvailabilitySettingsPage').then((m) => ({ default: m.AvailabilitySettingsPage })));
@@ -76,6 +76,16 @@ export interface CalendarEvent {
   category: 'individual' | 'couples' | 'admin';
   status?: string;
   clientEmail?: string;
+  paymentMethod?: string;
+  holdExpiresAt?: string | null;
+  bookedBy?: string | null;
+  bookingStatus?: string;
+}
+
+export interface EmergencyContact {
+  name: string;
+  relationship: string | null;
+  phone: string | null;
 }
 
 export interface Client {
@@ -90,6 +100,7 @@ export interface Client {
   phone: string;
   since: string;
   emergency: string;
+  emergencyContact?: EmergencyContact | null;
   notes: {
     id: string;
     date: string;
@@ -135,6 +146,10 @@ interface ApiBooking {
   startsAt: string;
   endsAt: string;
   status: string;
+  paymentMethod?: string;
+  amountKobo?: string | null;
+  holdExpiresAt?: string | null;
+  bookedBy?: string | null;
 }
 
 // ── Staff shape returned by API ───────────────────────────────────────────────
@@ -171,6 +186,10 @@ function bookingToEvent(b: ApiBooking): CalendarEvent {
     category,
     status: b.status,
     clientEmail: b.clientEmail,
+    paymentMethod: b.paymentMethod,
+    holdExpiresAt: b.holdExpiresAt,
+    bookedBy: b.bookedBy,
+    bookingStatus: b.status,
   };
 }
 
@@ -226,19 +245,6 @@ function AppLayout() {
   const [tenantStatus, setTenantStatus] = useState<'ACTIVE' | 'PAUSED'>('ACTIVE');
   const [primaryColor, setPrimaryColor] = useState('#0F3A53');
   const [secondaryColor, setSecondaryColor] = useState('#E3B341');
-  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(
-    () => localStorage.getItem('unclutter_sidebar_collapsed') === '1'
-  );
-  
-  const handleToggleCollapse = () => {
-    setIsSidebarCollapsed(prev => {
-      const next = !prev;
-      localStorage.setItem('unclutter_sidebar_collapsed', next ? '1' : '0');
-      return next;
-    });
-  };
-
   // Private workspace data comes only from the authenticated API.
   // Keys are null until a tenant session is active: anonymous visitors on the
   // login screen, and platform admins (no tenant workspace) don't fetch.
@@ -346,6 +352,7 @@ function AppLayout() {
             <Route path="/portal/assessments/:id" element={<PortalAssessmentPage />} />
             <Route path="/onboarding" element={<OnboardingWizardPage />} />
             <Route path="/booking/confirmed" element={<BookingConfirmedPage />} />
+            <Route path="/pay/:bookingId" element={<PayBookingPage />} />
             <Route path="/booking/inactive" element={<InactivePracticePage />} />
             <Route path="/assessment/:token" element={<AssessmentPage />} />
 
@@ -396,24 +403,16 @@ function AppLayout() {
 
   return (
     <BrandProvider brand={practiceBrand}>
-      <div className="flex min-h-screen bg-[#F8FAFC]">
-        {/* Desktop Sidebar (hidden on mobile) */}
-        <div className="hidden md:flex flex-none">
-          <Sidebar 
-             plan={profile?.plan?.toLowerCase()}
-             isCollapsed={isSidebarCollapsed}
-            onToggleCollapse={handleToggleCollapse} 
-          />
-        </div>
-        
-        {/* Mobile Off-canvas Sidebar Backdrop removed as per mobile-first redesign. Mobile uses BottomNav only. */}
-
-         <div className="flex-1 flex flex-col min-w-0 pb-[92px] md:pb-0">
-           {privateDataError ? (
-             <div role="alert" className="mx-4 mt-4 rounded-[14px] border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-medium text-rose-700 md:mx-[26px]">
-               We could not load the latest workspace data. Refresh the page or try again shortly.
-             </div>
-           ) : null}
+      <PracticeShell
+        plan={profile?.plan?.toLowerCase()}
+        banner={
+          privateDataError ? (
+            <div role="alert" className="mx-4 mt-4 rounded-[14px] border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-medium text-rose-700 md:mx-[26px]">
+              We could not load the latest workspace data. Refresh the page or try again shortly.
+            </div>
+          ) : null
+        }
+      >
            <Suspense fallback={<PageFallback />}>
             <Routes>
               <Route
@@ -428,7 +427,6 @@ function AppLayout() {
                     setSecondaryColor={setSecondaryColor}
                     clients={resolvedClients}
                     sessions={resolvedSessions}
-                    onOpenSidebar={() => setIsSidebarOpen(true)}
                   />
                 }
               />
@@ -471,22 +469,7 @@ function AppLayout() {
               <Route path="*" element={<NotFoundPage />} />
             </Routes>
           </Suspense>
-        </div>
-
-        {/* Mobile Bottom Navigation */}
-        <div className="md:hidden fixed bottom-0 left-0 right-0 z-40">
-          <BottomNav 
-            items={[
-              { label: 'Today', icon: <Home className="h-5 w-5" strokeWidth={2.5} />, key: '/dashboard' },
-              { label: 'Schedule', icon: <Calendar className="h-5 w-5" strokeWidth={2.5} />, key: '/dashboard/schedule' },
-              { label: 'Clients', icon: <Users className="h-5 w-5" strokeWidth={2.5} />, key: '/dashboard/clients' },
-              { label: 'Brand', icon: <Palette className="h-5 w-5" strokeWidth={2.5} />, key: '/dashboard/settings/brand' }
-            ]}
-            active={location.pathname === '/' ? '/dashboard' : location.pathname}
-            onSelect={(key: string) => window.location.href = key}
-          />
-        </div>
-      </div>
+      </PracticeShell>
     </BrandProvider>
   );
 }
@@ -589,6 +572,7 @@ export function App() {
                 <Route path="/review" element={<PublicReviewFormPage />} />
                 <Route path="/assessment/:token" element={<AssessmentPage />} />
                 <Route path="/booking/confirmed" element={<BookingConfirmedPage />} />
+                <Route path="/pay/:bookingId" element={<PayBookingPage />} />
                 <Route path="/booking/inactive" element={<InactivePracticePage />} />
                 <Route path="/privacy" element={<ExternalRedirect to={LEGAL_URLS.privacy} />} />
                 <Route path="/terms" element={<ExternalRedirect to={LEGAL_URLS.terms} />} />

@@ -92,7 +92,7 @@ describe('navigation menus', () => {
   const menuLinks: Array<{ file: string; target: string }> = [];
   for (const file of sourceFiles(COMPONENTS)) {
     const source = stripComments(readFileSync(file, 'utf8'));
-    for (const m of source.matchAll(/\b(?:to|key):\s*'(\/[^']*)'/g)) {
+    for (const m of source.matchAll(/\b(?:to|key|href):\s*'(\/[^']*)'/g)) {
       menuLinks.push({ file: file.slice(APP.length + 1), target: m[1] });
     }
   }
@@ -101,7 +101,7 @@ describe('navigation menus', () => {
   }
 
   test('the sidebar was found', () => {
-    expect(menuLinks.some((l) => l.file.endsWith('Sidebar.tsx'))).toBe(true);
+    expect(menuLinks.some((l) => l.file.endsWith('practiceNav.tsx'))).toBe(true);
   });
 
   test('every menu entry resolves to a declared route', () => {

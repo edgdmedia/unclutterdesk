@@ -59,7 +59,7 @@ describe('confirming a transfer', () => {
     const { prisma, service } = manualService();
     await service.markPaid(TENANT, 9n, 100n);
     const call = prisma.consultBooking.updateMany.mock.calls[0][0];
-    expect(call.where).toEqual({ id: 100n, tenantId: TENANT, paymentMethod: 'MANUAL', status: 'PENDING_PAYMENT' });
+    expect(call.where).toEqual({ id: 100n, tenantId: TENANT, status: 'PENDING_PAYMENT', OR: [{ paymentMethod: 'MANUAL' }, { createdByProfileId: { not: null } }] });
     expect(call.data).toMatchObject({ status: 'CONFIRMED', paymentConfirmedByProfileId: 9n });
   });
 
@@ -80,6 +80,27 @@ describe('confirming a transfer', () => {
     });
     await service.markPaid(TENANT, 9n, 100n);
     expect(notifications.sendEmail).toHaveBeenCalledWith(expect.objectContaining({ to: 'ada@example.com', type: 'bookings.manual_payment_received' }));
+  });
+
+  it('does not tell a client who paid in person that their transfer arrived', async () => {
+    const { prisma, notifications, service } = manualService();
+    const booked = {
+      id: 900n, tenantId: TENANT, clientProfileId: 5n, amountKobo: 2_500_000n,
+      tenant: { name: 'Calm', slug: 'calm', manualPaymentDetails: DETAILS },
+      service: { title: 'Therapy', priceKobo: 2_500_000n },
+      availability: { startsAt: new Date('2026-10-02T10:00:00Z') },
+      client: { firstName: 'Ada', lastName: null, email: 'ada@example.com' },
+    };
+    prisma.consultBooking.findUnique.mockResolvedValue({ ...booked, paymentMethod: 'PAYSTACK' });
+    await service.markPaid(TENANT, 9n, 900n);
+    const inPerson = notifications.sendEmail.mock.calls[0][0].message;
+    expect(inPerson).toContain('has recorded your payment');
+    expect(inPerson).not.toContain('transfer');
+
+    notifications.sendEmail.mockClear();
+    prisma.consultBooking.findUnique.mockResolvedValue({ ...booked, paymentMethod: 'MANUAL' });
+    await service.markPaid(TENANT, 9n, 900n);
+    expect(notifications.sendEmail.mock.calls[0][0].message).toContain('has received your transfer');
   });
 
   it('lets only the booking’s own client report a transfer', async () => {
@@ -150,7 +171,7 @@ describe('releasing unpaid holds', () => {
   it('uses 30 minutes for online payments and the hold time for transfers, and does not undo a payment', async () => {
     const tx: any = {
       consultBooking: { updateMany: vi.fn().mockResolvedValue({ count: 0 }) },
-      consultAvailability: { update: vi.fn() },
+      consultAvailability: { updateMany: vi.fn() },
     };
     const prisma: any = {
       consultBooking: { findMany: vi.fn().mockResolvedValue([{ id: 7n, availabilityId: 3n, paymentMethod: 'MANUAL' }]) },
@@ -161,10 +182,52 @@ describe('releasing unpaid holds', () => {
 
     const where = prisma.consultBooking.findMany.mock.calls[0][0].where;
     expect(where.OR[0].paymentMethod).toEqual({ not: 'MANUAL' });
-    expect(where.OR[1].paymentMethod).toBe('MANUAL');
+    expect(where.OR[0].holdExpiresAt).toBeNull();
+    expect(where.OR[1].paymentMethod).toEqual({ not: 'MANUAL' });
+    expect(where.OR[2].paymentMethod).toBe('MANUAL');
     // Marked paid in the meantime: nothing released, nobody told.
     expect(tx.consultBooking.updateMany.mock.calls[0][0].where.status).toBe('PENDING_PAYMENT');
-    expect(tx.consultAvailability.update).not.toHaveBeenCalled();
+    expect(tx.consultAvailability.updateMany).not.toHaveBeenCalled();
     expect(manual.released).not.toHaveBeenCalled();
+  });
+});
+
+describe('staff payment-link bookings', () => {
+  it('the cron uses the booking’s own hold, not the 30-minute online rule', async () => {
+    const prisma: any = { consultBooking: { findMany: vi.fn().mockResolvedValue([]) } };
+    await new ConsultCron(prisma, {} as any).handleBookingExpiry();
+    const or = prisma.consultBooking.findMany.mock.calls[0][0].where.OR;
+    expect(or).toEqual([
+      { paymentMethod: { not: 'MANUAL' }, holdExpiresAt: null, createdAt: { lt: expect.any(Date) } },
+      { paymentMethod: { not: 'MANUAL' }, holdExpiresAt: { lt: expect.any(Date) } },
+      { paymentMethod: 'MANUAL', holdExpiresAt: { lt: expect.any(Date) } },
+    ]);
+  });
+
+  it('a lapsed hold reopens an ordinary slot but never a time staff made for that booking', async () => {
+    const tx: any = {
+      consultBooking: { updateMany: vi.fn().mockResolvedValue({ count: 1 }) },
+      consultAvailability: { updateMany: vi.fn().mockResolvedValue({ count: 1 }) },
+    };
+    const prisma: any = {
+      consultBooking: { findMany: vi.fn().mockResolvedValue([{ id: 7n, availabilityId: 3n, paymentMethod: 'PAYSTACK' }]) },
+      $transaction: vi.fn(async (cb: any) => cb(tx)),
+    };
+    await new ConsultCron(prisma, { released: vi.fn() } as any).handleBookingExpiry();
+    expect(tx.consultAvailability.updateMany).toHaveBeenCalledWith({
+      where: { id: 3n, createdForBooking: false },
+      data: { isActive: true },
+    });
+  });
+
+  it('staff can mark a link booking paid when the client pays at the practice', async () => {
+    const { service, prisma } = manualService();
+    await service.markPaid(TENANT, 9n, 900n);
+    expect(prisma.consultBooking.updateMany.mock.calls[0][0].where).toEqual({
+      id: 900n,
+      tenantId: TENANT,
+      status: 'PENDING_PAYMENT',
+      OR: [{ paymentMethod: 'MANUAL' }, { createdByProfileId: { not: null } }],
+    });
   });
 });

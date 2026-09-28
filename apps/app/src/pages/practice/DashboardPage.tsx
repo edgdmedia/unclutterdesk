@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Copy, Check, Bell, Link2, Calendar, FileText, Video, Upload, Globe, Palette, Sparkles, TrendingUp, CheckCircle2, ArrowRight, Menu } from 'lucide-react';
-import { Button } from '@unclutterdesk/ui';
+import { Copy, Check, Bell, Link2, Calendar, FileText, Video, Upload, Globe, Palette, Sparkles, TrendingUp, CheckCircle2, ArrowRight } from 'lucide-react';
+import { Button, Page, PageHeader, Grid, MetricTile } from '@unclutterdesk/ui';
 import { useAuth } from '../../context/AuthContext';
 import { PendingTransfersCard } from '../../components/payments/PendingTransfersCard';
 import { api, practiceBookingUrl } from '../../utils/apiClient';
@@ -15,7 +15,6 @@ interface DashboardPageProps {
   setSecondaryColor?: (color: string) => void;
   clients?: any[];
   sessions?: any[];
-  onOpenSidebar?: () => void;
 }
 
 export function DashboardPage(props: DashboardPageProps) {
@@ -191,69 +190,48 @@ export function DashboardPage(props: DashboardPageProps) {
   });
 
   return (
-    <div className="flex-1 min-w-0 flex flex-col bg-[#F8FAFC]">
-      {/* 80px Top Header Bar */}
-      <header className="h-[80px] bg-white border-b border-[#E2E8F0] px-4 md:px-[26px] flex items-center justify-between gap-3 md:gap-5 shrink-0">
-        <div className="flex items-center gap-3">
-          <button 
-            onClick={props.onOpenSidebar} 
-            className="md:hidden text-slate-600 hover:text-slate-900 p-1 -ml-1 cursor-pointer"
-          >
-            <Menu className="h-6 w-6" />
-          </button>
-          <div>
-            <span className="os-eyebrow block text-xs md:text-[10px]">PRACTICE OVERVIEW</span>
-            <h1 className="text-[16px] md:text-[20px] font-bold tracking-[-0.02em] text-[#0F172A] truncate max-w-[150px] sm:max-w-xs">
-              Good morning{profileName ? `, ${profileName}` : ''}
-            </h1>
-          </div>
-        </div>
-
-        <div className="flex items-center gap-2 md:gap-3 ml-auto">
-          {/* Booking Link Field */}
-          <div className="hidden md:flex h-[44px] bg-[#F1F5F9] border border-[#E2E8F0] rounded-[14px] px-3.5 items-center gap-2.5">
-            <Link2 className="h-4 w-4 text-[#64748B] shrink-0" />
-            <input
-              type="text"
-              readOnly
-              value={bookingUrl}
-              className="w-[238px] bg-transparent text-[13px] font-medium text-[#334155] select-all outline-none"
-            />
-            <button
-              onClick={handleCopyLink}
-              className="h-[32px] w-[32px] bg-white rounded-[10px] shadow-[0_1px_2px_rgba(15,23,42,.08)] hover:bg-[#E2E8F0] flex items-center justify-center transition-colors border border-[#E2E8F0]"
-            >
-              {copied ? <Check className="h-4 w-4 text-emerald-600" /> : <Copy className="h-4 w-4 text-[#475569]" />}
-            </button>
-          </div>
-
-          {/* Copy Booking Link Button */}
-          <button
-            onClick={handleCopyLink}
-            className="os-brand-btn h-[40px] md:h-[44px] px-3 md:px-5 rounded-[12px] md:rounded-[14px] font-bold text-[13px] md:text-[14px] flex items-center gap-2 whitespace-nowrap text-white cursor-pointer"
-            style={{ backgroundColor: primaryColor }}
-          >
-            {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
-            <span className="hidden sm:inline">{copied ? 'Link copied' : 'Copy Booking Link'}</span>
-            <span className="sm:hidden">{copied ? 'Copied' : 'Copy Link'}</span>
-          </button>
-
-          <div className="h-[28px] w-[1px] bg-[#E2E8F0]" />
-
-          {/* Showed an unread dot and did nothing when clicked. */}
-          <button
-            type="button"
-            onClick={() => navigate('/dashboard/notifications')}
-            aria-label={unreadCount > 0 ? `Notifications, ${unreadCount} unread` : 'Notifications'}
-            className="relative h-[40px] w-[40px] md:h-[44px] md:w-[44px] bg-white border border-[#E2E8F0] rounded-[12px] md:rounded-[14px] flex items-center justify-center hover:bg-[#F8FAFC] cursor-pointer">
-            <Bell className="h-4 w-4 md:h-5 md:w-5 text-[#475569]" />
-            {unreadCount > 0 ? <span className="absolute top-[8px] right-[8px] md:top-[9px] md:right-[9px] h-[6px] w-[6px] md:h-[7px] md:w-[7px] rounded-full bg-[#E11D48] ring-[1.5px] ring-white" /> : null}
-          </button>
-        </div>
-      </header>
-
-      {/* Main Workspace 1 or 2-Column Layout */}
-      <main className="p-4 md:p-[24px_26px_30px] grid grid-cols-1 lg:grid-cols-[1fr_372px] gap-4 md:gap-[20px] items-start">
+    <Page
+      header={
+        <PageHeader
+          eyebrow="PRACTICE OVERVIEW"
+          title={`Good morning${profileName ? `, ${profileName}` : ''}`}
+          actions={
+            <>
+              <button
+                onClick={handleCopyLink}
+                className="os-brand-btn h-[40px] md:h-[44px] px-3 md:px-5 rounded-[12px] md:rounded-[14px] font-bold text-[13px] md:text-[14px] flex items-center gap-2 whitespace-nowrap text-white cursor-pointer"
+                style={{ backgroundColor: primaryColor }}
+              >
+                {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+                <span>{copied ? 'Link copied' : 'Copy booking link'}</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => navigate('/dashboard/notifications')}
+                aria-label={unreadCount > 0 ? `Notifications, ${unreadCount} unread` : 'Notifications'}
+                className="relative h-[40px] w-[40px] md:h-[44px] md:w-[44px] bg-white border border-[#E2E8F0] rounded-[12px] md:rounded-[14px] flex items-center justify-center hover:bg-[#F8FAFC] cursor-pointer"
+              >
+                <Bell className="h-4 w-4 md:h-5 md:w-5 text-[#475569]" />
+                {unreadCount > 0 ? <span className="absolute top-[8px] right-[8px] md:top-[9px] md:right-[9px] h-[6px] w-[6px] md:h-[7px] md:w-[7px] rounded-full bg-[#E11D48] ring-[1.5px] ring-white" /> : null}
+              </button>
+            </>
+          }
+          secondaryActions={
+            <div className="flex h-[44px] min-w-0 bg-[#F1F5F9] border border-[#E2E8F0] rounded-[14px] px-3.5 items-center gap-2.5">
+              <Link2 className="h-4 w-4 text-[#64748B] shrink-0" />
+              <input
+                type="text"
+                readOnly
+                aria-label="Booking link"
+                value={bookingUrl}
+                className="w-[238px] max-w-full min-w-0 bg-transparent text-[13px] font-medium text-[#334155] select-all outline-none"
+              />
+            </div>
+          }
+        />
+      }
+    >
+      <div className="grid grid-cols-1 @min-[1200px]/page:grid-cols-[1fr_372px] gap-4 md:gap-5 items-start">
         {/* Left Column */}
         <div className="space-y-4 md:space-y-[20px]">
           {['OWNER', 'ADMIN', 'RECEPTIONIST'].includes(String(authUser?.role ?? '')) ? <PendingTransfersCard color={primaryColor} /> : null}
@@ -320,10 +298,10 @@ export function DashboardPage(props: DashboardPageProps) {
 
           {/* Revenue Summary Card */}
           <div className="os-card p-4 md:p-[24px_26px] bg-white border border-slate-100 shadow-sm rounded-2xl">
-            <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4 mb-6">
+            <div className="flex flex-col @min-[960px]/page:flex-row @min-[960px]/page:items-start justify-between gap-4 mb-6">
               <div>
                 <span className="os-eyebrow block mb-1">REVENUE THIS MONTH</span>
-                <div className="flex items-baseline gap-3">
+                <div className="flex flex-wrap items-baseline gap-x-3 gap-y-2">
                   <span className="text-[32px] md:text-[40px] font-extrabold tracking-[-0.04em] text-[#0F172A] leading-none">
                     ₦{summary.revenueThisMonthNaira.toLocaleString()}
                   </span>
@@ -360,21 +338,11 @@ export function DashboardPage(props: DashboardPageProps) {
                 </p>
               </div>
 
-              {/* Wrapped Stat Tiles */}
-              <div className="flex sm:justify-end gap-2 md:gap-3.5 w-full sm:w-auto overflow-x-auto pb-2 sm:pb-0">
-                <div className="min-w-[96px] p-2.5 md:p-[12px_14px] rounded-[16px] bg-[#F8FAFC] border border-[#E2E8F0]">
-                  <span className="text-[20px] md:text-[22px] font-extrabold tracking-[-0.03em] text-[#0F172A] block leading-none mb-1">{totalSessions}</span>
-                  <span className="text-[11px] text-[#64748B] font-medium">Scheduled</span>
-                </div>
-                <div className="min-w-[96px] p-2.5 md:p-[12px_14px] rounded-[16px] bg-[#F8FAFC] border border-[#E2E8F0]">
-                  <span className="text-[20px] md:text-[22px] font-extrabold tracking-[-0.03em] text-[#0F172A] block leading-none mb-1">{totalClients}</span>
-                  <span className="text-[11px] text-[#64748B] font-medium">Total clients</span>
-                </div>
-                <div className="min-w-[96px] p-2.5 md:p-[12px_14px] rounded-[16px] bg-[#F8FAFC] border border-[#E2E8F0]">
-                  <span className="text-[20px] md:text-[22px] font-extrabold tracking-[-0.03em] text-[#0F172A] block leading-none mb-1">{activeClients}</span>
-                  <span className="text-[11px] text-[#64748B] font-medium">Active roster</span>
-                </div>
-              </div>
+              <Grid cols={{ base: 3 }} gap="sm" className="w-full @min-[960px]/page:w-auto @min-[960px]/page:min-w-[320px]">
+                <MetricTile value={totalSessions} label="Scheduled" />
+                <MetricTile value={totalClients} label="Total clients" />
+                <MetricTile value={activeClients} label="Active roster" />
+              </Grid>
             </div>
 
             {/* 12-Month Revenue Bars */}
@@ -419,7 +387,7 @@ export function DashboardPage(props: DashboardPageProps) {
               {dynamicSessions.map((s) => (
                 <div
                   key={s.id}
-                  className="p-[14px_16px] rounded-[18px] border border-[#E2E8F0] flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4 hover:shadow-[0_8px_24px_rgba(15,23,42,.08)] hover:-translate-y-[1px] transition-all bg-white min-w-[400px] sm:min-w-0"
+                  className="p-[14px_16px] rounded-[18px] border border-[#E2E8F0] flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4 hover:shadow-[0_8px_24px_rgba(15,23,42,.08)] hover:-translate-y-[1px] transition-all bg-white min-w-0"
                 >
                   <div className="flex items-center gap-4">
                     <div className="w-[52px] shrink-0 text-center">
@@ -579,7 +547,7 @@ export function DashboardPage(props: DashboardPageProps) {
             </button>
           </div>
         </div>
-      </main>
-    </div>
+      </div>
+    </Page>
   );
 }

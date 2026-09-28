@@ -1,11 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useParams } from 'react-router-dom';
-import { Download, ChevronRight, FileText, Printer, Lock, Plus, X, Loader2 } from 'lucide-react';
-import { Eyebrow, Card, StatusBadge, Button, useToast } from '@unclutterdesk/ui';
+import { Download, ChevronRight, FileText, Printer, Lock, Plus, X, Loader2, CalendarPlus } from 'lucide-react';
+import { Eyebrow, Card, StatusBadge, Button, useToast, Page, PageHeader, Grid, StatTile } from '@unclutterdesk/ui';
 import { useBrand } from '@unclutterdesk/ui';
 import { api } from '../../utils/apiClient';
 import type { Client } from '../../App';
 import { ClientAssessmentsPanel } from '../../components/ClientAssessmentsPanel';
+import { EmergencyContactCard } from '../../components/clients/EmergencyContactCard';
+import { StaffBookingDialog } from '../../components/booking/StaffBookingDialog';
 
 interface ClientDetailPageProps {
   clients: Client[];
@@ -36,6 +38,7 @@ export function ClientDetailPage({ clients, setClients }: ClientDetailPageProps)
   const [notePlan, setNotePlan] = useState('');
   const [isSavingNote, setIsSavingNote] = useState(false);
   const [noteError, setNoteError] = useState<string | null>(null);
+  const [showBooking, setShowBooking] = useState(false);
 
   // Fetch fresh client data with live notes from API
   useEffect(() => {
@@ -123,53 +126,64 @@ export function ClientDetailPage({ clients, setClients }: ClientDetailPageProps)
   };
 
   return (
-    <div className="flex-1 min-w-[1192px] flex flex-col bg-[#F8FAFC]">
-      {/* 70px Header Bar */}
-      <header className="h-[70px] bg-white border-b border-[#E2E8F0] px-[26px] flex items-center justify-between gap-5 shrink-0 print:hidden">
-        <div className="flex items-center gap-2 text-sm">
-          <Link to="/dashboard/clients" className="font-semibold text-[#64748B] hover:text-[#0F172A]">
-            Clients
-          </Link>
-          <ChevronRight className="h-4 w-4 text-[#94A3B8]" />
-          <h1 className="font-bold text-[#0F172A]">{client.name}</h1>
-        </div>
-
-        <div className="flex items-center gap-3">
-          <button
-            onClick={handlePrintPDF}
-            className="h-[40px] px-4 rounded-[14px] bg-white border border-[#CBD5E1] text-[#0F172A] text-xs font-bold hover:bg-[#F8FAFC] flex items-center gap-1.5 cursor-pointer"
-          >
-            <Download className="h-3.5 w-3.5" />
-            <span>Export file</span>
-          </button>
-          <button
-            onClick={() => {
-              setNoteTitle(`Individual Therapy Session #${client.notes.length + 1}`);
-              setShowNewNoteModal(true);
-            }}
-            className="h-[40px] px-4 rounded-[14px] bg-[#EEF2F7] text-[#0F172A] text-xs font-bold hover:bg-slate-200 flex items-center gap-1.5 cursor-pointer"
-          >
-            <Plus className="h-4 w-4" />
-            <span>New note</span>
-          </button>
-        </div>
-      </header>
-
-      {/* Main Content Workspace */}
-      <main className="p-[24px_26px_30px] space-y-6 flex-1">
+    <Page
+      header={
+        <PageHeader
+          breadcrumb={
+            <>
+              <Link to="/dashboard/clients" className="font-semibold text-[#64748B] hover:text-[#0F172A]">
+                Clients
+              </Link>
+              <ChevronRight className="h-4 w-4 text-[#94A3B8]" />
+            </>
+          }
+          title={client.name}
+          actions={
+            <>
+              <button
+                type="button"
+                onClick={() => setShowBooking(true)}
+                className="h-[38px] px-3.5 rounded-[12px] bg-[#0F3A53] text-white text-[12.5px] font-bold inline-flex items-center gap-2 cursor-pointer"
+              >
+                <CalendarPlus className="h-4 w-4" /> Book a session
+              </button>
+              <button
+                onClick={() => {
+                  setNoteTitle(`Individual Therapy Session #${client.notes.length + 1}`);
+                  setShowNewNoteModal(true);
+                }}
+                className="h-[40px] px-4 rounded-[14px] bg-[#EEF2F7] text-[#0F172A] text-xs font-bold hover:bg-slate-200 flex items-center gap-1.5 cursor-pointer"
+              >
+                <Plus className="h-4 w-4" />
+                <span>New note</span>
+              </button>
+            </>
+          }
+          secondaryActions={
+            <button
+              onClick={handlePrintPDF}
+              className="h-[40px] px-4 rounded-[14px] bg-white border border-[#CBD5E1] text-[#0F172A] text-xs font-bold hover:bg-[#F8FAFC] flex items-center gap-1.5 cursor-pointer"
+            >
+              <Download className="h-3.5 w-3.5" />
+              <span>Export file</span>
+            </button>
+          }
+        />
+      }
+    >
         {/* Client Profile Summary Card */}
         <Card padding="p-[24px_26px]" className="space-y-6 bg-white border border-slate-100 shadow-sm rounded-2xl">
-          <div className="flex items-start justify-between">
-            <div className="flex items-center gap-5">
+          <div className="flex flex-wrap items-start justify-between gap-4">
+            <div className="flex items-center gap-4 md:gap-5 min-w-0">
               <div className="h-[76px] w-[76px] rounded-[22px] bg-gradient-to-br from-[#1B5375] to-[#0F3A53] text-[#E3B341] font-extrabold text-[24px] flex items-center justify-center border border-[#E3B341]/30 shadow-md">
                 {client.initials}
               </div>
-              <div className="space-y-1">
+              <div className="space-y-1 min-w-0">
                 <div className="flex items-center gap-3">
                   <h2 className="text-[22px] font-bold text-[#0F172A] leading-none">{client.name}</h2>
                   <StatusBadge status={client.status} />
                 </div>
-                <p className="text-[13px] text-[#64748B] font-medium">
+                <p className="text-[13px] text-[#64748B] font-medium truncate">
                   {client.email} · {client.phone}
                 </p>
               </div>
@@ -177,33 +191,21 @@ export function ClientDetailPage({ clients, setClients }: ClientDetailPageProps)
           </div>
 
           {/* 4 Stat Tiles Grid */}
-          <div className="grid grid-cols-4 gap-3.5">
-            <div className="p-3.5 rounded-[16px] bg-[#F8FAFC] border border-[#E2E8F0]">
-              <Eyebrow className="mb-1">TOTAL SESSIONS</Eyebrow>
-              <span className="text-[22px] font-extrabold text-[#0F172A]">{client.sessions}</span>
-            </div>
-            <div className="p-3.5 rounded-[16px] bg-[#F8FAFC] border border-[#E2E8F0]">
-              <Eyebrow className="mb-1">CLIENT SINCE</Eyebrow>
-              <span className="text-[18px] font-extrabold text-[#0F172A]">{client.since}</span>
-            </div>
-            <div className="p-3.5 rounded-[16px] bg-[#F8FAFC] border border-[#E2E8F0]">
-              <Eyebrow className="mb-1">NEXT SESSION</Eyebrow>
-              <span className="text-[18px] font-extrabold text-[#0F3A53]" style={{ color: primaryColor }}>
-                {client.next}
-              </span>
-            </div>
-            <div className="p-3.5 rounded-[16px] bg-[#FEF3C7] border border-[#E3B341]/40">
-              <Eyebrow className="mb-1 text-[#92400E]">EMERGENCY CONTACT</Eyebrow>
-              <span className="text-[12px] font-bold text-[#92400E] block leading-tight">
-                {client.emergency}
-              </span>
-            </div>
-          </div>
+          <Grid cols={{ base: 1, sm: 2, lg: 4 }} gap="md">
+            <StatTile variant="inset" label="TOTAL SESSIONS" value={client.sessions} />
+            <StatTile variant="inset" size="sm" label="CLIENT SINCE" value={client.since} />
+            <StatTile variant="inset" size="sm" label="NEXT SESSION" value={client.next} valueColor={primaryColor} />
+            <EmergencyContactCard
+              clientId={client.id}
+              contact={client.emergencyContact ?? null}
+              onSaved={(c) => setClient((prev) => ({ ...prev, emergencyContact: c }))}
+            />
+          </Grid>
         </Card>
 
         {/* Workspace Tabs */}
         <div className="space-y-4">
-          <div className="h-[40px] p-1 bg-[#EEF2F7] rounded-[14px] inline-flex gap-1 border border-[#E2E8F0] print:hidden">
+          <div className="h-[40px] p-1 bg-[#EEF2F7] rounded-[14px] inline-flex max-w-full overflow-x-auto gap-1 border border-[#E2E8F0] print:hidden">
             {[
               { id: 'history', label: 'Session history' },
               { id: 'notes', label: 'SOAP notes' },
@@ -213,7 +215,7 @@ export function ClientDetailPage({ clients, setClients }: ClientDetailPageProps)
               <button
                 key={t.id}
                 onClick={() => setActiveTab(t.id as any)}
-                className={`px-5 rounded-[10px] text-xs font-bold transition-all cursor-pointer ${
+                className={`px-5 shrink-0 whitespace-nowrap rounded-[10px] text-xs font-bold transition-all cursor-pointer ${
                   activeTab === t.id ? 'bg-white text-[#0F172A] shadow-xs' : 'text-[#64748B]'
                 }`}
               >
@@ -239,11 +241,11 @@ export function ClientDetailPage({ clients, setClients }: ClientDetailPageProps)
                         <span className="w-0.5 flex-1 bg-[#E2E8F0] my-1" />
                       </div>
 
-                      <div className="p-4 rounded-[18px] bg-white border border-[#E2E8F0] space-y-2 max-w-[720px] shadow-xs">
-                        <div className="flex items-center gap-3">
-                          <h4 className="text-[14.5px] font-bold text-[#0F172A]">{s.title}</h4>
+                      <div className="min-w-0 p-4 rounded-[18px] bg-white border border-[#E2E8F0] space-y-2 max-w-[720px] shadow-xs">
+                        <div className="flex flex-wrap items-center gap-2 min-w-0">
+                          <h4 className="text-[14.5px] font-bold text-[#0F172A] min-w-0 truncate">{s.title}</h4>
                           <StatusBadge status={s.status} />
-                          <span className="text-[10px] font-black uppercase text-blue-600 bg-blue-50 px-2 py-0.5 rounded-full border border-blue-200">
+                          <span className="shrink-0 text-[10px] font-black uppercase text-blue-600 bg-blue-50 px-2 py-0.5 rounded-full border border-blue-200">
                             {s.note}
                           </span>
                         </div>
@@ -262,7 +264,7 @@ export function ClientDetailPage({ clients, setClients }: ClientDetailPageProps)
 
           {/* Tab 2: SOAP Notes Editor & PDF Export */}
           {activeTab === 'notes' && (
-            <div className="grid grid-cols-[1fr_300px] gap-5 items-start">
+            <div className="grid grid-cols-1 @min-[960px]/page:grid-cols-[1fr_300px] gap-5 items-start">
               {selectedNote ? (
                 <Card padding="p-[24px_26px]" className="space-y-4 bg-white border border-slate-100 shadow-sm rounded-2xl">
                   <div className="flex items-center justify-between border-b border-[#E2E8F0] pb-3">
@@ -388,14 +390,14 @@ export function ClientDetailPage({ clients, setClients }: ClientDetailPageProps)
               </div>
 
               {client.intake.length > 0 ? (
-                <div className="grid grid-cols-2 gap-3.5">
+                <Grid cols={{ base: 1, md: 2 }}>
                   {client.intake.map((qa, idx) => (
                     <div key={idx} className="p-4 rounded-[18px] bg-[#F8FAFC] border border-[#E2E8F0] space-y-1">
                       <span className="text-[12.5px] font-bold text-[#475569] block">{qa.q}</span>
                       <p className="text-[13.5px] font-medium text-[#0F172A]">{qa.a}</p>
                     </div>
                   ))}
-                </div>
+                </Grid>
               ) : (
                 <div className="text-center py-8 text-slate-400 text-xs font-semibold">
                   Intake form has not been submitted by this client yet.
@@ -408,7 +410,6 @@ export function ClientDetailPage({ clients, setClients }: ClientDetailPageProps)
             <ClientAssessmentsPanel clientId={client.id} clientName={client.name} primaryColor={primaryColor} />
           )}
         </div>
-      </main>
 
       {/* New SOAP Note Modal */}
       {showNewNoteModal && (
@@ -437,7 +438,7 @@ export function ClientDetailPage({ clients, setClients }: ClientDetailPageProps)
               />
             </div>
 
-            <div className="grid grid-cols-2 gap-3.5">
+            <Grid cols={{ base: 1, md: 2 }}>
               <div className="space-y-1">
                 <label className="text-[11px] font-bold text-slate-500 uppercase">Subjective (S)</label>
                 <textarea
@@ -460,9 +461,9 @@ export function ClientDetailPage({ clients, setClients }: ClientDetailPageProps)
                   className="w-full p-2.5 rounded-[12px] bg-[#F8FAFC] border border-[#E2E8F0] text-xs outline-none resize-none"
                 />
               </div>
-            </div>
+            </Grid>
 
-            <div className="grid grid-cols-2 gap-3.5">
+            <Grid cols={{ base: 1, md: 2 }}>
               <div className="space-y-1">
                 <label className="text-[11px] font-bold text-slate-500 uppercase">Assessment (A)</label>
                 <textarea
@@ -485,7 +486,7 @@ export function ClientDetailPage({ clients, setClients }: ClientDetailPageProps)
                   className="w-full p-2.5 rounded-[12px] bg-[#F8FAFC] border border-[#E2E8F0] text-xs outline-none resize-none"
                 />
               </div>
-            </div>
+            </Grid>
 
             {noteError && (
               <p className="text-xs font-medium text-red-500 bg-red-50 rounded-[10px] px-3 py-2">{noteError}</p>
@@ -512,6 +513,13 @@ export function ClientDetailPage({ clients, setClients }: ClientDetailPageProps)
           </form>
         </div>
       )}
-    </div>
+      {showBooking && (
+        <StaffBookingDialog
+          client={{ id: client.id, name: client.name }}
+          onClose={() => setShowBooking(false)}
+          onBooked={() => { setShowBooking(false); window.location.reload(); }}
+        />
+      )}
+    </Page>
   );
 }

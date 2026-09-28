@@ -562,7 +562,7 @@ export class AuthService {
     return {
       accessToken,
       refreshToken,
-      profile: this.platformAdminProfile(user),
+      profile: this.platformAdminProfile(user, await this.hasPracticeProfile(user.id)),
     };
   }
 
@@ -674,7 +674,7 @@ export class AuthService {
     return {
       accessToken,
       refreshToken,
-      profile: this.practiceProfile(profile),
+      profile: this.practiceProfile(profile, user.platformRole),
     };
   }
 
@@ -920,18 +920,18 @@ export class AuthService {
   async getPlatformAdminStatus(userId: bigint) {
     const user = await this.prisma.user.findUnique({ where: { id: userId } });
     if (!user || !user.platformRole) throw new NotFoundException('Session profile not found');
-    return this.platformAdminProfile(user);
+    return this.platformAdminProfile(user, await this.hasPracticeProfile(user.id));
   }
 
   async getSessionStatus(profileId: bigint) {
     const profile = await this.prisma.profile.findUnique({
       where: { id: profileId },
-      include: { consultTherapistProfile: true, tenant: true },
+      include: { consultTherapistProfile: true, tenant: true, user: { select: { platformRole: true } } },
     });
 
     if (!profile) throw new NotFoundException('Session profile not found');
 
-    return this.practiceProfile(profile);
+    return this.practiceProfile(profile, profile.user?.platformRole);
   }
 
   /** The live sessions of the signed-in account, newest use first. */
@@ -1004,7 +1004,7 @@ export class AuthService {
       return {
         accessToken,
         refreshToken: nextRefreshToken,
-        profile: this.platformAdminProfile(user),
+        profile: this.platformAdminProfile(user, await this.hasPracticeProfile(user.id)),
       };
     }
 
@@ -1032,7 +1032,7 @@ export class AuthService {
     return {
       accessToken,
       refreshToken: nextRefreshToken,
-      profile: this.practiceProfile(profile),
+      profile: this.practiceProfile(profile, profile.user.platformRole),
     };
   }
 
@@ -1106,7 +1106,7 @@ export class AuthService {
     // replaces — silently wrong instead of visibly absent.
     tenant: { name: string; slug: string; subscriptionTier?: string | null } | null;
     consultTherapistProfile: unknown | null;
-  }) {
+  }, platformRole?: string | null) {
     return {
       id: profile.id.toString(),
       tenantId: profile.tenantId.toString(),
@@ -1126,6 +1126,8 @@ export class AuthService {
       // The practice's plan, so the app can mark what is and is not included.
       plan: profile.tenant?.subscriptionTier ?? 'STARTER',
       isTherapist: !!profile.consultTherapistProfile,
+      // Lets the app offer "Platform admin" to someone who is both.
+      platformAdmin: Boolean(platformRole),
     };
   }
 
@@ -1175,12 +1177,15 @@ export class AuthService {
     return { accessToken, refreshToken };
   }
 
-  private platformAdminProfile(user: {
-    id: bigint;
-    email: string;
-    username: string | null;
-    platformRole: string | null;
-  }) {
+  private platformAdminProfile(
+    user: {
+      id: bigint;
+      email: string;
+      username: string | null;
+      platformRole: string | null;
+    },
+    hasPractice = false,
+  ) {
     return {
       id: user.id.toString(),
       email: user.email,
@@ -1188,6 +1193,67 @@ export class AuthService {
       type: 'platform_admin',
       platformRole: user.platformRole,
       status: 'active',
+      // Lets the admin console offer "Back to my practice".
+      hasPractice,
     };
+  }
+
+  /** The practice profile a user signs in to, chosen the same way login chooses. */
+  private practiceProfileFor(userId: bigint) {
+    return this.prisma.profile.findFirst({
+      where: { userId, status: 'active', emailVerified: true, tenant: { isActive: true } },
+      orderBy: [{ createdAt: 'desc' }],
+      include: { tenant: true, consultTherapistProfile: true },
+    });
+  }
+
+  private async hasPracticeProfile(userId: bigint): Promise<boolean> {
+    return (await this.practiceProfileFor(userId)) != null;
+  }
+
+  /**
+   * From a practice session to the admin console, for a user who is both.
+   *
+   * The password is asked for again: this goes from one practice to every
+   * practice, so a stolen practice session alone must not be enough. The
+   * practice session is ended and an admin session started in its place.
+   */
+  async switchToPlatformAdmin(
+    userId: bigint,
+    currentSessionId: string | undefined,
+    password: string,
+    device: DeviceInfo = {},
+  ) {
+    const user = await this.prisma.user.findUnique({ where: { id: userId } });
+    if (!user || !user.platformRole) {
+      this.forbidden('This account does not have platform admin access.', 'AUTH_NOT_PLATFORM_ADMIN');
+    }
+    if (user.lockedUntil && user.lockedUntil > new Date()) {
+      this.unauthorized('Account temporarily locked. Try again later.', 'AUTH_LOCKED');
+    }
+    if (typeof password !== 'string' || !(await bcrypt.compare(password, user.password))) {
+      this.logger.warn(`Admin switch refused for user ${user.id.toString()}: wrong password`);
+      this.unauthorized('That password is not right.', 'AUTH_INVALID_CREDENTIALS');
+    }
+
+    if (currentSessionId) await this.sessions.revokeSession(currentSessionId, user.id);
+    const sessionId = SessionService.newSessionId();
+    const { accessToken, refreshToken } = this.generatePlatformAdminTokens(user, user.platformRole, sessionId);
+    await this.sessions.startSession(sessionId, user.id, refreshToken, device);
+    this.logger.log(`User ${user.id.toString()} switched from a practice session to platform admin`);
+    return { accessToken, refreshToken, profile: this.platformAdminProfile(user, true) };
+  }
+
+  /** From the admin console back to the user's own practice. No password: this drops privilege. */
+  async switchToPractice(userId: bigint, currentSessionId: string | undefined, device: DeviceInfo = {}) {
+    const profile = await this.practiceProfileFor(userId);
+    if (!profile) throw new NotFoundException('This account has no practice to go back to.');
+    const user = await this.prisma.user.findUnique({ where: { id: userId }, select: { platformRole: true } });
+
+    if (currentSessionId) await this.sessions.revokeSession(currentSessionId, userId);
+    const sessionId = SessionService.newSessionId();
+    const { accessToken, refreshToken } = this.generateTokens(userId, profile.id, profile.tenantId, profile.type, sessionId);
+    await this.sessions.startSession(sessionId, userId, refreshToken, device);
+    return { accessToken, refreshToken, profile: this.practiceProfile(profile, user?.platformRole) };
   }
 }

@@ -113,6 +113,9 @@ export class PrivacyService {
           phone: null,
           gender: null,
           dateOfBirth: null,
+          emergencyContactName: null,
+          emergencyContactRelationship: null,
+          emergencyContactPhone: null,
           avatarUrl: null,
           emailVerified: false,
           emailVerifiedAt: null,
@@ -160,7 +163,7 @@ export class PrivacyService {
       clientProfileId: clientProfileId.toString(),
       erasedAt: new Date().toISOString(),
       erased: [
-        'Name, email, phone, gender, date of birth and profile photo',
+        'Name, email, phone, gender, date of birth, emergency contact and profile photo',
         'Login credentials and all active sessions',
         'Notifications, email log, notification preferences and push subscriptions',
         'Free-text booking notes',

@@ -302,7 +302,8 @@ export async function apiDownload(path: string, filename: string, _retried = fal
 
 // ── Shorthand helpers ─────────────────────────────────────────────────────────
 export const api = {
-  get: <T>(path: string) => apiRequest<T>(path, { method: 'GET' }),
+  get: <T>(path: string, headers?: Record<string, string>) =>
+    apiRequest<T>(path, { method: 'GET', headers }),
   post: <T>(path: string, body: unknown, headers?: Record<string, string>) =>
     apiRequest<T>(path, { method: 'POST', body, headers }),
   put: <T>(path: string, body: unknown, headers?: Record<string, string>) =>

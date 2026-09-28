@@ -16,8 +16,10 @@ export class ConsultCron {
   ) {}
 
   /**
-   * Releases unpaid holds: online payments after 30 minutes, bank transfers
-   * when their own hold runs out (48 hours, or the session start).
+   * Releases unpaid holds: a client's own online checkout after 30 minutes, a
+   * staff-sent payment link or bank transfer when its own hold runs out
+   * (48 hours, or 2 hours before the session for a link; the session start
+   * for a transfer).
    */
   @Cron(CronExpression.EVERY_10_MINUTES)
   async handleBookingExpiry() {
@@ -26,7 +28,10 @@ export class ConsultCron {
       where: {
         status: 'PENDING_PAYMENT',
         OR: [
-          { paymentMethod: { not: 'MANUAL' }, createdAt: { lt: new Date(now.getTime() - ONLINE_HOLD_MS) } },
+          // Online, booked by the client: 30 minutes to finish paying.
+          { paymentMethod: { not: 'MANUAL' }, holdExpiresAt: null, createdAt: { lt: new Date(now.getTime() - ONLINE_HOLD_MS) } },
+          // Online, a link staff sent: the booking carries its own hold.
+          { paymentMethod: { not: 'MANUAL' }, holdExpiresAt: { lt: now } },
           { paymentMethod: 'MANUAL', holdExpiresAt: { lt: now } },
         ],
       },
@@ -45,7 +50,11 @@ export class ConsultCron {
             data: { status: 'CANCELLED' },
           });
           if (done.count === 0) return false;
-          await tx.consultAvailability.update({ where: { id: booking.availabilityId }, data: { isActive: true } });
+          // A time staff made for this booking stays closed: it may be outside working hours.
+          await tx.consultAvailability.updateMany({
+            where: { id: booking.availabilityId, createdForBooking: false },
+            data: { isActive: true },
+          });
           return true;
         });
         if (!released) continue;

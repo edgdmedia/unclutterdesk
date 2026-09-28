@@ -10,6 +10,7 @@ import { changePercent, chargedKobo, revenueByMonth, startOfMonth } from '../../
 import { tenantWebOrigin } from '../../common/origins';
 import { decryptNoteFields } from '../../common/field-encryption';
 import { holdExpiry, ManualPaymentService, transferReference } from './manual-payment.service';
+import { assertWithinMonthlyLimit } from './booking-limits';
 
 @Injectable()
 export class ConsultService {
@@ -357,7 +358,14 @@ export class ConsultService {
       orderBy: { startsAt: 'asc' },
     });
 
-    return slots.map((s) => ({
+    // A time shorter than the chosen service would only be refused at booking.
+    const service = serviceId
+      ? await this.prisma.consultService.findFirst({ where: { id: serviceId, tenantId }, select: { durationMinutes: true } })
+      : null;
+    const longEnough = (s: { startsAt: Date; endsAt: Date }) =>
+      !service || (s.endsAt.getTime() - s.startsAt.getTime()) / 60_000 >= service.durationMinutes;
+
+    return slots.filter(longEnough).map((s) => ({
       id: s.id.toString(),
       serviceId: s.serviceId?.toString() || null,
       providerProfileId: s.providerProfileId.toString(),
@@ -469,6 +477,17 @@ export class ConsultService {
       },
     });
 
+    // Sessions still going ahead. A regenerated slot must never sit on one:
+    // booked slots survive the delete above, and without this a fresh open
+    // slot at the same time let a second client book the same hour.
+    const taken = (
+      await this.prisma.consultBooking.findMany({
+        where: { tenantId, status: { not: 'CANCELLED' }, availability: { providerProfileId, endsAt: { gt: now } } },
+        select: { availability: { select: { startsAt: true, endsAt: true } } },
+      })
+    ).map((b) => b.availability);
+    const isTaken = (start: Date, end: Date) => taken.some((t) => t.startsAt < end && t.endsAt > start);
+
     const slotData: Array<{ tenantId: bigint; providerProfileId: bigint; serviceId: bigint | null; startsAt: Date; endsAt: Date; channel: string; isActive: boolean }> = [];
 
     for (let cursor = new Date(now); cursor <= horizon; cursor.setDate(cursor.getDate() + 1)) {
@@ -488,7 +507,7 @@ export class ConsultService {
         for (let slotStart = new Date(windowStart); slotStart < windowEnd;) {
           const slotEnd = new Date(slotStart.getTime() + dto.sessionLengthMinutes * 60_000);
           if (slotEnd > windowEnd) break;
-          if (slotEnd > now) {
+          if (slotEnd > now && !isTaken(slotStart, slotEnd)) {
             slotData.push({
               tenantId,
               providerProfileId,
@@ -583,19 +602,7 @@ export class ConsultService {
       discountResult = await this.discountService.validateDiscount(tenantId, dto.discountCode, service.priceKobo);
     }
 
-    const tier = (slot.tenant.subscriptionTier || 'STARTER').toUpperCase();
-    if (tier === 'STARTER') {
-      const monthStart = new Date();
-      monthStart.setDate(1);
-      monthStart.setHours(0, 0, 0, 0);
-
-      const count = await this.prisma.consultBooking.count({
-        where: { tenantId, createdAt: { gte: monthStart }, status: { not: 'CANCELLED' } },
-      });
-      if (count >= 20) {
-        throw new BadRequestException('Monthly booking limit reached. Upgrade to Pro to accept unlimited bookings.');
-      }
-    }
+    await assertWithinMonthlyLimit(this.prisma, tenantId, slot.tenant.subscriptionTier);
 
     // Checked here, never trusted from the page: the practice must offer it now.
     const wantsManual = String(dto.paymentMethod ?? '').toUpperCase() === 'MANUAL';
@@ -752,7 +759,7 @@ export class ConsultService {
    * Subaccount" on every booking; now the practice is told to fix it and the
    * client gets a plain message.
    */
-  private async startOnlinePayment(
+  async startOnlinePayment(
     tenantId: bigint,
     amountKobo: bigint,
     email: string,
@@ -835,6 +842,12 @@ export class ConsultService {
       orderBy: { availability: { startsAt: 'desc' } },
     });
 
+    const creatorIds = [...new Set(bookings.map((b) => b.createdByProfileId).filter((v): v is bigint => v !== null))];
+    const creators = creatorIds.length
+      ? await this.prisma.profile.findMany({ where: { tenantId, id: { in: creatorIds } }, select: { id: true, firstName: true, lastName: true } })
+      : [];
+    const creatorName = new Map(creators.map((c) => [c.id.toString(), `${c.firstName ?? ''} ${c.lastName ?? ''}`.trim()]));
+
     return bookings.map((b) => ({
       id: b.id.toString(),
       clientId: b.client.id.toString(),
@@ -848,6 +861,10 @@ export class ConsultService {
       status: b.status,
       videoRoomLink: b.videoRoomName ? (b.videoRoomName.startsWith('http') ? b.videoRoomName : `https://meet.jit.si/${b.videoRoomName}`) : null,
       notes: b.notes,
+      paymentMethod: b.paymentMethod,
+      amountKobo: b.amountKobo !== null ? b.amountKobo.toString() : null,
+      holdExpiresAt: b.holdExpiresAt ? b.holdExpiresAt.toISOString() : null,
+      bookedBy: b.createdByProfileId ? creatorName.get(b.createdByProfileId.toString()) || 'Staff' : null,
     }));
   }
 
@@ -1042,9 +1059,10 @@ export class ConsultService {
         throw new BadRequestException('That time was taken while you were choosing it');
       }
 
-      // Only now is the old slot safe to give back.
+      // Only now is the old slot safe to give back, unless staff made it for
+      // this booking alone: it may be outside working hours.
       await tx.consultAvailability.updateMany({
-        where: { id: booking.availabilityId, tenantId },
+        where: { id: booking.availabilityId, tenantId, createdForBooking: false },
         data: { isActive: true },
       });
 
@@ -1329,7 +1347,7 @@ export class ConsultService {
    * learn the scheme from one link — and be waiting inside a therapy session
    * before the therapist arrives. The name now carries 128 bits of randomness.
    */
-  private async resolveVideoRoomLink(therapist: any, _bookingRef: number): Promise<{ roomName: string; roomLink: string }> {
+  async resolveVideoRoomLink(therapist: any, _bookingRef: number): Promise<{ roomName: string; roomLink: string }> {
     const provider = (therapist.videoProvider || 'JITSI').toUpperCase();
     const defaultRoomName = `unclutterdesk-session-${randomBytes(16).toString('hex')}`;
 

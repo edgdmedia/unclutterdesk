@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Patch, Delete, Body, Param, Req, Res, UseGuards } from '@nestjs/common';
+import { Controller, Get, Post, Patch, Delete, Body, Param, Req, Res, UseGuards, NotFoundException } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { Response } from 'express';
 import { SkipThrottle } from '@nestjs/throttler';
@@ -204,5 +204,19 @@ export class TenantController {
     },
   ) {
     return this.tenantService.createClient(authenticatedTenantId(req), dto);
+  }
+
+  @Roles(...STAFF)
+  @Patch('clients/:profileId')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @ApiBearerAuth('access-token')
+  @ApiOperation({ summary: 'Edit a client’s name, phone and emergency contact' })
+  updateClient(
+    @Req() req: any,
+    @Param('profileId') profileId: string,
+    @Body() dto: { firstName?: string; lastName?: string | null; phone?: string | null; emergencyContact?: { name?: string; relationship?: string; phone?: string } },
+  ) {
+    if (!/^\d+$/.test(profileId)) throw new NotFoundException('Client not found');
+    return this.tenantService.updateClient(authenticatedTenantId(req), BigInt(profileId), dto);
   }
 }

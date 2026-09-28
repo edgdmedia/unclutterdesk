@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { planIncludes } from '../Sidebar';
+import { planIncludes } from '../shell/practiceNav';
 
 // The sidebar tags only features outside the practice's plan.
 describe('planIncludes', () => {
