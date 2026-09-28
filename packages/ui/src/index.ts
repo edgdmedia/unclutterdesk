@@ -4,7 +4,7 @@ export * from './components/AvatarChip';
 export * from './components/Badge';
 export * from './components/BarChart';
 export * from './components/BookingLinkField';
-export * from './components/BottomNav';
+export * from './navigation/BottomNav';
 export * from './components/BrandHeader';
 export * from './components/Button';
 export * from './components/Card';
