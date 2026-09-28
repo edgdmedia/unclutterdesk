@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Copy, Check, Bell, Link2, Calendar, FileText, Video, Upload, Globe, Palette, Sparkles, TrendingUp, CheckCircle2, ArrowRight, Menu } from 'lucide-react';
+import { Copy, Check, Bell, Link2, Calendar, FileText, Video, Upload, Globe, Palette, Sparkles, TrendingUp, CheckCircle2, ArrowRight } from 'lucide-react';
 import { Button } from '@unclutterdesk/ui';
 import { useAuth } from '../../context/AuthContext';
 import { PendingTransfersCard } from '../../components/payments/PendingTransfersCard';
@@ -15,7 +15,6 @@ interface DashboardPageProps {
   setSecondaryColor?: (color: string) => void;
   clients?: any[];
   sessions?: any[];
-  onOpenSidebar?: () => void;
 }
 
 export function DashboardPage(props: DashboardPageProps) {
@@ -195,12 +194,6 @@ export function DashboardPage(props: DashboardPageProps) {
       {/* 80px Top Header Bar */}
       <header className="h-[80px] bg-white border-b border-[#E2E8F0] px-4 md:px-[26px] flex items-center justify-between gap-3 md:gap-5 shrink-0">
         <div className="flex items-center gap-3">
-          <button 
-            onClick={props.onOpenSidebar} 
-            className="md:hidden text-slate-600 hover:text-slate-900 p-1 -ml-1 cursor-pointer"
-          >
-            <Menu className="h-6 w-6" />
-          </button>
           <div>
             <span className="os-eyebrow block text-xs md:text-[10px]">PRACTICE OVERVIEW</span>
             <h1 className="text-[16px] md:text-[20px] font-bold tracking-[-0.02em] text-[#0F172A] truncate max-w-[150px] sm:max-w-xs">
