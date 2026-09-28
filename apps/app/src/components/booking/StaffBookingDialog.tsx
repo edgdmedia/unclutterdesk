@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { CalendarPlus, Loader2, X } from 'lucide-react';
-import { api } from '../../utils/apiClient';
+import { api, TENANT_SLUG } from '../../utils/apiClient';
 import { useAuth } from '../../context/AuthContext';
 
 type Service = { id: string; title: string; durationMinutes: number; priceKobo: string };
@@ -33,6 +33,11 @@ export function StaffBookingDialog({
   const role = String(profile?.role ?? '').toUpperCase();
   const isTherapist = role === 'THERAPIST';
   const payments = PAYMENTS.filter((p) => !(p.frontDeskOnly && isTherapist));
+  // The public services and availability endpoints name the practice by host,
+  // which localhost has none of; fall back to the signed-in profile's slug.
+  const tenantHeaders = TENANT_SLUG || profile?.tenantSlug
+    ? { 'X-Tenant-Slug': TENANT_SLUG || String(profile?.tenantSlug) }
+    : undefined;
 
   const [clients, setClients] = useState<Array<{ id: string; name: string }>>([]);
   const [clientId, setClientId] = useState(client?.id ?? '');
@@ -52,7 +57,7 @@ export function StaffBookingDialog({
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    api.get<Service[]>('/v1/consult/public/services').then(setServices).catch(() => setServices([]));
+    api.get<Service[]>('/v1/consult/public/services', tenantHeaders).then(setServices).catch(() => setServices([]));
     if (!isTherapist) {
       // The roster also lists pending invites and receptionists; only active practitioners can be booked.
       api
@@ -75,7 +80,7 @@ export function StaffBookingDialog({
     setSlotId('');
     if (!serviceId || !providerId || mode !== 'slot') return setSlots([]);
     api
-      .get<Slot[]>(`/v1/consult/public/availability?providerProfileId=${providerId}&serviceId=${serviceId}`)
+      .get<Slot[]>(`/v1/consult/public/availability?providerProfileId=${providerId}&serviceId=${serviceId}`, tenantHeaders)
       .then((r) => setSlots(r ?? []))
       .catch(() => setSlots([]));
   }, [serviceId, providerId, mode]);

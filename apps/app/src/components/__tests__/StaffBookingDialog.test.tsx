@@ -6,6 +6,7 @@ const apiGet = vi.fn();
 const apiPost = vi.fn();
 vi.mock('../../utils/apiClient', () => ({
   api: { get: (...a: unknown[]) => apiGet(...a), post: (...a: unknown[]) => apiPost(...a) },
+  TENANT_SLUG: '',
 }));
 let role = 'OWNER';
 vi.mock('../../context/AuthContext', () => ({ useAuth: () => ({ profile: { id: '5', role } }) }));

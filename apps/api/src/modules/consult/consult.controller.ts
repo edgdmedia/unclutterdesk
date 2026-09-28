@@ -136,11 +136,19 @@ export class ConsultController {
 
   @Get('public/availability')
   @ApiOperation({ summary: 'Get open availability slots for client booking portal' })
-  getPublicAvailability(@Req() req: TenantRequest) {
+  getPublicAvailability(
+    @Req() req: TenantRequest,
+    @Query('providerProfileId') providerProfileId?: string,
+    @Query('serviceId') serviceId?: string,
+  ) {
     if (!req.tenantId) throw new NotFoundException(
         'This practice could not be found. Check the web address, or ask the practice for their booking link.',
       );
-    return this.consultService.getPublicAvailability(req.tenantId);
+    return this.consultService.getPublicAvailability(
+      req.tenantId,
+      providerProfileId && /^\d+$/.test(providerProfileId) ? BigInt(providerProfileId) : undefined,
+      serviceId && /^\d+$/.test(serviceId) ? BigInt(serviceId) : undefined,
+    );
   }
 
   @Roles(...CLINICAL)
