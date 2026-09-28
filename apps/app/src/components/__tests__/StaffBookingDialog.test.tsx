@@ -22,6 +22,63 @@ function routes(path: string) {
   return Promise.resolve([]);
 }
 
+function staffOf(rows: unknown[]) {
+  return (path: string) => (path.startsWith('/v1/tenant/staff') ? Promise.resolve(rows) : routes(path));
+}
+const member = (id: string, firstName: string) => ({ kind: 'member', id, firstName, lastName: 'B', status: 'active', isTherapist: true });
+
+describe('choosing the practitioner', () => {
+  beforeEach(() => {
+    apiGet.mockReset();
+    apiPost.mockReset().mockResolvedValue({ bookingId: '900', status: 'CONFIRMED' });
+  });
+  afterEach(cleanup);
+
+  // A receptionist is never a practitioner. With one practitioner the picker was
+  // hidden and every booking went in under the receptionist, which the server refuses.
+  it('books a receptionist’s session with the practice’s only practitioner', async () => {
+    role = 'RECEPTIONIST';
+    apiGet.mockImplementation(staffOf([member('7', 'Ade')]));
+    render(<StaffBookingDialog client={{ id: '40', name: 'Ada Ola' }} onClose={() => {}} onBooked={() => {}} />);
+    await waitFor(() => expect(screen.getByLabelText('Practitioner')).toBeTruthy());
+    expect((screen.getByLabelText('Practitioner') as HTMLSelectElement).value).toBe('7');
+    fireEvent.click(screen.getByRole('radio', { name: /Therapy session/ }));
+    await waitFor(() => expect(apiGet.mock.calls.some(([p]) => String(p).includes('providerProfileId=7'))).toBe(true));
+    fireEvent.click(screen.getByRole('radio', { name: 'Custom time' }));
+    fireEvent.change(screen.getByLabelText('Date and time'), { target: { value: '2026-12-01T10:00' } });
+    fireEvent.click(screen.getByRole('radio', { name: /No charge/ }));
+    fireEvent.click(screen.getByRole('button', { name: 'Book session' }));
+    await waitFor(() => expect(apiPost).toHaveBeenCalled());
+    expect(apiPost.mock.calls[0][1]).toMatchObject({ providerProfileId: '7' });
+  });
+
+  it('starts a receptionist on the first practitioner when there are several', async () => {
+    role = 'RECEPTIONIST';
+    apiGet.mockImplementation(staffOf([member('7', 'Ade'), member('8', 'Bola')]));
+    render(<StaffBookingDialog client={{ id: '40', name: 'Ada Ola' }} onClose={() => {}} onBooked={() => {}} />);
+    await waitFor(() => expect(screen.getByLabelText('Practitioner')).toBeTruthy());
+    fireEvent.click(screen.getByRole('radio', { name: /Therapy session/ }));
+    // The times shown are the practitioner's, not the receptionist's (id 5), who has none.
+    await waitFor(() => expect(apiGet.mock.calls.some(([p]) => String(p).includes('providerProfileId=7'))).toBe(true));
+    expect(apiGet.mock.calls.some(([p]) => String(p).includes('providerProfileId=5'))).toBe(false);
+  });
+
+  it('keeps an owner who sees clients on their own diary, without a picker when they are the only one', async () => {
+    role = 'OWNER';
+    apiGet.mockImplementation(staffOf([member('5', 'Jane')]));
+    render(<StaffBookingDialog client={{ id: '40', name: 'Ada Ola' }} onClose={() => {}} onBooked={() => {}} />);
+    await waitFor(() => expect(screen.getByRole('radio', { name: /Therapy session/ })).toBeTruthy());
+    expect(screen.queryByLabelText('Practitioner')).toBeNull();
+  });
+
+  it('says so when the practice has no practitioner to book', async () => {
+    role = 'RECEPTIONIST';
+    apiGet.mockImplementation(staffOf([]));
+    render(<StaffBookingDialog client={{ id: '40', name: 'Ada Ola' }} onClose={() => {}} onBooked={() => {}} />);
+    await waitFor(() => expect(screen.getByText(/No practitioner can take bookings yet/)).toBeTruthy());
+  });
+});
+
 describe('StaffBookingDialog', () => {
   beforeEach(() => {
     role = 'OWNER';

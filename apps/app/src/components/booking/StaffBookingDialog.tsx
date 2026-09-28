@@ -42,7 +42,7 @@ export function StaffBookingDialog({
   const [clients, setClients] = useState<Array<{ id: string; name: string }>>([]);
   const [clientId, setClientId] = useState(client?.id ?? '');
   const [services, setServices] = useState<Service[]>([]);
-  const [staff, setStaff] = useState<Staff[]>([]);
+  const [staff, setStaff] = useState<Staff[] | null>(null);
   const [serviceId, setServiceId] = useState('');
   const [providerId, setProviderId] = useState(String(profile?.id ?? ''));
   const [mode, setMode] = useState<'slot' | 'custom'>('slot');
@@ -62,14 +62,17 @@ export function StaffBookingDialog({
       // The roster also lists pending invites and receptionists; only active practitioners can be booked.
       api
         .get<StaffRow[]>('/v1/tenant/staff')
-        .then((rows) =>
-          setStaff(
-            rows
-              .filter((m) => m.kind === 'member' && m.isTherapist && m.status === 'active')
-              .map((m) => ({ id: m.id, name: `${m.firstName ?? ''} ${m.lastName ?? ''}`.trim() })),
-          ),
-        )
-        .catch(() => setStaff([]));
+        .then((rows) => {
+          const practitioners = rows
+            .filter((m) => m.kind === 'member' && m.isTherapist && m.status === 'active')
+            .map((m) => ({ id: m.id, name: `${m.firstName ?? ''} ${m.lastName ?? ''}`.trim() }));
+          setStaff(practitioners);
+          // The signed-in person may not see clients (a receptionist never
+          // does). Start on a real practitioner rather than on them.
+          setProviderId((current) => (practitioners.some((m) => m.id === current) ? current : practitioners[0]?.id ?? ''));
+        })
+        // Unknown is not the same as none: say nothing rather than "no practitioner".
+        .catch(() => setStaff(null));
     }
     if (!client) {
       api.get<Array<{ id: string; name: string }>>('/v1/tenant/clients').then(setClients).catch(() => setClients([]));
@@ -148,10 +151,16 @@ export function StaffBookingDialog({
           ))}
         </fieldset>
 
-        {!isTherapist && staff.length > 1 && (
+        {!isTherapist && staff && staff.length === 0 ? (
+          <p className="text-[12.5px] font-medium text-rose-700">
+            No practitioner can take bookings yet. Add one under Team &amp; staff, or set up your own practitioner profile.
+          </p>
+        ) : null}
+
+        {!isTherapist && staff && (staff.length > 1 || (staff.length === 1 && staff[0].id !== String(profile?.id ?? ''))) && (
           <label className="block text-[12px] font-semibold text-[#334155]">
             Practitioner
-            <select className="mt-1 w-full h-[40px] px-3 rounded-[12px] border border-[#E2E8F0] text-[13px]" value={providerId} onChange={(e) => setProviderId(e.target.value)}>
+            <select aria-label="Practitioner" className="mt-1 w-full h-[40px] px-3 rounded-[12px] border border-[#E2E8F0] text-[13px]" value={providerId} onChange={(e) => setProviderId(e.target.value)}>
               {staff.map((m) => <option key={m.id} value={m.id}>{m.name}</option>)}
             </select>
           </label>
