@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Tag, Plus, X, Power, PowerOff } from 'lucide-react';
-import { Eyebrow, useBrand, useToast } from '@unclutterdesk/ui';
+import { Eyebrow, useBrand, useToast, Page, PageHeader, Grid, ResponsiveTable, byDate, byNumber, byText, type Column } from '@unclutterdesk/ui';
 import { api } from '../../../utils/apiClient';
 
 interface DiscountCode {
@@ -105,25 +105,76 @@ export function DiscountSettingsPage() {
     }
   }
 
-  return (
-    <div className="flex-1 min-w-[1192px] flex flex-col bg-[#F8FAFC]">
-      <header className="h-[88px] bg-white border-b border-[#E2E8F0] px-[26px] flex items-center justify-between gap-5 shrink-0">
-        <div>
-          <Eyebrow>SETTINGS</Eyebrow>
-          <h1 className="text-[20px] font-bold tracking-[-0.02em] text-[#0F172A]">Discounts & Promos</h1>
-          <p className="text-xs text-[#64748B] font-medium">Manage promotional codes and discounts for your practice.</p>
-        </div>
-        <button
-          onClick={() => setShowModal(true)}
-          className="h-10 px-4 rounded-[12px] text-white text-xs font-bold flex items-center gap-2 hover:brightness-110 transition-all cursor-pointer"
-          style={{ backgroundColor: primaryColor }}
-        >
-          <Plus className="h-4 w-4" />
-          Create Code
-        </button>
-      </header>
+  const statusOf = (d: DiscountCode) => {
+    const expired = Boolean(d.expiresAt && new Date(d.expiresAt) < new Date());
+    const exhausted = Boolean(d.maxUses && d.usedCount >= d.maxUses);
+    if (d.isActive && !expired && !exhausted) return 'Active';
+    return !d.isActive ? 'Inactive' : expired ? 'Expired' : 'Depleted';
+  };
+  const valueOf = (d: DiscountCode) =>
+    d.discountType === 'PERCENT' ? `${d.discountPercent}% OFF` : `₦${(parseInt(d.discountAmountKobo || '0', 10) / 100).toLocaleString()} OFF`;
 
-      <main className="p-[24px_26px_30px] space-y-6 flex-1">
+  const columns: Column<DiscountCode>[] = [
+    {
+      key: 'code',
+      header: 'Code',
+      sort: byText((d) => d.code),
+      cell: (d) => (
+        <>
+          <div className="text-[13px] font-bold text-[#0F172A] tracking-wide">{d.code}</div>
+          {d.label && <div className="text-[11px] text-slate-500 mt-0.5">{d.label}</div>}
+        </>
+      ),
+    },
+    {
+      key: 'status',
+      header: 'Status',
+      sort: byText(statusOf),
+      cell: (d) => (
+        <span className={`inline-flex items-center px-2 py-1 rounded-full text-[10px] font-bold uppercase tracking-wide ${
+          statusOf(d) === 'Active' ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-500'
+        }`}>
+          {statusOf(d)}
+        </span>
+      ),
+    },
+    { key: 'value', header: 'Value', priority: 'md', cell: (d) => <span className="text-[13px] font-bold text-[#0F3A53]">{valueOf(d)}</span> },
+    {
+      key: 'usage',
+      header: 'Usage',
+      priority: 'md',
+      sort: byNumber((d) => d.usedCount),
+      cell: (d) => <span className="text-[12px] font-medium text-slate-600">{d.usedCount} {d.maxUses ? `/ ${d.maxUses}` : 'uses'}</span>,
+    },
+    {
+      key: 'expiry',
+      header: 'Expiry',
+      priority: 'lg',
+      sort: byDate((d) => d.expiresAt ?? null),
+      cell: (d) => <span className="text-[12px] font-medium text-slate-600">{d.expiresAt ? new Date(d.expiresAt).toLocaleDateString('en-GB') : 'Never'}</span>,
+    },
+  ];
+
+  return (
+    <Page
+      header={
+        <PageHeader
+          eyebrow="SETTINGS"
+          title="Discounts & Promos"
+          actions={
+            <button
+              onClick={() => setShowModal(true)}
+              className="h-10 px-4 rounded-[12px] text-white text-xs font-bold flex items-center gap-2 hover:brightness-110 transition-all cursor-pointer"
+              style={{ backgroundColor: primaryColor }}
+            >
+              <Plus className="h-4 w-4" />
+              Create Code
+            </button>
+          }
+        />
+      }
+    >
+      <p className="text-xs text-[#64748B] font-medium -mt-1">Manage promotional codes and discounts for your practice.</p>
         {error && !showModal ? <div className="rounded-[18px] border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-medium text-rose-700">{error}</div> : null}
         
         {loading ? (
@@ -144,70 +195,29 @@ export function DiscountSettingsPage() {
           </div>
         ) : (
           <div className="rounded-[24px] border border-[#E2E8F0] bg-white overflow-hidden">
-            <table className="w-full text-left border-collapse">
-              <thead>
-                <tr className="border-b border-[#E2E8F0] bg-[#F8FAFC]">
-                  <th className="px-5 py-4 text-[11px] font-bold text-[#64748B] uppercase tracking-wider">Status</th>
-                  <th className="px-5 py-4 text-[11px] font-bold text-[#64748B] uppercase tracking-wider">Code / Label</th>
-                  <th className="px-5 py-4 text-[11px] font-bold text-[#64748B] uppercase tracking-wider">Value</th>
-                  <th className="px-5 py-4 text-[11px] font-bold text-[#64748B] uppercase tracking-wider">Usage</th>
-                  <th className="px-5 py-4 text-[11px] font-bold text-[#64748B] uppercase tracking-wider">Expiry</th>
-                  <th className="px-5 py-4 text-[11px] font-bold text-[#64748B] uppercase tracking-wider text-right">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-[#E2E8F0]">
-                {discounts.map(discount => {
-                  const isExpired = discount.expiresAt && new Date(discount.expiresAt) < new Date();
-                  const isExhausted = discount.maxUses && discount.usedCount >= discount.maxUses;
-                  const canBeUsed = discount.isActive && !isExpired && !isExhausted;
-
-                  return (
-                    <tr key={discount.id} className="hover:bg-slate-50/50 transition-colors">
-                      <td className="px-5 py-4">
-                        <span className={`inline-flex items-center px-2 py-1 rounded-full text-[10px] font-bold uppercase tracking-wide ${
-                          canBeUsed ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-500'
-                        }`}>
-                          {canBeUsed ? 'Active' : !discount.isActive ? 'Inactive' : isExpired ? 'Expired' : 'Depleted'}
-                        </span>
-                      </td>
-                      <td className="px-5 py-4">
-                        <div className="text-[13px] font-bold text-[#0F172A] tracking-wide">{discount.code}</div>
-                        {discount.label && <div className="text-[11px] text-slate-500 mt-0.5">{discount.label}</div>}
-                      </td>
-                      <td className="px-5 py-4">
-                        <div className="text-[13px] font-bold text-[#0F3A53]">
-                          {discount.discountType === 'PERCENT' ? `${discount.discountPercent}% OFF` : `₦${(parseInt(discount.discountAmountKobo || '0', 10) / 100).toLocaleString()} OFF`}
-                        </div>
-                      </td>
-                      <td className="px-5 py-4">
-                        <div className="text-[12px] font-medium text-slate-600">
-                          {discount.usedCount} {discount.maxUses ? `/ ${discount.maxUses}` : 'uses'}
-                        </div>
-                      </td>
-                      <td className="px-5 py-4">
-                        <div className="text-[12px] font-medium text-slate-600">
-                          {discount.expiresAt ? new Date(discount.expiresAt).toLocaleDateString('en-GB') : 'Never'}
-                        </div>
-                      </td>
-                      <td className="px-5 py-4 text-right">
-                        {discount.isActive && (
-                          <button
-                            onClick={() => handleToggleStatus(discount.id, discount.isActive)}
-                            className="text-slate-400 hover:text-rose-500 transition-colors cursor-pointer inline-flex p-1.5"
-                            title="Deactivate code"
-                          >
-                            <PowerOff className="h-4 w-4" />
-                          </button>
-                        )}
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
+            <ResponsiveTable<DiscountCode>
+              caption="Discount codes"
+              rows={discounts}
+              rowKey={(d) => d.id}
+              rowLabel={(d) => d.code}
+              columns={columns}
+              empty="No discount codes."
+              filter={{ placeholder: 'Search codes', match: (d, q) => [d.code, d.label ?? ''].some((v) => v.toLowerCase().includes(q)) }}
+              actions={(d) =>
+                d.isActive ? (
+                  <button
+                    onClick={() => handleToggleStatus(d.id, d.isActive)}
+                    className="text-slate-400 hover:text-rose-500 transition-colors cursor-pointer inline-flex p-1.5"
+                    title="Deactivate code"
+                    aria-label={`Deactivate ${d.code}`}
+                  >
+                    <PowerOff className="h-4 w-4" />
+                  </button>
+                ) : null
+              }
+            />
           </div>
         )}
-      </main>
 
       {/* Create Modal */}
       {showModal && (
@@ -236,7 +246,7 @@ export function DiscountSettingsPage() {
 
             {error && <div className="rounded-[12px] border border-rose-200 bg-rose-50 px-3 py-2 text-xs font-medium text-rose-700">{error}</div>}
 
-            <div className="grid grid-cols-2 gap-4">
+            <Grid cols={{ base: 1, sm: 2 }}>
               <div className="space-y-1.5 col-span-2">
                 <label className="text-[11px] font-bold text-slate-500 uppercase tracking-wide">Discount Code *</label>
                 <input
@@ -319,7 +329,7 @@ export function DiscountSettingsPage() {
                   className="w-full h-11 px-3.5 rounded-[12px] bg-[#F8FAFC] border border-[#E2E8F0] text-[13px] font-medium outline-none focus:border-slate-300 transition-colors cursor-pointer"
                 />
               </div>
-            </div>
+            </Grid>
 
             <div className="pt-2">
               <button
@@ -334,6 +344,6 @@ export function DiscountSettingsPage() {
           </form>
         </div>
       )}
-    </div>
+    </Page>
   );
 }
