@@ -80,7 +80,7 @@ New and rebuilt components in `packages/ui` follow these rules:
 **Existing imports keep their props:** `Card`, `Eyebrow`, `StatusBadge`, `Button`, `useToast` and `BrandProvider`. Their internals change only where this work needs it.
 
 **Rules**, enforced by the checks in section 10:
-1. A file under `apps/app/src/pages` never sets its own width. That means no `min-w-[…]` or `max-w-[…]` of 600px or more, no `max-w-{4..7}xl` and no `max-w-screen-*`. Small internal widths (avatars, badges, dialogs, text truncation) are fine.
+1. A file under `apps/app/src/pages` never sets its own width. That means no `min-w-[…]` or `max-w-[…]` of 900px or more (every page wrapper found was 1040px or wider; inner reading widths such as a 720px note card are fine), no `max-w-{4..7}xl` and no `max-w-screen-*`. Small internal widths (avatars, badges, dialogs, text truncation) are fine.
 2. Page and component files in `apps/app` do not write `<table>`, `<aside>`, `<select>`, `<textarea>` or `<input>`. Exceptions: `type="file"` and `type="hidden"`.
 3. Multi-column layouts use `Grid` or `FormGrid`. There is no bare `grid-cols-N` (N ≥ 2) without a narrower fallback.
 
