@@ -93,6 +93,19 @@ describe('the range control', () => {
   });
 });
 
+/**
+ * The responsive pass: Analytics used to force 1192px, so phones and tablets
+ * saw a sideways-scrolling page.
+ */
+describe('the shared page shell', () => {
+  it('fits the page it is given instead of forcing a width', () => {
+    const { container } = renderPage();
+    expect(container.innerHTML).not.toContain('min-w-[1192px]');
+    expect(screen.getByRole('heading', { level: 1, name: 'Analytics' })).toBeTruthy();
+    expect(container.querySelector('[class*="@container/page"]')).toBeTruthy();
+  });
+});
+
 describe('download report', () => {
   let clicked: HTMLAnchorElement | null = null;
 

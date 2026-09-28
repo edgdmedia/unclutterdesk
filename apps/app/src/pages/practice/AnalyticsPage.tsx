@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import { Download, TrendingUp } from 'lucide-react';
-import { Eyebrow, Card, SegmentedControl } from '@unclutterdesk/ui';
+import { Eyebrow, Card, SegmentedControl, Page, PageHeader, Grid, StatTile } from '@unclutterdesk/ui';
 
 interface AnalyticsPageProps {
   clients?: Array<{ status?: string }>;
@@ -152,54 +152,53 @@ export function AnalyticsPage({ clients = [], sessions = [] }: AnalyticsPageProp
   }, [clients, activeClients, completedSessions, completionRate]);
 
   return (
-    <div className="flex-1 min-w-[1192px] flex flex-col bg-[#F8FAFC]">
-      <header className="h-[80px] bg-white border-b border-[#E2E8F0] px-[26px] flex items-center justify-between gap-5 shrink-0">
-        <div>
-          <Eyebrow>PRACTICE ANALYTICS</Eyebrow>
-          <h1 className="text-[20px] font-bold tracking-[-0.02em] text-[#0F172A]">Analytics</h1>
-        </div>
-
-        <div className="flex items-center gap-3 ml-auto">
-          <SegmentedControl
-            options={['30 days', '90 days', '12 months']}
-            value={RANGES[range].label}
-            onChange={(next: string) => {
-              const found = (Object.keys(RANGES) as RangeKey[]).find(
-                (key) => RANGES[key].label === next,
-              );
-              if (found) setRange(found);
-            }}
-          />
-
-          <button
-            type="button"
-            onClick={downloadReport}
-            className="h-[40px] px-4 rounded-[14px] bg-white border border-[#CBD5E1] text-[#0F172A] text-xs font-bold hover:bg-[#F8FAFC] flex items-center gap-1.5 cursor-pointer"
-          >
-            <Download className="h-3.5 w-3.5" />
-            <span>Download report</span>
-          </button>
-        </div>
-      </header>
-
-      <main className="p-[24px_26px_30px] space-y-5 flex-1">
-        <div className="grid grid-cols-4 gap-3.5">
+    <Page
+      header={
+        <PageHeader
+          eyebrow="PRACTICE ANALYTICS"
+          title="Analytics"
+          actions={
+            <SegmentedControl
+              options={['30 days', '90 days', '12 months']}
+              value={RANGES[range].label}
+              onChange={(next: string) => {
+                const found = (Object.keys(RANGES) as RangeKey[]).find((key) => RANGES[key].label === next);
+                if (found) setRange(found);
+              }}
+            />
+          }
+          secondaryActions={
+            <button
+              type="button"
+              onClick={downloadReport}
+              className="h-[40px] px-4 rounded-[14px] bg-white border border-[#CBD5E1] text-[#0F172A] text-xs font-bold hover:bg-[#F8FAFC] flex items-center gap-1.5 cursor-pointer"
+            >
+              <Download className="h-3.5 w-3.5" />
+              <span>Download report</span>
+            </button>
+          }
+        />
+      }
+    >
+        <Grid cols={{ base: 1, sm: 2, lg: 4 }}>
           {kpis.map((kpi) => (
-            <Card key={kpi.label} padding="p-[16px_18px]">
-              <Eyebrow>{kpi.label}</Eyebrow>
-              <div className="flex items-baseline justify-between mt-1">
-                <span className="text-[26px] font-extrabold tracking-[-0.035em] text-[#0F172A] leading-none">{kpi.value}</span>
-                <span className="h-[22px] px-2 rounded-full bg-[#ECFDF5] border border-[#A7F3D0] text-[#059669] text-[11.5px] font-bold flex items-center gap-0.5">
+            <StatTile
+              key={kpi.label}
+              label={kpi.label}
+              value={kpi.value}
+              size="lg"
+              delta={
+                <>
                   <TrendingUp className="h-3 w-3" />
                   <span>{kpi.delta}</span>
-                </span>
-              </div>
-            </Card>
+                </>
+              }
+            />
           ))}
-        </div>
+        </Grid>
 
         <Card padding="p-[24px_26px]">
-          <div className="flex items-center justify-between mb-6">
+          <div className="flex flex-wrap items-center justify-between gap-2 mb-6">
             <div>
               <Eyebrow>LIVE SESSION VOLUME</Eyebrow>
               <h3 className="text-[17px] font-bold text-[#0F172A]">Sessions by month</h3>
@@ -207,7 +206,7 @@ export function AnalyticsPage({ clients = [], sessions = [] }: AnalyticsPageProp
             <span className="text-[12.5px] text-[#64748B] font-medium">Derived from real scheduled sessions currently loaded</span>
           </div>
 
-          <div className="h-[220px] flex items-end gap-3.5 pt-4">
+          <div className="h-[220px] flex items-end gap-1.5 md:gap-3.5 pt-4">
             {monthlyBars.map((bar) => (
               <div key={bar.month} className="flex-1 flex flex-col items-center gap-2 h-full justify-end">
                 <span className="text-[11px] font-bold text-[#64748B]">{bar.val}</span>
@@ -224,7 +223,7 @@ export function AnalyticsPage({ clients = [], sessions = [] }: AnalyticsPageProp
           </div>
         </Card>
 
-        <div className="grid grid-cols-2 gap-5">
+        <Grid cols={{ base: 1, lg: 2 }} gap="lg">
           <Card padding="p-[22px_24px]">
             <Eyebrow className="mb-1">SERVICE DISTRIBUTION</Eyebrow>
             <h3 className="text-[17px] font-bold text-[#0F172A] mb-4">Session mix</h3>
@@ -261,8 +260,7 @@ export function AnalyticsPage({ clients = [], sessions = [] }: AnalyticsPageProp
               ))}
             </div>
           </Card>
-        </div>
-      </main>
-    </div>
+        </Grid>
+    </Page>
   );
 }
