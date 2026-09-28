@@ -12,11 +12,13 @@ const PASSWORD = process.env.LAYOUT_PASSWORD ?? 'password123';
 const WIDTHS = [390, 820, 1024, 1280];
 
 // Routes that must pass. PRs 2–5 move routes from REPORT to STRICT.
-const STRICT = ['/dashboard', '/dashboard/analytics', 'CLIENT'];
+const STRICT = [
+  '/dashboard', '/dashboard/analytics', 'CLIENT',
+  '/dashboard/clients', '/dashboard/hours', '/dashboard/settings/team', '/dashboard/settings/discounts',
+];
 const REPORT = [
-  '/dashboard/clients', '/dashboard/schedule', '/dashboard/hours', '/dashboard/submissions',
-  '/dashboard/notifications', '/dashboard/profile', '/dashboard/settings/account',
-  '/dashboard/settings/availability', '/dashboard/settings/team', '/dashboard/settings/discounts',
+  '/dashboard/schedule', '/dashboard/submissions', '/dashboard/notifications', '/dashboard/profile',
+  '/dashboard/settings/account', '/dashboard/settings/availability',
 ];
 
 const expectedSidebar = (w) => (w < 768 ? 'none' : w < 1280 ? 'rail' : 'full');

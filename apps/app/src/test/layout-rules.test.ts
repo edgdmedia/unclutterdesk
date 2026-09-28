@@ -17,6 +17,10 @@ const MIGRATED = [
   'pages/practice/ClientDetailPage.tsx',
   'pages/practice/AnalyticsPage.tsx',
   'pages/practice/DashboardPage.tsx',
+  'pages/practice/HoursLogPage.tsx',
+  'pages/practice/ClientsPage.tsx',
+  'pages/practice/settings/TeamSettingsPage.tsx',
+  'pages/practice/settings/DiscountSettingsPage.tsx',
 ];
 
 function files(dir: string): string[] {
