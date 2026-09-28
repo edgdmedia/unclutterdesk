@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { UserPlus, MoreHorizontal, Info, X, Check, Mail, Loader2 } from 'lucide-react';
-import { Eyebrow, Card, StatusBadge, Button, useToast } from '@unclutterdesk/ui';
+import { Eyebrow, Card, StatusBadge, Button, useToast, Page, PageHeader, ResponsiveTable, byText, type Column } from '@unclutterdesk/ui';
 import { useBrand } from '@unclutterdesk/ui';
 import { api } from '../../../utils/apiClient';
 import type { StaffMember } from '../../../App';
@@ -196,38 +196,101 @@ export function TeamSettingsPage({ staff, onRefresh }: TeamSettingsPageProps) {
     }
   };
 
-  return (
-    <div className="flex-1 min-w-[1192px] flex flex-col bg-[#F8FAFC]">
-      {/* 88px Header Bar */}
-      <header className="h-[88px] bg-white border-b border-[#E2E8F0] px-[26px] flex items-center justify-between gap-5 shrink-0">
-        <div>
-          <Eyebrow>SETTINGS</Eyebrow>
-          <h1 className="text-[20px] font-bold tracking-[-0.02em] text-[#0F172A]">Team & staff roster</h1>
-          {/* Claimed a Group Clinic plan and a ten-seat limit to every
-              practice, including one on the free plan that cannot invite
-              anyone. The count is the part that was true. */}
-          <p className="text-xs text-[#64748B] font-medium">
-            {memberCount} {memberCount === 1 ? 'team member' : 'team members'}
-            {pendingCount > 0 && `, ${pendingCount} invited`}
-          </p>
+  const memberCell = (m: StaffMember) => (
+    <div className="flex items-center gap-3 min-w-0">
+      <div className={`h-[40px] w-[40px] rounded-[13px] font-extrabold text-[13.5px] flex items-center justify-center border shrink-0 ${
+        m.role === 'OWNER'
+          ? 'bg-gradient-to-br from-[#1B5375] to-[#0F3A53] text-[#E3B341] border-[#E3B341]/30'
+          : 'bg-[#F1F5F9] text-[#0F3A53] border-slate-200'
+      }`}>
+        {m.initials}
+      </div>
+      <div className="min-w-0">
+        <div className="flex flex-wrap items-center gap-2">
+          <h3 className="text-[14px] font-bold text-[#0F172A] leading-tight truncate">{m.name}</h3>
+          {m.pending && (
+            <span className="text-[9px] font-black uppercase text-amber-700 bg-amber-50 px-2 py-0.5 rounded-full border border-amber-200">
+              {m.invitedAt ? `INVITED ${formatDate(m.invitedAt)}` : 'INVITE PENDING'}
+            </span>
+          )}
         </div>
+        <p className="text-[11.5px] text-[#64748B] font-medium truncate">{m.title}</p>
+      </div>
+    </div>
+  );
 
-        <button
-          onClick={() => setInviteModalOpen(true)}
-          className="os-brand-btn h-[44px] px-5 rounded-[14px] font-bold text-xs flex items-center gap-2 cursor-pointer text-white"
-          style={{ backgroundColor: primaryColor }}
-        >
-          <UserPlus className="h-4 w-4" />
-          <span>Invite staff member</span>
-        </button>
-      </header>
+  const statusCell = (m: StaffMember) =>
+    m.pending ? (
+      // Nothing to switch on: there is no account until the invitation is claimed.
+      <span className="text-[11.5px] font-bold text-amber-700">
+        {m.expiresAt ? `Expires ${formatDate(m.expiresAt)}` : 'Awaiting acceptance'}
+      </span>
+    ) : (
+      <button
+        type="button"
+        role="switch"
+        aria-checked={m.status === 'Active'}
+        aria-label={`${m.name} active`}
+        onClick={() => toggleStaffStatus(m)}
+        disabled={m.role === 'OWNER' || statusPendingId !== null}
+        className={`w-[40px] h-[22px] rounded-full p-[2px] transition-colors block ${
+          m.status === 'Active' ? 'bg-[#15803D]' : 'bg-[#E2E8F0]'
+        } ${m.role === 'OWNER' || statusPendingId !== null ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
+      >
+        <div className={`w-[18px] h-[18px] rounded-full bg-white shadow-xs transition-transform ${m.status === 'Active' ? 'translate-x-[18px]' : 'translate-x-0'}`} />
+      </button>
+    );
 
-      {/* Main Content Workspace */}
-      <main className="p-[24px_26px_30px] flex-1">
+  const roleCell = (m: StaffMember) => (
+    <span
+      className="h-6 px-2.5 rounded-full text-[10px] font-black tracking-wider uppercase inline-flex items-center"
+      style={{
+        backgroundColor: m.role === 'OWNER' ? '#0F172A' : m.role === 'ADMIN' ? '#EFF6FB' : '#F1F5F9',
+        color: m.role === 'OWNER' ? '#E3B341' : m.role === 'ADMIN' ? '#0F3A53' : '#475569',
+      }}
+    >
+      {m.role}
+    </span>
+  );
+
+  // Status stays in view with the member: it is a switch people use, not a detail.
+  const columns: Column<StaffMember>[] = [
+    { key: 'member', header: 'Member', cell: memberCell, sort: byText((m) => m.name), className: 'w-full max-w-0' },
+    { key: 'status', header: 'Status', cell: statusCell },
+    { key: 'role', header: 'Role', priority: 'md', cell: roleCell, sort: byText((m) => m.role) },
+    { key: 'email', header: 'Email', priority: 'lg', cell: (m) => <span className="text-[13px] font-medium text-[#475569]">{m.email}</span>, sort: byText((m) => m.email) },
+  ];
+
+  return (
+    <Page
+      header={
+        <PageHeader
+          eyebrow="SETTINGS"
+          title="Team & staff roster"
+          actions={
+            <button
+              onClick={() => setInviteModalOpen(true)}
+              className="os-brand-btn h-[44px] px-5 rounded-[14px] font-bold text-xs flex items-center gap-2 cursor-pointer text-white"
+              style={{ backgroundColor: primaryColor }}
+            >
+              <UserPlus className="h-4 w-4" />
+              <span>Invite staff member</span>
+            </button>
+          }
+        />
+      }
+    >
+      {/* Claimed a Group Clinic plan and a ten-seat limit to every practice,
+          including one on the free plan that cannot invite anyone. The count
+          is the part that was true. */}
+      <p className="text-xs text-[#64748B] font-medium -mt-1">
+        {memberCount} {memberCount === 1 ? 'team member' : 'team members'}
+        {pendingCount > 0 && `, ${pendingCount} invited`}
+      </p>
         {statusError && (
           <div
             role="alert"
-            className="mb-4 rounded-[16px] border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-medium text-rose-700"
+            className="rounded-[16px] border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-medium text-rose-700"
           >
             {statusError}
           </div>
@@ -235,146 +298,73 @@ export function TeamSettingsPage({ staff, onRefresh }: TeamSettingsPageProps) {
         {rosterNotice && (
           <div
             role="status"
-            className="mb-4 rounded-[16px] border border-[#A7F3D0] bg-[#ECFDF5] px-4 py-3 text-sm font-medium text-[#047857]"
+            className="rounded-[16px] border border-[#A7F3D0] bg-[#ECFDF5] px-4 py-3 text-sm font-medium text-[#047857]"
           >
             {rosterNotice}
           </div>
         )}
         {/* Staff Table */}
-        <Card padding="p-0" className="overflow-hidden border border-[#E2E8F0] relative bg-white">
-          {/* Header Row */}
-          <div className="bg-[#F8FAFC] border-b border-[#E2E8F0] px-[24px] py-[16px] grid grid-cols-[2.2fr_1.4fr_1fr_1fr_0.5fr] gap-4 items-center">
-            <Eyebrow>MEMBER</Eyebrow>
-            <Eyebrow>EMAIL</Eyebrow>
-            <Eyebrow>ROLE</Eyebrow>
-            <Eyebrow>STATUS</Eyebrow>
-            <Eyebrow className="text-right">ACTIONS</Eyebrow>
-          </div>
-
-          {/* Table Body */}
-          <div className="divide-y divide-[#F1F5F9]">
-            {staff.map((m) => (
-              <div key={m.id} className="px-[24px] py-[16px] grid grid-cols-[2.2fr_1.4fr_1fr_1fr_0.5fr] gap-4 items-center hover:bg-[#FCFDFE] relative">
-                <div className="flex items-center gap-3">
-                  <div className={`h-[40px] w-[40px] rounded-[13px] font-extrabold text-[13.5px] flex items-center justify-center border shrink-0 ${
-                    m.role === 'OWNER'
-                      ? 'bg-gradient-to-br from-[#1B5375] to-[#0F3A53] text-[#E3B341] border-[#E3B341]/30'
-                      : 'bg-[#F1F5F9] text-[#0F3A53] border-slate-200'
-                  }`}>
-                    {m.initials}
-                  </div>
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <h3 className="text-[14px] font-bold text-[#0F172A] leading-tight">{m.name}</h3>
-                      {m.pending && (
-                        <span className="text-[9px] font-black uppercase text-amber-700 bg-amber-50 px-2 py-0.5 rounded-full border border-amber-200">
-                          {m.invitedAt ? `INVITED ${formatDate(m.invitedAt)}` : 'INVITE PENDING'}
-                        </span>
-                      )}
-                    </div>
-                    <p className="text-[11.5px] text-[#64748B] font-medium">{m.title}</p>
-                  </div>
-                </div>
-
-                <span className="text-[13px] font-medium text-[#475569]">{m.email}</span>
-
-                <div>
-                  <span className="h-6 px-2.5 rounded-full text-[10px] font-black tracking-wider uppercase inline-flex items-center" style={{
-                    backgroundColor: m.role === 'OWNER' ? '#0F172A' : m.role === 'ADMIN' ? '#EFF6FB' : '#F1F5F9',
-                    color: m.role === 'OWNER' ? '#E3B341' : m.role === 'ADMIN' ? '#0F3A53' : '#475569'
-                  }}>
-                    {m.role}
-                  </span>
-                </div>
-
-                <div>
-                  {m.pending ? (
-                    // Nothing to switch on: there is no account until the
-                    // invitation is claimed.
-                    <span className="text-[11.5px] font-bold text-amber-700">
-                      {m.expiresAt ? `Expires ${formatDate(m.expiresAt)}` : 'Awaiting acceptance'}
-                    </span>
-                  ) : (
-                  <button
-                    type="button"
-                    role="switch"
-                    aria-checked={m.status === 'Active'}
-                    aria-label={`${m.name} active`}
-                    onClick={() => toggleStaffStatus(m)}
-                    disabled={m.role === 'OWNER' || statusPendingId !== null}
-                    className={`w-[40px] h-[22px] rounded-full p-[2px] transition-colors block ${
-                      m.status === 'Active' ? 'bg-[#15803D]' : 'bg-[#E2E8F0]'
-                    } ${
-                      m.role === 'OWNER' || statusPendingId !== null
-                        ? 'opacity-50 cursor-not-allowed'
-                        : 'cursor-pointer'
-                    }`}
-                  >
-                    <div className={`w-[18px] h-[18px] rounded-full bg-white shadow-xs transition-transform ${
-                      m.status === 'Active' ? 'translate-x-[18px]' : 'translate-x-0'
-                    }`} />
-                  </button>
-                  )}
-                </div>
-
-                <div className="text-right relative">
-                  <button
-                    onClick={() => setActiveMenuId(activeMenuId === m.id ? null : m.id)}
-                    aria-label={`Actions for ${m.name}`}
-                    className="h-8 w-8 rounded-[9px] hover:bg-[#F1F5F9] text-[#64748B] flex items-center justify-center ml-auto cursor-pointer"
-                  >
-                    <MoreHorizontal className="h-4 w-4" />
-                  </button>
-
-                  {/* Dropdown Menu */}
-                  {activeMenuId === m.id && (
-                    <div className="absolute right-0 top-10 w-44 bg-white rounded-[14px] shadow-xl border border-slate-200 py-1 z-30 text-left">
-                      {/*
-                        "Resend Invitation" alerted that an email had been sent
-                        to this address. Nothing was sent, and everyone in this
-                        list has already joined — an invitation that is still
-                        outstanding has no profile yet, so it never appears
-                        here at all.
-                      */}
-                      {m.pending ? (
-                        <>
-                          <button
-                            onClick={() => { void resendInvite(m); setActiveMenuId(null); }}
-                            disabled={invitePendingId !== null}
-                            className="w-full px-3 py-2 text-xs font-bold text-slate-700 hover:bg-slate-50 flex items-center gap-2 disabled:opacity-50"
-                          >
-                            <Mail className="h-3.5 w-3.5" />
-                            <span>Send invitation again</span>
-                          </button>
-                          <button
-                            onClick={() => { void revokeInvite(m); setActiveMenuId(null); }}
-                            disabled={invitePendingId !== null}
-                            className="w-full px-3 py-2 text-xs font-bold text-rose-600 hover:bg-rose-50 text-left disabled:opacity-50"
-                          >
-                            Withdraw invitation
-                          </button>
-                        </>
-                      ) : m.role === 'OWNER' ? (
-                        <p className="px-3 py-2 text-xs font-medium text-slate-500">
-                          The owner cannot be deactivated.
-                        </p>
-                      ) : (
+        <Card padding="p-0" className="border border-[#E2E8F0] relative bg-white">
+          <ResponsiveTable<StaffMember>
+            caption="Team members"
+            rows={staff}
+            rowKey={(m) => m.id}
+            rowLabel={(m) => m.name}
+            columns={columns}
+            empty="No team members yet."
+            actions={(m) => (
+              <div className="text-right relative">
+                <button
+                  onClick={() => setActiveMenuId(activeMenuId === m.id ? null : m.id)}
+                  aria-label={`Actions for ${m.name}`}
+                  className="h-8 w-8 rounded-[9px] hover:bg-[#F1F5F9] text-[#64748B] flex items-center justify-center ml-auto cursor-pointer"
+                >
+                  <MoreHorizontal className="h-4 w-4" />
+                </button>
+                {activeMenuId === m.id && (
+                  <div className="absolute right-0 top-10 w-44 bg-white rounded-[14px] shadow-xl border border-slate-200 py-1 z-30 text-left">
+                    {/*
+                      "Resend Invitation" alerted that an email had been sent
+                      to this address. Nothing was sent, and everyone in this
+                      list has already joined — an invitation that is still
+                      outstanding has no profile yet, so it never appears
+                      here at all.
+                    */}
+                    {m.pending ? (
+                      <>
                         <button
-                          onClick={() => { void toggleStaffStatus(m); setActiveMenuId(null); }}
-                          disabled={statusPendingId !== null}
+                          onClick={() => { void resendInvite(m); setActiveMenuId(null); }}
+                          disabled={invitePendingId !== null}
+                          className="w-full px-3 py-2 text-xs font-bold text-slate-700 hover:bg-slate-50 flex items-center gap-2 disabled:opacity-50"
+                        >
+                          <Mail className="h-3.5 w-3.5" />
+                          <span>Send invitation again</span>
+                        </button>
+                        <button
+                          onClick={() => { void revokeInvite(m); setActiveMenuId(null); }}
+                          disabled={invitePendingId !== null}
                           className="w-full px-3 py-2 text-xs font-bold text-rose-600 hover:bg-rose-50 text-left disabled:opacity-50"
                         >
-                          {m.status === 'Active' ? 'Deactivate Member' : 'Activate Member'}
+                          Withdraw invitation
                         </button>
-                      )}
-                    </div>
-                  )}
-                </div>
+                      </>
+                    ) : m.role === 'OWNER' ? (
+                      <p className="px-3 py-2 text-xs font-medium text-slate-500">The owner cannot be deactivated.</p>
+                    ) : (
+                      <button
+                        onClick={() => { void toggleStaffStatus(m); setActiveMenuId(null); }}
+                        disabled={statusPendingId !== null}
+                        className="w-full px-3 py-2 text-xs font-bold text-rose-600 hover:bg-rose-50 text-left disabled:opacity-50"
+                      >
+                        {m.status === 'Active' ? 'Deactivate Member' : 'Activate Member'}
+                      </button>
+                    )}
+                  </div>
+                )}
               </div>
-            ))}
-          </div>
+            )}
+          />
         </Card>
-      </main>
 
       {/* Invite Staff Member Modal */}
       {inviteModalOpen && (
@@ -485,6 +475,6 @@ export function TeamSettingsPage({ staff, onRefresh }: TeamSettingsPageProps) {
           </div>
         </div>
       )}
-    </div>
+    </Page>
   );
 }

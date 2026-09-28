@@ -79,6 +79,16 @@ beforeEach(() => {
 
 afterEach(cleanup);
 
+describe('the shared page and table', () => {
+  it('fits the page, as a table with each member’s switch and menu shown once', () => {
+    const { container } = renderPage();
+    expect(container.innerHTML).not.toContain('min-w-[1192px]');
+    expect(screen.getByRole('table', { name: 'Team members' })).toBeTruthy();
+    expect(screen.getAllByLabelText('Segun Ade active')).toHaveLength(1);
+    expect(screen.getAllByLabelText('Actions for Segun Ade')).toHaveLength(1);
+  });
+});
+
 describe('deactivating a staff member', () => {
   // The bug: this only ever edited React state, so the person kept working.
   it('tells the server, rather than only the screen', async () => {

@@ -43,6 +43,9 @@ export function ClientsPage({ clients, setClients, onRefresh }: ClientsPageProps
       key: 'name',
       header: 'Client',
       sort: byText((c) => c.name),
+      // The flexible column: takes the remaining width and truncates, so a
+      // long email never forces the table past the screen.
+      className: 'w-full max-w-0',
       cell: (c) => (
         <span className="flex items-center gap-3 min-w-0">
           <AvatarChip initials={c.initials} size="sm" />
