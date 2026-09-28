@@ -50,8 +50,8 @@ const HIDE_FROM = { md: '@min-[640px]/table:hidden', lg: '@min-[960px]/table:hid
 // In the opened row, a md column's line hides once that column is back in the row.
 const DETAIL_HIDE_FROM: Record<ColumnPriority, string> = { always: '', md: '@min-[640px]/table:hidden', lg: '' };
 
-const TH = 'px-4 py-2.5 text-[10.5px] font-bold uppercase tracking-[0.06em] text-[var(--desk-text-muted)] bg-[var(--desk-surface-alt)] border-b border-[var(--desk-border)] whitespace-nowrap';
-const TD = 'px-4 py-3 align-middle text-[12.5px] text-[var(--desk-text-body)]';
+const TH = 'px-3 py-2.5 text-[10.5px] font-bold uppercase tracking-[0.06em] text-[var(--desk-text-muted)] bg-[var(--desk-surface-alt)] border-b border-[var(--desk-border)]';
+const TD = 'px-3 py-3 align-middle text-[12.5px] text-[var(--desk-text-body)]';
 const INTERACTIVE = 'a, button, input, select, textarea, label, [role="switch"], [role="menu"], [role="menuitem"]';
 
 function isControlled<Row>(f: TableFilter<Row>): f is Extract<TableFilter<Row>, { onQueryChange: unknown }> {
