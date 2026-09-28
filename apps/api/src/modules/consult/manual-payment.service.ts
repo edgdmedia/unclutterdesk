@@ -184,7 +184,8 @@ export class ManualPaymentService {
           to: b.client.email,
           type: 'bookings.manual_payment_received',
           title: 'Payment received: your session is confirmed',
-          message: `${b.tenant.name} has received your transfer. Your ${b.service.title} on ${this.sessionTime(b.availability.startsAt)} is confirmed.`,
+          // A booking staff made may have been paid in person, not by transfer.
+          message: `${b.tenant.name} ${b.paymentMethod === 'MANUAL' ? 'has received your transfer' : 'has recorded your payment'}. Your ${b.service.title} on ${this.sessionTime(b.availability.startsAt)} is confirmed.`,
           link: `${tenantWebOrigin(b.tenant)}/portal`,
           actionLabel: 'View my booking',
           tenantId: b.tenantId,

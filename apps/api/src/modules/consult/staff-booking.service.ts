@@ -121,7 +121,7 @@ export class StaffBookingService {
         : { status: 'PENDING_PAYMENT', paymentMethod: 'PAYSTACK', amountKobo: price, holdExpiresAt: hold };
 
     const booking = await this.prisma.$transaction(async (tx) => {
-      const slotId = await this.claimTime(tx, tenantId, providerId, service.id, time, fullName(therapist.profile));
+      const slotId = await this.claimTime(tx, tenantId, providerId, service.id, time, fullName(therapist.profile), therapist.profile?.timezone || 'Africa/Lagos');
       const { roomName } = await this.consult.resolveVideoRoomLink(therapist, Date.now());
       return tx.consultBooking.create({
         data: {
@@ -164,8 +164,10 @@ export class StaffBookingService {
     });
     if (!b) return;
     const origin = tenantWebOrigin(b.tenant as any);
+    // The client reads this, so their own time zone, not the server's or the practice's.
+    const timeZone = (b.client as { timezone?: string | null }).timezone || 'Africa/Lagos';
     const when = new Intl.DateTimeFormat('en-GB', {
-      weekday: 'long', day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit', timeZone: 'Africa/Lagos',
+      weekday: 'long', day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit', timeZone,
     }).format(new Date(r.startsAt));
 
     if (r.status === 'CONFIRMED') {
@@ -176,7 +178,7 @@ export class StaffBookingService {
     try {
       if (r.status === 'PENDING_PAYMENT') {
         const deadline = r.holdExpiresAt
-          ? new Intl.DateTimeFormat('en-GB', { day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit', timeZone: 'Africa/Lagos' }).format(new Date(r.holdExpiresAt))
+          ? new Intl.DateTimeFormat('en-GB', { day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit', timeZone }).format(new Date(r.holdExpiresAt))
           : '';
         await this.notifications.sendEmail({
           to: b.client.email,
@@ -291,6 +293,7 @@ export class StaffBookingService {
     serviceId: bigint,
     time: Awaited<ReturnType<StaffBookingService['resolveTime']>>,
     practitionerName: string,
+    timeZone: string,
   ): Promise<bigint> {
     if (time.kind === 'slot') {
       const claimed = await tx.consultAvailability.updateMany({
@@ -322,9 +325,10 @@ export class StaffBookingService {
       include: { availability: true },
     });
     if (clash) {
-      const hhmm = (d: Date) => d.toISOString().slice(11, 16);
+      // In the practitioner's own time zone: UTC read as local was an hour out in Lagos.
+      const hhmm = (d: Date) => new Intl.DateTimeFormat('en-GB', { hour: '2-digit', minute: '2-digit', timeZone }).format(d);
       throw new BadRequestException(
-        `${practitionerName || 'This practitioner'} already has a session from ${hhmm(clash.availability.startsAt)} to ${hhmm(clash.availability.endsAt)} (UTC). Choose another time.`,
+        `${practitionerName || 'This practitioner'} already has a session from ${hhmm(clash.availability.startsAt)} to ${hhmm(clash.availability.endsAt)}. Choose another time.`,
       );
     }
 

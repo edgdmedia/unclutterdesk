@@ -75,3 +75,27 @@ describe('regenerating open slots', () => {
     });
   });
 });
+
+describe('open times offered for a service', () => {
+  const start = new Date(Date.now() + 3 * 86_400_000);
+  const slot = (id: bigint, minutes: number) => ({
+    id, serviceId: null, providerProfileId: PROVIDER, channel: 'VIDEO',
+    startsAt: start, endsAt: new Date(start.getTime() + minutes * 60_000),
+    therapist: { profile: { firstName: 'Jane', lastName: 'Smith', avatarUrl: null } },
+  });
+
+  it('leaves out times too short for the chosen service', async () => {
+    const { service, prisma } = makeService();
+    prisma.consultAvailability.findMany.mockResolvedValue([slot(1n, 30), slot(2n, 60)]);
+    prisma.consultService = { findFirst: vi.fn().mockResolvedValue({ durationMinutes: 50 }) };
+    const slots = await service.getPublicAvailability(TENANT, PROVIDER, 20n);
+    expect(slots.map((s) => s.id)).toEqual(['2']);
+  });
+
+  it('offers every time when no service is chosen', async () => {
+    const { service, prisma } = makeService();
+    prisma.consultAvailability.findMany.mockResolvedValue([slot(1n, 30), slot(2n, 60)]);
+    const slots = await service.getPublicAvailability(TENANT);
+    expect(slots).toHaveLength(2);
+  });
+});

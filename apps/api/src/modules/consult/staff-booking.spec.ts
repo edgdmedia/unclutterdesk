@@ -284,3 +284,30 @@ describe('after the booking', () => {
     await expect(service.createForClient(TENANT, OWNER, { ...base, payment: 'LINK' })).resolves.toMatchObject({ bookingId: '900' });
   });
 });
+
+describe('times shown to people', () => {
+  // 09:00 UTC is 10:00 in Lagos.
+  const at = new Date('2027-01-05T09:00:00Z');
+
+  it('gives a clash in the practitioner’s own time zone, not UTC', async () => {
+    const { service } = setup({ clash: { availability: { startsAt: at, endsAt: new Date(at.getTime() + 50 * 60_000) } } });
+    const err = await service
+      .createForClient(TENANT, OWNER, { clientProfileId: String(CLIENT), serviceId: '20', startsAt: at.toISOString(), payment: 'NONE' })
+      .catch((e: Error) => e);
+    expect((err as Error).message).toContain('from 10:00 to 10:50');
+    expect((err as Error).message).not.toContain('UTC');
+  });
+
+  it('emails the client the time in their own time zone', async () => {
+    const { service, prisma, notifications } = setup({ startsAt: at });
+    prisma.consultBooking.findFirst.mockResolvedValue({
+      id: 900n, tenantId: TENANT, clientProfileId: CLIENT,
+      client: { email: 'ada@example.com', timezone: 'Europe/London' },
+      tenant: { name: 'Smith Therapy', slug: 'dr-smith', customDomain: null, customDomainStatus: null },
+    });
+    await service.createForClient(TENANT, OWNER, { ...base, payment: 'NONE' });
+    const message = notifications.sendEmail.mock.calls[0][0].message;
+    expect(message).toContain('09:00');
+    expect(message).not.toContain('10:00');
+  });
+});

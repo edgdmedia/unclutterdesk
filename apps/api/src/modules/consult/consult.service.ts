@@ -358,7 +358,14 @@ export class ConsultService {
       orderBy: { startsAt: 'asc' },
     });
 
-    return slots.map((s) => ({
+    // A time shorter than the chosen service would only be refused at booking.
+    const service = serviceId
+      ? await this.prisma.consultService.findFirst({ where: { id: serviceId, tenantId }, select: { durationMinutes: true } })
+      : null;
+    const longEnough = (s: { startsAt: Date; endsAt: Date }) =>
+      !service || (s.endsAt.getTime() - s.startsAt.getTime()) / 60_000 >= service.durationMinutes;
+
+    return slots.filter(longEnough).map((s) => ({
       id: s.id.toString(),
       serviceId: s.serviceId?.toString() || null,
       providerProfileId: s.providerProfileId.toString(),
