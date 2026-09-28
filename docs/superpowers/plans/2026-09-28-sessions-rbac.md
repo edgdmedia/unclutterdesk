@@ -6,7 +6,10 @@
 + per-person grants on the already-existing `Profile.permissions`), migrate
 every route to it, then build on top: a practice Sessions register, a
 single-session hub page (status, payment, start/prep/note links, reschedule,
-summary + client recap), and session + payment history on the client page.
+summary + client recap), session + payment history on the client page, and
+client accounts — booking from a practice page requires signing in or creating
+an account, staff-added clients get a set-password invite, and confirmation
+emails carry the video join link.
 
 **Architecture:**
 - `apps/api/src/common/permissions.ts` holds the catalog, the role→permission
@@ -86,8 +89,14 @@ Tailwind 4 (container queries), Vitest 2 + Testing Library, pnpm workspace.
 - Modify `apps/api/src/modules/consult/consult.controller.ts` and `consult.module.ts`.
 - Test: `apps/api/src/modules/consult/session-directory.spec.ts`.
 
+**Part D: client accounts (API)**
+- Modify `prisma/schema.prisma` + create `prisma/migrations/<ts>_client_accounts/migration.sql` — `Profile.accountTokenHash`, `accountTokenExpiresAt`.
+- Modify `apps/api/src/modules/auth/auth.service.ts` + `auth.controller.ts` — `client-signup`, `client-set-password`.
+- Modify `apps/api/src/modules/tenant/tenant.service.ts` — `createClient` sends the account invite.
+- Modify `apps/api/src/modules/consult/consult.service.ts` + `consult.controller.ts` — booking requires a client session; confirmation emails carry the join link.
+
 **App**
-- Modify `apps/app/src/context/AuthContext.tsx` — `AuthProfile.permissions`.
+- Modify `apps/app/src/context/AuthContext.tsx` — `AuthProfile.permissions`; create `apps/app/src/pages/public/ClientAuthPanel.tsx` and `apps/app/src/pages/public/SetPasswordPage.tsx`; modify `apps/app/src/pages/public/ClientBookingPage.tsx`.
 - Create `apps/app/src/components/team/PermissionsDialog.tsx`; modify `TeamSettingsPage.tsx`.
 - Create `apps/app/src/pages/practice/SessionsPage.tsx`, `apps/app/src/pages/practice/SessionDetailPage.tsx`.
 - Modify `apps/app/src/App.tsx` (lazy imports, routes, `StaffMember.permissions`), `apps/app/src/components/shell/practiceNav.tsx` (nav entry), `apps/app/src/pages/practice/ClientDetailPage.tsx` (sessions + payments tabs).
@@ -2624,3 +2633,866 @@ EOF
 If one is open (e.g. PR #37 for responsive PR 2): these commits join it; add a
 section describing this feature with `gh pr edit <n> --body-file <file>`,
 keeping the existing description.
+
+---
+
+## Part D: client accounts
+
+### Task 17: Account columns, signup and set-password
+
+**Files:**
+- Modify: `prisma/schema.prisma` (`Profile`, after `emailVerifiedAt`)
+- Create: `prisma/migrations/20260928160000_client_accounts/migration.sql`
+- Modify: `apps/api/src/modules/auth/auth.service.ts`
+- Modify: `apps/api/src/modules/auth/auth.controller.ts`
+- Test: `apps/api/src/modules/auth/client-accounts.spec.ts`
+
+**Interfaces:**
+- Produces:
+  - `Profile.accountTokenHash String? @unique` and `Profile.accountTokenExpiresAt DateTime?` — the pending set-password invite.
+  - `AuthService.clientSignup(tenantId: bigint | undefined, dto: { firstName, lastName, email, password }, device): Promise<{ profile }>` — throws `BadRequestException('Choose a practice first.')` without a tenant; `ConflictException` code `ACCOUNT_EXISTS` when the email already has an account here.
+  - `AuthService.clientSetPassword(dto: { token, password, firstName?, lastName? }, device)` — accepts the invite, creates or links the User, signs in.
+  - Routes `POST /v1/auth/client-signup`, `POST /v1/auth/client-set-password` (public, throttled, set cookies like `claimInvite`).
+
+- [ ] **Step 1: Schema + migration**
+
+`Profile`, after `emailVerifiedAt DateTime?`:
+
+```prisma
+  // A pending "set your password" invite for a client the practice added.
+  accountTokenHash       String?   @unique
+  accountTokenExpiresAt  DateTime?
+```
+
+`prisma/migrations/20260928160000_client_accounts/migration.sql`:
+
+```sql
+ALTER TABLE "Profile"
+  ADD COLUMN "accountTokenHash" TEXT,
+  ADD COLUMN "accountTokenExpiresAt" TIMESTAMP(3);
+
+CREATE UNIQUE INDEX "Profile_accountTokenHash_key" ON "Profile"("accountTokenHash");
+```
+
+Run: `npx prisma migrate deploy --schema prisma/schema.prisma && npx prisma generate --schema prisma/schema.prisma`
+Expected: "1 migration applied", "Generated Prisma Client".
+
+- [ ] **Step 2: Write the failing tests**
+
+`apps/api/src/modules/auth/client-accounts.spec.ts`:
+
+```ts
+import { BadRequestException, ConflictException, UnauthorizedException } from '@nestjs/common';
+import { describe, expect, it, vi } from 'vitest';
+import { AuthService } from './auth.service';
+
+const TENANT = 1n;
+
+function make(over: Record<string, any> = {}) {
+  const prisma: any = {
+    user: {
+      findUnique: vi.fn(async ({ where }: any) => (where.email === over.userEmail ? over.user ?? null : null)),
+      create: vi.fn(async ({ data }: any) => ({ id: 77n, ...data })),
+    },
+    profile: {
+      findFirst: vi.fn(async ({ where }: any) =>
+        where.accountTokenHash ? (over.inviteProfile ?? null) : where.userId !== undefined ? over.profileByUser ?? null : over.profileByEmail ?? null),
+      findMany: vi.fn().mockResolvedValue(over.profiles ?? []),
+      create: vi.fn(async ({ data }: any) => ({ id: 88n, ...data })),
+      update: vi.fn(async ({ data }: any) => ({ ...(over.profileByEmail ?? over.inviteProfile ?? {}), ...data })),
+    },
+    session: { create: vi.fn() },
+    token: { create: vi.fn(), findFirst: vi.fn().mockResolvedValue(null), updateMany: vi.fn() },
+    tenant: { findUnique: vi.fn().mockResolvedValue(over.tenant ?? { id: TENANT, name: 'Smith Therapy', slug: 'dr-smith', customDomain: null, customDomainStatus: null }) },
+  };
+  const jwt: any = { sign: vi.fn((p: any) => `jwt:${JSON.stringify(p)}`) };
+  const notifications: any = { sendEmail: vi.fn().mockResolvedValue({ success: true }) };
+  const invites: any = { assertUsable: vi.fn(), redeem: vi.fn() };
+  const service = new AuthService(prisma, jwt, notifications, invites, {} as any);
+  return { prisma, service, notifications };
+}
+
+describe('clientSignup', () => {
+  it('needs a practice', async () => {
+    const { service } = make();
+    await expect(service.clientSignup(undefined, { firstName: 'A', lastName: '', email: 'a@x.com', password: 'password1234' } as any, {})).rejects.toBeInstanceOf(BadRequestException);
+  });
+  it('creates the user and this practice’s client profile, and signs in', async () => {
+    const { service, prisma } = make({ profileByEmail: null });
+    const res = await service.clientSignup(TENANT, { firstName: 'Ada', lastName: 'O', email: 'Ada@X.com ', password: 'password1234' } as any, {});
+    expect(prisma.user.create).toHaveBeenCalled();
+    const created = prisma.profile.create.mock.calls[0][0].data;
+    expect(created).toMatchObject({ tenantId: TENANT, role: 'CLIENT', emailVerified: true, userId: 77n });
+    expect(res.profile.role).toBe('CLIENT');
+  });
+  it('links a profile staff already created', async () => {
+    const { service, prisma } = make({ profileByEmail: { id: 40n, tenantId: TENANT, email: 'ada@x.com', userId: null, role: 'CLIENT', status: 'active', type: 'user', firstName: 'Ada', lastName: null, username: 'ada', emailVerified: false } });
+    await service.clientSignup(TENANT, { firstName: 'Ada', lastName: 'O', email: 'ada@x.com', password: 'password1234' } as any, {});
+    expect(prisma.profile.update).toHaveBeenCalledWith(expect.objectContaining({ where: { id: 40n } }));
+    expect(prisma.profile.create).not.toHaveBeenCalled();
+  });
+  it('says “account exists” when the email already has one here', async () => {
+    const { service } = make({
+      userEmail: 'ada@x.com',
+      user: { id: 5n, password: 'x', status: 'active' },
+      profileByUser: { id: 40n, tenantId: TENANT, role: 'CLIENT', status: 'active', type: 'user', email: 'a@x.com', emailVerified: true, firstName: 'Ada', lastName: null, username: 'ada' },
+    });
+    await expect(service.clientSignup(TENANT, { firstName: 'A', lastName: '', email: 'ada@x.com', password: 'password1234' } as any, {})).rejects.toBeInstanceOf(ConflictException);
+  });
+});
+
+describe('clientSetPassword', () => {
+  it('refuses a missing or expired token', async () => {
+    const { service } = make({ inviteProfile: null });
+    await expect(service.clientSetPassword({ token: 't', password: 'password1234' }, {})).rejects.toBeInstanceOf(UnauthorizedException);
+    const { service: s2 } = make({ inviteProfile: { id: 40n, tenantId: TENANT, email: 'a@x.com', accountTokenExpiresAt: new Date(Date.now() - 1000), userId: null, role: 'CLIENT', status: 'active', type: 'user', username: 'a', firstName: null, lastName: null, emailVerified: false } });
+    await expect(s2.clientSetPassword({ token: 't', password: 'password1234' }, {})).rejects.toBeInstanceOf(UnauthorizedException);
+  });
+  it('accepts the invite: creates the user, links the profile, clears the token', async () => {
+    const invite = { id: 40n, tenantId: TENANT, email: 'a@x.com', userId: null, role: 'CLIENT', status: 'active', type: 'user', username: 'a', firstName: null, lastName: null, emailVerified: false, accountTokenExpiresAt: new Date(Date.now() + 86_400_000) };
+    const { service, prisma } = make({ inviteProfile: invite });
+    await service.clientSetPassword({ token: 't', password: 'password1234', firstName: 'Ada', lastName: 'Ola' }, {});
+    expect(prisma.user.create).toHaveBeenCalled();
+    const upd = prisma.profile.update.mock.calls.at(-1)[0].data;
+    expect(upd).toMatchObject({ userId: 77n, emailVerified: true, accountTokenHash: null, accountTokenExpiresAt: null });
+  });
+});
+```
+
+Before writing the spec's `new AuthService(...)` line, check the real
+constructor order at the top of `auth.service.ts` and pass the same collaborators.
+
+- [ ] **Step 3: Run them and confirm they fail**
+
+Run: `cd apps/api && npx vitest run src/modules/auth/client-accounts.spec.ts`
+Expected: FAIL, `clientSignup is not a function`.
+
+- [ ] **Step 4: Implement**
+
+`auth.service.ts` — two public methods (reuse `hashToken`, `bcrypt`,
+`generateTokens`, `practiceProfile`, `deviceOf` patterns already in the file):
+
+```ts
+  /**
+   * A client creates their account from a practice's booking page. A profile
+   * the practice added earlier is linked, not duplicated; an email that
+   * already has an account here is told to sign in instead.
+   * Client accounts are email-verified on creation: the verification gate
+   * exists for staff accounts, and stopping a paying client at it is friction
+   * with no benefit.
+   */
+  async clientSignup(
+    tenantId: bigint | undefined,
+    dto: { firstName?: string; lastName?: string; email?: string; password?: string },
+    device: DeviceInfo = {},
+  ) {
+    if (!tenantId) throw new BadRequestException('Choose a practice first.');
+    const email = String(dto.email ?? '').toLowerCase().trim();
+    if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) throw new BadRequestException('Enter a valid email address.');
+    const password = String(dto.password ?? '');
+    if (password.length < 8) throw new BadRequestException('Use a password of at least 8 characters.');
+    const firstName = String(dto.firstName ?? '').trim().slice(0, 100);
+    if (!firstName) throw new BadRequestException('Enter your first name.');
+
+    const existingUser = await this.prisma.user.findUnique({
+      where: { email },
+      include: { profiles: { where: { tenantId } } },
+    });
+    if (existingUser && existingUser.profiles.length) {
+      throw new ConflictException('You already have an account at this practice. Sign in to continue.');
+    }
+
+    const hash = await bcrypt.hash(password, 10);
+    const user =
+      existingUser ??
+      (await this.prisma.user.create({
+        data: { email, username: email.split('@')[0] + '-' + Date.now(), password: hash, firstName, lastName: dto.lastName?.trim() || null },
+      }));
+
+    const profileByEmail = await this.prisma.profile.findFirst({ where: { tenantId, email } });
+    const profile = profileByEmail
+      ? await this.prisma.profile.update({
+          where: { id: profileByEmail.id },
+          data: { userId: user.id, emailVerified: true, firstName: firstName || profileByEmail.firstName, phone: undefined },
+        })
+      : await this.prisma.profile.create({
+          data: {
+            tenantId, email, userId: user.id,
+            username: email.split('@')[0] + '-' + Date.now(),
+            firstName, lastName: dto.lastName?.trim() || null,
+            type: 'user', role: 'CLIENT', status: 'active', emailVerified: true,
+          },
+        });
+
+    const sessionId = SessionService.newSessionId();
+    const { accessToken, refreshToken } = this.generateTokens(user.id, profile.id, tenantId, profile.type, sessionId);
+    await this.sessions.startSession(sessionId, user.id, refreshToken, device);
+    return { accessToken, refreshToken, profile: this.practiceProfile({ ...profile, tenant: null, consultTherapistProfile: null }) };
+  }
+
+  /** Accept a "set your password" invite a practice sent for an existing profile. */
+  async clientSetPassword(
+    dto: { token?: string; password?: string; firstName?: string; lastName?: string },
+    device: DeviceInfo = {},
+  ) {
+    const token = String(dto.token ?? '');
+    if (!token) throw new UnauthorizedException('That link is not valid.');
+    const profile = await this.prisma.profile.findFirst({
+      where: { accountTokenHash: this.hashToken(token) },
+    });
+    if (!profile || !profile.accountTokenExpiresAt || profile.accountTokenExpiresAt < new Date()) {
+      throw new UnauthorizedException('That link has expired. Ask the practice to send it again.');
+    }
+    const password = String(dto.password ?? '');
+    if (password.length < 8) throw new BadRequestException('Use a password of at least 8 characters.');
+
+    let user = await this.prisma.user.findUnique({ where: { email: profile.email } });
+    if (!user) {
+      user = await this.prisma.user.create({
+        data: {
+          email: profile.email,
+          username: profile.email.split('@')[0] + '-' + Date.now(),
+          password: await bcrypt.hash(password, 10),
+          firstName: dto.firstName?.trim() || profile.firstName,
+          lastName: dto.lastName?.trim() || profile.lastName,
+        },
+      });
+    }
+    const updated = await this.prisma.profile.update({
+      where: { id: profile.id },
+      data: {
+        userId: user.id,
+        emailVerified: true,
+        accountTokenHash: null,
+        accountTokenExpiresAt: null,
+        firstName: dto.firstName?.trim() || profile.firstName,
+        lastName: dto.lastName?.trim() || profile.lastName,
+      },
+    });
+    const sessionId = SessionService.newSessionId();
+    const tokens = this.generateTokens(user.id, updated.id, updated.tenantId, updated.type, sessionId);
+    await this.sessions.startSession(sessionId, user.id, tokens.refreshToken, device);
+    return { ...tokens, profile: this.practiceProfile({ ...updated, tenant: null, consultTherapistProfile: null }) };
+  }
+```
+
+The `SessionService.newSessionId()` + `generateTokens(...)` +
+`this.sessions.startSession(sessionId, userId, refreshToken, device)` triple is
+verbatim the pattern from `login` (`auth.service.ts` ~line 653).
+
+`auth.controller.ts` — after `claimInvite`:
+
+```ts
+  @Post('client-signup')
+  @Throttle({ default: { limit: 5, ttl: 60000 } })
+  @ApiOperation({ summary: 'A client creates their account at this practice' })
+  async clientSignup(
+    @Req() req: TenantRequest,
+    @Body() dto: { firstName?: string; lastName?: string; email?: string; password?: string },
+    @Res({ passthrough: true }) res: Response,
+  ) {
+    const result = await this.authService.clientSignup(req.tenantId, dto, deviceOf(req));
+    const csrfToken = this.setSessionCookies(res, result.accessToken, result.refreshToken);
+    return { profile: result.profile, csrfToken };
+  }
+
+  @Post('client-set-password')
+  @Throttle({ default: { limit: 5, ttl: 60000 } })
+  @ApiOperation({ summary: 'Accept a client account invite: set the password and sign in' })
+  async clientSetPassword(
+    @Req() req: TenantRequest,
+    @Body() dto: { token?: string; password?: string; firstName?: string; lastName?: string },
+    @Res({ passthrough: true }) res: Response,
+  ) {
+    const result = await this.authService.clientSetPassword(dto, deviceOf(req));
+    const csrfToken = this.setSessionCookies(res, result.accessToken, result.refreshToken);
+    return { profile: result.profile, csrfToken };
+  }
+```
+
+- [ ] **Step 5: Run the tests and typecheck**
+
+Run: `cd apps/api && npx vitest run src/modules/auth/client-accounts.spec.ts && npx tsc --noEmit -p tsconfig.json`
+Expected: PASS.
+
+- [ ] **Step 6: Commit**
+
+```bash
+git add prisma apps/api/src/modules/auth
+git commit -m "A client account: sign up at booking, or accept the practice's invite
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
+```
+
+### Task 18: The invite email, and booking needs a client session
+
+**Files:**
+- Modify: `apps/api/src/modules/tenant/tenant.service.ts` (`createClient`)
+- Modify: `apps/api/src/modules/consult/consult.service.ts` (`createBooking`)
+- Modify: `apps/api/src/modules/consult/consult.controller.ts`
+- Test: append to `apps/api/src/modules/auth/client-accounts.spec.ts` and update the consult specs that post `public/bookings`
+
+**Interfaces:**
+- Produces:
+  - `createClient` returns `inviteSent: boolean` and emails a set-password link when the client has no account yet.
+  - `createBooking(tenantId, clientProfileId, dto)` — dto keeps `serviceId, availabilityId, phone?, notes?, discountCode?, paymentMethod?`; name and email come from the profile.
+  - `POST public/bookings` is now `@Permissions('any.authenticated')` + guards; a non-CLIENT session gets 403.
+
+- [ ] **Step 1: Append the failing tests**
+
+```ts
+describe('the account invite on createClient', () => {
+  it('sends a set-password link when the client has no account', async () => {
+    const { service, prisma, notifications } = makeClientService();
+    await service.createClient(TENANT, { firstName: 'Ada', email: 'ada@x.com' });
+    const stored = prisma.profile.create.mock.calls[0][0].data;
+    expect(stored.accountTokenHash).toMatch(/^[0-9a-f]{64}$/);
+    expect(stored.accountTokenExpiresAt.getTime()).toBeGreaterThan(Date.now());
+    expect(notifications.sendEmail).toHaveBeenCalledWith(
+      expect.objectContaining({ type: 'clients.account_invite', link: expect.stringMatching(/\/set-password\?t=[0-9a-f]{64}$/) }),
+    );
+  });
+  it('stays quiet when the client already has an account', async () => {
+    const { service, notifications } = makeClientService({ userExists: true });
+    await service.createClient(TENANT, { firstName: 'Ada', email: 'ada@x.com' });
+    expect(notifications.sendEmail).not.toHaveBeenCalled();
+  });
+});
+```
+
+(`makeClientService` mirrors the `makeService` helper in
+`client-record.spec.ts` and adds `user: { findUnique: ... }` and
+`tenant: { findUnique: ... }` to the prisma mock; reuse that file's helpers by
+import if convenient.)
+
+- [ ] **Step 2: Run them and confirm they fail**
+
+- [ ] **Step 3: Implement the invite in `createClient`**
+
+After the `profile.create` in `createClient` (tenant.service.ts):
+
+```ts
+    // A client the practice added gets a way into the portal: a single-use
+    // set-password link, stored only as a hash, good for 14 days. Someone who
+    // already has an account is not invited again.
+    let inviteSent = false;
+    const hasAccount = await this.prisma.user.findUnique({ where: { email } });
+    if (!hasAccount) {
+      const token = randomBytes(32).toString('hex');
+      await this.prisma.profile.update({
+        where: { id: profile.id },
+        data: { accountTokenHash: createHash('sha256').update(token).digest('hex'), accountTokenExpiresAt: new Date(Date.now() + 14 * 86_400_000) },
+      });
+      inviteSent = Boolean(
+        await this.notifications
+          .sendEmail({
+            to: email,
+            type: 'clients.account_invite',
+            title: 'You have a client account at ' + (tenantName ?? 'your practice'),
+            message: `${firstName} added you as a client. Set a password to see your sessions and join them online.`,
+            link: `${tenantWebOrigin(tenantRow as any)}/set-password?t=${token}`,
+            actionLabel: 'Set my password',
+            tenantId,
+            profileId: profile.id,
+          })
+          .then(() => true)
+          .catch(() => false),
+      );
+    }
+```
+
+Add `inviteSent` to the returned object. Imports needed in tenant.service.ts:
+`createHash` (add to the existing `crypto` import), `tenantWebOrigin` (already
+imported for `appOrigin` — extend it), and the tenant row: `createClient` does
+not load the tenant today — add
+`const tenantRow = await this.prisma.tenant.findUnique({ where: { id: tenantId } });`
+at the top of the method and use `tenantRow?.name` for `tenantName`.
+
+- [ ] **Step 4: Booking requires a client session**
+
+`consult.controller.ts` — change the `createBooking` handler:
+
+```ts
+  @Permissions('any.authenticated')
+  @Post('public/bookings')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @ApiOperation({ summary: 'A signed-in client reserves a slot' })
+  createBooking(@Req() req: any, @Body() dto: any) {
+    return this.consultService.createBooking(
+      authenticatedTenantId(req),
+      authenticatedProfileId(req),
+      dto,
+    );
+  }
+```
+
+`consult.service.ts` — `createBooking`:
+
+1. Signature: `async createBooking(tenantId: bigint, clientProfileId: bigint, dto: { serviceId: string; availabilityId: string; notes?: string; discountCode?: string; paymentMethod?: string })`.
+2. At the top, load and check the caller:
+
+```ts
+    const client = await this.prisma.profile.findFirst({
+      where: { id: clientProfileId, tenantId, role: 'CLIENT', status: 'active' },
+      select: { id: true, email: true, firstName: true, lastName: true, phone: true },
+    });
+    if (!client) throw new ForbiddenException('Sign in as the client to book a session.');
+```
+
+3. Delete the find-or-create-profile block (`tx.profile.findFirst/create` by
+   email) and use `client.id` as `clientProfileId` in the booking row and
+   `client.email`/`client.firstName` where the dto fields were used.
+4. The email validation of `dto.email` goes away (the profile email is already
+   valid).
+
+- [ ] **Step 5: Update the specs that book**
+
+`grep -rln "public/bookings\|createBooking" apps/api/src/modules/consult/*.spec.ts` —
+in each, replace `firstName/lastName/email` in the dto with a
+`clientProfileId` argument and mock `profile.findFirst` to return a CLIENT row
+(follow the mock style already in those files). `roles.spec.ts` and
+`client-surface.spec.ts` must still pass: `public/bookings` keeps
+client-reachability via `any.authenticated`.
+
+- [ ] **Step 6: Run everything and commit**
+
+```bash
+cd apps/api && npx vitest run && npx tsc --noEmit -p tsconfig.json
+git add apps/api/src
+git commit -m "Booking needs a client session; a new client gets a set-password invite
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
+```
+
+### Task 19: The checkout sign-in / create-account panel
+
+**Files:**
+- Create: `apps/app/src/pages/public/ClientAuthPanel.tsx`
+- Modify: `apps/app/src/pages/public/ClientBookingPage.tsx`
+- Test: `apps/app/src/pages/__tests__/ClientAuthPanel.test.tsx`
+
+- [ ] **Step 1: Write the failing test**
+
+```tsx
+import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest';
+import { cleanup, fireEvent, renderWithApp, screen, waitFor } from '../../test/renderWithApp';
+
+const post = vi.fn();
+vi.mock('../../utils/apiClient', () => ({ api: { get: vi.fn(), post: (...a: unknown[]) => post(...a) } }));
+let signedIn: any = null;
+const login = vi.fn();
+vi.mock('../../context/AuthContext', () => ({
+  useAuth: () => ({ profile: signedIn, isAuthenticated: !!signedIn, login }),
+}));
+
+const { ClientAuthPanel } = await import('../public/ClientAuthPanel');
+
+beforeEach(() => { post.mockReset(); login.mockReset(); signedIn = null; post.mockResolvedValue({ profile: { id: '40', role: 'CLIENT' } }); });
+afterEach(cleanup);
+
+describe('ClientAuthPanel', () => {
+  it('offers both ways in, defaulting to create', () => {
+    renderWithApp(<ClientAuthPanel onDone={() => {}} />);
+    expect(screen.getByRole('button', { name: 'Create account' })).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: 'Sign in' }));
+    expect(screen.queryByLabelText('First name')).toBeNull();
+  });
+  it('creates the account and reports done', async () => {
+    const onDone = vi.fn();
+    renderWithApp(<ClientAuthPanel onDone={onDone} />);
+    fireEvent.change(screen.getByLabelText('First name'), { target: { value: 'Ada' } });
+    fireEvent.change(screen.getByLabelText('Email'), { target: { value: 'ada@x.com' } });
+    fireEvent.change(screen.getByLabelText('Password'), { target: { value: 'password1234' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Create account and continue' }));
+    await waitFor(() => expect(post).toHaveBeenCalledWith('/v1/auth/client-signup', expect.objectContaining({ email: 'ada@x.com' })));
+    await waitFor(() => expect(onDone).toHaveBeenCalled());
+  });
+  it('flips to Sign in when an account already exists', async () => {
+    post.mockRejectedValueOnce(new Error('You already have an account at this practice. Sign in to continue.'));
+    renderWithApp(<ClientAuthPanel onDone={() => {}} />);
+    fireEvent.change(screen.getByLabelText('Email'), { target: { value: 'ada@x.com' } });
+    fireEvent.change(screen.getByLabelText('First name'), { target: { value: 'Ada' } });
+    fireEvent.change(screen.getByLabelText('Password'), { target: { value: 'password1234' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Create account and continue' }));
+    await waitFor(() => expect(screen.getByText(/already have an account/i)).toBeTruthy());
+    expect(screen.getByRole('button', { name: 'Sign in' }).getAttribute('aria-selected')).toBe('true');
+  });
+  it('signs in through the shared login', async () => {
+    const onDone = vi.fn();
+    renderWithApp(<ClientAuthPanel onDone={onDone} />);
+    fireEvent.click(screen.getByRole('button', { name: 'Sign in' }));
+    fireEvent.change(screen.getByLabelText('Email'), { target: { value: 'ada@x.com' } });
+    fireEvent.change(screen.getByLabelText('Password'), { target: { value: 'password1234' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Sign in and continue' }));
+    await waitFor(() => expect(login).toHaveBeenCalledWith('ada@x.com', 'password1234'));
+    await waitFor(() => expect(onDone).toHaveBeenCalled());
+  });
+});
+```
+
+- [ ] **Step 2: Run it and confirm it fails**
+
+- [ ] **Step 3: Implement**
+
+`apps/app/src/pages/public/ClientAuthPanel.tsx`:
+
+```tsx
+import { useState } from 'react';
+import { api } from '../../utils/apiClient';
+import { useAuth } from '../../context/AuthContext';
+
+const field = 'w-full h-[42px] px-3 rounded-[12px] bg-white border border-[#CBD5E1] text-[13px] outline-none';
+
+export function ClientAuthPanel({ onDone }: { onDone: () => void }) {
+  const { login } = useAuth();
+  const [mode, setMode] = useState<'create' | 'signin'>('create');
+  const [firstName, setFirstName] = useState('');
+  const [lastName, setLastName] = useState('');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function submit(e: React.FormEvent) {
+    e.preventDefault();
+    setBusy(true);
+    setError(null);
+    try {
+      if (mode === 'create') {
+        await api.post('/v1/auth/client-signup', { firstName, lastName, email, password });
+      } else {
+        await login(email, password);
+      }
+      onDone();
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'That did not work';
+      setError(message);
+      if (/already have an account/i.test(message)) setMode('signin');
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <form onSubmit={submit} className="space-y-3">
+      <div role="tablist" className="h-[40px] p-1 bg-[#EEF2F7] rounded-[14px] inline-flex gap-1 border border-[#E2E8F0]">
+        {(['create', 'signin'] as const).map((m) => (
+          <button
+            key={m}
+            type="button"
+            role="tab"
+            aria-selected={mode === m}
+            onClick={() => { setMode(m); setError(null); }}
+            className={`px-4 rounded-[10px] text-xs font-bold cursor-pointer ${mode === m ? 'bg-white text-[#0F172A] shadow-xs' : 'text-[#64748B]'}`}
+          >
+            {m === 'create' ? 'Create account' : 'Sign in'}
+          </button>
+        ))}
+      </div>
+      {mode === 'create' ? (
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+          <label className="block text-[11.5px] font-bold text-slate-500 uppercase">First name
+            <input className={field} required value={firstName} onChange={(e) => setFirstName(e.target.value)} />
+          </label>
+          <label className="block text-[11.5px] font-bold text-slate-500 uppercase">Last name
+            <input className={field} value={lastName} onChange={(e) => setLastName(e.target.value)} />
+          </label>
+        </div>
+      ) : null}
+      <label className="block text-[11.5px] font-bold text-slate-500 uppercase">Email
+        <input className={field} type="email" required value={email} onChange={(e) => setEmail(e.target.value)} />
+      </label>
+      <label className="block text-[11.5px] font-bold text-slate-500 uppercase">Password
+        <input className={field} type="password" required minLength={8} value={password} onChange={(e) => setPassword(e.target.value)} />
+      </label>
+      {error ? <p className="text-[12px] font-medium text-rose-700">{error}</p> : null}
+      <button
+        type="submit"
+        disabled={busy}
+        className="w-full h-[44px] rounded-[12px] bg-[#0F3A53] text-white text-[13.5px] font-bold cursor-pointer disabled:opacity-50"
+      >
+        {busy ? 'One moment…' : mode === 'create' ? 'Create account and continue' : 'Sign in and continue'}
+      </button>
+      {mode === 'signin' ? (
+        <p className="text-[11.5px] text-[#64748B]">
+          Forgotten it? <a href="/forgot-password" className="font-bold underline">Reset your password</a>
+        </p>
+      ) : null}
+    </form>
+  );
+}
+```
+
+- [ ] **Step 4: Wire it into the booking page**
+
+In `ClientBookingPage.tsx`:
+1. `import { ClientAuthPanel } from './ClientAuthPanel';` and
+   `import { useAuth } from '../../context/AuthContext';`
+2. `const { profile: me, isAuthenticated } = useAuth();` — a signed-in client is
+   `isAuthenticated && me?.role === 'CLIENT'` (staff previews must not book).
+3. Replace the fullName/email inputs in the checkout card:
+   - when signed in: a line "Booking as **{me.firstName} ({me.email})** —
+     Not you? Sign out" (sign out calls `logout()` from `useAuth()`);
+   - otherwise: `<ClientAuthPanel onDone={() => void refreshMe()} />` in place
+     of the name/email fields, and hide the "Confirm booking" button until
+     signed in.
+4. The submit body drops `firstName/lastName/email` (the session carries them)
+   and keeps `serviceId, availabilityId, phone, notes, discountCode, paymentMethod`.
+5. Keep the `phone` input (it updates the booking's contact for this
+   practice) — pass it through as today.
+
+- [ ] **Step 5: Run tests + typecheck, commit**
+
+```bash
+cd apps/app && npx vitest run src/pages/__tests__/ClientAuthPanel.test.tsx && npx tsc --noEmit
+git add apps/app/src/pages/public apps/app/src/pages/__tests__/ClientAuthPanel.test.tsx
+git commit -m "Sign in or create an account before a booking goes through
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
+```
+
+### Task 20: Confirmation emails with the join link
+
+**Files:**
+- Modify: `apps/api/src/modules/consult/consult.service.ts` (`createBooking`)
+- Modify: `apps/api/src/modules/consult/staff-booking.service.ts` (`afterCreate`)
+- Test: append to `apps/api/src/modules/consult/staff-booking.spec.ts` and the consult booking spec
+
+- [ ] **Step 1: Write the failing tests**
+
+Append to `staff-booking.spec.ts`:
+
+```ts
+  it('the confirmation email carries the join link for a video session', async () => {
+    const { service, notifications, consult } = setup();
+    await service.createForClient(TENANT, OWNER, { ...base, payment: 'NONE' });
+    const email = notifications.sendEmail.mock.calls[0][0];
+    expect(email.message).toContain('https://meet.example/room-1');
+    expect(email.message).toMatch(/Join link/i);
+  });
+```
+
+Append to the self-booking spec (the file that covers `createBooking`):
+
+```ts
+  it('emails the client a confirmation with the join link', async () => {
+    const { service, notifications } = makeBookingService();
+    await service.createBooking(TENANT, CLIENT_PROFILE_ID, { serviceId: '20', availabilityId: '300' });
+    const email = notifications.sendEmail.mock.calls.find((c: any[]) => c[0].type === 'bookings.confirmed')?.[0];
+    expect(email).toBeTruthy();
+    expect(email.to).toBe('ada@example.com');
+    expect(email.message).toMatch(/Join link/i);
+  });
+```
+
+- [ ] **Step 2: Run them and confirm they fail**
+
+- [ ] **Step 3: Implement**
+
+`staff-booking.service.ts` — in `afterCreate`, the confirmed branch message:
+
+```ts
+          message: `${b.tenant.name} has booked your ${r.serviceTitle} with ${r.practitionerName} on ${when}.${videoLine}`,
+```
+
+where `videoLine` is built just above:
+
+```ts
+    const room = await this.prisma.consultBooking.findFirst({ where: { id: bookingId }, select: { videoRoomName: true, availability: { select: { channel: true } } } });
+    const videoLine = room?.availability.channel === 'VIDEO' && room.videoRoomName
+      ? ` Join link: https://meet.jit.si/${room.videoRoomName}`
+      : '';
+```
+
+(The `b` lookup above already fetches the row once — add `videoRoomName` and
+the availability channel to its include/select and build `videoLine` from `b`
+instead of a second query.)
+
+`consult.service.ts` — in `createBooking`, after the transaction commits (next
+to the `manualPayments.announce` block), for every completed booking:
+
+```ts
+      await this.notifications.sendEmail({
+        to: client.email,
+        type: 'bookings.confirmed',
+        title: finalPriceKobo > 0n ? 'Almost there — pay to confirm your session' : 'Your session is booked',
+        message: `${slot.therapist.profile.firstName ?? 'Your therapist'} has you down for ${service.title} on ${new Date(slot.startsAt).toLocaleString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit', timeZone: 'Africa/Lagos' })}.` +
+          (videoRoomLink ? ` Join link: ${videoRoomLink}` : '') +
+          (finalPriceKobo > 0n ? ' Your payment link is in this email.' : ''),
+        link: videoRoomLink ?? `${tenantWebOrigin(slot.tenant)}/portal`,
+        actionLabel: videoRoomLink ? 'Join the session' : 'View my sessions',
+        tenantId,
+        profileId: client.id,
+      }).catch((err) => this.logger.warn(`Could not email booking confirmation: ${(err as Error).message}`));
+```
+
+`videoRoomLink` and `finalPriceKobo` are already in scope at that point (the
+transaction result carries them — read the code above the commit and pass them
+out of the transaction closure).
+
+- [ ] **Step 4: Run the tests and commit**
+
+```bash
+cd apps/api && npx vitest run src/modules/consult && npx tsc --noEmit -p tsconfig.json
+git add apps/api/src/modules/consult
+git commit -m "The join link lands in the inbox, not just on the screen
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
+```
+
+### Task 21: The set-password page, verification and ship
+
+**Files:**
+- Create: `apps/app/src/pages/public/SetPasswordPage.tsx`
+- Modify: `apps/app/src/App.tsx` (public route + auth-path list)
+- Test: `apps/app/src/pages/__tests__/SetPasswordPage.test.tsx`
+
+- [ ] **Step 1: Write the failing test**
+
+```tsx
+import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest';
+import { cleanup, fireEvent, renderWithApp, screen, waitFor } from '../../test/renderWithApp';
+import { MemoryRouter, Route, Routes } from 'react-router-dom';
+
+const post = vi.fn();
+vi.mock('../../utils/apiClient', () => ({ api: { get: vi.fn(), post: (...a: unknown[]) => post(...a) } }));
+const { SetPasswordPage } = await import('../public/SetPasswordPage');
+
+beforeEach(() => post.mockReset());
+afterEach(cleanup);
+
+function renderPage() {
+  return renderWithApp(
+    <Routes><Route path="/set-password" element={<SetPasswordPage />} /></Routes>,
+    { route: '/set-password?t=tok' },
+  );
+}
+
+describe('SetPasswordPage', () => {
+  it('sends the token with the chosen password', async () => {
+    post.mockResolvedValue({ profile: { id: '40', role: 'CLIENT' } });
+    renderPage();
+    fireEvent.change(screen.getByLabelText('Password'), { target: { value: 'password1234' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Set password' }));
+    await waitFor(() => expect(post).toHaveBeenCalledWith('/v1/auth/client-set-password', expect.objectContaining({ token: 'tok', password: 'password1234' })));
+  });
+  it('explains an expired link', async () => {
+    post.mockRejectedValue(new Error('That link has expired. Ask the practice to send it again.'));
+    renderPage();
+    fireEvent.change(screen.getByLabelText('Password'), { target: { value: 'password1234' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Set password' }));
+    await waitFor(() => expect(screen.getByText(/expired/i)).toBeTruthy());
+  });
+});
+```
+
+- [ ] **Step 2: Run it and confirm it fails**
+
+- [ ] **Step 3: Implement**
+
+`apps/app/src/pages/public/SetPasswordPage.tsx`:
+
+```tsx
+import { useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
+import { api } from '../../utils/apiClient';
+
+const field = 'w-full h-[44px] px-3 rounded-[12px] bg-white border border-[#CBD5E1] text-[14px] outline-none';
+
+export function SetPasswordPage() {
+  const [params] = useSearchParams();
+  const token = params.get('t') ?? '';
+  const [firstName, setFirstName] = useState('');
+  const [lastName, setLastName] = useState('');
+  const [password, setPassword] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [done, setDone] = useState(false);
+
+  async function submit(e: React.FormEvent) {
+    e.preventDefault();
+    setBusy(true);
+    setError(null);
+    try {
+      await api.post('/v1/auth/client-set-password', { token, password, firstName: firstName || undefined, lastName: lastName || undefined });
+      window.location.href = '/portal';
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'That link did not work');
+      setBusy(false);
+    }
+  }
+
+  if (!token) {
+    return (
+      <main className="min-h-screen bg-[#F8FAFC] flex items-center justify-center p-4">
+        <p className="text-[13px] font-medium text-rose-700">That link is not valid. Ask your practice to send it again.</p>
+      </main>
+    );
+  }
+
+  return (
+    <main className="min-h-screen bg-[#F8FAFC] flex items-center justify-center p-4">
+      <form onSubmit={submit} className="w-full max-w-[420px] rounded-[20px] bg-white p-6 shadow-sm border border-[#E2E8F0] space-y-4">
+        <h1 className="text-[18px] font-bold text-[#0F172A]">Set your password</h1>
+        <p className="text-[13px] text-[#334155]">Your practice added you as a client. A password gives you your portal: sessions, forms and the join link.</p>
+        <div className="grid grid-cols-2 gap-2">
+          <label className="block text-[11.5px] font-bold text-slate-500 uppercase">First name
+            <input className={field} value={firstName} onChange={(e) => setFirstName(e.target.value)} />
+          </label>
+          <label className="block text-[11.5px] font-bold text-slate-500 uppercase">Last name
+            <input className={field} value={lastName} onChange={(e) => setLastName(e.target.value)} />
+          </label>
+        </div>
+        <label className="block text-[11.5px] font-bold text-slate-500 uppercase">Password
+          <input className={field} type="password" required minLength={8} value={password} onChange={(e) => setPassword(e.target.value)} />
+        </label>
+        {error ? <p className="text-[12.5px] font-medium text-rose-700">{error}</p> : null}
+        <button type="submit" disabled={busy || done} className="w-full h-[44px] rounded-[12px] bg-[#0F3A53] text-white text-[14px] font-bold cursor-pointer disabled:opacity-50">
+          {busy ? 'Setting…' : 'Set password'}
+        </button>
+      </form>
+    </main>
+  );
+}
+```
+
+- [ ] **Step 4: Route + auth-path list**
+
+`App.tsx`:
+- `const SetPasswordPage = lazy(() => import('./pages/public/SetPasswordPage').then((m) => ({ default: m.SetPasswordPage })));`
+- Add `<Route path="/set-password" element={<SetPasswordPage />} />` to the
+  public tenant `<Routes>` (next to `/pay/:bookingId`).
+- Add `'/set-password'` to the `isPublicPath` list at the top of `AppLayout`
+  (the block that lists `/portal`, `/booking/…`, `/pay/…` etc.) so an
+  unauthenticated visitor is not bounced to sign-in.
+- `apps/app/src/utils/apiClient.ts`: add `'/v1/auth/client-signup'` and
+  `'/v1/auth/client-set-password'` to `AUTH_PUBLIC_PATHS` (they must carry the
+  `X-Tenant-Slug` header for signup — check how `/v1/auth/login` is treated and
+  mirror it: signup NEEDS the tenant header, so it must NOT be in
+  `AUTH_PUBLIC_PATHS` if that set suppresses the header; verify with
+  `grep -n "AUTH_PUBLIC_PATHS" -A6 src/utils/apiClient.ts` and place them so
+  signup sends the header and set-password works either way).
+
+- [ ] **Step 5: Full suites, live check, commit**
+
+Run: `pnpm --recursive run typecheck && cd apps/api && npx vitest run && cd ../app && npx vitest run`
+Expected: PASS.
+
+Live (servers as in PR-2 Task 16):
+1. As Jane: add a client with a friend's email → friend gets the invite email →
+   open `/set-password?t=…` → set a password → portal opens with their profile.
+2. Friend (incognito): practice page → book a session → checkout shows Create
+   account / Sign in → create account → book → confirmation email contains the
+   Jitsi join link → the link opens the room.
+3. Book with an email that already has an account → panel flips to Sign in →
+   sign in → booking completes.
+4. `curl -s -X POST localhost:3099/v1/consult/public/bookings -H 'Content-Type: application/json' -d '{"serviceId":"1","availabilityId":"194"}'` → 401.
+
+```bash
+git add apps/app/src
+git commit -m "A client sets their password from the invite and lands in the portal
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
+```
+
+Then push and ship as described in Task 16 Step 5.

@@ -21,6 +21,10 @@ Four things, one release:
    be emailed.
 4. **The client page shows what happened**: a real session history list and a
    payment history tab.
+5. **Clients get accounts.** Booking from a practice page requires signing in
+   or creating an account, and clients added by staff get an invite to set a
+   password. Confirmation emails carry the video join link, so attending works
+   straight from the inbox.
 
 ## 2. Who sees what (agreed rules)
 
@@ -187,9 +191,40 @@ before sending it." A therapist opening someone else's session id gets the same
 - **Live check:** the layout checker still passes for the two new routes; a
   manual pass as owner and as a therapist in a group practice.
 
-## 7. Out of scope
+## 7. Client accounts
 
-Custom roles (a role builder UI), per-client data in the sessions search,
-changing the client portal, and moving the video room or prep pages. The
-sessions list pages nothing (browser-side paging can come later if a practice
-outgrows 500 rows).
+**Why.** A friend added as a client, or a person booking from a practice page,
+could not reach the portal at all: `createClient` and `createBooking` create a
+Profile with no User behind it, `/login` needs a User, and `/register` creates
+a *practice*. The video link only existed on screen at booking time.
+
+**Rules.**
+- Booking from a practice page requires a client session. Browsing services and
+  times stays anonymous; the gate sits at the checkout step with two tabs:
+  **Create account** (name, email, password) and **Sign in** (email, password,
+  with the existing forgot-password flow).
+- `POST /v1/auth/client-signup` (public, tenant from the host): creates the
+  User and this practice's CLIENT profile. If the practice already has a
+  profile for that email (staff added them first), the User is linked to it.
+  If an account already exists, the response says so and the UI flips to Sign
+  in. Client profiles created through signup or an accepted invite are marked
+  email-verified — the email gate exists for staff accounts, and stopping a
+  paying client at verification would be friction with no benefit.
+- `POST /v1/consult/public/bookings` becomes authenticated
+  (`any.authenticated`): the client's name and email come from the session
+  profile, never from the form. Staff tokens are refused on it.
+- When staff add a client, they get a **set-your-password invite email** with a
+  single-use token (14 days) at `/set-password`; accepting links the User to
+  the existing profile.
+- **Join links in email.** The self-booking confirmation email
+  (`bookings.confirmed`, new) and the staff-booking confirmation
+  (`bookings.staff_confirmed`) both carry the Jitsi link in the message, so
+  attending never depends on remembering the portal.
+
+## 8. Out of scope
+
+Custom roles (a role builder UI), per-client data in the sessions search, and
+moving the video room or prep pages. The sessions list pages nothing
+(browser-side paging can come later if a practice outgrows 500 rows). Client
+accounts cover signup, invite and booking-gate only — a client-facing
+"change my details" screen can come later.
