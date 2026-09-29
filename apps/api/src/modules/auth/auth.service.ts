@@ -16,6 +16,7 @@ import { DeviceInfo, SessionService } from './session.service';
 import { JWT_EXPIRES_IN, REFRESH_SECRET, REFRESH_EXPIRES_IN } from '../../common/auth.config';
 import { NotificationService } from '../notifications/notification.service';
 import { InviteService } from '../invites/invite.service';
+import { effectivePermissions } from '../../common/permissions';
 import { appOrigin } from '../../common/origins';
 
 const BCRYPT_ROUNDS = 12;
@@ -1100,6 +1101,7 @@ export class AuthService {
     type: string;
     role: string;
     status: string;
+    permissions?: string[] | null;
     avatarUrl: string | null;
     // Required, not optional: a caller that forgets the include would otherwise
     // hand back tenantSlug: null, which is worse than the inconsistency this
@@ -1128,6 +1130,9 @@ export class AuthService {
       isTherapist: !!profile.consultTherapistProfile,
       // Lets the app offer "Platform admin" to someone who is both.
       platformAdmin: Boolean(platformRole),
+      // The effective set, computed here once: the app shows and hides with
+      // it, and the guard still enforces independently on every call.
+      permissions: [...effectivePermissions(profile.role, profile.permissions ?? [])],
     };
   }
 

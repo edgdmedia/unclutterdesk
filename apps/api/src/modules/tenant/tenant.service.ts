@@ -7,8 +7,9 @@ import { PrismaService } from '../../common/prisma/prisma.service';
 import { NotificationService } from '../notifications/notification.service';
 import { decryptNoteFields } from '../../common/field-encryption';
 import { isPlatformHostname, isReservedSlug, normalizeSlug } from './reserved-slugs';
-import { appOrigin, ROOT_DOMAIN } from '../../common/origins';
+import { appOrigin, ROOT_DOMAIN, tenantWebOrigin } from '../../common/origins';
 import { EmergencyContactInput, emergencyContactData, emergencyContactOf, emergencyContactText } from './emergency-contact';
+import { GRANTABLE, PERMISSIONS } from '../../common/permissions';
 
 const RESERVED_SLUG_MESSAGE = 'That booking handle is reserved. Try another one.';
 
@@ -526,6 +527,7 @@ export class TenantService {
       lastName: s.lastName,
       role: s.role || 'THERAPIST',
       status: s.status,
+      permissions: s.permissions ?? [],
       avatarUrl: s.avatarUrl,
       isTherapist: !!s.consultTherapistProfile,
       specialty: s.consultTherapistProfile?.specialty,
@@ -729,6 +731,53 @@ export class TenantService {
     });
 
     return { id: updated.id.toString(), role: updated.role };
+  }
+
+  /**
+   * Per-person permission grants. The role still decides the baseline; this is
+   * the exception list. Keys outside the grantable catalog are refused, and an
+   * owner is refused: they already hold everything, and granting them a list
+   * would read as a restriction.
+   */
+  async updateStaffPermissions(
+    tenantId: bigint,
+    actorProfileId: bigint,
+    targetProfileId: bigint,
+    permissions: unknown,
+  ) {
+    const actor = await this.prisma.profile.findFirst({
+      where: { id: actorProfileId, tenantId },
+      select: { role: true },
+    });
+    if (!actor || !['OWNER', 'ADMIN'].includes(actor.role)) {
+      throw new ForbiddenException('Only a practice admin can change permissions');
+    }
+    const target = await this.prisma.profile.findFirst({
+      where: { id: targetProfileId, tenantId, role: { not: 'CLIENT' } },
+      select: { id: true, role: true },
+    });
+    if (!target) throw new NotFoundException('Staff member not found');
+    if (target.role === 'OWNER') throw new BadRequestException('The owner already holds every permission.');
+
+    if (!Array.isArray(permissions) || permissions.some((p) => typeof p !== 'string')) {
+      throw new BadRequestException('Send the permissions as a list.');
+    }
+    for (const p of permissions) {
+      if (!(GRANTABLE as readonly string[]).includes(p)) {
+        throw new BadRequestException(
+          (PERMISSIONS as readonly string[]).includes(p)
+            ? `“${p}” cannot be granted — it comes with the role.`
+            : `“${p}” is not a permission.`,
+        );
+      }
+    }
+    const clean = [...new Set(permissions as string[])].sort();
+    const updated = await this.prisma.profile.update({
+      where: { id: target.id },
+      data: { permissions: clean },
+      select: { id: true, permissions: true },
+    });
+    return { id: updated.id.toString(), permissions: updated.permissions };
   }
 
   // ── Client (Patient) Management ──────────────────────────────────────────────

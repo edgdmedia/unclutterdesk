@@ -154,6 +154,25 @@ export class TenantController {
     );
   }
 
+  @Permissions('staff.manage')
+  @Patch('staff/:profileId/permissions')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @ApiBearerAuth('access-token')
+  @ApiOperation({ summary: 'Set a staff member’s extra permissions' })
+  updateStaffPermissions(
+    @Req() req: any,
+    @Param('profileId') profileId: string,
+    @Body() dto: { permissions?: unknown },
+  ) {
+    if (!/^\d+$/.test(profileId)) throw new NotFoundException('Staff member not found');
+    return this.tenantService.updateStaffPermissions(
+      authenticatedTenantId(req),
+      BigInt(req.user.profileId),
+      BigInt(profileId),
+      dto?.permissions,
+    );
+  }
+
   @Permissions('practice.admin')
   @Delete('staff/invite/:inviteId')
   @UseGuards(JwtAuthGuard, RolesGuard)

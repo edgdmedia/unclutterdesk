@@ -27,6 +27,7 @@ const FIELDS = [
   'plan',
   'isTherapist',
   'platformAdmin',
+  'permissions',
 ].sort();
 
 const PROFILE = {
