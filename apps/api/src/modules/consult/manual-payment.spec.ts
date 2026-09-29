@@ -134,12 +134,13 @@ describe('booking with a bank transfer', () => {
         }),
       },
       consultBooking: { count: vi.fn().mockResolvedValue(0) },
+      profile: { findFirst: vi.fn().mockResolvedValue({ id: 5n, email: 'ada@example.com', firstName: 'Ada', lastName: 'Obi', phone: null }) },
       $transaction: vi.fn(async (cb: any) => cb(tx)),
     };
     const paystack = { initializeTransaction: vi.fn() };
     const manualPayments = { available: vi.fn().mockResolvedValue(manual), announce: vi.fn().mockResolvedValue(undefined) };
     const service = new ConsultService(
-      prisma, { notify: vi.fn() } as any, { validateDiscount: vi.fn() } as any,
+      prisma, { notify: vi.fn(), sendEmail: vi.fn().mockResolvedValue({ success: true }) } as any, { validateDiscount: vi.fn() } as any,
       { calculateSplitPayout: vi.fn().mockResolvedValue({ therapistPayoutKobo: 1n, platformFeeKobo: 0n, tier: 'PRO' }) } as any,
       paystack as any, { pushBookingToGoogle: vi.fn() } as any, manualPayments as any,
     );
@@ -149,7 +150,7 @@ describe('booking with a bank transfer', () => {
 
   it('holds the slot, skips Paystack, and returns the bank details and reference', async () => {
     const { service, tx, paystack, manualPayments } = booking(DETAILS);
-    const result: any = await service.createBooking(TENANT, dto);
+    const result: any = await service.createBooking(TENANT, 5n, dto);
     const data = tx.consultBooking.create.mock.calls[0][0].data;
     expect(data.paymentMethod).toBe('MANUAL');
     expect(data.holdExpiresAt).toBeInstanceOf(Date);
@@ -162,7 +163,7 @@ describe('booking with a bank transfer', () => {
   // The page could send MANUAL for a practice that does not offer it.
   it('refuses a transfer the practice does not offer, before claiming the slot', async () => {
     const { service, tx } = booking(null);
-    await expect(service.createBooking(TENANT, dto)).rejects.toThrow(/not taking bank transfers/);
+    await expect(service.createBooking(TENANT, 5n, dto)).rejects.toThrow(/not taking bank transfers/);
     expect(tx.consultAvailability.updateMany).not.toHaveBeenCalled();
   });
 });

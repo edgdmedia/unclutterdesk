@@ -16,6 +16,7 @@ import { DeviceInfo, SessionService } from './session.service';
 import { JWT_EXPIRES_IN, REFRESH_SECRET, REFRESH_EXPIRES_IN } from '../../common/auth.config';
 import { NotificationService } from '../notifications/notification.service';
 import { InviteService } from '../invites/invite.service';
+import { effectivePermissions } from '../../common/permissions';
 import { appOrigin } from '../../common/origins';
 
 const BCRYPT_ROUNDS = 12;
@@ -1100,6 +1101,7 @@ export class AuthService {
     type: string;
     role: string;
     status: string;
+    permissions?: string[] | null;
     avatarUrl: string | null;
     // Required, not optional: a caller that forgets the include would otherwise
     // hand back tenantSlug: null, which is worse than the inconsistency this
@@ -1128,7 +1130,127 @@ export class AuthService {
       isTherapist: !!profile.consultTherapistProfile,
       // Lets the app offer "Platform admin" to someone who is both.
       platformAdmin: Boolean(platformRole),
+      // The effective set, computed here once: the app shows and hides with
+      // it, and the guard still enforces independently on every call.
+      permissions: [...effectivePermissions(profile.role, profile.permissions ?? [])],
     };
+  }
+
+  /**
+   * A client creates their account from a practice's booking page. A profile
+   * the practice added earlier is linked, not duplicated; an email that
+   * already has an account here is told to sign in instead.
+   * Client accounts are email-verified on creation: the verification gate
+   * exists for staff accounts, and stopping a paying client at it is friction
+   * with no benefit.
+   */
+  async clientSignup(
+    tenantId: bigint | undefined,
+    dto: { firstName?: string; lastName?: string; email?: string; password?: string },
+    device: DeviceInfo = {},
+  ) {
+    if (!tenantId) throw new BadRequestException('Choose a practice first.');
+    const email = String(dto.email ?? '').toLowerCase().trim();
+    if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) throw new BadRequestException('Enter a valid email address.');
+    const password = String(dto.password ?? '');
+    if (password.length < 8) throw new BadRequestException('Use a password of at least 8 characters.');
+    const firstName = String(dto.firstName ?? '').trim().slice(0, 100);
+    if (!firstName) throw new BadRequestException('Enter your first name.');
+
+    const existingUser = await this.prisma.user.findUnique({
+      where: { email },
+      include: { profiles: { where: { tenantId }, select: { id: true } } },
+    });
+    if (existingUser && existingUser.profiles.length) {
+      throw new ConflictException('You already have an account at this practice. Sign in to continue.');
+    }
+
+    const hash = await bcrypt.hash(password, 10);
+    const user =
+      existingUser ??
+      (await this.prisma.user.create({
+        data: {
+          email,
+          username: await this.freeUsername(email.split('@')[0]),
+          password: hash,
+        },
+      }));
+
+    const profileByEmail = await this.prisma.profile.findFirst({ where: { tenantId, email } });
+    const profile = profileByEmail
+      ? await this.prisma.profile.update({
+          where: { id: profileByEmail.id },
+          data: {
+            userId: user.id,
+            emailVerified: true,
+            firstName: firstName || profileByEmail.firstName,
+            // A used invite must stop working the moment an account exists.
+            accountTokenHash: null,
+            accountTokenExpiresAt: null,
+          },
+        })
+      : await this.prisma.profile.create({
+          data: {
+            tenantId,
+            email,
+            userId: user.id,
+            username: await this.freeUsername(email.split('@')[0]),
+            firstName,
+            lastName: dto.lastName?.trim() || null,
+            type: 'user',
+            role: 'CLIENT',
+            status: 'active',
+            emailVerified: true,
+          },
+        });
+
+    const sessionId = SessionService.newSessionId();
+    const { accessToken, refreshToken } = this.generateTokens(user.id, profile.id, tenantId, profile.type, sessionId);
+    await this.sessions.startSession(sessionId, user.id, refreshToken, device);
+    return { accessToken, refreshToken, profile: this.practiceProfile({ ...profile, tenant: null, consultTherapistProfile: null }) };
+  }
+
+  /** Accept a "set your password" invite a practice sent for an existing profile. */
+  async clientSetPassword(
+    dto: { token?: string; password?: string; firstName?: string; lastName?: string },
+    device: DeviceInfo = {},
+  ) {
+    const token = String(dto.token ?? '');
+    if (!token) throw new UnauthorizedException('That link is not valid.');
+    const profile = await this.prisma.profile.findFirst({
+      where: { accountTokenHash: this.hashToken(token) },
+    });
+    if (!profile || !profile.accountTokenExpiresAt || profile.accountTokenExpiresAt < new Date()) {
+      throw new UnauthorizedException('That link has expired. Ask the practice to send it again.');
+    }
+    const password = String(dto.password ?? '');
+    if (password.length < 8) throw new BadRequestException('Use a password of at least 8 characters.');
+
+    let user = await this.prisma.user.findUnique({ where: { email: profile.email } });
+    if (!user) {
+      user = await this.prisma.user.create({
+        data: {
+          email: profile.email,
+          username: await this.freeUsername(profile.email.split('@')[0]),
+          password: await bcrypt.hash(password, 10),
+        },
+      });
+    }
+    const updated = await this.prisma.profile.update({
+      where: { id: profile.id },
+      data: {
+        userId: user.id,
+        emailVerified: true,
+        accountTokenHash: null,
+        accountTokenExpiresAt: null,
+        firstName: dto.firstName?.trim() || profile.firstName,
+        lastName: dto.lastName?.trim() || profile.lastName,
+      },
+    });
+    const sessionId = SessionService.newSessionId();
+    const tokens = this.generateTokens(user.id, updated.id, updated.tenantId, updated.type, sessionId);
+    await this.sessions.startSession(sessionId, user.id, tokens.refreshToken, device);
+    return { ...tokens, profile: this.practiceProfile({ ...updated, tenant: null, consultTherapistProfile: null }) };
   }
 
   private generateTokens(

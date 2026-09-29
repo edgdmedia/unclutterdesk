@@ -3,7 +3,7 @@ import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { RequestService } from './request.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { RolesGuard } from '../../common/roles.guard';
-import { Roles, STAFF } from '../../common/roles';
+import { Permissions } from '../../common/permissions';
 import { authenticatedProfileId, authenticatedTenantId } from '../../common/authenticated-tenant';
 
 /** The practice side. Platform admins triage these on AdminController. */
@@ -12,7 +12,7 @@ import { authenticatedProfileId, authenticatedTenantId } from '../../common/auth
 export class RequestController {
   constructor(private readonly requests: RequestService) {}
 
-  @Roles(...STAFF)
+  @Permissions('practice.staff')
   @Get()
   @UseGuards(JwtAuthGuard, RolesGuard)
   @ApiBearerAuth('access-token')
@@ -21,7 +21,7 @@ export class RequestController {
     return this.requests.forPractice(authenticatedTenantId(req));
   }
 
-  @Roles(...STAFF)
+  @Permissions('practice.staff')
   @Post()
   @UseGuards(JwtAuthGuard, RolesGuard)
   @ApiBearerAuth('access-token')

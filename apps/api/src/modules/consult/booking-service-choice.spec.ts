@@ -40,17 +40,19 @@ function makeService({
     },
     consultService: { findFirst: vi.fn().mockResolvedValue(chosen) },
     consultBooking: { count: vi.fn().mockResolvedValue(0) },
+    profile: { findFirst: vi.fn().mockResolvedValue({ id: 5n, email: 'ada@example.com', firstName: 'Ada', lastName: 'Obi', phone: '080' }) },
     $transaction: vi.fn(async (cb: any) => cb(tx)),
   };
+  const notifications = { notify: vi.fn(), sendEmail: vi.fn().mockResolvedValue({ success: true }) };
   const service = new ConsultService(
     prisma,
-    { notify: vi.fn() } as any,
+    notifications as any,
     { validateDiscount: vi.fn() } as any,
     { calculateSplitPayout: vi.fn() } as any,
     {} as any,
     { pushBookingToGoogle: vi.fn() } as any, {} as any,
   );
-  return { service, prisma, tx };
+  return { service, prisma, tx, notifications };
 }
 
 const dto = { availabilityId: '3', serviceId: '4', email: 'ada@example.com', firstName: 'Ada', lastName: 'Obi' };
@@ -58,20 +60,20 @@ const dto = { availabilityId: '3', serviceId: '4', email: 'ada@example.com', fir
 describe('booking an open slot', () => {
   it('books the service the client chose', async () => {
     const { service, tx } = makeService();
-    await service.createBooking(TENANT, dto as any).catch(() => undefined);
+    await service.createBooking(TENANT, 5n, dto as any).catch(() => undefined);
     expect(tx.consultBooking.create.mock.calls[0][0].data.serviceId).toBe(4n);
   });
 
   // The id comes from the request body; the practice comes from the host.
   it('only accepts an active service of this practice', async () => {
     const { service, prisma } = makeService();
-    await service.createBooking(TENANT, dto as any).catch(() => undefined);
+    await service.createBooking(TENANT, 5n, dto as any).catch(() => undefined);
     expect(prisma.consultService.findFirst.mock.calls[0][0].where).toEqual({ id: 4n, tenantId: TENANT, isActive: true });
   });
 
   it('refuses a service that is not offered, before claiming the slot', async () => {
     const { service, tx } = makeService({ chosen: null });
-    await expect(service.createBooking(TENANT, dto as any)).rejects.toBeInstanceOf(BadRequestException);
+    await expect(service.createBooking(TENANT, 5n, dto as any)).rejects.toBeInstanceOf(BadRequestException);
     expect(tx.consultAvailability.updateMany).not.toHaveBeenCalled();
   });
 
@@ -79,7 +81,7 @@ describe('booking an open slot', () => {
     const { service, tx } = makeService({
       chosen: { id: 4n, title: 'Couples Session', priceKobo: 0n, durationMinutes: 80 },
     });
-    await expect(service.createBooking(TENANT, dto as any)).rejects.toThrow(/too short/);
+    await expect(service.createBooking(TENANT, 5n, dto as any)).rejects.toThrow(/too short/);
     expect(tx.consultAvailability.updateMany).not.toHaveBeenCalled();
   });
 });
@@ -88,22 +90,39 @@ describe('booking a slot that names its service', () => {
   it('keeps the slot\'s service whatever the request says', async () => {
     const pinned = { id: 2n, title: 'Therapy', priceKobo: 0n, durationMinutes: 50 };
     const { service, prisma, tx } = makeService({ slotService: pinned });
-    await service.createBooking(TENANT, dto as any).catch(() => undefined);
+    await service.createBooking(TENANT, 5n, dto as any).catch(() => undefined);
     expect(prisma.consultService.findFirst).not.toHaveBeenCalled();
     expect(tx.consultBooking.create.mock.calls[0][0].data.serviceId).toBe(2n);
   });
 });
 
 describe('booking details', () => {
-  // These used to crash inside the transaction and reach the client as a 500.
+  // A malformed id used to crash inside the transaction and reach the client as a 500.
   it.each([
-    [{ firstName: '' }, /Enter your name/],
-    [{ firstName: undefined }, /Enter your name/],
-    [{ email: 'not-an-email' }, /valid email/],
     [{ serviceId: '' }, /Choose a service/],
+    [{ availabilityId: '' }, /Choose a service/],
   ])('refuses %o with a clear message, before claiming anything', async (override, message) => {
     const { service, tx } = makeService();
-    await expect(service.createBooking(TENANT, { ...dto, ...override } as any)).rejects.toThrow(message);
+    await expect(service.createBooking(TENANT, 5n, { ...dto, ...override } as any)).rejects.toThrow(message);
     expect(tx.consultAvailability.updateMany).not.toHaveBeenCalled();
+  });
+
+  // Who books comes from the session, never from the form.
+  it('refuses a caller who is not an active client of this practice', async () => {
+    const { service, tx } = makeService();
+    service['prisma'].profile.findFirst = vi.fn().mockResolvedValue(null);
+    await expect(service.createBooking(TENANT, 5n, dto as any)).rejects.toThrow(/Sign in as the client/);
+    expect(tx.consultAvailability.updateMany).not.toHaveBeenCalled();
+  });
+});
+
+describe('the booking confirmation email', () => {
+  it('emails the client with the join link', async () => {
+    const { service, notifications } = makeService();
+    await service.createBooking(TENANT, 5n, dto as any).catch(() => undefined);
+    const email = notifications.sendEmail.mock.calls.find((c: any[]) => c[0].type === 'bookings.confirmed')?.[0];
+    expect(email).toBeTruthy();
+    expect(email.to).toBe('ada@example.com');
+    expect(email.message).toMatch(/Join link/i);
   });
 });

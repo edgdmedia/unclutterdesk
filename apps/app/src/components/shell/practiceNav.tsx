@@ -1,5 +1,5 @@
 import {
-  Activity, BarChart3, Bell, Calendar, CalendarClock, ClipboardCheck, Clock, CreditCard, FileText,
+  Activity, BarChart3, Bell, Calendar, CalendarClock, ClipboardCheck, ClipboardList, Clock, CreditCard, FileText,
   Home, IdCard, LayoutDashboard, Palette, Settings, Tag, Users, type LucideIcon,
 } from 'lucide-react';
 import type { SidebarSection } from '@unclutterdesk/ui';
@@ -21,6 +21,7 @@ interface NavEntry {
 const MAIN: NavEntry[] = [
   { href: '/dashboard', label: 'Overview', icon: LayoutDashboard },
   { href: '/dashboard/schedule', label: 'Schedule', icon: Calendar },
+  { href: '/dashboard/sessions', label: 'Sessions', icon: ClipboardList },
   { href: '/dashboard/clients', label: 'Clients', icon: Users },
   { href: '/dashboard/assessments', label: 'Assessments', icon: Activity },
   { href: '/dashboard/hours', label: 'Hours log', icon: Clock, clinicalOnly: true },

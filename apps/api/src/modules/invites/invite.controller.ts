@@ -3,7 +3,7 @@ import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { InviteService } from './invite.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { RolesGuard } from '../../common/roles.guard';
-import { PRACTICE_ADMIN, Roles } from '../../common/roles';
+import { Permissions } from '../../common/permissions';
 import { authenticatedTenantId } from '../../common/authenticated-tenant';
 
 /** The practice-facing side. The admin side lives on AdminController. */
@@ -18,7 +18,7 @@ export class InviteController {
     return this.invites.preview(code);
   }
 
-  @Roles(...PRACTICE_ADMIN)
+  @Permissions('practice.admin')
   @Post('redeem')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @ApiBearerAuth('access-token')

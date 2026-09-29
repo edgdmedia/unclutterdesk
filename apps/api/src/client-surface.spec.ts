@@ -7,12 +7,12 @@ import { CLINICAL, PRACTICE_ROLES, STAFF } from './common/roles';
  *
  * A client is a person receiving care. They hold a real session in the
  * practice's tenant, so the only thing standing between them and a staff
- * endpoint is the role annotation on it — and `@AnyAuthenticated()` opens a
+ * endpoint is the permission annotation on it — and `@Permissions('any.authenticated')` opens a
  * route to every role, clients included.
  *
  * roles.spec.ts proves every authenticated route carries an annotation.
  * roles.guard.spec.ts proves the guard honours it. Neither notices an
- * annotation that is simply too generous: a route marked `@AnyAuthenticated()`
+ * annotation that is simply too generous: a route marked `any.authenticated`
  * that returns another person's records passes both.
  *
  * So the surface is pinned. Widening it is then a visible line in a diff,
@@ -40,6 +40,8 @@ const CLIENT_SURFACE = [
   'GET /v1/consult/portal/payments',
   'GET /v1/consult/portal/bookings/:bookingId/reschedule-options',
   'POST /v1/consult/portal/bookings/:bookingId/reschedule',
+  // Booking needs a client session now: name and email come from the account.
+  'POST /v1/consult/public/bookings',
   // Assessments sent to them; every query is scoped to their own profile id.
   'GET /v1/assessments/mine',
   'GET /v1/assessments/mine/:id',

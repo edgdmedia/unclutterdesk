@@ -3,7 +3,7 @@ import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { NotesService } from './notes.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { RolesGuard } from '../../common/roles.guard';
-import { Roles, CLINICAL } from '../../common/roles';
+import { Permissions } from '../../common/permissions';
 import { authenticatedProfileId, authenticatedTenantId } from '../../common/authenticated-tenant';
 
 @ApiTags('Notes')
@@ -11,7 +11,7 @@ import { authenticatedProfileId, authenticatedTenantId } from '../../common/auth
 // guard existed this controller carried only JwtAuthGuard, so any signed-in
 // client could read another client's SOAP notes by id.
 @UseGuards(JwtAuthGuard, RolesGuard)
-@Roles(...CLINICAL)
+@Permissions('clinical.record')
 @ApiBearerAuth('access-token')
 @Controller('v1/notes')
 export class NotesController {

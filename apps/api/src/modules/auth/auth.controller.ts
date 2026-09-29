@@ -29,7 +29,8 @@ import {
 } from '../../common/auth.config';
 import { RolesGuard } from '../../common/roles.guard';
 import { authenticatedProfileId, authenticatedTenantId } from '../../common/authenticated-tenant';
-import { AllowPlatformAdmin, AnyAuthenticated, Roles, STAFF } from '../../common/roles';
+import { AllowPlatformAdmin } from '../../common/roles';
+import { Permissions } from '../../common/permissions';
 import { DeviceInfo } from './session.service';
 
 @ApiTags('Auth')
@@ -89,6 +90,32 @@ export class AuthController {
     return { profile: result.profile, csrfToken };
   }
 
+  @Post('client-signup')
+  @Throttle({ default: { limit: 5, ttl: 60000 } })
+  @ApiOperation({ summary: 'A client creates their account at this practice' })
+  async clientSignup(
+    @Req() req: TenantRequest,
+    @Body() dto: { firstName?: string; lastName?: string; email?: string; password?: string },
+    @Res({ passthrough: true }) res: Response,
+  ) {
+    const result = await this.authService.clientSignup(req.tenantId, dto, deviceOf(req));
+    const csrfToken = this.setSessionCookies(res, result.accessToken, result.refreshToken);
+    return { profile: result.profile, csrfToken };
+  }
+
+  @Post('client-set-password')
+  @Throttle({ default: { limit: 5, ttl: 60000 } })
+  @ApiOperation({ summary: 'Accept a client account invite: set the password and sign in' })
+  async clientSetPassword(
+    @Req() req: TenantRequest,
+    @Body() dto: { token?: string; password?: string; firstName?: string; lastName?: string },
+    @Res({ passthrough: true }) res: Response,
+  ) {
+    const result = await this.authService.clientSetPassword(dto, deviceOf(req));
+    const csrfToken = this.setSessionCookies(res, result.accessToken, result.refreshToken);
+    return { profile: result.profile, csrfToken };
+  }
+
   @Post('login')
   @Throttle({ default: { limit: 5, ttl: 60000, blockDuration: 300000 } })
   @ApiOperation({ summary: 'Login with email and password' })
@@ -122,7 +149,7 @@ export class AuthController {
     return { success: true };
   }
 
-  @AnyAuthenticated()
+  @Permissions('any.authenticated')
   @Get('preferences')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @ApiBearerAuth('access-token')
@@ -134,7 +161,7 @@ export class AuthController {
     );
   }
 
-  @AnyAuthenticated()
+  @Permissions('any.authenticated')
   @Put('preferences')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @ApiBearerAuth('access-token')
@@ -147,7 +174,7 @@ export class AuthController {
     );
   }
 
-  @AnyAuthenticated()
+  @Permissions('any.authenticated')
   @Post('change-password')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Throttle({ default: { limit: 5, ttl: 60000 } })
@@ -164,7 +191,7 @@ export class AuthController {
     );
   }
 
-  @AnyAuthenticated()
+  @Permissions('any.authenticated')
   @AllowPlatformAdmin()
   @Get('status')
   @UseGuards(JwtAuthGuard, RolesGuard)
@@ -181,7 +208,7 @@ export class AuthController {
   }
 
   // Staff only: clients never hold platform roles, so they get no route here.
-  @Roles(...STAFF)
+  @Permissions('practice.staff')
   @Post('switch/admin')
   @Throttle({ default: { limit: 5, ttl: 60000, blockDuration: 300000 } })
   @UseGuards(JwtAuthGuard, RolesGuard)
@@ -198,7 +225,7 @@ export class AuthController {
     return { profile: result.profile, csrfToken };
   }
 
-  @AnyAuthenticated()
+  @Permissions('any.authenticated')
   @Get('sessions')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @ApiBearerAuth('access-token')
@@ -207,7 +234,7 @@ export class AuthController {
     return this.authService.listSessions(BigInt(req.user.userId), req.user.sessionId);
   }
 
-  @AnyAuthenticated()
+  @Permissions('any.authenticated')
   @Post('sessions/revoke-others')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @ApiBearerAuth('access-token')
@@ -216,7 +243,7 @@ export class AuthController {
     return this.authService.endOtherSessions(BigInt(req.user.userId), req.user.sessionId);
   }
 
-  @AnyAuthenticated()
+  @Permissions('any.authenticated')
   @Delete('sessions/:id')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @ApiBearerAuth('access-token')

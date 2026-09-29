@@ -539,28 +539,26 @@ export class ConsultService {
     return this.getTherapistAvailability(tenantId, providerProfileId);
   }
 
-  async createBooking(tenantId: bigint, dto: {
+  async createBooking(tenantId: bigint, clientProfileId: bigint, dto: {
     serviceId: string;
     availabilityId: string;
-    firstName: string;
-    lastName: string;
-    email: string;
-    phone?: string;
     notes?: string;
     discountCode?: string;
     /** "MANUAL" to pay by bank transfer, where the practice offers it. */
     paymentMethod?: string;
   }) {
-    // Checked before anything else: a missing name or a malformed id used to
-    // crash deep inside the transaction and reach the client as a 500.
+    // Checked before anything else: a malformed id used to crash deep inside
+    // the transaction and reach the client as a 500.
     if (!/^\d+$/.test(String(dto?.serviceId ?? '')) || !/^\d+$/.test(String(dto?.availabilityId ?? ''))) {
       throw new BadRequestException('Choose a service and a time.');
     }
-    const email = String(dto.email ?? '').toLowerCase().trim();
-    if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) throw new BadRequestException('Enter a valid email address.');
-    const firstName = String(dto.firstName ?? '').trim();
-    if (!firstName) throw new BadRequestException('Enter your name.');
-    const lastName = String(dto.lastName ?? '').trim();
+    // Who books comes from the session, never from the form: name and email
+    // are the profile's own.
+    const client = await this.prisma.profile.findFirst({
+      where: { id: clientProfileId, tenantId, role: 'CLIENT', status: 'active' },
+      select: { id: true, email: true, firstName: true, lastName: true, phone: true },
+    });
+    if (!client) throw new ForbiddenException('Sign in as the client to book a session.');
     const serviceId = BigInt(dto.serviceId);
     const availabilityId = BigInt(dto.availabilityId);
 
@@ -613,6 +611,8 @@ export class ConsultService {
 
     // Atomic transaction: claim the slot, find or create the client profile,
     // create the booking, and record discount usage.
+    let practiceName = 'your practice';
+    let tenantForLink: unknown = null;
     const result = await this.prisma.$transaction(async (tx) => {
       // Claim the slot first, with the condition in the UPDATE itself.
       //
@@ -630,25 +630,6 @@ export class ConsultService {
 
       if (claimed.count === 0) {
         throw new BadRequestException('The selected time slot is no longer available');
-      }
-
-      let clientProfile = await tx.profile.findFirst({
-        where: { tenantId, email },
-      });
-
-      if (!clientProfile) {
-        clientProfile = await tx.profile.create({
-          data: {
-            tenantId,
-            email,
-            username: email.split('@')[0],
-            firstName,
-            lastName,
-            phone: dto.phone,
-            type: 'user',
-            status: 'active',
-          },
-        });
       }
 
       const bookingId = Date.now();
@@ -674,7 +655,7 @@ export class ConsultService {
           tenantId,
           serviceId: service.id,
           availabilityId: slot.id,
-          clientProfileId: clientProfile.id,
+          clientProfileId: client.id,
           status: 'PENDING_PAYMENT',
           notes: dto.notes,
           videoRoomName,
@@ -711,7 +692,7 @@ export class ConsultService {
         paymentUrl = await this.startOnlinePayment(
           tenantId,
           finalPriceKobo,
-          clientProfile.email,
+          client.email,
           reference,
           `${tenantWebOrigin(slot.tenant)}/booking/confirmed`,
         );
@@ -727,6 +708,8 @@ export class ConsultService {
         });
       }
 
+      practiceName = slot.tenant.name;
+      tenantForLink = slot.tenant;
       return {
         bookingId: booking.id.toString(),
         // Lets the confirmation page build the .ics link without a session —
@@ -749,6 +732,27 @@ export class ConsultService {
         this.logger.warn(`Could not announce transfer booking ${result.bookingId}: ${(err as Error).message}`),
       );
     }
+
+    // After commit, and never failing the booking: the client gets a written
+    // confirmation with the join link, so attending never depends on having
+    // the tab still open.
+    await this.notifications
+      .sendEmail({
+        to: client.email,
+        type: 'bookings.confirmed',
+        title: result.status === 'PENDING_PAYMENT' ? 'Almost there — pay to confirm your session' : 'Your session is booked',
+        message:
+          `${practiceName} has you down for ${result.serviceTitle} with ${result.therapistName} on ${new Date(result.startsAt).toLocaleString('en-GB', {
+            weekday: 'long', day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit', timeZone: 'Africa/Lagos',
+          })}.` +
+          (result.videoRoomLink ? ` Join link: ${result.videoRoomLink}` : '') +
+          (result.status === 'PENDING_PAYMENT' ? ' Your payment link is on the confirmation page.' : ''),
+        link: result.videoRoomLink ?? `${tenantWebOrigin(tenantForLink as any)}/portal`,
+        actionLabel: result.videoRoomLink ? 'Join the session' : 'View my sessions',
+        tenantId,
+        profileId: client.id,
+      })
+      .catch((err) => this.logger.warn(`Could not email booking confirmation: ${(err as Error).message}`));
     return result;
   }
 

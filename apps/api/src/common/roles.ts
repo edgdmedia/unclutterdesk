@@ -22,26 +22,6 @@ export const PRACTICE_ADMIN: PracticeRole[] = ['OWNER', 'ADMIN'];
 /** Roles that handle money at the front desk, e.g. confirming a bank transfer. */
 export const FRONT_DESK: PracticeRole[] = ['OWNER', 'ADMIN', 'RECEPTIONIST'];
 
-export const ROLES_KEY = 'requiredRoles';
-
-/**
- * Restricts a route to the listed roles.
- *
- * Required on every route behind `JwtAuthGuard` — `roles.spec.ts` fails the
- * build if one is missing, so a new endpoint cannot quietly inherit the old
- * "any authenticated user" behaviour. Use `@AnyAuthenticated()` for routes that
- * genuinely serve clients as well as staff.
- */
-export const Roles = (...roles: PracticeRole[]) => SetMetadata(ROLES_KEY, roles);
-
-/**
- * Explicitly allows any signed-in profile in the tenant, including clients.
- *
- * Deliberately verbose: it should be obvious in review that a route was
- * considered and opened up, rather than never annotated.
- */
-export const AnyAuthenticated = () => SetMetadata(ROLES_KEY, [...PRACTICE_ROLES]);
-
 export const PLATFORM_ADMIN_KEY = 'allowPlatformAdmin';
 
 /**

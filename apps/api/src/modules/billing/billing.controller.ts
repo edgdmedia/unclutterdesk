@@ -15,7 +15,7 @@ import { BillingService } from './billing.service';
 import { PaystackService } from './paystack.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { RolesGuard } from '../../common/roles.guard';
-import { PRACTICE_ADMIN, Roles } from '../../common/roles';
+import { Permissions } from '../../common/permissions';
 import { authenticatedTenantId } from '../../common/authenticated-tenant';
 
 @ApiTags('Billing')
@@ -26,7 +26,7 @@ export class BillingController {
     private readonly paystackService: PaystackService,
   ) {}
 
-  @Roles(...PRACTICE_ADMIN)
+  @Permissions('practice.admin')
   @Get('bank-subaccount')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @ApiBearerAuth('access-token')
@@ -35,7 +35,7 @@ export class BillingController {
     return this.billingService.getBankSubaccount(authenticatedTenantId(req));
   }
 
-  @Roles(...PRACTICE_ADMIN)
+  @Permissions('practice.admin')
   @Get('banks')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @ApiBearerAuth('access-token')
@@ -44,7 +44,7 @@ export class BillingController {
     return this.paystackService.listBanks();
   }
 
-  @Roles(...PRACTICE_ADMIN)
+  @Permissions('practice.admin')
   @Get('resolve-account')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @ApiBearerAuth('access-token')
@@ -57,7 +57,7 @@ export class BillingController {
     return this.paystackService.resolveAccountNumber(accountNumber, bankCode);
   }
 
-  @Roles(...PRACTICE_ADMIN)
+  @Permissions('practice.admin')
   @Get('subscription')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @ApiBearerAuth('access-token')
@@ -66,7 +66,7 @@ export class BillingController {
     return this.billingService.getSubscription(authenticatedTenantId(req));
   }
 
-  @Roles(...PRACTICE_ADMIN)
+  @Permissions('practice.admin')
   @Get('plans')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @ApiBearerAuth('access-token')
@@ -79,7 +79,7 @@ export class BillingController {
     return this.billingService.listPlans();
   }
 
-  @Roles(...PRACTICE_ADMIN)
+  @Permissions('practice.admin')
   @Get('summary')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @ApiBearerAuth('access-token')
@@ -88,7 +88,7 @@ export class BillingController {
     return this.billingService.getBillingSummary(authenticatedTenantId(req));
   }
 
-  @Roles(...PRACTICE_ADMIN)
+  @Permissions('practice.admin')
   @Post('bank-subaccount')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @ApiBearerAuth('access-token')
@@ -97,7 +97,7 @@ export class BillingController {
     return this.billingService.saveBankSubaccount(authenticatedTenantId(req), dto);
   }
 
-  @Roles(...PRACTICE_ADMIN)
+  @Permissions('practice.admin')
   @Post('subscribe')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @ApiBearerAuth('access-token')

@@ -44,12 +44,13 @@ function makeService({ claimCount = 1 }: { claimCount?: number } = {}) {
       }),
     },
     consultBooking: { count: vi.fn().mockResolvedValue(0) },
+    profile: { findFirst: vi.fn().mockResolvedValue({ id: 5n, email: 'ada@example.com', firstName: 'Ada', lastName: 'Obi', phone: '080' }) },
     $transaction: vi.fn(async (cb: any) => cb(tx)),
   };
 
   const service = new ConsultService(
     prisma,
-    { notify: vi.fn() } as any,
+    { notify: vi.fn(), sendEmail: vi.fn().mockResolvedValue({ success: true }) } as any,
     { validateDiscount: vi.fn() } as any,
     { calculateSplitPayout: vi.fn() } as any,
     {} as any,
@@ -76,7 +77,7 @@ describe('booking a slot', () => {
   });
 
   it('claims the slot with the condition in the update', async () => {
-    await service.createBooking(TENANT, dto as any).catch(() => undefined);
+    await service.createBooking(TENANT, 5n, dto as any).catch(() => undefined);
 
     expect(tx.consultAvailability.updateMany).toHaveBeenCalledWith({
       where: { id: 3n, tenantId: TENANT, isActive: true },
@@ -85,7 +86,7 @@ describe('booking a slot', () => {
   });
 
   it('never deactivates the slot unconditionally', async () => {
-    await service.createBooking(TENANT, dto as any).catch(() => undefined);
+    await service.createBooking(TENANT, 5n, dto as any).catch(() => undefined);
     // An unconditional update is what let both racers win.
     expect(tx.consultAvailability.update).not.toHaveBeenCalled();
   });
@@ -101,7 +102,7 @@ describe('booking a slot', () => {
       return { id: 100n };
     });
 
-    await service.createBooking(TENANT, dto as any).catch(() => undefined);
+    await service.createBooking(TENANT, 5n, dto as any).catch(() => undefined);
     expect(order).toEqual(['claim', 'booking']);
   });
 
@@ -111,19 +112,19 @@ describe('booking a slot', () => {
     });
 
     it('rejects the booking', async () => {
-      await expect(service.createBooking(TENANT, dto as any)).rejects.toThrow(
+      await expect(service.createBooking(TENANT, 5n, dto as any)).rejects.toThrow(
         BadRequestException,
       );
     });
 
     it('writes no booking at all', async () => {
-      await service.createBooking(TENANT, dto as any).catch(() => undefined);
+      await service.createBooking(TENANT, 5n, dto as any).catch(() => undefined);
       expect(tx.consultBooking.create).not.toHaveBeenCalled();
     });
 
     it('does not consume a discount code', async () => {
       await service
-        .createBooking(TENANT, { ...dto, discountCode: 'SAVE10' } as any)
+        .createBooking(TENANT, 5n, { ...dto, discountCode: 'SAVE10' } as any)
         .catch(() => undefined);
       expect(tx.discountCode.update).not.toHaveBeenCalled();
     });
@@ -137,7 +138,7 @@ describe('video room names', () => {
    * `unclutterdesk-session-${Date.now()}`.
    */
   async function roomNameFrom(service: ConsultService, tx: any) {
-    await service.createBooking(TENANT, dto as any).catch(() => undefined);
+    await service.createBooking(TENANT, 5n, dto as any).catch(() => undefined);
     return tx.consultBooking.create.mock.calls[0][0].data.videoRoomName as string;
   }
 

@@ -2,6 +2,8 @@ import React, { useState } from 'react';
 import { UserPlus, MoreHorizontal, Info, X, Check, Mail, Loader2 } from 'lucide-react';
 import { Eyebrow, Card, StatusBadge, Button, useToast, Page, PageHeader, ResponsiveTable, byText, type Column } from '@unclutterdesk/ui';
 import { useBrand } from '@unclutterdesk/ui';
+import { useAuth } from '../../../context/AuthContext';
+import { PermissionsDialog } from '../../../components/team/PermissionsDialog';
 import { api } from '../../../utils/apiClient';
 import type { StaffMember } from '../../../App';
 
@@ -58,6 +60,8 @@ export function TeamSettingsPage({ staff, onRefresh }: TeamSettingsPageProps) {
   // The invitation being withdrawn or sent again, so only that row is busy.
   const [invitePendingId, setInvitePendingId] = useState<string | null>(null);
   const [rosterNotice, setRosterNotice] = useState<string | null>(null);
+  const [permissionsFor, setPermissionsFor] = useState<StaffMember | null>(null);
+  const { profile: me } = useAuth();
 
   // An invitation is not a team member until it is accepted, so the two are
   // counted separately rather than added together.
@@ -351,13 +355,23 @@ export function TeamSettingsPage({ staff, onRefresh }: TeamSettingsPageProps) {
                     ) : m.role === 'OWNER' ? (
                       <p className="px-3 py-2 text-xs font-medium text-slate-500">The owner cannot be deactivated.</p>
                     ) : (
-                      <button
-                        onClick={() => { void toggleStaffStatus(m); setActiveMenuId(null); }}
-                        disabled={statusPendingId !== null}
-                        className="w-full px-3 py-2 text-xs font-bold text-rose-600 hover:bg-rose-50 text-left disabled:opacity-50"
-                      >
-                        {m.status === 'Active' ? 'Deactivate Member' : 'Activate Member'}
-                      </button>
+                      <>
+                        {me?.permissions?.includes('staff.manage') ? (
+                          <button
+                            onClick={() => { setPermissionsFor(m); setActiveMenuId(null); }}
+                            className="w-full px-3 py-2 text-xs font-bold text-slate-700 hover:bg-slate-50 text-left"
+                          >
+                            Permissions…
+                          </button>
+                        ) : null}
+                        <button
+                          onClick={() => { void toggleStaffStatus(m); setActiveMenuId(null); }}
+                          disabled={statusPendingId !== null}
+                          className="w-full px-3 py-2 text-xs font-bold text-rose-600 hover:bg-rose-50 text-left disabled:opacity-50"
+                        >
+                          {m.status === 'Active' ? 'Deactivate Member' : 'Activate Member'}
+                        </button>
+                      </>
                     )}
                   </div>
                 )}
@@ -475,6 +489,17 @@ export function TeamSettingsPage({ staff, onRefresh }: TeamSettingsPageProps) {
           </div>
         </div>
       )}
+      {permissionsFor ? (
+        <PermissionsDialog
+          member={permissionsFor}
+          onClose={() => setPermissionsFor(null)}
+          onSaved={() => {
+            setPermissionsFor(null);
+            void onRefresh();
+            toast.success('Permissions saved');
+          }}
+        />
+      ) : null}
     </Page>
   );
 }

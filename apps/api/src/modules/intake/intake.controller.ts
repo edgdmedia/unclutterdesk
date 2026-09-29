@@ -3,7 +3,7 @@ import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { IntakeService } from './intake.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { RolesGuard } from '../../common/roles.guard';
-import { CLINICAL, Roles, STAFF } from '../../common/roles';
+import { Permissions } from '../../common/permissions';
 import { TenantRequest } from '../../common/middleware/tenant.middleware';
 import { authenticatedTenantId } from '../../common/authenticated-tenant';
 
@@ -30,7 +30,7 @@ export class IntakeController {
     return this.intakeService.getPublishedReviews(req.tenantId);
   }
 
-  @Roles(...STAFF)
+  @Permissions('practice.staff')
   @Get('forms')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @ApiBearerAuth('access-token')
@@ -39,7 +39,7 @@ export class IntakeController {
     return this.intakeService.getForms(authenticatedTenantId(req));
   }
 
-  @Roles(...STAFF)
+  @Permissions('practice.staff')
   @Get('forms/:formId')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @ApiBearerAuth('access-token')
@@ -48,7 +48,7 @@ export class IntakeController {
     return this.intakeService.getFormById(authenticatedTenantId(req), BigInt(formId));
   }
 
-  @Roles(...CLINICAL)
+  @Permissions('clinical.record')
   @Post('forms')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @ApiBearerAuth('access-token')
@@ -57,7 +57,7 @@ export class IntakeController {
     return this.intakeService.createCustomForm(authenticatedTenantId(req), dto);
   }
 
-  @Roles(...CLINICAL)
+  @Permissions('clinical.record')
   @Patch('forms/:formId')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @ApiBearerAuth('access-token')
@@ -79,7 +79,7 @@ export class IntakeController {
     return this.intakeService.submitIntakeAnswers(req.tenantId, dto);
   }
 
-  @Roles(...CLINICAL)
+  @Permissions('clinical.record')
   @Get('submissions')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @ApiBearerAuth('access-token')
@@ -91,7 +91,7 @@ export class IntakeController {
     );
   }
 
-  @Roles(...CLINICAL)
+  @Permissions('clinical.record')
   @Patch('submissions/:submissionId/status')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @ApiBearerAuth('access-token')
@@ -104,7 +104,7 @@ export class IntakeController {
     );
   }
 
-  @Roles(...CLINICAL)
+  @Permissions('clinical.record')
   @Get('submissions/booking/:bookingId')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @ApiBearerAuth('access-token')

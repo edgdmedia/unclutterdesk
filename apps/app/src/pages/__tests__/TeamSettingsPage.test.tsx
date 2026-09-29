@@ -17,6 +17,11 @@ const apiPost = vi.fn();
 const apiPatch = vi.fn();
 const apiDelete = vi.fn();
 
+// The page asks who is looking, to decide whether to offer "Permissions…".
+vi.mock('../../context/AuthContext', () => ({
+  useAuth: () => ({ profile: { permissions: ['staff.manage'] } }),
+}));
+
 vi.mock('../../utils/apiClient', () => ({
   api: {
     get: vi.fn(),

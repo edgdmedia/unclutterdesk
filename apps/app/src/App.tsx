@@ -13,6 +13,8 @@ import { LEGAL_URLS } from './utils/legal';
 const NotFoundPage = lazy(() => import('./pages/shared/NotFoundPage').then((m) => ({ default: m.NotFoundPage })));
 const DashboardPage = lazy(() => import('./pages/practice/DashboardPage').then((m) => ({ default: m.DashboardPage })));
 const SchedulePage = lazy(() => import('./pages/practice/SchedulePage').then((m) => ({ default: m.SchedulePage })));
+const SessionsPage = lazy(() => import('./pages/practice/SessionsPage').then((m) => ({ default: m.SessionsPage })));
+const SessionDetailPage = lazy(() => import('./pages/practice/SessionDetailPage').then((m) => ({ default: m.SessionDetailPage })));
 const ClientsPage = lazy(() => import('./pages/practice/ClientsPage').then((m) => ({ default: m.ClientsPage })));
 const ClientDetailPage = lazy(() => import('./pages/practice/ClientDetailPage').then((m) => ({ default: m.ClientDetailPage })));
 const AnalyticsPage = lazy(() => import('./pages/practice/AnalyticsPage').then((m) => ({ default: m.AnalyticsPage })));
@@ -37,6 +39,7 @@ const PublicReviewFormPage = lazy(() => import('./pages/public/PublicReviewFormP
 const BookingConfirmedPage = lazy(() => import('./pages/public/BookingConfirmedPage').then((m) => ({ default: m.BookingConfirmedPage })));
 const InactivePracticePage = lazy(() => import('./pages/public/InactivePracticePage').then((m) => ({ default: m.InactivePracticePage })));
 const PayBookingPage = lazy(() => import('./pages/public/PayBookingPage').then((m) => ({ default: m.PayBookingPage })));
+const SetPasswordPage = lazy(() => import('./pages/public/SetPasswordPage').then((m) => ({ default: m.SetPasswordPage })));
 const NotificationsPage = lazy(() => import('./pages/practice/NotificationsPage').then((m) => ({ default: m.NotificationsPage })));
 const SubmissionsPage = lazy(() => import('./pages/practice/SubmissionsPage').then((m) => ({ default: m.SubmissionsPage })));
 const AvailabilitySettingsPage = lazy(() => import('./pages/practice/settings/AvailabilitySettingsPage').then((m) => ({ default: m.AvailabilitySettingsPage })));
@@ -130,6 +133,8 @@ export interface StaffMember {
   role: string;
   status: string;
   initials: string;
+  /** Extra permission grants beyond the role. */
+  permissions?: string[];
   /** An invitation that has not been claimed — there is no account behind it. */
   pending?: boolean;
   invitedAt?: string | null;
@@ -333,6 +338,7 @@ function AppLayout() {
     location.pathname.startsWith('/auth') ||
     location.pathname.startsWith('/invite') ||
     location.pathname.startsWith('/client/') ||
+    location.pathname === '/set-password' ||
     location.pathname === '/portal' ||
     location.pathname.startsWith('/portal/') ||
     location.pathname === '/login' ||
@@ -353,6 +359,7 @@ function AppLayout() {
             <Route path="/onboarding" element={<OnboardingWizardPage />} />
             <Route path="/booking/confirmed" element={<BookingConfirmedPage />} />
             <Route path="/pay/:bookingId" element={<PayBookingPage />} />
+            <Route path="/set-password" element={<SetPasswordPage />} />
             <Route path="/booking/inactive" element={<InactivePracticePage />} />
             <Route path="/assessment/:token" element={<AssessmentPage />} />
 
@@ -431,8 +438,10 @@ function AppLayout() {
                 }
               />
               <Route path="/dashboard/schedule" element={<SchedulePage sessions={resolvedSessions} setSessions={setSessions} clients={resolvedClients} tenantSlug={profile?.tenantSlug} onRefresh={refreshSessions} />} />
+              <Route path="/dashboard/sessions" element={<SessionsPage can={{ viewAll: (profile?.permissions ?? []).includes('sessions.view-all') }} />} />
+              <Route path="/dashboard/sessions/:id" element={<SessionDetailPage />} />
               <Route path="/dashboard/clients" element={<ClientsPage clients={resolvedClients} setClients={setClients} onRefresh={refreshClients} />} />
-              <Route path="/dashboard/clients/:id" element={<ClientDetailPage clients={resolvedClients} setClients={setClients} />} />
+              <Route path="/dashboard/clients/:id" element={<ClientDetailPage clients={resolvedClients} setClients={setClients} canViewPayments={(profile?.permissions ?? []).includes('payments.desk')} />} />
               <Route path="/dashboard/analytics" element={<AnalyticsPage clients={resolvedClients} sessions={resolvedSessions} />} />
               <Route path="/dashboard/submissions" element={<SubmissionsPage />} />
               <Route path="/dashboard/assessments" element={<AssessmentsPage />} />
@@ -573,6 +582,7 @@ export function App() {
                 <Route path="/assessment/:token" element={<AssessmentPage />} />
                 <Route path="/booking/confirmed" element={<BookingConfirmedPage />} />
                 <Route path="/pay/:bookingId" element={<PayBookingPage />} />
+                <Route path="/set-password" element={<SetPasswordPage />} />
                 <Route path="/booking/inactive" element={<InactivePracticePage />} />
                 <Route path="/privacy" element={<ExternalRedirect to={LEGAL_URLS.privacy} />} />
                 <Route path="/terms" element={<ExternalRedirect to={LEGAL_URLS.terms} />} />

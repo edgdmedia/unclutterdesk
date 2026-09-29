@@ -3,7 +3,7 @@ import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { Response } from 'express';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { RolesGuard } from '../../common/roles.guard';
-import { CLINICAL, Roles } from '../../common/roles';
+import { Permissions } from '../../common/permissions';
 import { authenticatedProfileId, authenticatedTenantId } from '../../common/authenticated-tenant';
 import { hoursCsv, isoDate } from './hours-format';
 import { hoursPdf } from './hours-pdf';
@@ -25,42 +25,42 @@ function parseId(value: string): bigint {
 export class HoursController {
   constructor(private readonly hours: HoursService) {}
 
-  @Roles(...CLINICAL)
+  @Permissions('clinical.record')
   @Get()
   @ApiOperation({ summary: 'My hours: entries, totals and target' })
   list(@Req() req: any) {
     return this.hours.list(authenticatedTenantId(req), authenticatedProfileId(req));
   }
 
-  @Roles(...CLINICAL)
+  @Permissions('clinical.record')
   @Post()
   @ApiOperation({ summary: 'Log hours by hand' })
   create(@Req() req: any, @Body() dto: HoursEntryInput) {
     return this.hours.create(authenticatedTenantId(req), authenticatedProfileId(req), dto ?? {});
   }
 
-  @Roles(...CLINICAL)
+  @Permissions('clinical.record')
   @Patch(':id')
   @ApiOperation({ summary: 'Change an entry' })
   update(@Req() req: any, @Param('id') id: string, @Body() dto: HoursEntryInput) {
     return this.hours.update(authenticatedTenantId(req), authenticatedProfileId(req), parseId(id), dto ?? {});
   }
 
-  @Roles(...CLINICAL)
+  @Permissions('clinical.record')
   @Delete(':id')
   @ApiOperation({ summary: 'Delete a manual entry' })
   remove(@Req() req: any, @Param('id') id: string) {
     return this.hours.remove(authenticatedTenantId(req), authenticatedProfileId(req), parseId(id));
   }
 
-  @Roles(...CLINICAL)
+  @Permissions('clinical.record')
   @Put('target')
   @ApiOperation({ summary: 'Set the hours I am working towards' })
   setTarget(@Req() req: any, @Body() dto: HoursTargetInput) {
     return this.hours.setTarget(authenticatedTenantId(req), authenticatedProfileId(req), dto ?? {});
   }
 
-  @Roles(...CLINICAL)
+  @Permissions('clinical.record')
   @Get('export.csv')
   @ApiOperation({ summary: 'Download my hours as CSV (client initials unless names=full)' })
   async csv(@Req() req: any, @Query('names') names: string, @Res() res: Response) {
@@ -71,7 +71,7 @@ export class HoursController {
     res.send(hoursCsv(rows, { fullNames: names === 'full' }));
   }
 
-  @Roles(...CLINICAL)
+  @Permissions('clinical.record')
   @Get('export.pdf')
   @ApiOperation({ summary: 'Download my hours as a signable PDF (client initials unless names=full)' })
   async pdf(@Req() req: any, @Query('names') names: string, @Res() res: Response) {

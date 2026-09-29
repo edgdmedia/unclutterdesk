@@ -1,7 +1,8 @@
 import { CanActivate, ExecutionContext, Injectable, ForbiddenException } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { PrismaService } from './prisma/prisma.service';
-import { PLATFORM_ADMIN_KEY, ROLES_KEY, type PracticeRole } from './roles';
+import { PLATFORM_ADMIN_KEY } from './roles';
+import { PERMISSIONS_KEY, effectivePermissions, type Permission } from './permissions';
 import { assertSessionLive } from './session-validity';
 
 /**
@@ -25,12 +26,12 @@ export class RolesGuard implements CanActivate {
   ) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
-    const required = this.reflector.getAllAndOverride<PracticeRole[] | undefined>(ROLES_KEY, [
+    const required = this.reflector.getAllAndOverride<Permission[] | undefined>(PERMISSIONS_KEY, [
       context.getHandler(),
       context.getClass(),
     ]);
 
-    // No annotation means the route is not role-restricted. roles.spec.ts fails
+    // No annotation means the route is not restricted. roles.spec.ts fails
     // the build when an authenticated route lacks one, so this cannot become a
     // silent hole the way the original `@UseGuards(JwtAuthGuard)` did.
     if (!required || required.length === 0) return true;
@@ -63,7 +64,7 @@ export class RolesGuard implements CanActivate {
     const [profile] = await Promise.all([
       this.prisma.profile.findFirst({
         where: { id: BigInt(user.profileId), tenantId: BigInt(user.tenantId) },
-        select: { role: true, status: true },
+        select: { role: true, status: true, permissions: true },
       }),
       assertSessionLive(this.prisma, user.sessionId),
     ]);
@@ -78,13 +79,16 @@ export class RolesGuard implements CanActivate {
       throw new ForbiddenException('This account is not active');
     }
 
-    if (!required.includes(profile.role as PracticeRole)) {
-      throw new ForbiddenException('Your role does not have access to this resource');
+    const grants: string[] = profile.permissions ?? [];
+    const held = effectivePermissions(profile.role, grants);
+    if (!required.some((p) => held.has(p))) {
+      throw new ForbiddenException('You do not have permission to do this.');
     }
 
     // Downstream code frequently needs the role; hand it on rather than making
     // each service look it up again.
     req.user.role = profile.role;
+    req.user.permissions = grants;
     return true;
   }
 }

@@ -6,7 +6,7 @@ import { TenantService, publicTenantFields } from './tenant.service';
 import { TenantRequest } from '../../common/middleware/tenant.middleware';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { RolesGuard } from '../../common/roles.guard';
-import { AnyAuthenticated, CLINICAL, PRACTICE_ADMIN, Roles, STAFF } from '../../common/roles';
+import { Permissions } from '../../common/permissions';
 import { authenticatedTenantId } from '../../common/authenticated-tenant';
 
 @ApiTags('Tenant')
@@ -56,7 +56,7 @@ export class TenantController {
     return this.tenantService.getInviteByToken(claimToken);
   }
 
-  @AnyAuthenticated()
+  @Permissions('any.authenticated')
   @Get('check-slug/:slug')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @ApiBearerAuth('access-token')
@@ -80,7 +80,7 @@ export class TenantController {
     return { name: 'Unclutter Desk', slug: 'default', primaryColor: '#0F3A53', secondaryColor: '#E3B341' };
   }
 
-  @Roles(...PRACTICE_ADMIN)
+  @Permissions('practice.admin')
   @Patch('brand')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @ApiBearerAuth('access-token')
@@ -89,7 +89,7 @@ export class TenantController {
     return this.tenantService.updateTenantBrand(authenticatedTenantId(req), dto);
   }
 
-  @Roles(...STAFF)
+  @Permissions('practice.staff')
   @Get('brand')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @ApiBearerAuth('access-token')
@@ -98,7 +98,7 @@ export class TenantController {
     return this.tenantService.getTenantBrand(authenticatedTenantId(req));
   }
 
-  @Roles(...PRACTICE_ADMIN)
+  @Permissions('practice.admin')
   @Post('brand/custom-domain/verify')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @ApiBearerAuth('access-token')
@@ -107,7 +107,7 @@ export class TenantController {
     return this.tenantService.verifyCustomDomain(authenticatedTenantId(req));
   }
 
-  @Roles(...STAFF)
+  @Permissions('practice.staff')
   @Get('notifications')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @ApiBearerAuth('access-token')
@@ -118,7 +118,7 @@ export class TenantController {
 
   // ── Group Clinic Staff Management Endpoints ───────────────────────────────
 
-  @Roles(...STAFF)
+  @Permissions('practice.staff')
   @Get('staff')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @ApiBearerAuth('access-token')
@@ -127,7 +127,7 @@ export class TenantController {
     return this.tenantService.getClinicStaff(authenticatedTenantId(req));
   }
 
-  @Roles(...PRACTICE_ADMIN)
+  @Permissions('practice.admin')
   @Post('staff/invite')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @ApiBearerAuth('access-token')
@@ -136,7 +136,7 @@ export class TenantController {
     return this.tenantService.inviteStaffMember(authenticatedTenantId(req), dto);
   }
 
-  @Roles(...PRACTICE_ADMIN)
+  @Permissions('practice.admin')
   @Patch('staff/:profileId/role')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @ApiBearerAuth('access-token')
@@ -154,7 +154,26 @@ export class TenantController {
     );
   }
 
-  @Roles(...PRACTICE_ADMIN)
+  @Permissions('staff.manage')
+  @Patch('staff/:profileId/permissions')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @ApiBearerAuth('access-token')
+  @ApiOperation({ summary: 'Set a staff member’s extra permissions' })
+  updateStaffPermissions(
+    @Req() req: any,
+    @Param('profileId') profileId: string,
+    @Body() dto: { permissions?: unknown },
+  ) {
+    if (!/^\d+$/.test(profileId)) throw new NotFoundException('Staff member not found');
+    return this.tenantService.updateStaffPermissions(
+      authenticatedTenantId(req),
+      BigInt(req.user.profileId),
+      BigInt(profileId),
+      dto?.permissions,
+    );
+  }
+
+  @Permissions('practice.admin')
   @Delete('staff/invite/:inviteId')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @ApiBearerAuth('access-token')
@@ -169,7 +188,7 @@ export class TenantController {
 
   // ── Client (Patient) Endpoints ────────────────────────────────────────────
 
-  @Roles(...STAFF)
+  @Permissions('practice.staff')
   @Get('clients')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @ApiBearerAuth('access-token')
@@ -178,7 +197,7 @@ export class TenantController {
     return this.tenantService.getClients(authenticatedTenantId(req));
   }
 
-  @Roles(...CLINICAL)
+  @Permissions('clinical.record')
   @Get('clients/:profileId')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @ApiBearerAuth('access-token')
@@ -187,7 +206,7 @@ export class TenantController {
     return this.tenantService.getClientById(authenticatedTenantId(req), BigInt(profileId));
   }
 
-  @Roles(...STAFF)
+  @Permissions('practice.staff')
   @Post('clients')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @ApiBearerAuth('access-token')
@@ -206,7 +225,7 @@ export class TenantController {
     return this.tenantService.createClient(authenticatedTenantId(req), dto);
   }
 
-  @Roles(...STAFF)
+  @Permissions('practice.staff')
   @Patch('clients/:profileId')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @ApiBearerAuth('access-token')

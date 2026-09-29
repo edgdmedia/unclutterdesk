@@ -188,6 +188,10 @@ model Profile {
   emailVerified   Boolean   @default(false)
   emailVerifiedAt DateTime?
 
+  // A pending "set your password" invite for a client the practice added.
+  accountTokenHash      String?   @unique
+  accountTokenExpiresAt DateTime?
+
   // How dates, times and numbers are shown to this person. Display only —
   // clients are always billed in the practice's own currency, so there is
   // deliberately no display-currency override here.
@@ -321,6 +325,11 @@ model ConsultBooking {
   discountCodeUsed            String?
   notes                       String?
   videoRoomName               String?
+  /// What happened, for staff. Seen by clinical roles only.
+  internalSummary             String?   @db.Text
+  /// The recap written for the client; emailed on request, never automatically.
+  clientRecap                 String?   @db.Text
+  clientRecapSentAt           DateTime?
   createdAt                   DateTime  @default(now())
   updatedAt                   DateTime?
 

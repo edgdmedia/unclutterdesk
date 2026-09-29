@@ -1,14 +1,15 @@
 import { Injectable, BadRequestException, ConflictException, NotFoundException, ForbiddenException } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
-import { randomBytes } from 'crypto';
+import { createHash, randomBytes } from 'crypto';
 import { promises as dns } from 'dns';
 import { Logger } from '@nestjs/common';
 import { PrismaService } from '../../common/prisma/prisma.service';
 import { NotificationService } from '../notifications/notification.service';
 import { decryptNoteFields } from '../../common/field-encryption';
 import { isPlatformHostname, isReservedSlug, normalizeSlug } from './reserved-slugs';
-import { appOrigin, ROOT_DOMAIN } from '../../common/origins';
+import { appOrigin, ROOT_DOMAIN, tenantWebOrigin } from '../../common/origins';
 import { EmergencyContactInput, emergencyContactData, emergencyContactOf, emergencyContactText } from './emergency-contact';
+import { GRANTABLE, PERMISSIONS } from '../../common/permissions';
 
 const RESERVED_SLUG_MESSAGE = 'That booking handle is reserved. Try another one.';
 
@@ -526,6 +527,7 @@ export class TenantService {
       lastName: s.lastName,
       role: s.role || 'THERAPIST',
       status: s.status,
+      permissions: s.permissions ?? [],
       avatarUrl: s.avatarUrl,
       isTherapist: !!s.consultTherapistProfile,
       specialty: s.consultTherapistProfile?.specialty,
@@ -731,6 +733,53 @@ export class TenantService {
     return { id: updated.id.toString(), role: updated.role };
   }
 
+  /**
+   * Per-person permission grants. The role still decides the baseline; this is
+   * the exception list. Keys outside the grantable catalog are refused, and an
+   * owner is refused: they already hold everything, and granting them a list
+   * would read as a restriction.
+   */
+  async updateStaffPermissions(
+    tenantId: bigint,
+    actorProfileId: bigint,
+    targetProfileId: bigint,
+    permissions: unknown,
+  ) {
+    const actor = await this.prisma.profile.findFirst({
+      where: { id: actorProfileId, tenantId },
+      select: { role: true },
+    });
+    if (!actor || !['OWNER', 'ADMIN'].includes(actor.role)) {
+      throw new ForbiddenException('Only a practice admin can change permissions');
+    }
+    const target = await this.prisma.profile.findFirst({
+      where: { id: targetProfileId, tenantId, role: { not: 'CLIENT' } },
+      select: { id: true, role: true },
+    });
+    if (!target) throw new NotFoundException('Staff member not found');
+    if (target.role === 'OWNER') throw new BadRequestException('The owner already holds every permission.');
+
+    if (!Array.isArray(permissions) || permissions.some((p) => typeof p !== 'string')) {
+      throw new BadRequestException('Send the permissions as a list.');
+    }
+    for (const p of permissions) {
+      if (!(GRANTABLE as readonly string[]).includes(p)) {
+        throw new BadRequestException(
+          (PERMISSIONS as readonly string[]).includes(p)
+            ? `“${p}” cannot be granted — it comes with the role.`
+            : `“${p}” is not a permission.`,
+        );
+      }
+    }
+    const clean = [...new Set(permissions as string[])].sort();
+    const updated = await this.prisma.profile.update({
+      where: { id: target.id },
+      data: { permissions: clean },
+      select: { id: true, permissions: true },
+    });
+    return { id: updated.id.toString(), permissions: updated.permissions };
+  }
+
   // ── Client (Patient) Management ──────────────────────────────────────────────
 
   async getClients(tenantId: bigint) {
@@ -922,6 +971,35 @@ export class TenantService {
       },
     });
 
+    // A client the practice added gets a way into the portal: a single-use
+    // set-password link, stored only as a hash, good for 14 days. Someone who
+    // already has an account is not invited again.
+    let inviteSent = false;
+    const hasAccount = await this.prisma.user.findUnique({ where: { email } });
+    if (!hasAccount) {
+      const token = randomBytes(32).toString('hex');
+      await this.prisma.profile.update({
+        where: { id: profile.id },
+        data: { accountTokenHash: createHash('sha256').update(token).digest('hex'), accountTokenExpiresAt: new Date(Date.now() + 14 * 86_400_000) },
+      });
+      const tenantRow = await this.prisma.tenant.findUnique({ where: { id: tenantId } });
+      try {
+        await this.notifications.sendEmail({
+          to: email,
+          type: 'clients.account_invite',
+          title: `You have a client account at ${tenantRow?.name ?? 'your practice'}`,
+          message: `${dto.firstName.trim()} added you as a client. Set a password to see your sessions and join them online.`,
+          link: `${tenantWebOrigin(tenantRow as any)}/set-password?t=${token}`,
+          actionLabel: 'Set my password',
+          tenantId,
+          profileId: profile.id,
+        });
+        inviteSent = true;
+      } catch {
+        inviteSent = false;
+      }
+    }
+
     const initials = [
       (profile.firstName || '').charAt(0),
       (profile.lastName || '').charAt(0),
@@ -943,6 +1021,7 @@ export class TenantService {
       since: new Intl.DateTimeFormat('en-GB', { month: 'short', year: 'numeric' }).format(profile.createdAt),
       emergencyContact: emergencyContactOf(profile),
       emergency: emergencyContactText(emergencyContactOf(profile)),
+      inviteSent,
       notes: [],
       intake: [],
     };
