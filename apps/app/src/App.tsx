@@ -438,7 +438,7 @@ function AppLayout() {
               <Route path="/dashboard/sessions" element={<SessionsPage can={{ viewAll: (profile?.permissions ?? []).includes('sessions.view-all') }} />} />
               <Route path="/dashboard/sessions/:id" element={<SessionDetailPage />} />
               <Route path="/dashboard/clients" element={<ClientsPage clients={resolvedClients} setClients={setClients} onRefresh={refreshClients} />} />
-              <Route path="/dashboard/clients/:id" element={<ClientDetailPage clients={resolvedClients} setClients={setClients} />} />
+              <Route path="/dashboard/clients/:id" element={<ClientDetailPage clients={resolvedClients} setClients={setClients} canViewPayments={(profile?.permissions ?? []).includes('payments.desk')} />} />
               <Route path="/dashboard/analytics" element={<AnalyticsPage clients={resolvedClients} sessions={resolvedSessions} />} />
               <Route path="/dashboard/submissions" element={<SubmissionsPage />} />
               <Route path="/dashboard/assessments" element={<AssessmentsPage />} />

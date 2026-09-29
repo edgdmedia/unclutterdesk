@@ -1,20 +1,58 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { Download, ChevronRight, FileText, Printer, Lock, Plus, X, Loader2, CalendarPlus } from 'lucide-react';
-import { Eyebrow, Card, StatusBadge, Button, useToast, Page, PageHeader, Grid, StatTile } from '@unclutterdesk/ui';
+import { Eyebrow, Card, StatusBadge, Button, useToast, Page, PageHeader, Grid, StatTile, ResponsiveTable, type Column } from '@unclutterdesk/ui';
 import { useBrand } from '@unclutterdesk/ui';
 import { api } from '../../utils/apiClient';
 import type { Client } from '../../App';
 import { ClientAssessmentsPanel } from '../../components/ClientAssessmentsPanel';
 import { EmergencyContactCard } from '../../components/clients/EmergencyContactCard';
 import { StaffBookingDialog } from '../../components/booking/StaffBookingDialog';
+import { RouterLink } from '../../components/shell/RouterLink';
+import { PaymentChip } from '../../components/booking/PaymentChip';
+import type { SessionRow } from './SessionsPage';
 
 interface ClientDetailPageProps {
   clients: Client[];
   setClients: React.Dispatch<React.SetStateAction<Client[]>>;
+  /** The Payments tab is for the roles that handle money; App decides. */
+  canViewPayments?: boolean;
 }
 
-export function ClientDetailPage({ clients, setClients }: ClientDetailPageProps) {
+interface PaymentRow {
+  bookingId: string; serviceTitle: string; sessionAt: string; amountKobo: string;
+  discountCode: string | null; status: string; paidAt: string | null; reference: string | null; bookedAt: string;
+}
+
+const sessionWhen = (iso: string) =>
+  new Intl.DateTimeFormat('en-GB', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }).format(new Date(iso));
+
+const SESSION_COLUMNS: Column<SessionRow>[] = [
+  {
+    key: 'service',
+    header: 'Session',
+    sort: (a, b) => b.startsAt.localeCompare(a.startsAt),
+    cell: (r) => (
+      <span className="min-w-0">
+        <span className="block text-[13px] font-bold text-[#0F172A] truncate">{r.serviceTitle}</span>
+        <span className="block text-[11.5px] text-[#94A3B8] truncate">{sessionWhen(r.startsAt)}</span>
+      </span>
+    ),
+    className: 'w-full max-w-0',
+  },
+  { key: 'provider', header: 'Practitioner', priority: 'md', cell: (r) => <span className="truncate">{r.provider.name}</span> },
+  { key: 'status', header: 'Status', priority: 'md', cell: (r) => <StatusBadge status={r.status} /> },
+  { key: 'payment', header: 'Payment', priority: 'lg', cell: (r) => <PaymentChip status={r.status} paymentMethod={r.paymentMethod} holdExpiresAt={r.holdExpiresAt} /> },
+];
+
+const PAYMENT_COLUMNS: Column<PaymentRow>[] = [
+  { key: 'service', header: 'Session', cell: (p) => <span className="font-bold text-[#0F172A]">{p.serviceTitle}</span>, className: 'w-full max-w-0' },
+  { key: 'amount', header: 'Amount', align: 'end', cell: (p) => `₦${(Number(p.amountKobo) / 100).toLocaleString('en-NG')}` },
+  { key: 'paid', header: 'Paid on', priority: 'md', cell: (p) => (p.paidAt ? new Date(p.paidAt).toLocaleDateString('en-GB') : '—') },
+  { key: 'ref', header: 'Reference', priority: 'lg', cell: (p) => <span className="text-[11.5px] text-[#64748B]">{p.reference ?? '—'}</span> },
+];
+
+export function ClientDetailPage({ clients, setClients, canViewPayments }: ClientDetailPageProps) {
   const toast = useToast();
   const { id } = useParams();
   const brand = useBrand();
@@ -24,7 +62,9 @@ export function ClientDetailPage({ clients, setClients }: ClientDetailPageProps)
   const propClient = clients.find((c) => c.id === id) || clients[0];
   const [client, setClient] = useState<Client>(propClient);
 
-  const [activeTab, setActiveTab] = useState<'history' | 'notes' | 'intake' | 'assessments'>('history');
+  const [activeTab, setActiveTab] = useState<'history' | 'notes' | 'intake' | 'assessments' | 'payments'>('history');
+  const [clientSessions, setClientSessions] = useState<SessionRow[]>([]);
+  const [clientPayments, setClientPayments] = useState<{ payments: PaymentRow[]; totalPaidKobo: string; outstandingKobo: string } | null>(null);
   const [selectedNoteId, setSelectedNoteId] = useState<string | null>(
     propClient.notes.length > 0 ? propClient.notes[0].id : null
   );
@@ -55,6 +95,18 @@ export function ClientDetailPage({ clients, setClients }: ClientDetailPageProps)
         // API unreachable — keep prop data
       });
   }, [id]);
+
+  useEffect(() => {
+    if (!id) return;
+    api.get<SessionRow[]>(`/v1/consult/practice/clients/${id}/sessions`).then(setClientSessions).catch(() => setClientSessions([]));
+  }, [id]);
+
+  useEffect(() => {
+    if (!id || !canViewPayments) return;
+    api.get<{ payments: PaymentRow[]; totalPaidKobo: string; outstandingKobo: string }>(`/v1/consult/practice/clients/${id}/payments`)
+      .then(setClientPayments)
+      .catch(() => setClientPayments({ payments: [], totalPaidKobo: '0', outstandingKobo: '0' }));
+  }, [id, canViewPayments]);
 
   const selectedNote = client.notes.find((n) => n.id === selectedNoteId) || client.notes[0];
 
@@ -211,6 +263,7 @@ export function ClientDetailPage({ clients, setClients }: ClientDetailPageProps)
               { id: 'notes', label: 'SOAP notes' },
               { id: 'intake', label: 'Intake answers' },
               { id: 'assessments', label: 'Assessments' },
+              ...(canViewPayments ? [{ id: 'payments', label: 'Payments' }] : []),
             ].map((t) => (
               <button
                 key={t.id}
@@ -226,7 +279,20 @@ export function ClientDetailPage({ clients, setClients }: ClientDetailPageProps)
 
           {/* Tab 1: Session History Timeline */}
           {activeTab === 'history' && (
-            <Card padding="p-[24px_26px]" className="space-y-6 bg-white border border-slate-100 shadow-sm rounded-2xl">
+            <>
+              <div className="rounded-[20px] border border-[#E2E8F0] bg-white overflow-hidden">
+                <ResponsiveTable<SessionRow>
+                  caption={`Sessions for ${client.name}`}
+                  rows={clientSessions}
+                  rowKey={(r) => r.id}
+                  rowLabel={(r) => `${r.serviceTitle}, ${sessionWhen(r.startsAt)}`}
+                  columns={SESSION_COLUMNS}
+                  rowHref={(r) => `/dashboard/sessions/${r.id}`}
+                  LinkComponent={RouterLink}
+                  empty="No sessions yet."
+                />
+              </div>
+              <Card padding="p-[24px_26px]" className="space-y-6 bg-white border border-slate-100 shadow-sm rounded-2xl">
               {client.notes.length > 0 ? (
                 <div className="space-y-6">
                   {client.notes.map((s, idx) => (
@@ -260,7 +326,27 @@ export function ClientDetailPage({ clients, setClients }: ClientDetailPageProps)
                 </div>
               )}
             </Card>
+            </>
           )}
+
+          {activeTab === 'payments' && canViewPayments ? (
+            <Card padding="p-[24px_26px]" className="space-y-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <StatTile label="TOTAL PAID" value={`₦${(Number(clientPayments?.totalPaidKobo ?? 0) / 100).toLocaleString('en-NG')}`} />
+                <StatTile label="OUTSTANDING" value={`₦${(Number(clientPayments?.outstandingKobo ?? 0) / 100).toLocaleString('en-NG')}`} />
+              </div>
+              <div className="rounded-[20px] border border-[#E2E8F0] bg-white overflow-hidden">
+                <ResponsiveTable<PaymentRow>
+                  caption={`Payments for ${client.name}`}
+                  rows={clientPayments?.payments ?? []}
+                  rowKey={(p) => p.bookingId}
+                  columns={PAYMENT_COLUMNS}
+                  state={clientPayments ? 'ready' : 'loading'}
+                  empty="No payments yet."
+                />
+              </div>
+            </Card>
+          ) : null}
 
           {/* Tab 2: SOAP Notes Editor & PDF Export */}
           {activeTab === 'notes' && (
