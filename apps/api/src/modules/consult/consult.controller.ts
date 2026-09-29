@@ -3,6 +3,9 @@ import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { ConsultService } from './consult.service';
 import { ManualPaymentService } from './manual-payment.service';
 import { StaffBookingService, StaffBookingInput } from './staff-booking.service';
+import { SessionDirectoryService } from './session-directory.service';
+import { BadRequestException } from '@nestjs/common';
+import { effectivePermissions } from '../../common/permissions';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { RolesGuard } from '../../common/roles.guard';
 import { Permissions } from '../../common/permissions';
@@ -16,7 +19,19 @@ export class ConsultController {
     private readonly consultService: ConsultService,
     private readonly manualPayments: ManualPaymentService,
     private readonly staffBookings: StaffBookingService,
+    private readonly sessions: SessionDirectoryService,
   ) {}
+
+  /** Who the session routes act as: the guard already loaded role and grants. */
+  private actor(req: any) {
+    const held = effectivePermissions(String(req.user?.role ?? ''), (req.user?.permissions ?? []) as string[]);
+    return {
+      profileId: authenticatedProfileId(req),
+      viewAll: held.has('sessions.view-all'),
+      clinical: held.has('clinical.record'),
+      desk: held.has('payments.desk'),
+    };
+  }
 
   @Get('public/therapists')
   @ApiOperation({ summary: 'Get active bookable therapists for client portal' })
@@ -270,6 +285,102 @@ export class ConsultController {
   @ApiOperation({ summary: 'Staff book a session for an existing client' })
   createStaffBooking(@Req() req: any, @Body() dto: StaffBookingInput) {
     return this.staffBookings.createForClient(authenticatedTenantId(req), authenticatedProfileId(req), dto);
+  }
+
+  @Permissions('sessions.view-all', 'practice.staff')
+  @Get('practice/sessions')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @ApiBearerAuth('access-token')
+  @ApiOperation({ summary: 'The practice session register, scoped by permission' })
+  listSessions(
+    @Req() req: any,
+    @Query('status') status?: string,
+    @Query('providerProfileId') providerProfileId?: string,
+    @Query('q') q?: string,
+  ) {
+    return this.sessions.listSessions(authenticatedTenantId(req), this.actor(req), {
+      status: (['upcoming', 'past'].includes(String(status)) ? status : 'all') as 'upcoming' | 'past' | 'all',
+      providerProfileId: providerProfileId && /^\d+$/.test(providerProfileId) ? BigInt(providerProfileId) : undefined,
+      search: q,
+    });
+  }
+
+  @Permissions('sessions.view-all', 'practice.staff')
+  @Get('practice/sessions/:bookingId')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @ApiBearerAuth('access-token')
+  @ApiOperation({ summary: 'One session, with what the caller may do to it' })
+  getSession(@Req() req: any, @Param('bookingId') bookingId: string) {
+    if (!/^\d+$/.test(bookingId)) throw new NotFoundException('Session not found');
+    return this.sessions.getSession(authenticatedTenantId(req), this.actor(req), BigInt(bookingId));
+  }
+
+  @Permissions('sessions.edit', 'clinical.record')
+  @Patch('practice/sessions/:bookingId/status')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @ApiBearerAuth('access-token')
+  @ApiOperation({ summary: 'Confirm, complete or cancel a session' })
+  setSessionStatus(@Req() req: any, @Param('bookingId') bookingId: string, @Body() dto: { status?: string }) {
+    if (!/^\d+$/.test(bookingId)) throw new NotFoundException('Session not found');
+    const s = String(dto?.status ?? '');
+    if (!['CONFIRMED', 'COMPLETED', 'CANCELLED'].includes(s)) throw new BadRequestException('Choose a status.');
+    return this.sessions.setStatus(authenticatedTenantId(req), this.actor(req), BigInt(bookingId), s as 'CONFIRMED' | 'COMPLETED' | 'CANCELLED');
+  }
+
+  @Permissions('sessions.edit')
+  @Post('practice/sessions/:bookingId/reschedule')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @ApiBearerAuth('access-token')
+  @ApiOperation({ summary: 'Move a session to another open slot' })
+  rescheduleSession(@Req() req: any, @Param('bookingId') bookingId: string, @Body() dto: { availabilityId?: string }) {
+    if (!/^\d+$/.test(bookingId) || !/^\d+$/.test(String(dto?.availabilityId ?? ''))) {
+      throw new NotFoundException('Session not found');
+    }
+    return this.sessions.rescheduleByStaff(authenticatedTenantId(req), this.actor(req), BigInt(bookingId), BigInt(dto.availabilityId));
+  }
+
+  @Permissions('sessions.summary')
+  @Patch('practice/sessions/:bookingId/summary')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @ApiBearerAuth('access-token')
+  @ApiOperation({ summary: 'Internal summary and client recap' })
+  setSessionSummary(
+    @Req() req: any,
+    @Param('bookingId') bookingId: string,
+    @Body() dto: { internalSummary?: string | null; clientRecap?: string | null },
+  ) {
+    if (!/^\d+$/.test(bookingId)) throw new NotFoundException('Session not found');
+    return this.sessions.setSummary(authenticatedTenantId(req), this.actor(req), BigInt(bookingId), dto ?? {});
+  }
+
+  @Permissions('sessions.summary')
+  @Post('practice/sessions/:bookingId/recap-email')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @ApiBearerAuth('access-token')
+  @ApiOperation({ summary: 'Email the recap to the client' })
+  sendSessionRecap(@Req() req: any, @Param('bookingId') bookingId: string) {
+    if (!/^\d+$/.test(bookingId)) throw new NotFoundException('Session not found');
+    return this.sessions.sendRecap(authenticatedTenantId(req), this.actor(req), BigInt(bookingId));
+  }
+
+  @Permissions('practice.staff')
+  @Get('practice/clients/:profileId/sessions')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @ApiBearerAuth('access-token')
+  @ApiOperation({ summary: 'One client’s sessions' })
+  clientSessions(@Req() req: any, @Param('profileId') profileId: string) {
+    if (!/^\d+$/.test(profileId)) throw new NotFoundException('Client not found');
+    return this.sessions.clientSessions(authenticatedTenantId(req), this.actor(req), BigInt(profileId));
+  }
+
+  @Permissions('payments.desk')
+  @Get('practice/clients/:profileId/payments')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @ApiBearerAuth('access-token')
+  @ApiOperation({ summary: 'One client’s payment history' })
+  clientPayments(@Req() req: any, @Param('profileId') profileId: string) {
+    if (!/^\d+$/.test(profileId)) throw new NotFoundException('Client not found');
+    return this.sessions.clientPayments(authenticatedTenantId(req), BigInt(profileId));
   }
 
   @Get('public/bookings/:bookingId/pay-link')
