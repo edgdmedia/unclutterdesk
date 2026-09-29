@@ -3,6 +3,8 @@ import { Link, useNavigate, useParams } from 'react-router-dom';
 import { Star, MapPin, Award, ArrowRight, ShieldCheck } from 'lucide-react';
 import { useBrand } from '@unclutterdesk/ui';
 import { api, apiRequest, getSubdomainTenantSlug } from '../../utils/apiClient';
+import { useAuth } from '../../context/AuthContext';
+import { ClientAuthPanel } from './ClientAuthPanel';
 
 type PublicReview = { id: string; rating: number | null; testimonial: string; displayName: string; publishedAt: string };
 type PublicReviewsPayload = { averageRating: number | null; count: number; reviews: PublicReview[] };
@@ -40,8 +42,8 @@ export function ClientBookingPage({ previewSlug }: { previewSlug?: string } = {}
   const [selectedDateKey, setSelectedDateKey] = useState<string>('');
   const [selectedSlotId, setSelectedSlotId] = useState<string>('');
   const [sessionFormat, setSessionFormat] = useState<'online' | 'in-person'>('online');
-  const [fullName, setFullName] = useState('');
-  const [email, setEmail] = useState('');
+  const { profile: me, isAuthenticated, logout } = useAuth();
+  const bookingClient = isAuthenticated && String(me?.role ?? me?.type ?? '').toUpperCase() === 'CLIENT';
   const [phone, setPhone] = useState('');
   const [concerns, setConcerns] = useState('');
   const [reviews, setReviews] = useState<PublicReviewsPayload>({ averageRating: null, count: 0, reviews: [] });
@@ -194,13 +196,9 @@ export function ClientBookingPage({ previewSlug }: { previewSlug?: string } = {}
     setBookingLoading(true);
     setBookingError(null);
     try {
-      const [firstName, ...rest] = fullName.trim().split(/\s+/).filter(Boolean);
       const booking = await api.post<{ bookingId: string; startsAt: string; endsAt: string; serviceTitle: string; therapistName: string; videoRoomLink: string; status: string; paymentUrl?: string; manualPayment?: unknown }>('/v1/consult/public/bookings', {
         serviceId: selectedService.id,
         availabilityId: selectedSlot.id,
-        firstName,
-        lastName: rest.join(' '),
-        email,
         phone,
         notes: concerns,
         discountCode: discountPreview ? discountPreview.code : undefined,
@@ -210,7 +208,7 @@ export function ClientBookingPage({ previewSlug }: { previewSlug?: string } = {}
       if (booking.paymentUrl) {
         window.location.href = booking.paymentUrl;
       } else {
-        navigate('/booking/confirmed', { state: { booking, fullName, email } });
+        navigate('/booking/confirmed', { state: { booking, fullName: `${me?.firstName ?? ''} ${me?.lastName ?? ''}`.trim(), email: me?.email } });
       }
     } catch (err) {
       setBookingError(err instanceof Error ? err.message : 'Unable to complete booking');
@@ -278,8 +276,17 @@ export function ClientBookingPage({ previewSlug }: { previewSlug?: string } = {}
             <div className="space-y-4">
               <div className="flex items-center gap-3"><div className="h-[22px] w-[22px] rounded-full text-white font-extrabold text-[11px] flex items-center justify-center" style={{ backgroundColor: primaryColor }}>3</div><h2 className="text-[16px] font-bold text-[#0F172A]">Your details</h2></div>
               <div className="p-4 md:p-5 rounded-[22px] bg-white border border-[#E2E8F0] grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div className="space-y-1.5"><label className="text-[11.5px] font-bold text-[#475569]">Full name</label><input type="text" value={fullName} onChange={(e) => setFullName(e.target.value)} placeholder="e.g. Adaeze Okonkwo" className="w-full h-[46px] px-3.5 rounded-[14px] bg-[#F8FAFC] border border-[#E2E8F0] text-[14px] font-medium text-[#0F172A] outline-none focus:bg-white focus:border-[#94A3B8]" /></div>
-                <div className="space-y-1.5"><label className="text-[11.5px] font-bold text-[#475569]">Email address</label><input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="e.g. you@example.com" className="w-full h-[46px] px-3.5 rounded-[14px] bg-[#F8FAFC] border border-[#E2E8F0] text-[14px] font-medium text-[#0F172A] outline-none focus:bg-white focus:border-[#94A3B8]" /></div>
+                {bookingClient ? (
+                  <div className="flex items-center justify-between gap-3 p-3 rounded-[14px] bg-[#F0F7FB] border border-[#0F3A53]/15">
+                    <p className="text-[13px] font-medium text-[#0F172A] min-w-0 truncate">
+                      Booking as <span className="font-bold">{`${me?.firstName ?? ''} ${me?.lastName ?? ''}`.trim() || me?.email}</span>
+                      {me?.email ? ` (${me.email})` : ''}
+                    </p>
+                    <button type="button" onClick={() => void logout()} className="text-[12px] font-bold text-[#0F3A53] underline shrink-0 cursor-pointer">Not you? Sign out</button>
+                  </div>
+                ) : (
+                  <ClientAuthPanel onDone={() => undefined} />
+                )}
                 <div className="space-y-1.5"><label className="text-[11.5px] font-bold text-[#475569]">Phone number</label><input type="text" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="e.g. +234 803 123 4567" className="w-full h-[46px] px-3.5 rounded-[14px] bg-[#F8FAFC] border border-[#E2E8F0] text-[14px] font-medium text-[#0F172A] outline-none focus:bg-white focus:border-[#94A3B8]" /></div>
                 <div className="space-y-1.5"><label className="text-[11.5px] font-bold text-[#475569]">Session format</label><div className="h-[46px] p-1 bg-[#F1F5F9] rounded-[14px] flex gap-1"><button onClick={() => setSessionFormat('online')} className={`flex-1 rounded-[11px] text-xs font-bold transition-all ${sessionFormat === 'online' ? 'bg-white text-[#0F172A] shadow-xs' : 'text-[#64748B]'}`}>Online</button><button onClick={() => setSessionFormat('in-person')} className={`flex-1 rounded-[11px] text-xs font-bold transition-all ${sessionFormat === 'in-person' ? 'bg-white text-[#0F172A] shadow-xs' : 'text-[#64748B]'}`}>In-person</button></div></div>
                 <div className="col-span-1 sm:col-span-2 space-y-1.5"><label className="text-[11.5px] font-bold text-[#475569]">Share concerns <span className="text-[#94A3B8] font-normal">(optional)</span></label><textarea rows={3} value={concerns} onChange={(e) => setConcerns(e.target.value)} placeholder="Anything you'd like your therapist to know before your session." className="w-full p-3.5 rounded-[14px] bg-[#F8FAFC] border border-[#E2E8F0] text-[14px] font-medium text-[#0F172A] outline-none focus:bg-white focus:border-[#94A3B8] resize-none" /></div>
@@ -382,7 +389,7 @@ export function ClientBookingPage({ previewSlug }: { previewSlug?: string } = {}
             
             {/* Action Bar (Sticky on Mobile) */}
             <div className="fixed bottom-0 left-0 right-0 p-[16px_20px] bg-white/85 backdrop-blur-xl border-t border-slate-200/50 md:static md:p-[0_22px_22px] md:bg-transparent md:backdrop-blur-none md:border-none space-y-3 z-50">
-              <button onClick={handleConfirmBooking} disabled={bookingLoading || !selectedService || !selectedSlot} className="os-brand-btn w-full h-[52px] rounded-[16px] font-bold text-[15px] flex items-center justify-center gap-2 cursor-pointer shadow-[0_10px_26px_rgba(15,58,83,.2)] disabled:opacity-60" style={{ backgroundColor: primaryColor }}><span>{bookingLoading ? 'Booking session...' : 'Confirm & Book Session'}</span><ArrowRight className="h-4 w-4" /></button>
+              <button onClick={handleConfirmBooking} disabled={bookingLoading || !selectedService || !selectedSlot || !bookingClient} className="os-brand-btn w-full h-[52px] rounded-[16px] font-bold text-[15px] flex items-center justify-center gap-2 cursor-pointer shadow-[0_10px_26px_rgba(15,58,83,.2)] disabled:opacity-60" style={{ backgroundColor: primaryColor }}><span>{bookingLoading ? 'Booking session...' : 'Confirm & Book Session'}</span><ArrowRight className="h-4 w-4" /></button>
               {bookingError ? <p className="text-[11.5px] text-red-500 font-medium text-center">{bookingError}</p> : null}
               <p className="text-[11.5px] text-[#94A3B8] font-medium text-center hidden md:block">Free cancellation up to 24 hours before</p>
             </div>
