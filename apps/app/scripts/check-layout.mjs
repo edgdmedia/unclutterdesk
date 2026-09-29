@@ -15,6 +15,7 @@ const WIDTHS = [390, 820, 1024, 1280];
 const STRICT = [
   '/dashboard', '/dashboard/analytics', 'CLIENT',
   '/dashboard/clients', '/dashboard/hours', '/dashboard/settings/team', '/dashboard/settings/discounts',
+  '/dashboard/sessions',
 ];
 const REPORT = [
   '/dashboard/schedule', '/dashboard/submissions', '/dashboard/notifications', '/dashboard/profile',
