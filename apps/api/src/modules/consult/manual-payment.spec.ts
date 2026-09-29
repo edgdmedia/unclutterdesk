@@ -140,7 +140,7 @@ describe('booking with a bank transfer', () => {
     const paystack = { initializeTransaction: vi.fn() };
     const manualPayments = { available: vi.fn().mockResolvedValue(manual), announce: vi.fn().mockResolvedValue(undefined) };
     const service = new ConsultService(
-      prisma, { notify: vi.fn() } as any, { validateDiscount: vi.fn() } as any,
+      prisma, { notify: vi.fn(), sendEmail: vi.fn().mockResolvedValue({ success: true }) } as any, { validateDiscount: vi.fn() } as any,
       { calculateSplitPayout: vi.fn().mockResolvedValue({ therapistPayoutKobo: 1n, platformFeeKobo: 0n, tier: 'PRO' }) } as any,
       paystack as any, { pushBookingToGoogle: vi.fn() } as any, manualPayments as any,
     );

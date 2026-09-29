@@ -43,15 +43,16 @@ function makeService({
     profile: { findFirst: vi.fn().mockResolvedValue({ id: 5n, email: 'ada@example.com', firstName: 'Ada', lastName: 'Obi', phone: '080' }) },
     $transaction: vi.fn(async (cb: any) => cb(tx)),
   };
+  const notifications = { notify: vi.fn(), sendEmail: vi.fn().mockResolvedValue({ success: true }) };
   const service = new ConsultService(
     prisma,
-    { notify: vi.fn() } as any,
+    notifications as any,
     { validateDiscount: vi.fn() } as any,
     { calculateSplitPayout: vi.fn() } as any,
     {} as any,
     { pushBookingToGoogle: vi.fn() } as any, {} as any,
   );
-  return { service, prisma, tx };
+  return { service, prisma, tx, notifications };
 }
 
 const dto = { availabilityId: '3', serviceId: '4', email: 'ada@example.com', firstName: 'Ada', lastName: 'Obi' };
@@ -112,5 +113,16 @@ describe('booking details', () => {
     service['prisma'].profile.findFirst = vi.fn().mockResolvedValue(null);
     await expect(service.createBooking(TENANT, 5n, dto as any)).rejects.toThrow(/Sign in as the client/);
     expect(tx.consultAvailability.updateMany).not.toHaveBeenCalled();
+  });
+});
+
+describe('the booking confirmation email', () => {
+  it('emails the client with the join link', async () => {
+    const { service, notifications } = makeService();
+    await service.createBooking(TENANT, 5n, dto as any).catch(() => undefined);
+    const email = notifications.sendEmail.mock.calls.find((c: any[]) => c[0].type === 'bookings.confirmed')?.[0];
+    expect(email).toBeTruthy();
+    expect(email.to).toBe('ada@example.com');
+    expect(email.message).toMatch(/Join link/i);
   });
 });

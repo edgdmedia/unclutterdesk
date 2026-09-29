@@ -50,7 +50,7 @@ function makeService({ claimCount = 1 }: { claimCount?: number } = {}) {
 
   const service = new ConsultService(
     prisma,
-    { notify: vi.fn() } as any,
+    { notify: vi.fn(), sendEmail: vi.fn().mockResolvedValue({ success: true }) } as any,
     { validateDiscount: vi.fn() } as any,
     { calculateSplitPayout: vi.fn() } as any,
     {} as any,

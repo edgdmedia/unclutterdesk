@@ -69,6 +69,8 @@ function setup(over: Record<string, any> = {}) {
         id: 900n,
         tenantId: TENANT,
         clientProfileId: CLIENT,
+        videoRoomName: 'room-1',
+        availability: { channel: 'VIDEO' },
         client: { email: 'ada@example.com' },
         tenant: { name: 'Smith Therapy', slug: 'dr-smith', customDomain: null, customDomainStatus: null },
       }),
@@ -309,5 +311,15 @@ describe('times shown to people', () => {
     const message = notifications.sendEmail.mock.calls[0][0].message;
     expect(message).toContain('09:00');
     expect(message).not.toContain('10:00');
+  });
+});
+
+describe('after the booking — join links', () => {
+  it('the confirmation email carries the join link for a video session', async () => {
+    const { service, notifications } = setup();
+    await service.createForClient(TENANT, OWNER, { ...base, payment: 'NONE' });
+    const email = notifications.sendEmail.mock.calls[0][0];
+    expect(email.message).toContain('https://meet.jit.si/room-1');
+    expect(email.message).toMatch(/Join link/i);
   });
 });

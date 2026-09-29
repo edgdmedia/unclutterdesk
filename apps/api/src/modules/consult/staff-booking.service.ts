@@ -160,9 +160,12 @@ export class StaffBookingService {
   protected async afterCreate(bookingId: bigint, r: StaffBookingResult, notifyClient: boolean): Promise<void> {
     const b = await this.prisma.consultBooking.findFirst({
       where: { id: bookingId },
-      include: { client: true, tenant: true },
+      include: { client: true, tenant: true, availability: { select: { channel: true } } },
     });
     if (!b) return;
+    const videoLine = b.availability?.channel === 'VIDEO' && b.videoRoomName
+      ? ` Join link: ${b.videoRoomName.startsWith('http') ? b.videoRoomName : `https://meet.jit.si/${b.videoRoomName}`}`
+      : '';
     const origin = tenantWebOrigin(b.tenant as any);
     // The client reads this, so their own time zone, not the server's or the practice's.
     const timeZone = (b.client as { timezone?: string | null }).timezone || 'Africa/Lagos';
@@ -195,7 +198,7 @@ export class StaffBookingService {
           to: b.client.email,
           type: 'bookings.staff_confirmed',
           title: 'Your session is booked',
-          message: `${b.tenant.name} has booked your ${r.serviceTitle} with ${r.practitionerName} on ${when}.`,
+          message: `${b.tenant.name} has booked your ${r.serviceTitle} with ${r.practitionerName} on ${when}.${videoLine}`,
           link: `${origin}/portal`,
           actionLabel: 'View my booking',
           tenantId: b.tenantId,

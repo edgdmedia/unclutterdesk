@@ -611,6 +611,8 @@ export class ConsultService {
 
     // Atomic transaction: claim the slot, find or create the client profile,
     // create the booking, and record discount usage.
+    let practiceName = 'your practice';
+    let tenantForLink: unknown = null;
     const result = await this.prisma.$transaction(async (tx) => {
       // Claim the slot first, with the condition in the UPDATE itself.
       //
@@ -706,6 +708,8 @@ export class ConsultService {
         });
       }
 
+      practiceName = slot.tenant.name;
+      tenantForLink = slot.tenant;
       return {
         bookingId: booking.id.toString(),
         // Lets the confirmation page build the .ics link without a session —
@@ -728,6 +732,27 @@ export class ConsultService {
         this.logger.warn(`Could not announce transfer booking ${result.bookingId}: ${(err as Error).message}`),
       );
     }
+
+    // After commit, and never failing the booking: the client gets a written
+    // confirmation with the join link, so attending never depends on having
+    // the tab still open.
+    await this.notifications
+      .sendEmail({
+        to: client.email,
+        type: 'bookings.confirmed',
+        title: result.status === 'PENDING_PAYMENT' ? 'Almost there — pay to confirm your session' : 'Your session is booked',
+        message:
+          `${practiceName} has you down for ${result.serviceTitle} with ${result.therapistName} on ${new Date(result.startsAt).toLocaleString('en-GB', {
+            weekday: 'long', day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit', timeZone: 'Africa/Lagos',
+          })}.` +
+          (result.videoRoomLink ? ` Join link: ${result.videoRoomLink}` : '') +
+          (result.status === 'PENDING_PAYMENT' ? ' Your payment link is on the confirmation page.' : ''),
+        link: result.videoRoomLink ?? `${tenantWebOrigin(tenantForLink as any)}/portal`,
+        actionLabel: result.videoRoomLink ? 'Join the session' : 'View my sessions',
+        tenantId,
+        profileId: client.id,
+      })
+      .catch((err) => this.logger.warn(`Could not email booking confirmation: ${(err as Error).message}`));
     return result;
   }
 
