@@ -90,6 +90,32 @@ export class AuthController {
     return { profile: result.profile, csrfToken };
   }
 
+  @Post('client-signup')
+  @Throttle({ default: { limit: 5, ttl: 60000 } })
+  @ApiOperation({ summary: 'A client creates their account at this practice' })
+  async clientSignup(
+    @Req() req: TenantRequest,
+    @Body() dto: { firstName?: string; lastName?: string; email?: string; password?: string },
+    @Res({ passthrough: true }) res: Response,
+  ) {
+    const result = await this.authService.clientSignup(req.tenantId, dto, deviceOf(req));
+    const csrfToken = this.setSessionCookies(res, result.accessToken, result.refreshToken);
+    return { profile: result.profile, csrfToken };
+  }
+
+  @Post('client-set-password')
+  @Throttle({ default: { limit: 5, ttl: 60000 } })
+  @ApiOperation({ summary: 'Accept a client account invite: set the password and sign in' })
+  async clientSetPassword(
+    @Req() req: TenantRequest,
+    @Body() dto: { token?: string; password?: string; firstName?: string; lastName?: string },
+    @Res({ passthrough: true }) res: Response,
+  ) {
+    const result = await this.authService.clientSetPassword(dto, deviceOf(req));
+    const csrfToken = this.setSessionCookies(res, result.accessToken, result.refreshToken);
+    return { profile: result.profile, csrfToken };
+  }
+
   @Post('login')
   @Throttle({ default: { limit: 5, ttl: 60000, blockDuration: 300000 } })
   @ApiOperation({ summary: 'Login with email and password' })

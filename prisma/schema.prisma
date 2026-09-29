@@ -188,6 +188,10 @@ model Profile {
   emailVerified   Boolean   @default(false)
   emailVerifiedAt DateTime?
 
+  // A pending "set your password" invite for a client the practice added.
+  accountTokenHash      String?   @unique
+  accountTokenExpiresAt DateTime?
+
   // How dates, times and numbers are shown to this person. Display only —
   // clients are always billed in the practice's own currency, so there is
   // deliberately no display-currency override here.
