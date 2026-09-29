@@ -3,7 +3,7 @@ import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { CalendarService } from './calendar.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { RolesGuard } from '../../common/roles.guard';
-import { CLINICAL, Roles } from '../../common/roles';
+import { Permissions } from '../../common/permissions';
 import { authenticatedProfileId, authenticatedTenantId } from '../../common/authenticated-tenant';
 import { Response } from 'express';
 import { appOrigin } from '../../common/origins';
@@ -13,7 +13,7 @@ import { appOrigin } from '../../common/origins';
 export class CalendarController {
   constructor(private readonly calendarService: CalendarService) {}
 
-  @Roles(...CLINICAL)
+  @Permissions('clinical.record')
   @Get('google/auth')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @ApiBearerAuth('access-token')

@@ -1,7 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { ForbiddenException } from '@nestjs/common';
 import { RolesGuard } from './roles.guard';
-import { ROLES_KEY, STAFF } from './roles';
 import { PERMISSIONS_KEY } from './permissions';
 import { PlatformAdminGuard } from '../modules/admin/platform-admin.guard';
 
@@ -36,9 +35,8 @@ function makeGuard(over: { profile?: unknown; session?: unknown } = {}) {
       ),
     },
   };
-  // Key-aware: this spec drives the legacy @Roles path until the migration
-  // plan deletes it; the permissions key answers nothing here.
-  const reflector: any = { getAllAndOverride: vi.fn((key: string) => (key === ROLES_KEY ? STAFF : undefined)) };
+  // A staff route: the guard's only annotation now.
+  const reflector: any = { getAllAndOverride: vi.fn((key: string) => (key === PERMISSIONS_KEY ? ['practice.staff'] : undefined)) };
   return { guard: new RolesGuard(reflector, prisma), prisma, reflector };
 }
 
@@ -129,8 +127,8 @@ describe('the other refusals still stand', () => {
   });
 
   it('a role that is not permitted is refused', async () => {
-    const { guard } = makeGuard({ profile: { role: 'CLIENT', status: 'active' } });
-    await expect(guard.canActivate(context(signedIn))).rejects.toThrow(/does not have access/i);
+    const { guard } = makeGuard({ profile: { role: 'CLIENT', status: 'active', permissions: [] } });
+    await expect(guard.canActivate(context(signedIn))).rejects.toThrow(/permission/i);
   });
 
   // The session check must not become a way past the role check.
@@ -138,8 +136,8 @@ describe('the other refusals still stand', () => {
     const { guard, reflector } = makeGuard({
       profile: { role: 'RECEPTIONIST', status: 'active' },
     });
-    reflector.getAllAndOverride.mockImplementation((key: string) => (key === ROLES_KEY ? ['OWNER'] : undefined));
-    await expect(guard.canActivate(context(signedIn))).rejects.toThrow(/does not have access/i);
+    reflector.getAllAndOverride.mockImplementation((key: string) => (key === PERMISSIONS_KEY ? ['practice.admin'] : undefined));
+    await expect(guard.canActivate(context(signedIn))).rejects.toThrow(/permission/i);
   });
 });
 
@@ -160,7 +158,7 @@ describe('what the guard reads', () => {
     });
   });
 
-  it('does nothing at all when the route declares no roles', async () => {
+  it('does nothing at all when the route declares no permissions', async () => {
     const { guard, prisma, reflector } = makeGuard();
     reflector.getAllAndOverride.mockImplementation(() => undefined);
     await expect(guard.canActivate(context(signedIn))).resolves.toBe(true);

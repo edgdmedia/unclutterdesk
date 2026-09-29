@@ -29,7 +29,8 @@ import {
 } from '../../common/auth.config';
 import { RolesGuard } from '../../common/roles.guard';
 import { authenticatedProfileId, authenticatedTenantId } from '../../common/authenticated-tenant';
-import { AllowPlatformAdmin, AnyAuthenticated, Roles, STAFF } from '../../common/roles';
+import { AllowPlatformAdmin } from '../../common/roles';
+import { Permissions } from '../../common/permissions';
 import { DeviceInfo } from './session.service';
 
 @ApiTags('Auth')
@@ -122,7 +123,7 @@ export class AuthController {
     return { success: true };
   }
 
-  @AnyAuthenticated()
+  @Permissions('any.authenticated')
   @Get('preferences')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @ApiBearerAuth('access-token')
@@ -134,7 +135,7 @@ export class AuthController {
     );
   }
 
-  @AnyAuthenticated()
+  @Permissions('any.authenticated')
   @Put('preferences')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @ApiBearerAuth('access-token')
@@ -147,7 +148,7 @@ export class AuthController {
     );
   }
 
-  @AnyAuthenticated()
+  @Permissions('any.authenticated')
   @Post('change-password')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Throttle({ default: { limit: 5, ttl: 60000 } })
@@ -164,7 +165,7 @@ export class AuthController {
     );
   }
 
-  @AnyAuthenticated()
+  @Permissions('any.authenticated')
   @AllowPlatformAdmin()
   @Get('status')
   @UseGuards(JwtAuthGuard, RolesGuard)
@@ -181,7 +182,7 @@ export class AuthController {
   }
 
   // Staff only: clients never hold platform roles, so they get no route here.
-  @Roles(...STAFF)
+  @Permissions('practice.staff')
   @Post('switch/admin')
   @Throttle({ default: { limit: 5, ttl: 60000, blockDuration: 300000 } })
   @UseGuards(JwtAuthGuard, RolesGuard)
@@ -198,7 +199,7 @@ export class AuthController {
     return { profile: result.profile, csrfToken };
   }
 
-  @AnyAuthenticated()
+  @Permissions('any.authenticated')
   @Get('sessions')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @ApiBearerAuth('access-token')
@@ -207,7 +208,7 @@ export class AuthController {
     return this.authService.listSessions(BigInt(req.user.userId), req.user.sessionId);
   }
 
-  @AnyAuthenticated()
+  @Permissions('any.authenticated')
   @Post('sessions/revoke-others')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @ApiBearerAuth('access-token')
@@ -216,7 +217,7 @@ export class AuthController {
     return this.authService.endOtherSessions(BigInt(req.user.userId), req.user.sessionId);
   }
 
-  @AnyAuthenticated()
+  @Permissions('any.authenticated')
   @Delete('sessions/:id')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @ApiBearerAuth('access-token')

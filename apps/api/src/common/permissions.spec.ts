@@ -41,7 +41,7 @@ describe('grants', () => {
   });
   it('ignore unknown keys and non-grantable ones', () => {
     const e = effectivePermissions('THERAPIST', ['practice.owner', 'made.up', 'any.authenticated']);
-    expect(e.has('made.up')).toBe(false);
+    expect((e as Set<string>).has('made.up')).toBe(false);
     expect(e.has('practice.owner')).toBe(false);
   });
   it('an owner holds practice.owner; nobody else does', () => {

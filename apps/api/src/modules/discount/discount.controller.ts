@@ -3,7 +3,7 @@ import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { DiscountService } from './discount.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { RolesGuard } from '../../common/roles.guard';
-import { PRACTICE_ADMIN, Roles } from '../../common/roles';
+import { Permissions } from '../../common/permissions';
 import { authenticatedTenantId } from '../../common/authenticated-tenant';
 
 @ApiTags('Discounts')
@@ -11,7 +11,7 @@ import { authenticatedTenantId } from '../../common/authenticated-tenant';
 export class DiscountController {
   constructor(private readonly discountService: DiscountService) {}
 
-  @Roles(...PRACTICE_ADMIN)
+  @Permissions('practice.admin')
   @Get()
   @UseGuards(JwtAuthGuard, RolesGuard)
   @ApiBearerAuth('access-token')
@@ -20,7 +20,7 @@ export class DiscountController {
     return this.discountService.listDiscounts(authenticatedTenantId(req));
   }
 
-  @Roles(...PRACTICE_ADMIN)
+  @Permissions('practice.admin')
   @Post()
   @UseGuards(JwtAuthGuard, RolesGuard)
   @ApiBearerAuth('access-token')
@@ -29,7 +29,7 @@ export class DiscountController {
     return this.discountService.createDiscount(authenticatedTenantId(req), dto);
   }
 
-  @Roles(...PRACTICE_ADMIN)
+  @Permissions('practice.admin')
   @Patch(':id')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @ApiBearerAuth('access-token')
@@ -38,7 +38,7 @@ export class DiscountController {
     return this.discountService.updateDiscount(authenticatedTenantId(req), BigInt(id), dto);
   }
 
-  @Roles(...PRACTICE_ADMIN)
+  @Permissions('practice.admin')
   @Delete(':id')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @ApiBearerAuth('access-token')

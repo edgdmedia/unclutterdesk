@@ -29,14 +29,14 @@ describe('route authorisation', () => {
 
   it('every authenticated route declares its roles', () => {
     const missing = all
-      .filter((r) => r.authenticated && !r.platformAdmin && !r.hasRoles)
+      .filter((r) => r.authenticated && !r.platformAdmin && !r.hasPermissions)
       .map((r) => `${r.file}  ${r.verb} ${r.path}`);
 
     expect(
       missing,
       'These routes authenticate the caller but authorise nothing, so any ' +
         'signed-in account — including a client — can reach them. Add @Roles(...) ' +
-        'or, if clients genuinely belong there, @AnyAuthenticated().\n' +
+        'or, if clients genuinely belong there, @Permissions(\'any.authenticated\').\n' +
         missing.join('\n'),
     ).toEqual([]);
   });
@@ -46,7 +46,7 @@ describe('route authorisation', () => {
     const unenforced: string[] = [];
     for (const file of controllerFiles()) {
       const src = readFileSync(file, 'utf8');
-      const declares = /@Roles\(|@AnyAuthenticated\(\)/.test(src);
+      const declares = /@Permissions\(/.test(src);
       if (declares && !src.includes('RolesGuard')) {
         unenforced.push(file.slice(file.indexOf('modules')));
       }
@@ -68,14 +68,14 @@ describe('route authorisation', () => {
       const [verb, path] = target.split(' ');
       const route = all.find((r) => r.verb.toUpperCase() === verb && r.path === path);
       expect(route, `${target} not found — did the path change?`).toBeDefined();
-      expect(route!.hasRoles, `${target} has no role restriction`).toBe(true);
+      expect(route!.permissions.includes('clinical.record'), `${target} is not clinical-restricted`).toBe(true);
 
       const src = readFileSync(
         controllerFiles().find((f) => f.includes(route!.file.split('/')[1]))!,
         'utf8',
       );
       expect(src, `${target} must not be open to every authenticated user`).not.toMatch(
-        /@AnyAuthenticated\(\)[\s\S]{0,200}@(Get|Post|Patch)\('client\/:clientProfileId'/,
+        /@Permissions\('any\.authenticated'\)[\s\S]{0,200}@(Get|Post|Patch)\('client\/:clientProfileId'/,
       );
     }
   });

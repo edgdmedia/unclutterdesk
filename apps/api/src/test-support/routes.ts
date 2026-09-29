@@ -1,6 +1,7 @@
 import { readFileSync, readdirSync, statSync } from 'node:fs';
 import { resolve, join } from 'node:path';
-import { CLINICAL, FRONT_DESK, PRACTICE_ADMIN, PRACTICE_ROLES, STAFF, type PracticeRole } from '../common/roles';
+import { PRACTICE_ROLES, type PracticeRole } from '../common/roles';
+import { PERMISSIONS, ROLE_PERMISSIONS, type Permission } from '../common/permissions';
 
 /**
  * The route table, read from the controllers.
@@ -28,40 +29,29 @@ export interface Route {
   target: string;
   authenticated: boolean;
   platformAdmin: boolean;
-  hasRoles: boolean;
-  /** The roles the annotation admits. Empty when the route carries none. */
+  hasPermissions: boolean;
+  permissions: Permission[];
+  /** The roles the admitted permissions map to. Empty when the route carries none. */
   roles: PracticeRole[];
 }
 
-const ROLE_SETS: Record<string, PracticeRole[]> = {
-  STAFF,
-  CLINICAL,
-  PRACTICE_ADMIN,
-  FRONT_DESK,
-};
-
-/** Resolves `@Roles(...STAFF, 'CLIENT')` and `@AnyAuthenticated()` to a role list. */
-function rolesFrom(decorators: string): PracticeRole[] {
-  if (/@AnyAuthenticated\(\)/.test(decorators)) return [...PRACTICE_ROLES];
-
-  const call = decorators.match(/@Roles\(([^)]*)\)/);
+/** Resolves @Permissions('a', 'b') to its key list. */
+function permissionsFrom(decorators: string): Permission[] {
+  const call = decorators.match(/@Permissions\(([^)]*)\)/);
   if (!call) return [];
-
-  const roles = new Set<PracticeRole>();
+  const keys: Permission[] = [];
   for (const raw of call[1].split(',')) {
-    const arg = raw.trim();
-    if (!arg) continue;
-    const spread = arg.match(/^\.\.\.([A-Z_]+)$/);
-    if (spread) {
-      for (const role of ROLE_SETS[spread[1]] ?? []) roles.add(role);
-      continue;
-    }
-    const literal = arg.match(/^'([A-Z]+)'$/);
-    if (literal && (PRACTICE_ROLES as readonly string[]).includes(literal[1])) {
-      roles.add(literal[1] as PracticeRole);
-    }
+    const m = raw.trim().match(/^'([a-z.-]+)'$/);
+    if (m && (PERMISSIONS as readonly string[]).includes(m[1])) keys.push(m[1] as Permission);
   }
-  return [...roles];
+  return keys;
+}
+
+/** The roles a permission key admits — used by the surface tests. */
+export function rolesFor(permission: Permission): PracticeRole[] {
+  return (PRACTICE_ROLES as readonly string[]).filter((r) =>
+    (ROLE_PERMISSIONS[r as PracticeRole] as readonly string[]).includes(permission),
+  ) as PracticeRole[];
 }
 
 export function routesIn(file: string): Route[] {
@@ -75,7 +65,7 @@ export function routesIn(file: string): Route[] {
     const header = cls.slice(0, cls.indexOf('export class') >= 0 ? cls.indexOf('export class') : 0);
     const clsJwt = /@UseGuards\([^)]*JwtAuthGuard/.test(header);
     const clsPlatform = /@UseGuards\([^)]*PlatformAdminGuard/.test(header);
-    const clsRoles = /@Roles\(|@AnyAuthenticated\(\)/.test(header);
+    const clsPermissions = /@Permissions\(/.test(header);
     const prefix = (cls.match(/@Controller\('([^']*)'\)/) || [, ''])[1];
 
     const body = cls.slice(cls.indexOf('export class'));
@@ -97,16 +87,19 @@ export function routesIn(file: string): Route[] {
       const deco = lines.slice(start, end + 1).join('\n');
       const path = '/' + [prefix, m[2]].filter(Boolean).join('/');
 
-      rows.push({
+      const route = {
         file: file.slice(file.indexOf('modules')),
         verb: m[1],
         path,
         target: `${m[1].toUpperCase()} ${path}`,
         authenticated: clsJwt || /@UseGuards\([^)]*JwtAuthGuard/.test(deco),
         platformAdmin: clsPlatform || /@UseGuards\([^)]*PlatformAdminGuard/.test(deco),
-        hasRoles: clsRoles || /@Roles\(|@AnyAuthenticated\(\)/.test(deco),
-        roles: rolesFrom(clsRoles ? header + '\n' + deco : deco),
-      });
+        hasPermissions: clsPermissions || /@Permissions\(/.test(deco),
+        permissions: permissionsFrom(clsPermissions ? header + '\n' + deco : deco),
+        roles: [] as PracticeRole[],
+      };
+      route.roles = [...new Set(route.permissions.flatMap(rolesFor))].sort() as PracticeRole[];
+      rows.push(route);
     }
   }
   return rows;

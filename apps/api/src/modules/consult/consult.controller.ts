@@ -5,7 +5,7 @@ import { ManualPaymentService } from './manual-payment.service';
 import { StaffBookingService, StaffBookingInput } from './staff-booking.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { RolesGuard } from '../../common/roles.guard';
-import { AnyAuthenticated, CLINICAL, FRONT_DESK, PRACTICE_ADMIN, Roles, STAFF } from '../../common/roles';
+import { Permissions } from '../../common/permissions';
 import { TenantRequest } from '../../common/middleware/tenant.middleware';
 import { authenticatedProfileId, authenticatedTenantId } from '../../common/authenticated-tenant';
 
@@ -27,7 +27,7 @@ export class ConsultController {
     return this.consultService.getPublicTherapists(req.tenantId);
   }
 
-  @Roles(...CLINICAL)
+  @Permissions('clinical.record')
   @Get('therapist/profile')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @ApiBearerAuth('access-token')
@@ -39,7 +39,7 @@ export class ConsultController {
     );
   }
 
-  @Roles(...STAFF)
+  @Permissions('practice.staff')
   @Get('dashboard/summary')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @ApiBearerAuth('access-token')
@@ -48,7 +48,7 @@ export class ConsultController {
     return this.consultService.getDashboardSummary(authenticatedTenantId(req));
   }
 
-  @Roles(...CLINICAL)
+  @Permissions('clinical.record')
   @Post('therapist/profile')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @ApiBearerAuth('access-token')
@@ -61,7 +61,7 @@ export class ConsultController {
     );
   }
 
-  @Roles(...CLINICAL)
+  @Permissions('clinical.record')
   @Post('therapist/profile/avatar')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @ApiBearerAuth('access-token')
@@ -74,7 +74,7 @@ export class ConsultController {
     );
   }
 
-  @Roles(...PRACTICE_ADMIN)
+  @Permissions('practice.admin')
   @Patch('admin/therapists/:profileId/status')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @ApiBearerAuth('access-token')
@@ -103,7 +103,7 @@ export class ConsultController {
     return this.consultService.getPublicServices(req.tenantId);
   }
 
-  @Roles(...PRACTICE_ADMIN)
+  @Permissions('practice.admin')
   @Post('services')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @ApiBearerAuth('access-token')
@@ -115,7 +115,7 @@ export class ConsultController {
     );
   }
 
-  @Roles(...PRACTICE_ADMIN)
+  @Permissions('practice.admin')
   @Get('services')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @ApiBearerAuth('access-token')
@@ -124,7 +124,7 @@ export class ConsultController {
     return this.consultService.listServices(authenticatedTenantId(req));
   }
 
-  @Roles(...PRACTICE_ADMIN)
+  @Permissions('practice.admin')
   @Patch('services/:id')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @ApiBearerAuth('access-token')
@@ -151,7 +151,7 @@ export class ConsultController {
     );
   }
 
-  @Roles(...CLINICAL)
+  @Permissions('clinical.record')
   @Post('therapist/availability')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @ApiBearerAuth('access-token')
@@ -164,7 +164,7 @@ export class ConsultController {
     );
   }
 
-  @Roles(...CLINICAL)
+  @Permissions('clinical.record')
   @Get('therapist/availability')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @ApiBearerAuth('access-token')
@@ -176,7 +176,7 @@ export class ConsultController {
     );
   }
 
-  @Roles(...CLINICAL)
+  @Permissions('clinical.record')
   @Delete('therapist/availability/:slotId')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @ApiBearerAuth('access-token')
@@ -189,7 +189,7 @@ export class ConsultController {
     );
   }
 
-  @Roles(...CLINICAL)
+  @Permissions('clinical.record')
   @Patch('therapist/availability')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @ApiBearerAuth('access-token')
@@ -227,7 +227,7 @@ export class ConsultController {
     return this.manualPayments.clientReportsPaid(req.tenantId, BigInt(bookingId), dto?.email ?? '');
   }
 
-  @Roles(...PRACTICE_ADMIN)
+  @Permissions('practice.admin')
   @Get('manual-payments/settings')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @ApiBearerAuth('access-token')
@@ -235,7 +235,7 @@ export class ConsultController {
     return this.manualPayments.getSettings(authenticatedTenantId(req));
   }
 
-  @Roles(...PRACTICE_ADMIN)
+  @Permissions('practice.admin')
   @Patch('manual-payments/settings')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @ApiBearerAuth('access-token')
@@ -244,7 +244,7 @@ export class ConsultController {
     return this.manualPayments.updateSettings(authenticatedTenantId(req), dto ?? {});
   }
 
-  @Roles(...FRONT_DESK)
+  @Permissions('payments.desk')
   @Get('manual-payments/pending')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @ApiBearerAuth('access-token')
@@ -253,7 +253,7 @@ export class ConsultController {
     return this.manualPayments.pending(authenticatedTenantId(req));
   }
 
-  @Roles(...FRONT_DESK)
+  @Permissions('payments.desk')
   @Post('bookings/:bookingId/mark-paid')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @ApiBearerAuth('access-token')
@@ -263,7 +263,7 @@ export class ConsultController {
     return this.manualPayments.markPaid(authenticatedTenantId(req), authenticatedProfileId(req), BigInt(bookingId));
   }
 
-  @Roles(...STAFF)
+  @Permissions('practice.staff')
   @Post('practice/bookings')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @ApiBearerAuth('access-token')
@@ -295,7 +295,7 @@ export class ConsultController {
     return this.consultService.getBookingPaymentUrl(req.tenantId, BigInt(bookingId), dto.email);
   }
 
-  @AnyAuthenticated()
+  @Permissions('any.authenticated')
   @Get('portal')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @ApiBearerAuth('access-token')
@@ -309,7 +309,7 @@ export class ConsultController {
     );
   }
 
-  @AnyAuthenticated()
+  @Permissions('any.authenticated')
   @Get('portal/payments')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @ApiBearerAuth('access-token')
@@ -321,7 +321,7 @@ export class ConsultController {
     );
   }
 
-  @AnyAuthenticated()
+  @Permissions('any.authenticated')
   @Get('portal/bookings/:bookingId/reschedule-options')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @ApiBearerAuth('access-token')
@@ -334,7 +334,7 @@ export class ConsultController {
     );
   }
 
-  @AnyAuthenticated()
+  @Permissions('any.authenticated')
   @Post('portal/bookings/:bookingId/reschedule')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @ApiBearerAuth('access-token')
@@ -352,7 +352,7 @@ export class ConsultController {
     );
   }
 
-  @Roles(...STAFF)
+  @Permissions('practice.staff')
   @Get('therapist/bookings')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @ApiBearerAuth('access-token')
@@ -364,7 +364,7 @@ export class ConsultController {
     );
   }
 
-  @Roles(...STAFF)
+  @Permissions('practice.staff')
   @Patch('therapist/bookings/:bookingId/status')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @ApiBearerAuth('access-token')
@@ -378,7 +378,7 @@ export class ConsultController {
     );
   }
 
-  @Roles(...CLINICAL)
+  @Permissions('clinical.record')
   @Get('therapist/bookings/:bookingId/prep')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @ApiBearerAuth('access-token')

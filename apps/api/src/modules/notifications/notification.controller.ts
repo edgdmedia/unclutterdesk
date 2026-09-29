@@ -16,7 +16,7 @@ import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { Response } from 'express';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { RolesGuard } from '../../common/roles.guard';
-import { AnyAuthenticated } from '../../common/roles';
+import { Permissions } from '../../common/permissions';
 import { NotificationService } from './notification.service';
 import { ChannelKey } from './channels/notification.channel';
 import { authenticatedProfileId, authenticatedTenantId } from '../../common/authenticated-tenant';
@@ -39,7 +39,7 @@ export class NotificationController {
     return authenticatedTenantId(req);
   }
 
-  @AnyAuthenticated()
+  @Permissions('any.authenticated')
   @Get()
   @ApiOperation({ summary: 'List in-app notifications for the current profile' })
   list(
@@ -55,28 +55,28 @@ export class NotificationController {
     });
   }
 
-  @AnyAuthenticated()
+  @Permissions('any.authenticated')
   @Get('unread-count')
   @ApiOperation({ summary: 'Number of unread notifications' })
   unreadCount(@Req() req: any) {
     return this.notifications.unreadCount(this.profileId(req));
   }
 
-  @AnyAuthenticated()
+  @Permissions('any.authenticated')
   @Patch(':id/read')
   @ApiOperation({ summary: 'Mark a notification as read' })
   markRead(@Req() req: any, @Param('id') id: string) {
     return this.notifications.markRead(this.profileId(req), BigInt(id));
   }
 
-  @AnyAuthenticated()
+  @Permissions('any.authenticated')
   @Patch(':id/archive')
   @ApiOperation({ summary: 'Archive a notification' })
   archive(@Req() req: any, @Param('id') id: string) {
     return this.notifications.markArchived(this.profileId(req), BigInt(id));
   }
 
-  @AnyAuthenticated()
+  @Permissions('any.authenticated')
   @Post('read-all')
   @ApiOperation({ summary: 'Mark all notifications as read' })
   markAllRead(@Req() req: any) {
@@ -85,14 +85,14 @@ export class NotificationController {
 
   // ── Preferences ────────────────────────────────────────────────────────────
 
-  @AnyAuthenticated()
+  @Permissions('any.authenticated')
   @Get('preferences')
   @ApiOperation({ summary: 'Notification channel preferences for the profile' })
   getPreferences(@Req() req: any, @Query('module') module?: string) {
     return this.notifications.getPreferences(this.profileId(req), module);
   }
 
-  @AnyAuthenticated()
+  @Permissions('any.authenticated')
   @Put('preferences')
   @ApiOperation({ summary: 'Set a notification channel preference' })
   setPreference(
@@ -104,14 +104,14 @@ export class NotificationController {
 
   // ── Push subscriptions ─────────────────────────────────────────────────────
 
-  @AnyAuthenticated()
+  @Permissions('any.authenticated')
   @Get('push/key')
   @ApiOperation({ summary: 'VAPID public key for push registration (null when push is not wired)' })
   pushKey() {
     return this.notifications.pushPublicKey();
   }
 
-  @AnyAuthenticated()
+  @Permissions('any.authenticated')
   @Post('push/subscribe')
   @ApiOperation({ summary: 'Register a web-push subscription' })
   subscribePush(
@@ -121,7 +121,7 @@ export class NotificationController {
     return this.notifications.subscribePush(this.tenantId(req), this.profileId(req), dto);
   }
 
-  @AnyAuthenticated()
+  @Permissions('any.authenticated')
   @Delete('push/subscribe')
   @ApiOperation({ summary: 'Deactivate a web-push subscription' })
   unsubscribePush(@Req() req: any, @Body() dto: { endpoint: string }) {
@@ -130,7 +130,7 @@ export class NotificationController {
 
   // ── SSE stream ─────────────────────────────────────────────────────────────
 
-  @AnyAuthenticated()
+  @Permissions('any.authenticated')
   @Get('stream')
   @ApiOperation({ summary: 'Server-sent events stream of unread notifications' })
   async stream(@Req() req: any, @Res() res: Response) {

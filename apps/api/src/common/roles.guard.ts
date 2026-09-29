@@ -1,7 +1,7 @@
 import { CanActivate, ExecutionContext, Injectable, ForbiddenException } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { PrismaService } from './prisma/prisma.service';
-import { PLATFORM_ADMIN_KEY, ROLES_KEY, type PracticeRole } from './roles';
+import { PLATFORM_ADMIN_KEY } from './roles';
 import { PERMISSIONS_KEY, effectivePermissions, type Permission } from './permissions';
 import { assertSessionLive } from './session-validity';
 
@@ -30,20 +30,11 @@ export class RolesGuard implements CanActivate {
       context.getHandler(),
       context.getClass(),
     ]);
-    // One release of overlap: routes not yet migrated still carry @Roles, and
-    // the guard honours whichever annotation is present. The migration plan
-    // deletes the fallback along with @Roles itself.
-    const legacy = required
-      ? undefined
-      : this.reflector.getAllAndOverride<PracticeRole[] | undefined>(ROLES_KEY, [
-          context.getHandler(),
-          context.getClass(),
-        ]);
 
     // No annotation means the route is not restricted. roles.spec.ts fails
     // the build when an authenticated route lacks one, so this cannot become a
     // silent hole the way the original `@UseGuards(JwtAuthGuard)` did.
-    if ((!required || required.length === 0) && (!legacy || legacy.length === 0)) return true;
+    if (!required || required.length === 0) return true;
 
     const req = context.switchToHttp().getRequest();
     const user = req.user;
@@ -89,13 +80,9 @@ export class RolesGuard implements CanActivate {
     }
 
     const grants: string[] = profile.permissions ?? [];
-    if (required && required.length) {
-      const held = effectivePermissions(profile.role, grants);
-      if (!required.some((p) => held.has(p))) {
-        throw new ForbiddenException('You do not have permission to do this.');
-      }
-    } else if (legacy && !legacy.includes(profile.role as PracticeRole)) {
-      throw new ForbiddenException('Your role does not have access to this resource');
+    const held = effectivePermissions(profile.role, grants);
+    if (!required.some((p) => held.has(p))) {
+      throw new ForbiddenException('You do not have permission to do this.');
     }
 
     // Downstream code frequently needs the role; hand it on rather than making

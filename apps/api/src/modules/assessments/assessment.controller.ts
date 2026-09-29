@@ -4,7 +4,7 @@ import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { AssessmentService } from './assessment.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { RolesGuard } from '../../common/roles.guard';
-import { AnyAuthenticated, CLINICAL, PRACTICE_ADMIN, Roles, STAFF } from '../../common/roles';
+import { Permissions } from '../../common/permissions';
 import { authenticatedProfileId, authenticatedTenantId } from '../../common/authenticated-tenant';
 
 const id = (raw: string) => {
@@ -22,7 +22,7 @@ const id = (raw: string) => {
 export class AssessmentController {
   constructor(private readonly assessments: AssessmentService) {}
 
-  @Roles(...STAFF)
+  @Permissions('practice.staff')
   @Get('library')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @ApiBearerAuth('access-token')
@@ -31,7 +31,7 @@ export class AssessmentController {
     return this.assessments.library(authenticatedTenantId(req));
   }
 
-  @Roles(...PRACTICE_ADMIN)
+  @Permissions('practice.admin')
   @Post(':key/enable')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @ApiBearerAuth('access-token')
@@ -39,7 +39,7 @@ export class AssessmentController {
     return this.assessments.setEnabled(authenticatedTenantId(req), key, true);
   }
 
-  @Roles(...PRACTICE_ADMIN)
+  @Permissions('practice.admin')
   @Post(':key/disable')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @ApiBearerAuth('access-token')
@@ -47,7 +47,7 @@ export class AssessmentController {
     return this.assessments.setEnabled(authenticatedTenantId(req), key, false);
   }
 
-  @Roles(...CLINICAL)
+  @Permissions('clinical.record')
   @Post('assignments')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @ApiBearerAuth('access-token')
@@ -56,7 +56,7 @@ export class AssessmentController {
     return this.assessments.send(authenticatedTenantId(req), authenticatedProfileId(req), dto ?? {});
   }
 
-  @Roles(...CLINICAL)
+  @Permissions('clinical.record')
   @Post('assignments/:id/cancel')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @ApiBearerAuth('access-token')
@@ -64,7 +64,7 @@ export class AssessmentController {
     return this.assessments.cancel(authenticatedTenantId(req), id(raw));
   }
 
-  @Roles(...CLINICAL)
+  @Permissions('clinical.record')
   @Get('clients/:clientId/results')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @ApiBearerAuth('access-token')
@@ -73,7 +73,7 @@ export class AssessmentController {
     return this.assessments.clientResults(authenticatedTenantId(req), id(raw));
   }
 
-  @Roles(...CLINICAL)
+  @Permissions('clinical.record')
   @Get('assignments')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @ApiBearerAuth('access-token')
@@ -84,7 +84,7 @@ export class AssessmentController {
 
   // ── The signed-in client ──
 
-  @AnyAuthenticated()
+  @Permissions('any.authenticated')
   @Get('mine')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @ApiBearerAuth('access-token')
@@ -93,7 +93,7 @@ export class AssessmentController {
     return this.assessments.mine(authenticatedTenantId(req), authenticatedProfileId(req));
   }
 
-  @AnyAuthenticated()
+  @Permissions('any.authenticated')
   @Get('mine/:id')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @ApiBearerAuth('access-token')
@@ -101,7 +101,7 @@ export class AssessmentController {
     return this.assessments.openMine(authenticatedTenantId(req), authenticatedProfileId(req), id(raw));
   }
 
-  @AnyAuthenticated()
+  @Permissions('any.authenticated')
   @Post('mine/:id')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @ApiBearerAuth('access-token')

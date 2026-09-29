@@ -16,7 +16,7 @@ import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { Request } from 'express';
 import { JwtAuthGuard } from '../../auth/jwt-auth.guard';
 import { RolesGuard } from '../../../common/roles.guard';
-import { PRACTICE_ADMIN, Roles } from '../../../common/roles';
+import { Permissions } from '../../../common/permissions';
 import { authenticatedTenantId } from '../../../common/authenticated-tenant';
 import { verifyResendWebhook } from '../mail/webhook-signature';
 import { SendingDomainService } from './sending-domain.service';
@@ -28,21 +28,21 @@ import { SendingDomainService } from './sending-domain.service';
 export class SendingDomainController {
   constructor(private readonly sendingDomains: SendingDomainService) {}
 
-  @Roles(...PRACTICE_ADMIN)
+  @Permissions('practice.admin')
   @Get()
   @ApiOperation({ summary: "The practice's own email domain, its DNS records and status" })
   get(@Req() req: any) {
     return this.sendingDomains.get(authenticatedTenantId(req));
   }
 
-  @Roles(...PRACTICE_ADMIN)
+  @Permissions('practice.admin')
   @Post()
   @ApiOperation({ summary: 'Start sending from a domain the practice owns' })
   register(@Req() req: any, @Body() dto: { domain?: string; fromLocalPart?: string }) {
     return this.sendingDomains.register(authenticatedTenantId(req), dto ?? {});
   }
 
-  @Roles(...PRACTICE_ADMIN)
+  @Permissions('practice.admin')
   @Post('verify')
   @HttpCode(200)
   @ApiOperation({ summary: 'Re-check the DNS records for the sending domain' })
@@ -50,14 +50,14 @@ export class SendingDomainController {
     return this.sendingDomains.verify(authenticatedTenantId(req));
   }
 
-  @Roles(...PRACTICE_ADMIN)
+  @Permissions('practice.admin')
   @Patch()
   @ApiOperation({ summary: 'Change the part of the sender address before the @' })
   updateSender(@Req() req: any, @Body() dto: { fromLocalPart?: string }) {
     return this.sendingDomains.updateSender(authenticatedTenantId(req), dto ?? {});
   }
 
-  @Roles(...PRACTICE_ADMIN)
+  @Permissions('practice.admin')
   @Delete()
   @ApiOperation({ summary: 'Stop sending from the practice domain' })
   remove(@Req() req: any) {
