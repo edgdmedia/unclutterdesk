@@ -13,6 +13,7 @@ import { LEGAL_URLS } from './utils/legal';
 const NotFoundPage = lazy(() => import('./pages/shared/NotFoundPage').then((m) => ({ default: m.NotFoundPage })));
 const DashboardPage = lazy(() => import('./pages/practice/DashboardPage').then((m) => ({ default: m.DashboardPage })));
 const SchedulePage = lazy(() => import('./pages/practice/SchedulePage').then((m) => ({ default: m.SchedulePage })));
+const SessionsPage = lazy(() => import('./pages/practice/SessionsPage').then((m) => ({ default: m.SessionsPage })));
 const ClientsPage = lazy(() => import('./pages/practice/ClientsPage').then((m) => ({ default: m.ClientsPage })));
 const ClientDetailPage = lazy(() => import('./pages/practice/ClientDetailPage').then((m) => ({ default: m.ClientDetailPage })));
 const AnalyticsPage = lazy(() => import('./pages/practice/AnalyticsPage').then((m) => ({ default: m.AnalyticsPage })));
@@ -433,6 +434,7 @@ function AppLayout() {
                 }
               />
               <Route path="/dashboard/schedule" element={<SchedulePage sessions={resolvedSessions} setSessions={setSessions} clients={resolvedClients} tenantSlug={profile?.tenantSlug} onRefresh={refreshSessions} />} />
+              <Route path="/dashboard/sessions" element={<SessionsPage can={{ viewAll: (profile?.permissions ?? []).includes('sessions.view-all') }} />} />
               <Route path="/dashboard/clients" element={<ClientsPage clients={resolvedClients} setClients={setClients} onRefresh={refreshClients} />} />
               <Route path="/dashboard/clients/:id" element={<ClientDetailPage clients={resolvedClients} setClients={setClients} />} />
               <Route path="/dashboard/analytics" element={<AnalyticsPage clients={resolvedClients} sessions={resolvedSessions} />} />
