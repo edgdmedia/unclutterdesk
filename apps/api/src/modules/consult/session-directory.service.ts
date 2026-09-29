@@ -128,4 +128,64 @@ export class SessionDirectoryService {
       },
     };
   }
+
+  /** The desk moves and closes sessions; a therapist only closes their own. */
+  async setStatus(
+    tenantId: bigint,
+    actor: SessionActor,
+    bookingId: bigint,
+    status: 'CONFIRMED' | 'COMPLETED' | 'CANCELLED',
+  ) {
+    const b = await this.prisma.consultBooking.findFirst({
+      where: { id: bookingId, tenantId, ...(actor.viewAll ? {} : { availability: { providerProfileId: actor.profileId } }) },
+      select: { id: true, availabilityId: true },
+    });
+    if (!b) throw new NotFoundException('Session not found');
+    if (!actor.viewAll && status !== 'COMPLETED') {
+      throw new ForbiddenException('You can only mark your own sessions complete. Ask the front desk to confirm or cancel a session.');
+    }
+    await this.prisma.consultBooking.updateMany({ where: { id: b.id, tenantId }, data: { status } });
+    if (status === 'CANCELLED') {
+      // The time goes back on the shelf, as the expiry cron does.
+      await this.prisma.consultAvailability.updateMany({
+        where: { id: b.availabilityId, tenantId },
+        data: { isActive: true },
+      });
+    }
+    return { id: b.id.toString(), status };
+  }
+
+  /** Staff move a session to another open slot of the same practitioner. */
+  async rescheduleByStaff(tenantId: bigint, actor: SessionActor, bookingId: bigint, newAvailabilityId: bigint) {
+    if (!actor.viewAll) {
+      throw new ForbiddenException('Ask the front desk or a practice admin to move a session.');
+    }
+    return this.prisma.$transaction(async (tx: any) => {
+      const b = await tx.consultBooking.findFirst({
+        where: { id: bookingId, tenantId },
+        select: { id: true, status: true, availabilityId: true, serviceId: true },
+      });
+      if (!b) throw new NotFoundException('Session not found');
+      if (b.status === 'CANCELLED' || b.status === 'COMPLETED') {
+        throw new BadRequestException('A cancelled or completed session cannot be moved.');
+      }
+      const [slot, oldSlot] = await Promise.all([
+        tx.consultAvailability.findFirst({ where: { id: newAvailabilityId, tenantId } }),
+        tx.consultAvailability.findFirst({ where: { id: b.availabilityId }, select: { providerProfileId: true } }),
+      ]);
+      if (!slot || !slot.isActive || slot.startsAt <= new Date()) {
+        throw new BadRequestException('That time is no longer open. Choose another.');
+      }
+      if (slot.providerProfileId !== oldSlot?.providerProfileId) {
+        throw new BadRequestException('Pick an open time from the same practitioner.');
+      }
+      if (slot.serviceId !== null && slot.serviceId !== b.serviceId) {
+        throw new BadRequestException('That time is kept for a different service. Choose another.');
+      }
+      await tx.consultAvailability.updateMany({ where: { id: b.availabilityId, tenantId }, data: { isActive: true } });
+      await tx.consultAvailability.update({ where: { id: slot.id }, data: { isActive: false } });
+      await tx.consultBooking.update({ where: { id: b.id }, data: { availabilityId: slot.id } });
+      return { id: b.id.toString(), startsAt: slot.startsAt.toISOString() };
+    });
+  }
 }

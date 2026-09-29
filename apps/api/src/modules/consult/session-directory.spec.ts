@@ -109,3 +109,79 @@ describe('getSession', () => {
     expect(d.videoRoomLink).toBe('https://meet.jit.si/room-9');
   });
 });
+
+describe('setStatus', () => {
+  it('a therapist may complete their own session', async () => {
+    const { service, prisma } = make();
+    prisma.consultBooking.updateMany = vi.fn().mockResolvedValue({ count: 1 });
+    await service.setStatus(TENANT, VIEWER, 900n, 'COMPLETED');
+    expect(prisma.consultBooking.updateMany.mock.calls[0][0].where).toMatchObject({ id: 900n, tenantId: TENANT });
+  });
+  it('a therapist may not touch another practitioner’s session', async () => {
+    const { service } = make({ booking: { availability: { startsAt: new Date(), endsAt: new Date(), providerProfileId: 77n, channel: 'VIDEO', therapist: { profile: {} } } } });
+    await expect(service.setStatus(TENANT, VIEWER, 900n, 'COMPLETED')).rejects.toBeInstanceOf(NotFoundException);
+  });
+  it('a therapist may not confirm or cancel — that is the desk’s', async () => {
+    const { service } = make();
+    await expect(service.setStatus(TENANT, VIEWER, 900n, 'CANCELLED')).rejects.toThrow(/only mark your own sessions complete/i);
+  });
+  it('cancelling returns the time to the pool', async () => {
+    const { service, prisma } = make();
+    prisma.consultBooking.updateMany = vi.fn().mockResolvedValue({ count: 1 });
+    prisma.consultAvailability = { updateMany: vi.fn().mockResolvedValue({ count: 1 }) };
+    await service.setStatus(TENANT, DESK, 900n, 'CANCELLED');
+    expect(prisma.consultAvailability.updateMany).toHaveBeenCalled();
+  });
+});
+
+describe('rescheduleByStaff', () => {
+  const slot = (over: Record<string, any> = {}) => ({
+    id: 301n, tenantId: TENANT, providerProfileId: ACTOR, serviceId: null,
+    startsAt: new Date(Date.now() + 3 * DAY), isActive: true, ...over,
+  });
+  function tx(over: Record<string, any> = {}) {
+    return {
+      consultBooking: {
+        findFirst: vi.fn().mockResolvedValue({ id: 900n, tenantId: TENANT, status: 'CONFIRMED', availabilityId: 300n, serviceId: 20n, ...(over.booking ?? {}) }),
+        update: vi.fn(),
+      },
+      consultAvailability: {
+        findFirst: vi.fn(async ({ where }: any) => (where.id === 301n ? over.slot ?? slot() : { providerProfileId: over.oldProvider ?? ACTOR })),
+        update: vi.fn(),
+        updateMany: vi.fn().mockResolvedValue({ count: 1 }),
+      },
+    };
+  }
+  it('moves the booking and returns the old slot to the pool', async () => {
+    const t = tx();
+    const { service, prisma } = make();
+    prisma.$transaction = vi.fn(async (fn: any) => fn(t));
+    await service.rescheduleByStaff(TENANT, DESK, 900n, 301n);
+    expect(t.consultAvailability.updateMany).toHaveBeenCalledWith({ where: { id: 300n, tenantId: TENANT }, data: { isActive: true } });
+    expect(t.consultAvailability.update).toHaveBeenCalledWith({ where: { id: 301n }, data: { isActive: false } });
+    expect(t.consultBooking.update).toHaveBeenCalledWith({ where: { id: 900n }, data: { availabilityId: 301n } });
+  });
+  it('refuses a slot another practitioner owns', async () => {
+    const t = tx({ slot: slot({ providerProfileId: 66n }) });
+    const { service, prisma } = make();
+    prisma.$transaction = vi.fn(async (fn: any) => fn(t));
+    await expect(service.rescheduleByStaff(TENANT, DESK, 900n, 301n)).rejects.toThrow(/same practitioner/i);
+    expect(t.consultBooking.update).not.toHaveBeenCalled();
+  });
+  it('refuses a taken slot, a past slot, or the wrong service', async () => {
+    for (const bad of [slot({ isActive: false }), slot({ startsAt: new Date(Date.now() - DAY) }), slot({ serviceId: 21n })]) {
+      const t = tx({ slot: bad });
+      const { service, prisma } = make();
+      prisma.$transaction = vi.fn(async (fn: any) => fn(t));
+      await expect(service.rescheduleByStaff(TENANT, DESK, 900n, 301n)).rejects.toThrow();
+    }
+  });
+  it('refuses a completed or cancelled session', async () => {
+    for (const status of ['COMPLETED', 'CANCELLED']) {
+      const t = tx({ booking: { status } });
+      const { service, prisma } = make();
+      prisma.$transaction = vi.fn(async (fn: any) => fn(t));
+      await expect(service.rescheduleByStaff(TENANT, DESK, 900n, 301n)).rejects.toThrow(/cannot be moved/i);
+    }
+  });
+});
