@@ -39,6 +39,7 @@ const PublicReviewFormPage = lazy(() => import('./pages/public/PublicReviewFormP
 const BookingConfirmedPage = lazy(() => import('./pages/public/BookingConfirmedPage').then((m) => ({ default: m.BookingConfirmedPage })));
 const InactivePracticePage = lazy(() => import('./pages/public/InactivePracticePage').then((m) => ({ default: m.InactivePracticePage })));
 const PayBookingPage = lazy(() => import('./pages/public/PayBookingPage').then((m) => ({ default: m.PayBookingPage })));
+const SetPasswordPage = lazy(() => import('./pages/public/SetPasswordPage').then((m) => ({ default: m.SetPasswordPage })));
 const NotificationsPage = lazy(() => import('./pages/practice/NotificationsPage').then((m) => ({ default: m.NotificationsPage })));
 const SubmissionsPage = lazy(() => import('./pages/practice/SubmissionsPage').then((m) => ({ default: m.SubmissionsPage })));
 const AvailabilitySettingsPage = lazy(() => import('./pages/practice/settings/AvailabilitySettingsPage').then((m) => ({ default: m.AvailabilitySettingsPage })));
@@ -337,6 +338,7 @@ function AppLayout() {
     location.pathname.startsWith('/auth') ||
     location.pathname.startsWith('/invite') ||
     location.pathname.startsWith('/client/') ||
+    location.pathname === '/set-password' ||
     location.pathname === '/portal' ||
     location.pathname.startsWith('/portal/') ||
     location.pathname === '/login' ||
@@ -357,6 +359,7 @@ function AppLayout() {
             <Route path="/onboarding" element={<OnboardingWizardPage />} />
             <Route path="/booking/confirmed" element={<BookingConfirmedPage />} />
             <Route path="/pay/:bookingId" element={<PayBookingPage />} />
+            <Route path="/set-password" element={<SetPasswordPage />} />
             <Route path="/booking/inactive" element={<InactivePracticePage />} />
             <Route path="/assessment/:token" element={<AssessmentPage />} />
 
@@ -579,6 +582,7 @@ export function App() {
                 <Route path="/assessment/:token" element={<AssessmentPage />} />
                 <Route path="/booking/confirmed" element={<BookingConfirmedPage />} />
                 <Route path="/pay/:bookingId" element={<PayBookingPage />} />
+                <Route path="/set-password" element={<SetPasswordPage />} />
                 <Route path="/booking/inactive" element={<InactivePracticePage />} />
                 <Route path="/privacy" element={<ExternalRedirect to={LEGAL_URLS.privacy} />} />
                 <Route path="/terms" element={<ExternalRedirect to={LEGAL_URLS.terms} />} />
