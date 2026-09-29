@@ -128,7 +128,7 @@ export function Sidebar({
   const isOpen = (s: SidebarSection) => !s.collapsible || rail || (openSections[s.key] ?? true);
 
   const nav = (
-    <nav aria-label="Main" className={`flex-1 min-h-0 overflow-y-auto space-y-1 ${rail ? 'flex flex-col items-center' : ''}`}>
+    <nav aria-label="Main" className={`no-scrollbar flex-1 min-h-0 overflow-y-auto space-y-1 ${rail ? 'flex flex-col items-center' : ''}`}>
       {sections.map((section, sIndex) => (
         <div key={section.key} className={rail ? 'w-full space-y-1' : 'space-y-1'}>
           {rail && sIndex > 0 ? <div role="separator" className="h-px w-8 mx-auto my-2 bg-white/10" /> : null}
