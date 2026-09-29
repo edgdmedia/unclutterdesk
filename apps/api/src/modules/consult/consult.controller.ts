@@ -217,13 +217,17 @@ export class ConsultController {
     );
   }
 
+  @Permissions('any.authenticated')
   @Post('public/bookings')
-  @ApiOperation({ summary: 'Client reserve slot & generate WebRTC video session link' })
-  createBooking(@Req() req: TenantRequest, @Body() dto: any) {
-    if (!req.tenantId) throw new NotFoundException(
-        'This practice could not be found. Check the web address, or ask the practice for their booking link.',
-      );
-    return this.consultService.createBooking(req.tenantId, dto);
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @ApiBearerAuth('access-token')
+  @ApiOperation({ summary: 'A signed-in client reserves a slot' })
+  createBooking(@Req() req: any, @Body() dto: any) {
+    return this.consultService.createBooking(
+      authenticatedTenantId(req),
+      authenticatedProfileId(req),
+      dto,
+    );
   }
 
   @Get('public/payment-options')

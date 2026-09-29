@@ -37,6 +37,8 @@ function makeService(over: Record<string, any> = {}) {
     },
     clinicalNote: { findMany: vi.fn().mockResolvedValue([]) },
     universalFormSubmission: { findMany: vi.fn().mockResolvedValue([]) },
+    user: { findUnique: vi.fn().mockResolvedValue(null) },
+    tenant: { findUnique: vi.fn().mockResolvedValue({ id: 1n, name: 'Smith Therapy', slug: 'dr-smith', customDomain: null, customDomainStatus: null }) },
   };
   return { prisma, service: new TenantService(prisma, { sendEmail: vi.fn() } as any) };
 }

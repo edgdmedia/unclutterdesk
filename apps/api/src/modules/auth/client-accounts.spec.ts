@@ -1,6 +1,7 @@
 import { BadRequestException, ConflictException, ForbiddenException, UnauthorizedException } from '@nestjs/common';
 import { describe, expect, it, vi } from 'vitest';
 import { AuthService } from './auth.service';
+import { TenantService } from '../tenant/tenant.service';
 
 const TENANT = 1n;
 
@@ -83,5 +84,39 @@ describe('clientSetPassword', () => {
     expect(prisma.user.create).toHaveBeenCalled();
     const upd = prisma.profile.update.mock.calls.at(-1)[0].data;
     expect(upd).toMatchObject({ userId: 77n, emailVerified: true, accountTokenHash: null, accountTokenExpiresAt: null });
+  });
+});
+
+describe('the account invite on createClient', () => {
+  const TENANT_ROW = { id: TENANT, name: 'Smith Therapy', slug: 'dr-smith', customDomain: null, customDomainStatus: null };
+
+  function makeClientService(over: { userExists?: boolean } = {}) {
+    const prisma: any = {
+      profile: {
+        findFirst: vi.fn().mockResolvedValue(null),
+        create: vi.fn(async ({ data }: any) => ({ id: 41n, createdAt: new Date(), ...data })),
+        update: vi.fn(async ({ data }: any) => data),
+      },
+      user: { findUnique: vi.fn().mockResolvedValue(over.userExists ? { id: 9n } : null) },
+      tenant: { findUnique: vi.fn().mockResolvedValue(TENANT_ROW) },
+    };
+    const notifications: any = { sendEmail: vi.fn().mockResolvedValue({ success: true }) };
+    return { prisma, notifications, service: new TenantService(prisma, notifications) };
+  }
+
+  it('sends a set-password link when the client has no account', async () => {
+    const { service, prisma, notifications } = makeClientService();
+    await service.createClient(TENANT, { firstName: 'Ada', email: 'ada@x.com' });
+    const stored = prisma.profile.update.mock.calls[0][0].data;
+    expect(stored.accountTokenHash).toMatch(/^[0-9a-f]{64}$/);
+    expect(stored.accountTokenExpiresAt.getTime()).toBeGreaterThan(Date.now());
+    expect(notifications.sendEmail).toHaveBeenCalledWith(
+      expect.objectContaining({ type: 'clients.account_invite', link: expect.stringMatching(/\/set-password\?t=[0-9a-f]{64}$/) }),
+    );
+  });
+  it('stays quiet when the client already has an account', async () => {
+    const { service, notifications } = makeClientService({ userExists: true });
+    await service.createClient(TENANT, { firstName: 'Ada', email: 'ada@x.com' });
+    expect(notifications.sendEmail).not.toHaveBeenCalled();
   });
 });

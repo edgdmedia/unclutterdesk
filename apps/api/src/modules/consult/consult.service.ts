@@ -539,28 +539,26 @@ export class ConsultService {
     return this.getTherapistAvailability(tenantId, providerProfileId);
   }
 
-  async createBooking(tenantId: bigint, dto: {
+  async createBooking(tenantId: bigint, clientProfileId: bigint, dto: {
     serviceId: string;
     availabilityId: string;
-    firstName: string;
-    lastName: string;
-    email: string;
-    phone?: string;
     notes?: string;
     discountCode?: string;
     /** "MANUAL" to pay by bank transfer, where the practice offers it. */
     paymentMethod?: string;
   }) {
-    // Checked before anything else: a missing name or a malformed id used to
-    // crash deep inside the transaction and reach the client as a 500.
+    // Checked before anything else: a malformed id used to crash deep inside
+    // the transaction and reach the client as a 500.
     if (!/^\d+$/.test(String(dto?.serviceId ?? '')) || !/^\d+$/.test(String(dto?.availabilityId ?? ''))) {
       throw new BadRequestException('Choose a service and a time.');
     }
-    const email = String(dto.email ?? '').toLowerCase().trim();
-    if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) throw new BadRequestException('Enter a valid email address.');
-    const firstName = String(dto.firstName ?? '').trim();
-    if (!firstName) throw new BadRequestException('Enter your name.');
-    const lastName = String(dto.lastName ?? '').trim();
+    // Who books comes from the session, never from the form: name and email
+    // are the profile's own.
+    const client = await this.prisma.profile.findFirst({
+      where: { id: clientProfileId, tenantId, role: 'CLIENT', status: 'active' },
+      select: { id: true, email: true, firstName: true, lastName: true, phone: true },
+    });
+    if (!client) throw new ForbiddenException('Sign in as the client to book a session.');
     const serviceId = BigInt(dto.serviceId);
     const availabilityId = BigInt(dto.availabilityId);
 
@@ -632,25 +630,6 @@ export class ConsultService {
         throw new BadRequestException('The selected time slot is no longer available');
       }
 
-      let clientProfile = await tx.profile.findFirst({
-        where: { tenantId, email },
-      });
-
-      if (!clientProfile) {
-        clientProfile = await tx.profile.create({
-          data: {
-            tenantId,
-            email,
-            username: email.split('@')[0],
-            firstName,
-            lastName,
-            phone: dto.phone,
-            type: 'user',
-            status: 'active',
-          },
-        });
-      }
-
       const bookingId = Date.now();
       const { roomName: videoRoomName, roomLink: videoRoomLink } = await this.resolveVideoRoomLink(
         slot.therapist,
@@ -674,7 +653,7 @@ export class ConsultService {
           tenantId,
           serviceId: service.id,
           availabilityId: slot.id,
-          clientProfileId: clientProfile.id,
+          clientProfileId: client.id,
           status: 'PENDING_PAYMENT',
           notes: dto.notes,
           videoRoomName,
@@ -711,7 +690,7 @@ export class ConsultService {
         paymentUrl = await this.startOnlinePayment(
           tenantId,
           finalPriceKobo,
-          clientProfile.email,
+          client.email,
           reference,
           `${tenantWebOrigin(slot.tenant)}/booking/confirmed`,
         );

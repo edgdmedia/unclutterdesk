@@ -1,6 +1,6 @@
 import { Injectable, BadRequestException, ConflictException, NotFoundException, ForbiddenException } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
-import { randomBytes } from 'crypto';
+import { createHash, randomBytes } from 'crypto';
 import { promises as dns } from 'dns';
 import { Logger } from '@nestjs/common';
 import { PrismaService } from '../../common/prisma/prisma.service';
@@ -971,6 +971,35 @@ export class TenantService {
       },
     });
 
+    // A client the practice added gets a way into the portal: a single-use
+    // set-password link, stored only as a hash, good for 14 days. Someone who
+    // already has an account is not invited again.
+    let inviteSent = false;
+    const hasAccount = await this.prisma.user.findUnique({ where: { email } });
+    if (!hasAccount) {
+      const token = randomBytes(32).toString('hex');
+      await this.prisma.profile.update({
+        where: { id: profile.id },
+        data: { accountTokenHash: createHash('sha256').update(token).digest('hex'), accountTokenExpiresAt: new Date(Date.now() + 14 * 86_400_000) },
+      });
+      const tenantRow = await this.prisma.tenant.findUnique({ where: { id: tenantId } });
+      try {
+        await this.notifications.sendEmail({
+          to: email,
+          type: 'clients.account_invite',
+          title: `You have a client account at ${tenantRow?.name ?? 'your practice'}`,
+          message: `${dto.firstName.trim()} added you as a client. Set a password to see your sessions and join them online.`,
+          link: `${tenantWebOrigin(tenantRow as any)}/set-password?t=${token}`,
+          actionLabel: 'Set my password',
+          tenantId,
+          profileId: profile.id,
+        });
+        inviteSent = true;
+      } catch {
+        inviteSent = false;
+      }
+    }
+
     const initials = [
       (profile.firstName || '').charAt(0),
       (profile.lastName || '').charAt(0),
@@ -992,6 +1021,7 @@ export class TenantService {
       since: new Intl.DateTimeFormat('en-GB', { month: 'short', year: 'numeric' }).format(profile.createdAt),
       emergencyContact: emergencyContactOf(profile),
       emergency: emergencyContactText(emergencyContactOf(profile)),
+      inviteSent,
       notes: [],
       intake: [],
     };
