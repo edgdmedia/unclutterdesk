@@ -1,11 +1,26 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { ForbiddenException } from '@nestjs/common';
 import { RolesGuard } from './roles.guard';
-import { CLINICAL, PRACTICE_ADMIN, STAFF } from './roles';
+import { CLINICAL, PRACTICE_ADMIN, ROLES_KEY, STAFF } from './roles';
+import { PERMISSIONS_KEY } from './permissions';
 
+/** The reflector answers per key, so a spec can drive the legacy @Roles path. */
 function makeGuard(required: string[] | undefined, profile: any) {
-  const reflector = { getAllAndOverride: vi.fn().mockReturnValue(required) } as any;
+  const reflector = {
+    getAllAndOverride: vi.fn((key: string) => (key === ROLES_KEY ? required : undefined)),
+  } as any;
   const prisma = { profile: { findFirst: vi.fn().mockResolvedValue(profile) } } as any;
+  return { guard: new RolesGuard(reflector, prisma), prisma };
+}
+
+function makeGuardPermissions(required: string[] | undefined, profile: any) {
+  const reflector = {
+    getAllAndOverride: vi.fn((key: string) => (key === PERMISSIONS_KEY ? required : undefined)),
+  } as any;
+  const prisma = {
+    profile: { findFirst: vi.fn().mockResolvedValue(profile) },
+    token: { findFirst: vi.fn().mockResolvedValue({ revokedAt: null, expiresAt: new Date(Date.now() + 60_000) }) },
+  } as any;
   return { guard: new RolesGuard(reflector, prisma), prisma };
 }
 
@@ -108,6 +123,37 @@ describe('RolesGuard', () => {
       const { guard } = makeGuard(STAFF, active('ADMIN'));
       const { host } = ctx({ userId: '1', type: 'platform_admin' });
       await expect(guard.canActivate(host)).rejects.toThrow(ForbiddenException);
+    });
+  });
+
+  describe('permissions', () => {
+    it('lets a therapist through on a grant their role lacks', async () => {
+      const { guard } = makeGuardPermissions(['sessions.edit'], { role: 'THERAPIST', status: 'active', permissions: ['sessions.edit'] });
+      await expect(guard.canActivate(ctx({ profileId: '5', tenantId: '1', sessionId: 's1' }).host)).resolves.toBe(true);
+    });
+    it('refuses a permission nobody holds', async () => {
+      const { guard } = makeGuardPermissions(['practice.admin'], { role: 'THERAPIST', status: 'active', permissions: [] });
+      await expect(guard.canActivate(ctx().host)).rejects.toThrow(/permission/i);
+    });
+    it('passes when any one of the listed keys is held', async () => {
+      const { guard } = makeGuardPermissions(['practice.admin', 'clinical.record'], { role: 'THERAPIST', status: 'active', permissions: [] });
+      await expect(guard.canActivate(ctx().host)).resolves.toBe(true);
+    });
+    it('hands the role and permissions down to the request', async () => {
+      const { guard } = makeGuardPermissions(['practice.staff'], { role: 'THERAPIST', status: 'active', permissions: ['sessions.edit'] });
+      const { req, host } = ctx();
+      await guard.canActivate(host);
+      expect(req.user.role).toBe('THERAPIST');
+      expect(req.user.permissions).toEqual(['sessions.edit']);
+    });
+    it('a suspended profile is refused whatever it was granted', async () => {
+      const { guard } = makeGuardPermissions(['practice.staff'], { role: 'THERAPIST', status: 'inactive', permissions: ['practice.admin'] });
+      await expect(guard.canActivate(ctx().host)).rejects.toThrow(/not active/i);
+    });
+    it('reads the grants with the role', async () => {
+      const { guard, prisma } = makeGuardPermissions(['practice.staff'], { role: 'THERAPIST', status: 'active', permissions: [] });
+      await guard.canActivate(ctx().host);
+      expect(prisma.profile.findFirst.mock.calls[0][0].select).toMatchObject({ role: true, status: true, permissions: true });
     });
   });
 
