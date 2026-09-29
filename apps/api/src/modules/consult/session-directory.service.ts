@@ -236,4 +236,41 @@ export class SessionDirectoryService {
     await this.prisma.consultBooking.update({ where: { id: b.id }, data: { clientRecapSentAt: new Date() } });
     return { id: b.id.toString(), sentAt: new Date().toISOString() };
   }
+
+  /** One client's sessions for the client page — no clinical text. */
+  async clientSessions(tenantId: bigint, actor: SessionActor, clientProfileId: bigint) {
+    const rows = await this.prisma.consultBooking.findMany({
+      where: { tenantId, clientProfileId },
+      include: this.include(),
+      orderBy: { availability: { startsAt: 'desc' } },
+      take: 200,
+    });
+    const out = [];
+    for (const b of rows) out.push(this.shape(b, await this.bookedBy(tenantId, b.createdByProfileId)));
+    return out;
+  }
+
+  /** The client's billing history, for the desk: same rows the portal shows. */
+  async clientPayments(tenantId: bigint, clientProfileId: bigint) {
+    const bookings = await this.prisma.consultBooking.findMany({
+      where: { tenantId, clientProfileId },
+      include: { service: { select: { title: true, priceKobo: true } }, availability: { select: { startsAt: true } } },
+      orderBy: { createdAt: 'desc' },
+      take: 200,
+    });
+    const payments = bookings.map((booking: any) => ({
+      bookingId: booking.id.toString(),
+      serviceTitle: booking.service.title,
+      sessionAt: booking.availability.startsAt.toISOString(),
+      amountKobo: chargedKobo(booking).toString(),
+      discountCode: booking.discountCodeUsed,
+      status: booking.status,
+      paidAt: booking.paidAt ? booking.paidAt.toISOString() : null,
+      reference: booking.paymentRef,
+      bookedAt: booking.createdAt.toISOString(),
+    }));
+    const paidKobo = payments.filter((p: any) => p.paidAt).reduce((t: bigint, p: any) => t + BigInt(p.amountKobo), 0n);
+    const outstandingKobo = payments.filter((p: any) => p.status === 'PENDING_PAYMENT').reduce((t: bigint, p: any) => t + BigInt(p.amountKobo), 0n);
+    return { payments, totalPaidKobo: paidKobo.toString(), outstandingKobo: outstandingKobo.toString() };
+  }
 }
