@@ -321,6 +321,11 @@ model ConsultBooking {
   discountCodeUsed            String?
   notes                       String?
   videoRoomName               String?
+  /// What happened, for staff. Seen by clinical roles only.
+  internalSummary             String?   @db.Text
+  /// The recap written for the client; emailed on request, never automatically.
+  clientRecap                 String?   @db.Text
+  clientRecapSentAt           DateTime?
   createdAt                   DateTime  @default(now())
   updatedAt                   DateTime?
 
