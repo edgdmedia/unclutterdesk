@@ -1180,7 +1180,14 @@ export class AuthService {
     const profile = profileByEmail
       ? await this.prisma.profile.update({
           where: { id: profileByEmail.id },
-          data: { userId: user.id, emailVerified: true, firstName: firstName || profileByEmail.firstName },
+          data: {
+            userId: user.id,
+            emailVerified: true,
+            firstName: firstName || profileByEmail.firstName,
+            // A used invite must stop working the moment an account exists.
+            accountTokenHash: null,
+            accountTokenExpiresAt: null,
+          },
         })
       : await this.prisma.profile.create({
           data: {
