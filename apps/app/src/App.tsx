@@ -130,6 +130,8 @@ export interface StaffMember {
   role: string;
   status: string;
   initials: string;
+  /** Extra permission grants beyond the role. */
+  permissions?: string[];
   /** An invitation that has not been claimed — there is no account behind it. */
   pending?: boolean;
   invitedAt?: string | null;

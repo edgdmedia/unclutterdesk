@@ -21,6 +21,8 @@ interface AuthProfile {
   platformAdmin?: boolean;
   /** An admin session whose user also has a practice to go back to. */
   hasPractice?: boolean;
+  /** The effective permission set, computed server-side. */
+  permissions?: string[];
 }
 
 interface AuthContextValue {
