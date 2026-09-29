@@ -185,3 +185,34 @@ describe('rescheduleByStaff', () => {
     }
   });
 });
+
+describe('summaries', () => {
+  it('stores both texts, trimmed', async () => {
+    const { service, prisma } = make();
+    prisma.consultBooking.update = vi.fn().mockResolvedValue({ id: 900n });
+    await service.setSummary(TENANT, { profileId: ACTOR, viewAll: false, clinical: true }, 900n, {
+      internalSummary: '  worked on grounding  ',
+      clientRecap: 'Practised the 4-7-8 breath. ',
+    });
+    expect(prisma.consultBooking.update.mock.calls[0][0].data).toMatchObject({
+      internalSummary: 'worked on grounding',
+      clientRecap: 'Practised the 4-7-8 breath.',
+    });
+  });
+  it('refuses to send a recap that was never written', async () => {
+    const { service } = make();
+    await expect(service.sendRecap(TENANT, DESK, 900n)).rejects.toThrow(/Write the recap/i);
+  });
+  it('emails the client and stamps the send', async () => {
+    const { service, prisma, notifications } = make({ booking: { clientRecap: 'Well done this week.' } });
+    prisma.consultBooking.update = vi.fn().mockResolvedValue({ id: 900n });
+    prisma.tenant = { findUnique: vi.fn().mockResolvedValue({ name: 'Smith Therapy', slug: 'dr-smith', customDomain: null, customDomainStatus: null }) };
+    await service.sendRecap(TENANT, { profileId: ACTOR, viewAll: false, clinical: true }, 900n);
+    expect(notifications.sendEmail).toHaveBeenCalledWith(expect.objectContaining({
+      to: 'ada@example.com',
+      type: 'bookings.session_recap',
+      profileId: 40n,
+    }));
+    expect(prisma.consultBooking.update.mock.calls[0][0].data.clientRecapSentAt).toBeInstanceOf(Date);
+  });
+});

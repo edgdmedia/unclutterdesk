@@ -188,4 +188,52 @@ export class SessionDirectoryService {
       return { id: b.id.toString(), startsAt: slot.startsAt.toISOString() };
     });
   }
+
+  async setSummary(
+    tenantId: bigint,
+    actor: SessionActor,
+    bookingId: bigint,
+    dto: { internalSummary?: string | null; clientRecap?: string | null },
+  ) {
+    const b = await this.prisma.consultBooking.findFirst({
+      where: { id: bookingId, tenantId, ...(actor.viewAll ? {} : { availability: { providerProfileId: actor.profileId } }) },
+      select: { id: true },
+    });
+    if (!b) throw new NotFoundException('Session not found');
+    const clean = (v: unknown) => (v === null || v === undefined ? null : String(v).trim().slice(0, 4000) || null);
+    const data: Record<string, unknown> = {};
+    if ('internalSummary' in dto) data.internalSummary = clean(dto.internalSummary);
+    if ('clientRecap' in dto) data.clientRecap = clean(dto.clientRecap);
+    await this.prisma.consultBooking.update({ where: { id: b.id }, data });
+    return { id: b.id.toString() };
+  }
+
+  async sendRecap(tenantId: bigint, actor: SessionActor, bookingId: bigint) {
+    const b = await this.prisma.consultBooking.findFirst({
+      where: { id: bookingId, tenantId, ...(actor.viewAll ? {} : { availability: { providerProfileId: actor.profileId } }) },
+      include: {
+        client: { select: { id: true, email: true, firstName: true } },
+        service: { select: { title: true } },
+        availability: { select: { startsAt: true } },
+      },
+    });
+    if (!b) throw new NotFoundException('Session not found');
+    if (!b.clientRecap?.trim()) throw new BadRequestException('Write the recap before sending it.');
+    const tenant = await this.prisma.tenant.findUnique({
+      where: { id: tenantId },
+      select: { name: true, slug: true, customDomain: true, customDomainStatus: true },
+    });
+    await this.notifications.sendEmail({
+      to: b.client.email,
+      type: 'bookings.session_recap',
+      title: `Your recap from ${b.service.title}`,
+      message: `${b.client.firstName ?? 'There'}, here is the recap from your session on ${b.availability.startsAt.toDateString()}:\n\n${b.clientRecap.trim()}\n\n— ${tenant?.name ?? 'Your practice'}`,
+      link: `${tenantWebOrigin(tenant as any)}/portal`,
+      actionLabel: 'View my sessions',
+      tenantId,
+      profileId: b.client.id,
+    });
+    await this.prisma.consultBooking.update({ where: { id: b.id }, data: { clientRecapSentAt: new Date() } });
+    return { id: b.id.toString(), sentAt: new Date().toISOString() };
+  }
 }
