@@ -13,11 +13,36 @@ interface Settings {
 
 const inputCls = 'w-full h-11 px-3.5 rounded-[12px] bg-[#F8FAFC] border border-[#E2E8F0] text-[13px] font-semibold text-[#0F172A] outline-none';
 
+export type ManualPaymentForm = { bankName: string; accountName: string; accountNumber: string; instructions: string };
+
+/**
+ * The account clients transfer to. Settings and onboarding both show it next
+ * to the Paystack payout form, so its labels say "Transfer" to keep the two
+ * accounts apart.
+ */
+export function ManualPaymentFields({ value, onChange }: { value: ManualPaymentForm; onChange: (next: ManualPaymentForm) => void }) {
+  const set = (key: keyof ManualPaymentForm) => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) =>
+    onChange({ ...value, [key]: e.target.value });
+  return (
+    <div className="space-y-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <label className="space-y-1"><span className="text-xs font-bold text-[#475569]">Transfer bank</span><input className={inputCls} value={value.bankName} onChange={set('bankName')} placeholder="e.g. GTBank" /></label>
+        <label className="space-y-1"><span className="text-xs font-bold text-[#475569]">Transfer account number</span><input className={`${inputCls} font-mono`} value={value.accountNumber} onChange={set('accountNumber')} inputMode="numeric" maxLength={10} placeholder="10 digits" /></label>
+      </div>
+      <label className="block space-y-1"><span className="text-xs font-bold text-[#475569]">Transfer account name</span><input className={inputCls} value={value.accountName} onChange={set('accountName')} /></label>
+      <label className="block space-y-1">
+        <span className="text-xs font-bold text-[#475569]">Note for clients (optional)</span>
+        <textarea className={`${inputCls} h-auto min-h-[70px] py-2.5 font-medium`} value={value.instructions} onChange={set('instructions')} placeholder="e.g. Send your receipt to hello@yourpractice.ng" />
+      </label>
+    </div>
+  );
+}
+
 /** Let clients pay by bank transfer straight to the practice. Pro and Clinic only; off by default. */
 export function ManualPaymentSettingsCard({ color }: { color: string }) {
   const toast = useToast();
   const [settings, setSettings] = useState<Settings | null>(null);
-  const [form, setForm] = useState({ bankName: '', accountName: '', accountNumber: '', instructions: '' });
+  const [form, setForm] = useState<ManualPaymentForm>({ bankName: '', accountName: '', accountNumber: '', instructions: '' });
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
@@ -50,7 +75,6 @@ export function ManualPaymentSettingsCard({ color }: { color: string }) {
   }
 
   if (!settings) return null;
-  const set = (key: keyof typeof form) => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => setForm((f) => ({ ...f, [key]: e.target.value }));
 
   return (
     <Card padding="p-[24px_26px]" className="max-w-[560px] space-y-4 bg-white border border-slate-100">
@@ -74,15 +98,7 @@ export function ManualPaymentSettingsCard({ color }: { color: string }) {
         </p>
       ) : (
         <form onSubmit={(e) => void save(settings.enabled, e)} className="space-y-3">
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <label className="space-y-1"><span className="text-xs font-bold text-[#475569]">Bank</span><input className={inputCls} value={form.bankName} onChange={set('bankName')} placeholder="e.g. GTBank" /></label>
-            <label className="space-y-1"><span className="text-xs font-bold text-[#475569]">Account number</span><input className={`${inputCls} font-mono`} value={form.accountNumber} onChange={set('accountNumber')} inputMode="numeric" maxLength={10} placeholder="10 digits" /></label>
-          </div>
-          <label className="block space-y-1"><span className="text-xs font-bold text-[#475569]">Account name</span><input className={inputCls} value={form.accountName} onChange={set('accountName')} /></label>
-          <label className="block space-y-1">
-            <span className="text-xs font-bold text-[#475569]">Note for clients (optional)</span>
-            <textarea className={`${inputCls} h-auto min-h-[70px] py-2.5 font-medium`} value={form.instructions} onChange={set('instructions')} placeholder="e.g. Send your receipt to hello@yourpractice.ng" />
-          </label>
+          <ManualPaymentFields value={form} onChange={setForm} />
           <div className="flex flex-wrap gap-2 pt-1">
             {settings.enabled ? (
               <>

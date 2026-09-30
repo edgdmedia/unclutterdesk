@@ -25,6 +25,7 @@ function makeService({
   code = invite() as ReturnType<typeof invite> | null,
   tenant = { id: TENANT, inviteCodeId: null as bigint | null, subscriptionStatus: null as string | null },
   claimed = [{ id: 1n, tier: 'PRO', durationDays: 90 }] as Array<{ id: bigint; tier: string; durationDays: number }>,
+  mailResult = { success: true } as { success: boolean; skipped?: boolean },
 } = {}) {
   const prisma: any = {
     inviteCode: {
@@ -37,8 +38,12 @@ function makeService({
       update: vi.fn().mockResolvedValue({}),
     },
     $queryRaw: vi.fn().mockResolvedValue(claimed),
+    inviteSend: {
+      create: vi.fn().mockImplementation(({ data }) => Promise.resolve({ id: 9n, createdAt: new Date('2026-09-30T10:00:00Z'), ...data })),
+    },
   };
-  return { service: new InviteService(prisma), prisma };
+  const notifications: any = { sendEmail: vi.fn().mockResolvedValue(mailResult) };
+  return { service: new InviteService(prisma, notifications), prisma, notifications };
 }
 
 describe('invite codes', () => {
@@ -151,6 +156,65 @@ describe('invite codes', () => {
       const attempt = service.create(dto as any);
       await expect(attempt).rejects.toBeInstanceOf(BadRequestException);
       await expect(attempt).rejects.toThrow(message);
+    });
+  });
+
+  describe('sending by email', () => {
+    const ADMIN = 3n;
+
+    it('emails the link and code with what the invite gives, and records who sent it', async () => {
+      const { service, notifications, prisma } = makeService({
+        code: invite({ code: 'DESK-AB12-CD34', tier: 'CLINIC', durationDays: 60, redeemBy: new Date('2026-12-31T22:59:59Z') }),
+      });
+      const sent = await service.sendByEmail(1n, { email: ' Ada@Calm.ng ', message: 'Loved meeting you at the summit.' }, ADMIN);
+
+      const mail = notifications.sendEmail.mock.calls[0][0];
+      expect(mail.to).toBe('ada@calm.ng');
+      expect(mail.code).toBe('DESK-AB12-CD34');
+      expect(mail.codeLabel).toBe('Invite code');
+      expect(mail.link).toMatch(/\/auth\/signup\?invite=DESK-AB12-CD34$/);
+      expect(mail.message).toMatch(/^Loved meeting you at the summit\./);
+      expect(mail.message).toContain('Clinic plan free for 60 days');
+      expect(mail.message).toContain('31 December 2026');
+      expect(mail.tenantId).toBeUndefined();
+
+      expect(prisma.inviteSend.create).toHaveBeenCalledWith({
+        data: { inviteCodeId: 1n, email: 'ada@calm.ng', message: 'Loved meeting you at the summit.', delivered: true, sentById: ADMIN },
+      });
+      expect(sent).toMatchObject({ email: 'ada@calm.ng', delivered: true });
+    });
+
+    it('sends without a personal note', async () => {
+      const { service, notifications, prisma } = makeService();
+      await service.sendByEmail(1n, { email: 'ada@calm.ng', message: '   ' }, ADMIN);
+      expect(notifications.sendEmail.mock.calls[0][0].message).toMatch(/^You've been invited/);
+      expect(prisma.inviteSend.create.mock.calls[0][0].data.message).toBeNull();
+    });
+
+    it('will not send a code nobody can use', async () => {
+      const { service, notifications, prisma } = makeService({ code: invite({ maxUses: 2, usedCount: 2 }) });
+      await expect(service.sendByEmail(1n, { email: 'ada@calm.ng' }, ADMIN)).rejects.toThrow('fully used');
+      expect(notifications.sendEmail).not.toHaveBeenCalled();
+      expect(prisma.inviteSend.create).not.toHaveBeenCalled();
+    });
+
+    it('needs a real address and a note of reasonable length', async () => {
+      const { service, notifications } = makeService();
+      await expect(service.sendByEmail(1n, { email: 'not-an-email' }, ADMIN)).rejects.toThrow('email address');
+      await expect(service.sendByEmail(1n, { email: 'ada@calm.ng', message: 'x'.repeat(1001) }, ADMIN)).rejects.toThrow('1000');
+      expect(notifications.sendEmail).not.toHaveBeenCalled();
+    });
+
+    it('records a refused email and says so', async () => {
+      const { service, prisma } = makeService({ mailResult: { success: false } });
+      await expect(service.sendByEmail(1n, { email: 'ada@calm.ng' }, ADMIN)).rejects.toThrow('could not be sent');
+      expect(prisma.inviteSend.create.mock.calls[0][0].data.delivered).toBe(false);
+    });
+
+    it('does not count an email that was only logged as delivered', async () => {
+      const { service, prisma } = makeService({ mailResult: { success: true, skipped: true } });
+      await expect(service.sendByEmail(1n, { email: 'ada@calm.ng' }, ADMIN)).rejects.toThrow('could not be sent');
+      expect(prisma.inviteSend.create.mock.calls[0][0].data.delivered).toBe(false);
     });
   });
 });

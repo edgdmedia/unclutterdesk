@@ -1,13 +1,23 @@
-import { BadRequestException, Injectable, Logger, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Injectable, Logger, NotFoundException, ServiceUnavailableException } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { randomBytes } from 'crypto';
 import { PrismaService } from '../../common/prisma/prisma.service';
+import { appOrigin } from '../../common/origins';
+import { NotificationService } from '../notifications/notification.service';
 
 /** The plans an invite can grant. Starter is free already. */
 export const INVITE_TIERS = ['PRO', 'CLINIC'] as const;
 export type InviteTier = (typeof INVITE_TIERS)[number];
 
 type Tx = Prisma.TransactionClient | PrismaService;
+
+const EMAIL = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
+const MAX_MESSAGE = 1000;
+
+/** Where an invite link lands: signup, with the code already filled in. */
+export function inviteSignupLink(code: string) {
+  return `${appOrigin()}/auth/signup?invite=${encodeURIComponent(code)}`;
+}
 
 /** Codes are shown to people and typed in, so compare them loosely. */
 export function normalizeInviteCode(code: unknown): string {
@@ -26,7 +36,10 @@ export function normalizeInviteCode(code: unknown): string {
 export class InviteService {
   private readonly logger = new Logger(InviteService.name);
 
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly notifications: NotificationService,
+  ) {}
 
   // ── Platform admin ─────────────────────────────────────────────────────
 
@@ -72,7 +85,7 @@ export class InviteService {
       const created = await this.prisma.inviteCode.create({
         data: { code, tier, durationDays, maxUses, redeemBy, note: dto.note?.trim() || null },
       });
-      return this.view({ ...created, tenants: [] });
+      return this.view({ ...created, tenants: [], sends: [] });
     } catch (err) {
       if ((err as { code?: string }).code === 'P2002') {
         throw new BadRequestException('That code already exists. Pick another.');
@@ -89,9 +102,71 @@ export class InviteService {
           select: { id: true, name: true, slug: true, subscriptionTier: true, complimentaryUntil: true },
           orderBy: { createdAt: 'desc' },
         },
+        sends: {
+          orderBy: { createdAt: 'desc' },
+          take: 20,
+          include: { sentBy: { select: { email: true } } },
+        },
       },
     });
     return codes.map((c) => this.view(c));
+  }
+
+  /**
+   * Emails the invite to one person, with an optional note from the admin.
+   * Every attempt is recorded, including ones the mail provider refused, so the
+   * console shows who has been invited and whether it reached them.
+   */
+  async sendByEmail(id: bigint, dto: { email?: string; message?: string | null }, sentById: bigint | null) {
+    const email = String(dto?.email ?? '').trim().toLowerCase();
+    if (!EMAIL.test(email)) throw new BadRequestException('Enter a valid email address.');
+    const message = String(dto?.message ?? '').trim() || null;
+    if (message && message.length > MAX_MESSAGE) {
+      throw new BadRequestException(`Keep the message under ${MAX_MESSAGE} characters.`);
+    }
+
+    const existing = await this.prisma.inviteCode.findUnique({ where: { id } });
+    if (!existing) throw new NotFoundException('Invite code not found');
+    // An invite nobody can redeem would only disappoint whoever opens it.
+    const invite = await this.usable(existing.code);
+
+    const plan = invite.tier === 'CLINIC' ? 'Clinic' : 'Pro';
+    const deadline = invite.redeemBy
+      ? ` Use it by ${invite.redeemBy.toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'Africa/Lagos' })}.`
+      : '';
+    const body = [
+      message,
+      `You've been invited to Unclutter Desk, practice management for therapists. This invite gives your practice the ${plan} plan free for ${invite.durationDays} days.${deadline}`,
+      'Create your practice with the button below, or enter the code when you sign up.',
+    ]
+      .filter(Boolean)
+      .join('\n\n');
+
+    let delivered = false;
+    try {
+      const result = await this.notifications.sendEmail({
+        to: email,
+        type: 'platform.invite',
+        title: "You're invited to Unclutter Desk",
+        message: body,
+        code: invite.code,
+        codeLabel: 'Invite code',
+        link: inviteSignupLink(invite.code),
+        actionLabel: 'Create your practice',
+      });
+      delivered = result.success === true && !result.skipped;
+    } catch (err) {
+      this.logger.warn(`Invite ${invite.code} to ${email} failed: ${(err as Error).message}`);
+    }
+
+    const sent = await this.prisma.inviteSend.create({
+      data: { inviteCodeId: existing.id, email, message, delivered, sentById },
+    });
+    if (!delivered) {
+      throw new ServiceUnavailableException('The email could not be sent. Copy the invite link and share it another way.');
+    }
+    this.logger.log(`Invite ${invite.code} emailed to ${email}`);
+    return this.sendView({ ...sent, sentBy: null });
   }
 
   async setActive(id: bigint, isActive: boolean) {
@@ -226,6 +301,7 @@ export class InviteService {
     isActive: boolean;
     createdAt: Date;
     tenants: Array<{ id: bigint; name: string; slug: string; subscriptionTier: string; complimentaryUntil: Date | null }>;
+    sends: Array<Parameters<InviteService['sendView']>[0]>;
   }) {
     return {
       id: c.id.toString(),
@@ -245,6 +321,25 @@ export class InviteService {
         tier: t.subscriptionTier,
         complimentaryUntil: t.complimentaryUntil?.toISOString() ?? null,
       })),
+      sends: c.sends.map((send) => this.sendView(send)),
+    };
+  }
+
+  private sendView(s: {
+    id: bigint;
+    email: string;
+    message: string | null;
+    delivered: boolean;
+    createdAt: Date;
+    sentBy: { email: string } | null;
+  }) {
+    return {
+      id: s.id.toString(),
+      email: s.email,
+      message: s.message,
+      delivered: s.delivered,
+      sentBy: s.sentBy?.email ?? null,
+      createdAt: s.createdAt.toISOString(),
     };
   }
 }

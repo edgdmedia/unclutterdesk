@@ -28,6 +28,8 @@ export interface ChannelPayload {
   message: string;
   /** Rendered as a prominent code box (e.g. email verification codes). */
   code?: string;
+  /** Heading over the code box. Defaults to "Verification code". */
+  codeLabel?: string;
   link?: string;
   actionLabel?: string;
   data?: Record<string, unknown>;

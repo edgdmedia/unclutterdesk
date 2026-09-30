@@ -103,6 +103,15 @@ export class AdminController {
     return this.invites.create(dto ?? {});
   }
 
+  @Post('invites/:id/send')
+  @UseGuards(PlatformAdminGuard)
+  @ApiOperation({ summary: 'Email an invite code to someone, with an optional personal message' })
+  sendInvite(@Param('id') id: string, @Body() dto: { email?: string; message?: string }, @Req() req: any) {
+    if (!/^\d+$/.test(id)) throw new NotFoundException('Invite code not found');
+    const sentBy = req.user?.userId ? BigInt(req.user.userId) : null;
+    return this.invites.sendByEmail(BigInt(id), dto ?? {}, sentBy);
+  }
+
   @Patch('invites/:id')
   @UseGuards(PlatformAdminGuard)
   @ApiOperation({ summary: 'Switch an invite code off or back on' })
