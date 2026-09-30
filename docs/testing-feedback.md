@@ -47,16 +47,16 @@ A running log of what shows up in testing, what we decide about it, and when it'
 | ONB-03 | Onboarding | Setup step offers online payment and bank transfer | Feature | P1 | Fixed |
 | ONB-04 | Onboarding | Payout step says payments are processed by Paystack | UX | P2 | Fixed |
 | ONB-05 | Onboarding | No way to set a session as virtual or physical | Bug | | Open |
-| ONB-06 | Onboarding | No walkthrough after "Go to Dashboard" | Feature | | Open |
+| ONB-06 | Onboarding | No walkthrough after "Go to Dashboard" | Feature | | Ready |
 | SET-01 | Settings | Booking link picked during setup isn't saved, and can't be changed | Bug | | Open |
 | SET-02 | Settings | Booking subdomain should be a separate setting from the custom hostname | UX | | Open |
 | SET-03 | Settings | No custom hostname setup (add domain, DNS records, auto-configure) | Feature | | Open |
-| BKG-01 | Booking page | Layout is incoherent and doesn't work | UX | | Open |
+| BKG-01 | Booking page | Layout is incoherent and doesn't work | UX | | Discuss |
 | BKG-02 | Booking page | Practice logo never loads | Bug | | Open |
-| BKG-03 | Booking page | "Book now" should be a step-by-step wizard | UX | | Open |
-| BKG-04 | Booking page | Is a client's sign-in tied to one practice or shared across practices? | Question | | Open |
+| BKG-03 | Booking page | "Book now" should be a step-by-step wizard | UX | | Discuss |
+| BKG-04 | Booking page | Is a client's sign-in tied to one practice or shared across practices? | Question | | Ready |
 | BKG-05 | Booking page | Session format should come from what the practice offers for each slot | Bug | | Open |
-| BKG-06 | Booking page | Default intake and confidentiality form templates for every practice | Feature | | Open |
+| BKG-06 | Booking page | Default intake and confidentiality form templates for every practice | Feature | | Ready |
 | FRM-01 | Forms | Save forms as templates and optionally share them with other practices | Feature | | Open |
 
 ---
@@ -138,9 +138,9 @@ A running log of what shows up in testing, what we decide about it, and when it'
 - **Verified:**
 
 ### ONB-06 · No walkthrough after "Go to Dashboard"
-- **Type:** Feature · **Priority:** · **Status:** Open
+- **Type:** Feature · **Priority:** · **Status:** Ready
 - **Observed:** When the practice finishes setup and clicks **Go to Dashboard**, there's no basic walkthrough.
-- **Feedback / decision:**
+- **Feedback / decision:** The setup wizard already works as the checklist. What's needed is a guided walkthrough of the dashboard the first time a practice arrives, which can be replayed from the account menu (decided 30 Sep 2026). Plan Task 10.
 - **Fix:**
 - **Verified:**
 
@@ -170,9 +170,9 @@ A running log of what shows up in testing, what we decide about it, and when it'
 ## Client booking link / page
 
 ### BKG-01 · Booking page layout is incoherent
-- **Type:** UX · **Priority:** · **Status:** Open
+- **Type:** UX · **Priority:** · **Status:** Discuss
 - **Observed:** The design looks bad and doesn't work. There's empty space that serves no purpose, no visual coherence, and the elements don't work together.
-- **Feedback / decision:**
+- **Feedback / decision:** Approved as a step-by-step wizard (30 Sep 2026). The designs are coming from Claude Design, using the brief in `docs/design/booking-wizard-design-prompt.md`. Plan Task 9.
 - **Fix:**
 - **Verified:**
 
@@ -184,16 +184,16 @@ A running log of what shows up in testing, what we decide about it, and when it'
 - **Verified:**
 
 ### BKG-03 · "Book now" should be a step wizard
-- **Type:** UX · **Priority:** · **Status:** Open
+- **Type:** UX · **Priority:** · **Status:** Discuss
 - **Observed:** **Book now** shows everything at once. It should be a step-by-step wizard.
-- **Feedback / decision:**
+- **Feedback / decision:** Approved (30 Sep 2026): Service, then Time, then Your details, then Review and pay, then a confirmation screen. Waiting on the designs, then plan Task 9.
 - **Fix:**
 - **Verified:**
 
 ### BKG-04 · Is client sign-in tied to the practice?
-- **Type:** Question · **Priority:** · **Status:** Open
+- **Type:** Question · **Priority:** · **Status:** Ready
 - **Observed:** It's unclear whether a client's sign-in belongs to one practice, or whether one account can book with any practice and sign in everywhere.
-- **Feedback / decision:**
+- **Feedback / decision:** Keep one account per client (decided 30 Sep 2026). The client sees their sessions with whichever practice they're booking with, and each practice sees only what concerns it. This is already how the data works. The booking sign-in will say so in one line. Plan Task 8.
 - **Fix:**
 - **Verified:**
 
@@ -205,9 +205,9 @@ A running log of what shows up in testing, what we decide about it, and when it'
 - **Verified:**
 
 ### BKG-06 · Default intake and confidentiality forms
-- **Type:** Feature · **Priority:** · **Status:** Open
+- **Type:** Feature · **Priority:** · **Status:** Ready
 - **Observed:** Two forms matter: **Client intake** and **Confidentiality**. We still need to decide whether they're filled in at booking or after it. Every new practice should get a default template for both, which the practice can then edit.
-- **Feedback / decision:**
+- **Feedback / decision:** Every practice gets both forms by default and can edit the wording. Clients receive them after booking, to complete before the first session (decided 30 Sep 2026). Plan Task 11.
 - **Fix:**
 - **Verified:**
 
