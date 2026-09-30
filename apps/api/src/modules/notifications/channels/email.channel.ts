@@ -14,6 +14,19 @@ import {
  * logged instead of sent — see MailService). Renders a tenant-branded HTML
  * message so tenants can plug their own look-and-feel in.
  */
+/**
+ * Everything in the message is text: practice names, admins' personal notes
+ * and client names end up here, so none of it may be read as markup.
+ */
+export function escapeHtml(value: unknown): string {
+  return String(value ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
 @Injectable()
 export class EmailChannel implements NotificationChannel {
   readonly key: ChannelKey = 'email';
@@ -43,19 +56,20 @@ export class EmailChannel implements NotificationChannel {
 
   private render(payload: ChannelPayload): string {
     const brand = payload.brand;
-    const primary = brand?.primaryColor || '#0F3A53';
-    const accent = brand?.secondaryColor || '#E3B341';
+    const primary = escapeHtml(brand?.primaryColor || '#0F3A53');
+    const accent = escapeHtml(brand?.secondaryColor || '#E3B341');
+    const name = escapeHtml(brand?.practiceName || 'Unclutter Desk');
     const logo = brand?.logoUrl
-      ? `<img src="${brand.logoUrl}" alt="${brand.practiceName}" style="height:36px;margin-bottom:16px;" />`
-      : `<div style="font-size:18px;font-weight:700;">${brand?.practiceName || 'Unclutter Desk'}</div>`;
+      ? `<img src="${escapeHtml(brand.logoUrl)}" alt="${name}" style="height:36px;margin-bottom:16px;" />`
+      : `<div style="font-size:18px;font-weight:700;">${name}</div>`;
     const code = payload.code
       ? `<div style="margin:22px 0 4px;padding:20px;border-radius:14px;background:#F8FAFC;text-align:center;">
-          <div style="font-size:12px;letter-spacing:0.12em;color:#64748B;">VERIFICATION CODE</div>
-          <div style="margin-top:8px;font-size:34px;font-weight:800;letter-spacing:0.16em;color:${primary};">${payload.code}</div>
+          <div style="font-size:12px;letter-spacing:0.12em;color:#64748B;">${escapeHtml((payload.codeLabel || 'Verification code').toUpperCase())}</div>
+          <div style="margin-top:8px;font-size:34px;font-weight:800;letter-spacing:0.16em;color:${primary};">${escapeHtml(payload.code)}</div>
         </div>`
       : '';
     const link = payload.link
-      ? `<a href="${payload.link}" style="display:inline-block;margin-top:20px;padding:12px 28px;border-radius:10px;background:${primary};color:#FFFFFF;text-decoration:none;font-weight:700;">${payload.actionLabel || 'View'}</a>`
+      ? `<a href="${escapeHtml(payload.link)}" style="display:inline-block;margin-top:20px;padding:12px 28px;border-radius:10px;background:${primary};color:#FFFFFF;text-decoration:none;font-weight:700;">${escapeHtml(payload.actionLabel || 'View')}</a>`
       : '';
     const footer = [
       brand?.publicEmail ? brand.publicEmail : null,
@@ -63,6 +77,7 @@ export class EmailChannel implements NotificationChannel {
       brand?.practiceName ? `${brand.practiceName}` : 'Unclutter Desk',
     ]
       .filter(Boolean)
+      .map(escapeHtml)
       .join(' · ');
 
     return `<!DOCTYPE html>
@@ -71,8 +86,8 @@ export class EmailChannel implements NotificationChannel {
   <div style="max-width:560px;margin:0 auto;padding:32px 24px;">
     <div style="background:#FFFFFF;border-radius:20px;border:1px solid #E2E8F0;padding:28px;">
       ${logo}
-      <div style="font-size:22px;font-weight:700;color:#0F172A;">${payload.title}</div>
-      <div style="margin-top:12px;font-size:15px;line-height:1.7;color:#334155;white-space:pre-line;">${payload.message}</div>
+      <div style="font-size:22px;font-weight:700;color:#0F172A;">${escapeHtml(payload.title)}</div>
+      <div style="margin-top:12px;font-size:15px;line-height:1.7;color:#334155;white-space:pre-line;">${escapeHtml(payload.message)}</div>
       ${code}
       ${link}
       <div style="margin-top:28px;padding-top:20px;border-top:1px solid #E2E8F0;">

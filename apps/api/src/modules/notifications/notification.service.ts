@@ -47,6 +47,8 @@ export interface SendEmailInput {
   message: string;
   /** Rendered as a prominent code box (e.g. verification codes). */
   code?: string;
+  /** Heading over the code box. Defaults to "Verification code". */
+  codeLabel?: string;
   link?: string;
   actionLabel?: string;
   /** Present when a tenant exists — drives branding; absent for pre-tenant sends. */
@@ -176,6 +178,7 @@ export class NotificationService implements OnModuleInit, OnModuleDestroy {
         title: input.title,
         message: input.message,
         code: input.code,
+        codeLabel: input.codeLabel,
         link: input.link,
         actionLabel: input.actionLabel,
         brand,
