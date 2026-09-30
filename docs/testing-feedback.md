@@ -37,10 +37,11 @@ A running log of what shows up in testing, what we decide about it, and when it'
 
 | ID | Area | Item | Type | Pri | Status |
 |---|---|---|---|---|---|
-| ADM-01 | Admin | Share link: custom message, send or invite by email | Feature | | Open |
+| ADM-01 | Admin | Share link: custom message, send or invite by email | Feature | P1 | Fixed |
 | ADM-02 | Admin | Admin sidebar doesn't match the app sidebar (account dropdown, Back to Practice) | UX | | Open |
 | ADM-03 | Admin | Admin sign-in fields don't match the rest of the app | UX | P2 | Fixed |
 | NOT-01 | Notifications | Email branding has no logo | Bug | | Open |
+| NOT-02 | Notifications | Email template rendered free text as HTML | Bug | P0 | Fixed |
 | ONB-01 | Onboarding | Does Direct Payout create a Paystack subaccount automatically? (Yes. The step's copy is wrong) | Bug | P1 | Fixed |
 | ONB-02 | Onboarding | Can a practice bring its own Paystack keys? | Question | | Won't fix |
 | ONB-03 | Onboarding | Setup step offers online payment and bank transfer | Feature | P1 | Fixed |
@@ -63,10 +64,10 @@ A running log of what shows up in testing, what we decide about it, and when it'
 ## Admin
 
 ### ADM-01 · Share link: custom message, send or invite by email
-- **Type:** Feature · **Priority:** · **Status:** Open
+- **Type:** Feature · **Priority:** P1 · **Status:** Fixed
 - **Observed:** When the admin copies the link to share it, there's no option to add a custom message, send it to an email address, or invite someone by email.
-- **Feedback / decision:**
-- **Fix:**
+- **Feedback / decision:** Each invite code has an **Invite by email** form: an email address and an optional personal message (up to 1000 characters). The email carries the message, the signup link with the code filled in, the code, and the plan and number of free days. Every send is recorded (address, time, admin, delivered or not) and listed under the code with **Resend**. Only a live code can be sent. **Copy invite link** is still there for sharing elsewhere.
+- **Fix:** `d054ed3` on `dev`. Adds the `InviteSend` table (migration `20260930120000_invite_sends`). Covered by `invite.service.spec.ts` and `AdminInvitesPage.test.tsx`. Tested end to end locally with email in preview mode.
 - **Verified:**
 
 ### ADM-02 · Admin sidebar doesn't match the app sidebar
@@ -90,6 +91,13 @@ A running log of what shows up in testing, what we decide about it, and when it'
 - **Observed:** The email branding doesn't include the logo.
 - **Feedback / decision:**
 - **Fix:**
+- **Verified:**
+
+### NOT-02 · Email template rendered free text as HTML
+- **Type:** Bug · **Priority:** P0 · **Status:** Fixed
+- **Observed:** Found while building ADM-01. The shared email template put the title, message, practice name and links into the HTML without escaping them, so a practice name or note containing markup would have been rendered as HTML in the email.
+- **Feedback / decision:** Everything the template renders is now escaped, so all emails show it as plain text.
+- **Fix:** `d054ed3` on `dev`. Covered by `email.channel.spec.ts`.
 - **Verified:**
 
 ## Onboarding
