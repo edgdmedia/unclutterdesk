@@ -39,6 +39,7 @@ A running log of what shows up in testing, what we decide about it, and when it'
 |---|---|---|---|---|---|
 | ADM-01 | Admin | Share link: custom message, send or invite by email | Feature | | Open |
 | ADM-02 | Admin | Admin sidebar doesn't match the app sidebar (account dropdown, Back to Practice) | UX | | Open |
+| ADM-03 | Admin | Admin sign-in fields don't match the rest of the app | UX | P2 | Fixed |
 | NOT-01 | Notifications | Email branding has no logo | Bug | | Open |
 | ONB-01 | Onboarding | Does Direct Payout create a Paystack subaccount automatically? (Yes. The step's copy is wrong) | Bug | P1 | Fixed |
 | ONB-02 | Onboarding | Can a practice bring its own Paystack keys? | Question | | Won't fix |
@@ -73,6 +74,13 @@ A running log of what shows up in testing, what we decide about it, and when it'
 - **Observed:** The admin sidebar doesn't look or behave like the app sidebar. The biggest gap is the account dropdown, which should include **Back to Practice**.
 - **Feedback / decision:**
 - **Fix:**
+- **Verified:**
+
+### ADM-03 · Admin sign-in fields don't match the rest of the app
+- **Type:** UX · **Priority:** P2 · **Status:** Fixed
+- **Observed:** The fields on the admin sign-in page look different from the practice sign-in page: white fill, no fixed height, different label size and spacing.
+- **Feedback / decision:** The admin page built its own field boxes. It now uses the shared `AuthField`, so both sign-in pages share one field style.
+- **Fix:** see the commit "Admin sign-in uses the shared auth field" on `dev`. Checked in the browser: both pages have 52px fields, the same fill and 11.5px labels, and signing in still lands on `/admin`.
 - **Verified:**
 
 ## Notifications / Email

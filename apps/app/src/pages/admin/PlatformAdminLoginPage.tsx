@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { ArrowRight, Eye, EyeOff, Loader2, Lock, Mail, ShieldCheck } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
-import { authInputCls } from '../../components/AuthField';
+import { AuthField, authInputCls } from '../../components/AuthField';
 import { UnclutterMark } from '@unclutterdesk/ui';
 
 export function PlatformAdminLoginPage() {
@@ -55,11 +55,7 @@ export function PlatformAdminLoginPage() {
           </p>
 
           <form onSubmit={handleLogin} className="mt-[26px]">
-            <label className="block text-[12.5px] font-semibold text-[#475569] mb-1.5">
-              Email address
-            </label>
-            <div className="flex items-center gap-3 rounded-[14px] border border-[#E2E8F0] bg-white px-4 focus-within:border-[#0F3A53]">
-              <Mail className="h-[17px] w-[17px] text-[#94A3B8] flex-none" strokeWidth={2} />
+            <AuthField label="Email address" icon={<Mail className="h-[17px] w-[17px] text-[#94A3B8] flex-none" strokeWidth={2} />}>
               <input
                 type="email"
                 required
@@ -68,14 +64,27 @@ export function PlatformAdminLoginPage() {
                 placeholder="you@unclutterdesk.com"
                 className={authInputCls}
               />
-            </div>
+            </AuthField>
 
             <div className="mt-[18px]">
-              <label className="block text-[12.5px] font-semibold text-[#475569] mb-1.5">
-                Password
-              </label>
-              <div className="flex items-center gap-3 rounded-[14px] border border-[#E2E8F0] bg-white px-4 focus-within:border-[#0F3A53]">
-                <Lock className="h-[17px] w-[17px] text-[#94A3B8] flex-none" strokeWidth={2} />
+              <AuthField
+                label="Password"
+                icon={<Lock className="h-[17px] w-[17px] text-[#94A3B8] flex-none" strokeWidth={2} />}
+                trailing={
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword((v) => !v)}
+                    className="flex-none text-[#94A3B8] hover:text-[#475569] cursor-pointer"
+                    aria-label="Toggle password visibility"
+                  >
+                    {showPassword ? (
+                      <EyeOff className="h-[17px] w-[17px]" strokeWidth={2} />
+                    ) : (
+                      <Eye className="h-[17px] w-[17px]" strokeWidth={2} />
+                    )}
+                  </button>
+                }
+              >
                 <input
                   type={showPassword ? 'text' : 'password'}
                   required
@@ -84,23 +93,11 @@ export function PlatformAdminLoginPage() {
                   placeholder="Your password"
                   className={authInputCls}
                 />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword((v) => !v)}
-                  className="flex-none text-[#94A3B8] hover:text-[#475569] cursor-pointer"
-                  aria-label="Toggle password visibility"
-                >
-                  {showPassword ? (
-                    <EyeOff className="h-[17px] w-[17px]" strokeWidth={2} />
-                  ) : (
-                    <Eye className="h-[17px] w-[17px]" strokeWidth={2} />
-                  )}
-                </button>
-              </div>
+              </AuthField>
             </div>
 
             {error && (
-              <p className="mt-4 text-xs font-medium text-red-600 bg-red-50 rounded-[12px] px-3.5 py-2.5">
+              <p className="mt-4 rounded-[12px] bg-red-50 px-3.5 py-2.5 text-xs font-medium text-red-500">
                 {error}
               </p>
             )}
