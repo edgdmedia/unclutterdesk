@@ -1,10 +1,11 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { initialsOf } from '../../utils/initials';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { Check, Copy, ArrowRight, ArrowLeft, Loader2, Sparkles, Building2, Calendar, ShieldCheck, ExternalLink, Palette, Image, Mail, Phone, MapPin, Info, Globe, Upload, Settings } from 'lucide-react';
+import { Check, Copy, ArrowRight, ArrowLeft, Loader2, Sparkles, Building2, Calendar, ShieldCheck, ExternalLink, Palette, Image, Mail, Phone, MapPin, Info, Globe, Upload, Settings, CreditCard, Landmark } from 'lucide-react';
 import { UnclutterLockup, Eyebrow } from '@unclutterdesk/ui';
 import { useAuth } from '../../context/AuthContext';
 import { api, getBookingUrl } from '../../utils/apiClient';
+import { ManualPaymentFields, type ManualPaymentForm } from '../../components/payments/ManualPaymentSettingsCard';
 
 type SignupState = {
   practiceName?: string;
@@ -82,7 +83,7 @@ export function OnboardingWizardPage() {
     if (selectedPlan !== 'starter') {
       list.push({ key: 'subscription', label: 'Subscription', desc: 'Start your free trial' });
     }
-    list.push({ key: 'payout', label: 'Bank Payouts', desc: 'Direct 0% fee settlement' });
+    list.push({ key: 'payout', label: 'Client Payments', desc: 'Paystack or bank transfer' });
     list.push({ key: 'link', label: 'Complete', desc: 'Your practice is live' });
     return list;
   }, [isTherapist]);
@@ -132,6 +133,12 @@ export function OnboardingWizardPage() {
   const [accountName, setAccountName] = useState(saved?.accountName ?? '');
   const [accountResolving, setAccountResolving] = useState(false);
   const [accountResolved, setAccountResolved] = useState(false);
+
+  // Bank transfer settings live on the server, not in the draft: whether the
+  // plan allows them decides what this step can offer, and the fee it quotes.
+  const [transfer, setTransfer] = useState<{ enabled: boolean; onPlan: boolean; holdHours: number } | null>(null);
+  const [transferOn, setTransferOn] = useState(false);
+  const [transferForm, setTransferForm] = useState<ManualPaymentForm>({ bankName: '', accountName: '', accountNumber: '', instructions: '' });
 
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -192,6 +199,31 @@ export function OnboardingWizardPage() {
     logoUrl, welcomeMessage, publicEmail, publicPhone, city, address, category, daysOn, rate,
     cancellationHours, bankCode, bankName, accountNumber, accountName
   ]);
+
+  useEffect(() => {
+    let cancelled = false;
+    api
+      .get<{ enabled: boolean; onPlan: boolean; holdHours: number; details: Partial<ManualPaymentForm> | null }>('/v1/consult/manual-payments/settings')
+      .then((s) => {
+        if (cancelled) return;
+        setTransfer({ enabled: s.enabled, onPlan: s.onPlan, holdHours: s.holdHours });
+        setTransferOn(s.enabled);
+        if (s.details) {
+          setTransferForm({
+            bankName: s.details.bankName ?? '',
+            accountName: s.details.accountName ?? '',
+            accountNumber: s.details.accountNumber ?? '',
+            instructions: s.details.instructions ?? '',
+          });
+        }
+      })
+      .catch(() => {
+        if (!cancelled) setTransfer(null);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const handleLogoFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -427,6 +459,35 @@ export function OnboardingWizardPage() {
     }
   }
 
+  function toggleTransfer(on: boolean) {
+    setTransferOn(on);
+    // Most practices take transfers into the account Paystack pays out to, so
+    // start from that rather than an empty form.
+    if (on && !transferForm.accountNumber && !transferForm.accountName) {
+      setTransferForm((f) => ({ ...f, bankName, accountNumber: accountNumber.trim(), accountName: accountName.trim() }));
+    }
+  }
+
+  async function saveTransferSettings(): Promise<boolean> {
+    if (!transfer?.onPlan) return true;
+    if (!transferOn && !transfer.enabled) return true;
+    setSaving(true);
+    setError(null);
+    try {
+      const next = await api.patch<{ enabled: boolean; onPlan: boolean; holdHours: number }>('/v1/consult/manual-payments/settings', {
+        enabled: transferOn,
+        details: transferForm,
+      });
+      setTransfer({ enabled: next.enabled, onPlan: next.onPlan, holdHours: next.holdHours });
+      return true;
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Unable to save bank transfer payments.');
+      return false;
+    } finally {
+      setSaving(false);
+    }
+  }
+
   const goNext = async () => {
     if (stepKey === 'details') {
       if (!(await saveDetails())) return;
@@ -439,6 +500,7 @@ export function OnboardingWizardPage() {
       // paid plan sends the practice to Paystack from billing settings.
     } else if (stepKey === 'payout') {
       if (!(await savePayoutAccount())) return;
+      if (!(await saveTransferSettings())) return;
     }
     setStepIndex((i) => i + 1);
   };
@@ -928,20 +990,38 @@ export function OnboardingWizardPage() {
             )}
 
             {stepKey === 'payout' && (
-              <div className="flex-1 flex flex-col max-w-[700px] mx-auto w-full space-y-8 py-4">
+              <div className="flex-1 flex flex-col max-w-[700px] mx-auto w-full space-y-6 py-4">
                 <div className="text-center space-y-1">
                   <span className="os-eyebrow block">STEP {steps.findIndex((s) => s.key === 'payout') + 1} OF {steps.length}</span>
-                  <h2 className="text-[28px] font-bold tracking-tight text-[#0F172A]">Direct Bank Payout Account</h2>
+                  <h2 className="text-[28px] font-bold tracking-tight text-[#0F172A]">How clients pay</h2>
                   <p className="text-xs sm:text-sm text-[#64748B] font-medium leading-relaxed">
-                    Client booking payments are settled directly into your Nigerian bank account with 0% platform transaction fees.
+                    Turn on one or both. You can skip this and set it up later in Settings → Payouts.
                   </p>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-start bg-white p-8 rounded-[24px] border border-[#E2E8F0]">
-                  <div className="space-y-5">
+                <section className="bg-white p-5 sm:p-8 rounded-[24px] border border-[#E2E8F0] space-y-6">
+                  <div className="flex items-start gap-3">
+                    <CreditCard className="h-5 w-5 text-[#0F3A53] shrink-0 mt-0.5" />
+                    <div className="space-y-1">
+                      <h3 className="text-[16px] font-bold text-[#0F172A]">Online with Paystack</h3>
+                      <p className="text-xs text-[#64748B] leading-relaxed">
+                        Clients pay when they book. Paystack pays each payment into this account on its settlement schedule.
+                      </p>
+                      {transfer && (
+                        <p className="text-xs font-semibold text-[#475569] leading-relaxed">
+                          {transfer.onPlan
+                            ? "No platform fee on your plan. Paystack's own processing fee applies to each payment."
+                            : "On the Starter plan, a 5% platform fee is taken from each online payment. Paystack's own processing fee also applies."}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-5 items-start">
                     <div>
-                      <label className={labelCls}>Select Settlement Bank</label>
+                      <label htmlFor="payout-bank" className={labelCls}>Settlement bank</label>
                       <select
+                        id="payout-bank"
                         value={bankCode}
                         onChange={(e) => {
                           const selected = NIGERIAN_BANKS.find((b) => b.code === e.target.value);
@@ -959,27 +1039,27 @@ export function OnboardingWizardPage() {
                     </div>
 
                     <div>
-                      <label className={labelCls}>NUBAN Account Number (10 Digits)</label>
+                      <label htmlFor="payout-account-number" className={labelCls}>Account number</label>
                       <input
+                        id="payout-account-number"
                         type="text"
                         inputMode="numeric"
                         maxLength={10}
                         value={accountNumber}
                         onChange={(e) => setAccountNumber(e.target.value.replace(/[^0-9]/g, ''))}
-                        placeholder="0123456789"
+                        placeholder="10 digits"
                         className={`${inputCls} h-[50px] font-mono text-[15px]`}
                       />
                     </div>
-                  </div>
 
-                  <div className="space-y-5">
-                    <div>
-                      <label className={labelCls}>
-                        Account Holder Name
+                    <div className="md:col-span-2">
+                      <div className="flex items-center mb-1.5">
+                        <label htmlFor="payout-account-name" className={`${labelCls} mb-0`}>Account holder name</label>
                         {accountResolving && <span className="ml-2 inline-flex items-center text-[10px] text-slate-500 font-bold uppercase"><Loader2 className="h-3 w-3 animate-spin mr-1"/> Verifying...</span>}
                         {accountResolved && !accountResolving && <span className="ml-2 inline-flex items-center text-[10px] text-emerald-600 font-bold uppercase"><Check className="h-3 w-3 mr-1"/> Verified</span>}
-                      </label>
+                      </div>
                       <input
+                        id="payout-account-name"
                         type="text"
                         value={accountName}
                         onChange={(e) => setAccountName(e.target.value)}
@@ -991,15 +1071,43 @@ export function OnboardingWizardPage() {
                         {accountResolved ? "We automatically retrieved this from your bank." : "Name registered on your bank account for verification."}
                       </p>
                     </div>
+                  </div>
 
-                    <div className="p-4 rounded-[18px] bg-emerald-50 border border-emerald-200 flex items-center gap-3 text-emerald-900 mt-2">
-                      <ShieldCheck className="h-5 w-5 text-emerald-600 shrink-0" />
-                      <p className="text-xs font-medium leading-relaxed">
-                        Payouts are deposited automatically within 24 hours after completed client telehealth sessions.
-                      </p>
+                  <p className="flex items-center gap-2 text-[11px] font-semibold text-[#64748B]">
+                    <ShieldCheck className="h-4 w-4 text-emerald-600 shrink-0" />
+                    Payments processed securely by Paystack.
+                  </p>
+                </section>
+
+                <section className="bg-white p-5 sm:p-8 rounded-[24px] border border-[#E2E8F0] space-y-5">
+                  <div className="flex items-start gap-3">
+                    <Landmark className="h-5 w-5 text-[#0F3A53] shrink-0 mt-0.5" />
+                    <div className="space-y-1 flex-1">
+                      <h3 className="text-[16px] font-bold text-[#0F172A]">Bank transfer</h3>
+                      {transfer?.onPlan ? (
+                        <>
+                          <label className="flex items-center gap-2 text-sm font-semibold text-[#0F172A] cursor-pointer">
+                            <input
+                              type="checkbox"
+                              checked={transferOn}
+                              onChange={(e) => toggleTransfer(e.target.checked)}
+                              className="h-4 w-4 accent-[#0F3A53]"
+                            />
+                            Let clients pay by bank transfer
+                          </label>
+                          <p className="text-xs text-[#64748B] leading-relaxed">
+                            Their time is held for up to {transfer.holdHours} hours until you mark the transfer as paid.
+                          </p>
+                        </>
+                      ) : (
+                        <p className="text-xs text-[#64748B] leading-relaxed">
+                          Bank transfer is part of the Pro and Clinic plans. You can turn it on later in Settings → Payouts.
+                        </p>
+                      )}
                     </div>
                   </div>
-                </div>
+                  {transfer?.onPlan && transferOn && <ManualPaymentFields value={transferForm} onChange={setTransferForm} />}
+                </section>
 
                 {error && <p className="text-xs font-semibold text-red-600 bg-red-50 border border-red-200 rounded-[14px] px-4 py-3">{error}</p>}
               </div>
