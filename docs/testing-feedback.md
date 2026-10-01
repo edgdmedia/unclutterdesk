@@ -50,7 +50,7 @@ A running log of what shows up in testing, what we decide about it, and when it'
 | ONB-03 | Onboarding | Setup step offers online payment and bank transfer | Feature | P1 | Fixed |
 | ONB-04 | Onboarding | Payout step says payments are processed by Paystack | UX | P2 | Fixed |
 | ONB-05 | Onboarding | No way to set a session as virtual or physical | Bug | | Discuss |
-| ONB-06 | Onboarding | No walkthrough after "Go to Dashboard" | Feature | | Ready |
+| ONB-06 | Onboarding | No walkthrough after "Go to Dashboard" | Feature | | Fixed |
 | ONB-07 | Onboarding | Continue in setup fails with "This endpoint requires a practice profile" | Bug | P0 | Fixed |
 | ONB-08 | Onboarding | Setup doesn't ask for the practice's preferred video platform | Feature | P2 | Open |
 | SET-01 | Settings | Booking link picked during setup isn't saved, and can't be changed | Bug | P1 | Fixed |
@@ -60,7 +60,7 @@ A running log of what shows up in testing, what we decide about it, and when it'
 | SET-05 | Settings | After setup there's nowhere to change the logo or booking link | Bug | P1 | Fixed |
 | SET-06 | Settings | No way to say if the practice offers online, in person or both, or to manage several locations | Feature | P1 | Discuss |
 | SET-07 | Settings | Services can't have a different price online and in person | Feature | P1 | Discuss |
-| SET-08 | Settings | Uploading a profile photo or practice logo shows no progress or result | UX | P2 | Open |
+| SET-08 | Settings | Uploading a profile photo or practice logo shows no progress or result | UX | P2 | Fixed |
 | BKG-01 | Booking page | Layout is incoherent and doesn't work | UX | | Fixed |
 | BKG-02 | Booking page | Practice logo never loads | Bug | P1 | Fixed |
 | BKG-03 | Booking page | "Book now" should be a step-by-step wizard | UX | | Fixed |
@@ -177,8 +177,8 @@ A running log of what shows up in testing, what we decide about it, and when it'
 - **Type:** Feature · **Priority:** · **Status:** Ready
 - **Observed:** When the practice finishes setup and clicks **Go to Dashboard**, there's no basic walkthrough.
 - **Feedback / decision:** The setup wizard already works as the checklist. What's needed is a guided walkthrough of the dashboard the first time a practice arrives, which can be replayed from the account menu (decided 30 Sep 2026). Plan Task 10.
-- **Fix:**
-- **Verified:**
+- **Fix:** `af7c4fc`–`180d01f` on `opencode/walkthrough-uploads`. `Profile.tourCompletedAt` (migration `20261002090000_profile_tour`) travels with the signed-in profile; `POST /v1/auth/me/tour-complete` stamps it once. A shared `Tour` in the design system walks seven anchored stops (booking link, Sessions, Clients, Availability, Forms, Payouts, account menu); hidden anchors are skipped, so the phone gets the short version with a bottom sheet. **Take the tour** in the account menu replays it. Covered by `Tour.test.tsx`, `DashboardTour.test.tsx`, `tour.spec.ts`.
+- **Verified:** Browser check on the worktree: all seven stops walked at 1280px with each highlight on its element (sidebar auto-scrolls), and at 390px the tour replays from the account menu with a bottom sheet, skipping the hidden anchors; `tourCompletedAt` lands in the DB and the tour stays quiet after.
 
 ### ONB-07 · Continue in setup fails with "This endpoint requires a practice profile"
 - **Type:** Bug · **Priority:** P0 · **Status:** Fixed
@@ -249,8 +249,8 @@ A running log of what shows up in testing, what we decide about it, and when it'
 - **Type:** UX · **Priority:** P2 · **Status:** Open
 - **Observed:** Uploading a profile photo or practice logo gives no sign it's working, finished or failed.
 - **Feedback / decision:** Proposed: one shared image upload control (the logo field from SET-04/05 extended) with a preparing/uploading state, a preview, a clear error when the file is refused, and a confirmation once saved. Use it for both the practice logo and profile photos.
-- **Fix:**
-- **Verified:**
+- **Fix:** `b4cab4e`–`71a7449` on `opencode/walkthrough-uploads`. One `ImageField` (preparing / saving / saved / error, previous image restored on failure) backs both the logo field and the dashboard's profile photo; the photo now posts to `/v1/consult/therapist/profile/avatar`, which validates like the logo (`cleanImageUrl`) and accepts clearing. Covered by `ImageField.test.tsx`, `DashboardProfilePhoto.test.tsx`, `therapist-avatar.spec.ts`.
+- **Verified:** Browser check on the worktree (ports 3299/5273): a chosen photo shows Saving… → Saved and survives a reload; the account-menu avatar refreshes.
 
 ## Client booking link / page
 
