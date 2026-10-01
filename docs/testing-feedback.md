@@ -42,6 +42,8 @@ A running log of what shows up in testing, what we decide about it, and when it'
 | ADM-03 | Admin | Admin sign-in fields don't match the rest of the app | UX | P2 | Fixed |
 | NOT-01 | Notifications | Email branding has no logo | Bug | P1 | Fixed |
 | NOT-02 | Notifications | Email template rendered free text as HTML | Bug | P0 | Fixed |
+| NOT-03 | Notifications | Emails show the sender as no-r...@unclutterdesk.com, not the practice or Unclutter Desk | Bug | P1 | Open |
+| NOT-04 | Notifications | "Pay to confirm" email already gives the join link, and points to a payment link that isn't in it | Bug | P1 | Open |
 | ONB-01 | Onboarding | Does Direct Payout create a Paystack subaccount automatically? (Yes. The step's copy is wrong) | Bug | P1 | Fixed |
 | ONB-02 | Onboarding | Can a practice bring its own Paystack keys? | Question | | Won't fix |
 | ONB-03 | Onboarding | Setup step offers online payment and bank transfer | Feature | P1 | Fixed |
@@ -106,6 +108,20 @@ A running log of what shows up in testing, what we decide about it, and when it'
 - **Observed:** Found while building ADM-01. The shared email template put the title, message, practice name and links into the HTML without escaping them, so a practice name or note containing markup would have been rendered as HTML in the email.
 - **Feedback / decision:** Everything the template renders is now escaped, so all emails show it as plain text.
 - **Fix:** `d054ed3` on `dev`. Covered by `email.channel.spec.ts`.
+- **Verified:**
+
+### NOT-03 · Sender shows as no-r...@unclutterdesk.com
+- **Type:** Bug · **Priority:** P1 · **Status:** Open
+- **Observed:** Booking emails arrive from "no-r...@unclutterdesk.com" in the inbox list, not "EDGD Media" (the practice) or "Unclutter Desk".
+- **Feedback / decision:** To investigate. The code does pass a display name (the practice's name, else `SMTP_FROM_NAME`, else "Unclutter Desk"; `mail.service.ts`), but locally mail goes through Gmail SMTP with `SMTP_FROM` set and `SMTP_FROM_NAME` not set. Gmail rewrites or ignores the From display name when it isn't the signed-in account or a verified "Send mail as" alias. Check what reaches the inbox, and whether production (Resend with a verified domain) shows the name correctly before changing code.
+- **Fix:**
+- **Verified:**
+
+### NOT-04 · "Pay to confirm" email already gives the join link
+- **Type:** Bug · **Priority:** P1 · **Status:** Open
+- **Observed:** After booking (before paying), the email says "Almost there — pay to confirm your session… Join link: https://meet.jit.si/… Your payment link is on the confirmation page." So it hands out the session link before payment, and points to a payment link that isn't in the email.
+- **Feedback / decision:** One email (`consult.service.ts` `createBooking`, type `bookings.confirmed`) is used for both paid and unpaid bookings. Proposed: while payment is pending, the email has no join link and its button is "Pay ₦X to confirm" (the existing pay link for the booking); bank-transfer holds get the bank details, reference and hold deadline instead. The join link goes out only in the "Your session is booked" email sent when payment is confirmed (by the webhook, the pop-up confirm, or staff marking a transfer paid). Related: BKG-09 (unpaid bookings never expire).
+- **Fix:**
 - **Verified:**
 
 ## Onboarding
