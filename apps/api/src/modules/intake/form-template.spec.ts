@@ -77,6 +77,13 @@ describe('form templates', () => {
     await expect(service.saveFromForm(MINE, 9n, 10n, { share: false, anonymous: false })).rejects.toBeInstanceOf(BadRequestException);
   });
 
+  it("refuses a built-in scored assessment, which would lose its scoring as a copy", async () => {
+    const { service, prisma } = make();
+    prisma.universalForm.findFirst.mockResolvedValue({ id: 11n, tenantId: MINE, title: 'PHQ-9', targetType: 'ASSESSMENT', systemKey: 'phq_9', schemaJson: questions });
+    await expect(service.saveFromForm(MINE, 9n, 11n, { share: true, anonymous: false })).rejects.toThrow(/built-in/i);
+    expect(prisma.formTemplate.create).not.toHaveBeenCalled();
+  });
+
   it('saving the same form twice gives two separate templates', async () => {
     const { service, prisma } = make();
     await service.saveFromForm(MINE, 9n, 10n, { share: false, anonymous: false });

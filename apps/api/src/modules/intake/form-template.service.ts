@@ -64,6 +64,8 @@ export class FormTemplateService {
   async saveFromForm(tenantId: bigint, profileId: bigint, formId: bigint, opts: { share: boolean; anonymous: boolean }) {
     const form = await this.prisma.universalForm.findFirst({ where: { id: formId, tenantId } });
     if (!form) throw new NotFoundException('Form not found');
+    // A copy would drop the scoring that makes a built-in assessment valid.
+    if (form.systemKey) throw new BadRequestException("Built-in assessments can't be saved as templates.");
     if (!Array.isArray(form.schemaJson) || form.schemaJson.length === 0) {
       throw new BadRequestException('Add at least one question before saving this as a template.');
     }
