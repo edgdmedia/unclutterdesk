@@ -96,6 +96,7 @@ model Tenant {
   discountCodes           DiscountCode[]
   pendingInvites          ConsultPendingInvite[]
   universalForms          UniversalForm[]
+  formTemplates           FormTemplate[]
   universalSubmissions    UniversalFormSubmission[]
   clinicalNotes           ClinicalNote[]
   bankSubaccount          BankSubaccount?
@@ -422,6 +423,30 @@ model UniversalForm {
   @@index([tenantId, targetType])
 }
 
+/// FRM-01: a frozen copy of a practice's form that can be reused, and shared
+/// with every practice once a platform admin approves it.
+model FormTemplate {
+  id                 BigInt   @id @default(autoincrement())
+  tenantId           BigInt
+  sourceFormId       BigInt?
+  createdByProfileId BigInt?
+  title              String
+  description        String?
+  targetType         String   @default("INTAKE")
+  schemaJson         Json
+  /// "PRIVATE" (this practice only), "PENDING", "APPROVED", "DECLINED"
+  shareStatus        String   @default("PRIVATE") @db.VarChar(20)
+  anonymous          Boolean  @default(false)
+  timesUsed          Int      @default(0)
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+  @@index([shareStatus])
+}
+
 model UniversalFormSubmission {
   id              BigInt    @id @default(autoincrement())
   tenantId        BigInt
@@ -711,11 +736,13 @@ model PlatformRequest {
   id                   BigInt   @id @default(autoincrement())
   tenantId             BigInt
   requestedByProfileId BigInt?
-  type                 String   @db.VarChar(20) // "ASSESSMENT", "FEATURE", "SERVICE", "FEEDBACK", "OTHER"
+  type                 String   @db.VarChar(20) // "ASSESSMENT", "FEATURE", "SERVICE", "FEEDBACK", "TEMPLATE", "OTHER"
   subject              String   @db.VarChar(160)
   details              String?
   status               String   @default("OPEN") @db.VarChar(20) // "OPEN", "PLANNED", "DONE", "DECLINED"
   adminNote            String?
+  /// FRM-01: the shared form template this request reviews.
+  formTemplateId       BigInt?
   createdAt            DateTime @default(now())
   updatedAt            DateTime @updatedAt
 
