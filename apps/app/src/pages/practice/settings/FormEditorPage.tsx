@@ -3,6 +3,7 @@ import { Link, useNavigate, useParams } from 'react-router-dom';
 import { ArrowLeft, GripVertical, Trash2, Plus } from 'lucide-react';
 import { Eyebrow, useToast } from '@unclutterdesk/ui';
 import { api } from '../../../utils/apiClient';
+import { SaveAsTemplateDialog } from './SaveAsTemplateDialog';
 
 type Question = {
   id: string;
@@ -54,6 +55,7 @@ export function FormEditorPage() {
 
   const [loading, setLoading] = useState(!isNew);
   const [saving, setSaving] = useState(false);
+  const [templateOpen, setTemplateOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [formTitle, setFormTitle] = useState('Untitled form');
   const [description, setDescription] = useState('');
@@ -211,6 +213,16 @@ export function FormEditorPage() {
             <span className="h-2 w-2 rounded-full bg-[#E3B341]" />
             <span>{saving ? 'Saving...' : `${isSystemTemplate ? 'System template' : isNew ? 'New' : 'Live'} · ${questions.length} questions`}</span>
           </span>
+          {/* FRM-01: only a saved custom form; system assessments stay locked. */}
+          {!isNew && !isSystemTemplate ? (
+            <button
+              type="button"
+              onClick={() => setTemplateOpen(true)}
+              className="h-[40px] px-4 rounded-[14px] border border-[#E2E8F0] bg-white text-[#0F172A] font-bold text-xs cursor-pointer"
+            >
+              Save as template
+            </button>
+          ) : null}
           <button
             type="button"
             onClick={() => void handleSave()}
@@ -218,7 +230,7 @@ export function FormEditorPage() {
             className="os-brand-btn h-[40px] px-5 rounded-[14px] font-bold text-xs cursor-pointer disabled:opacity-60"
             style={{ backgroundColor: primaryColor }}
           >
-            {saving ? 'Saving form...' : isSystemTemplate ? 'Save activation state' : 'Save form template'}
+            {saving ? 'Saving form...' : isSystemTemplate ? 'Save activation state' : 'Save form'}
           </button>
         </div>
       </header>
@@ -421,6 +433,7 @@ export function FormEditorPage() {
           </div>
         </div>
       </main>
+      {templateOpen && id ? <SaveAsTemplateDialog formId={id} onClose={() => setTemplateOpen(false)} /> : null}
     </div>
   );
 }
