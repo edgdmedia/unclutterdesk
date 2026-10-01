@@ -207,6 +207,15 @@ export class AuthController {
     return { ...result, csrfToken };
   }
 
+  @Permissions('any.authenticated')
+  @Post('me/tour-complete')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @ApiBearerAuth('access-token')
+  @ApiOperation({ summary: 'Mark the dashboard walkthrough as taken for this person' })
+  async completeTour(@Req() req: any) {
+    return this.authService.completeTour(BigInt(req.user.profileId || req.user.userId));
+  }
+
   // Staff only: clients never hold platform roles, so they get no route here.
   @Permissions('practice.staff')
   @Post('switch/admin')
