@@ -61,7 +61,7 @@ describe('form templates', () => {
     const { service, prisma } = make();
     await service.saveFromForm(MINE, 9n, 10n, { share: true, anonymous: true });
     expect(prisma.formTemplate.create.mock.calls[0][0].data).toMatchObject({ shareStatus: 'PENDING', anonymous: true });
-    expect(prisma.platformRequest.create.mock.calls[0][0].data).toMatchObject({ tenantId: MINE, type: 'TEMPLATE', formTemplateId: 50n });
+    expect(prisma.platformRequest.create.mock.calls[0][0].data).toMatchObject({ tenantId: MINE, type: 'TEMPLATE', subject: 'Sleep check', formTemplateId: 50n });
   });
 
   it("refuses to template another practice's form", async () => {

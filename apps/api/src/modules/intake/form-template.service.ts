@@ -87,7 +87,7 @@ export class FormTemplateService {
           tenantId,
           requestedByProfileId: profileId,
           type: 'TEMPLATE',
-          subject: `Share form template: ${form.title}`.slice(0, 160),
+          subject: form.title.slice(0, 160),
           formTemplateId: template.id,
         },
       });

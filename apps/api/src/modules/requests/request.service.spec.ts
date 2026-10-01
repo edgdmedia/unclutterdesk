@@ -46,6 +46,16 @@ describe('requests from practices', () => {
     await expect(service.update(4n, { status: 'done' }, { templateReview: true })).resolves.toMatchObject({ status: 'DONE' });
   });
 
+  it('tells a practice its template was approved or not, in those words', async () => {
+    const template = { ...existing, type: 'TEMPLATE', subject: 'Telehealth Consent', formTemplateId: 50n };
+    const approved = setup(template);
+    await approved.service.update(4n, { status: 'DONE', adminNote: 'Approved.' }, { templateReview: true });
+    expect(approved.notifications.notify.mock.calls[0][0].title).toBe('Form template "Telehealth Consent" is approved');
+    const declined = setup(template);
+    await declined.service.update(4n, { status: 'DECLINED', adminNote: 'Needs consent.' }, { templateReview: true });
+    expect(declined.notifications.notify.mock.calls[0][0].title).toBe('Form template "Telehealth Consent" is not approved');
+  });
+
   it('needs a known type and a title', async () => {
     const { service } = setup();
     await expect(service.create(1n, 2n, { type: 'SHOPPING', subject: 'x y' })).rejects.toThrow(/what kind/);

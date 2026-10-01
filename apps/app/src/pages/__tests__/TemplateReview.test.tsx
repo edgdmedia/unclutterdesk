@@ -22,7 +22,7 @@ const { RequestsPage } = await import('../practice/RequestsPage');
 const templateRow = {
   id: '30',
   type: 'TEMPLATE',
-  subject: 'Share form template: Sleep check',
+  subject: 'Sleep check',
   details: null,
   status: 'OPEN',
   adminNote: null,
@@ -59,7 +59,7 @@ afterEach(cleanup);
 describe('reviewing shared templates', () => {
   it('a template request offers review, not the generic status buttons', async () => {
     renderAdmin();
-    const card = (await screen.findByText('Share form template: Sleep check')).closest('[data-request]') as HTMLElement;
+    const card = (await screen.findByText('Sleep check')).closest('[data-request]') as HTMLElement;
     expect(within(card).getByRole('button', { name: /approve/i })).toBeTruthy();
     expect(within(card).getByRole('button', { name: /decline/i })).toBeTruthy();
     expect(within(card).queryByRole('button', { name: /planned/i })).toBeNull();
@@ -69,14 +69,14 @@ describe('reviewing shared templates', () => {
 
   it('approving sends the decision', async () => {
     renderAdmin();
-    const card = (await screen.findByText('Share form template: Sleep check')).closest('[data-request]') as HTMLElement;
+    const card = (await screen.findByText('Sleep check')).closest('[data-request]') as HTMLElement;
     fireEvent.click(within(card).getByRole('button', { name: /approve/i }));
     await waitFor(() => expect(post).toHaveBeenCalledWith('/v1/admin/templates/4/review', { decision: 'APPROVED' }));
   });
 
   it('declining sends the note for the practice', async () => {
     renderAdmin();
-    const card = (await screen.findByText('Share form template: Sleep check')).closest('[data-request]') as HTMLElement;
+    const card = (await screen.findByText('Sleep check')).closest('[data-request]') as HTMLElement;
     fireEvent.change(within(card).getByPlaceholderText(/note for the practice/i), { target: { value: 'Needs a consent question.' } });
     fireEvent.click(within(card).getByRole('button', { name: /decline/i }));
     await waitFor(() =>
@@ -86,7 +86,7 @@ describe('reviewing shared templates', () => {
 
   it('previews the questions and the real practice', async () => {
     renderAdmin();
-    const card = (await screen.findByText('Share form template: Sleep check')).closest('[data-request]') as HTMLElement;
+    const card = (await screen.findByText('Sleep check')).closest('[data-request]') as HTMLElement;
     fireEvent.click(within(card).getByRole('button', { name: /preview/i }));
     const dialog = await screen.findByRole('dialog');
     expect(within(dialog).getByText(/How are you sleeping\?/)).toBeTruthy();

@@ -17,6 +17,8 @@ const TYPE_LABEL: Record<RequestType, string> = {
 };
 
 const STATUS_LABEL: Record<string, string> = { OPEN: 'received', PLANNED: 'planned', DONE: 'done', DECLINED: 'declined' };
+/** A template's review reads as a decision, not as work done. */
+const TEMPLATE_STATUS_LABEL: Record<string, string> = { ...STATUS_LABEL, DONE: 'approved', DECLINED: 'not approved' };
 
 /**
  * Requests from a practice to the platform: an assessment to add, a feature,
@@ -112,7 +114,7 @@ export class RequestService {
           tenantId: existing.tenantId,
           profileIds: [existing.requestedByProfileId],
           type: 'requests.updated',
-          title: `${TYPE_LABEL[existing.type as RequestType] ?? 'Request'} "${existing.subject}" is ${STATUS_LABEL[status]}`,
+          title: `${TYPE_LABEL[existing.type as RequestType] ?? 'Request'} "${existing.subject}" is ${(existing.type === 'TEMPLATE' ? TEMPLATE_STATUS_LABEL : STATUS_LABEL)[status]}`,
           message: updated.adminNote ?? 'Thank you for letting us know.',
           link: '/dashboard/requests',
           actionLabel: 'View requests',
