@@ -94,9 +94,6 @@ export function ClientAuthPanel({ onDone }: { onDone: () => void }) {
           Forgotten it? <a href="/forgot-password" className="font-bold underline">Reset your password</a>
         </p>
       ) : null}
-      <p className="text-[12px] text-[#64748B]">
-        Use the same account with any practice on Unclutter Desk. Each practice only sees its own records.
-      </p>
     </form>
   );
 }

@@ -10,9 +10,9 @@ const { initialState, wizardReducer } = await import('../bookingWizard');
 const service = { id: '2', title: 'Individual therapy', durationMinutes: 50, priceKobo: '3500000' };
 const slot = { id: 't1', serviceId: null, therapistName: 'Sarah Smith', startsAt: '2026-10-06T10:30:00Z', endsAt: '', channel: 'VIDEO' };
 
-function Harness({ bankTransfer = true, start = {} }: { bankTransfer?: boolean; start?: Record<string, unknown> }) {
+function Harness({ bankTransfer = true, start = {}, showSummary = true }: { bankTransfer?: boolean; start?: Record<string, unknown>; showSummary?: boolean }) {
   const [state, dispatch] = useReducer(wizardReducer, { ...initialState({}), serviceId: '2', slotId: 't1', step: 4, ...start } as any);
-  return <ReviewPayStep service={service} slot={slot} state={state} dispatch={dispatch} bankTransfer={bankTransfer} tenantId="27" cancellationHours={24} />;
+  return <ReviewPayStep service={service} slot={slot} state={state} dispatch={dispatch} bankTransfer={bankTransfer} tenantId="27" cancellationHours={24} showSummary={showSummary} />;
 }
 
 beforeEach(() => post.mockReset());
@@ -63,5 +63,14 @@ describe('ReviewPayStep', () => {
   it("says so when the payment didn't go through", () => {
     renderWithApp(<Harness start={{ paymentStatus: 'failed' }} />);
     expect(screen.getByText("Your payment didn't go through")).toBeTruthy();
+  });
+
+  it('leaves the summary to the side card on desktop, keeping the discount and payment choice', () => {
+    renderWithApp(<Harness showSummary={false} />);
+    expect(screen.queryByText('Individual therapy · 50 min')).toBeNull();
+    expect(screen.getByRole('button', { name: /Have a discount code/ })).toBeTruthy();
+    expect(screen.getByRole('radio', { name: /Pay online/ })).toBeTruthy();
+    // The side card already states the cancellation policy.
+    expect(screen.queryByText('Free cancellation up to 24 hours before.')).toBeNull();
   });
 });

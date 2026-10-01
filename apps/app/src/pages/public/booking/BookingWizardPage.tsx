@@ -216,6 +216,8 @@ function Wizard({ data }: { data: ReturnType<typeof useBookingData> }) {
             : `Pay ${naira(total ?? '0')}`
         : 'Continue';
   const ctaDisabled = !canContinue(state, Boolean(me)) || (step === 1 && data.services.length === 0);
+  // Signed out on step 3, the account form's own button is how the client moves on.
+  const showCta = !(step === 1 && data.services.length === 0) && !(step === 3 && !me);
   const onBack = state.step > state.firstStep ? () => dispatch({ type: 'back' }) : undefined;
   const therapistName = slot?.therapistName ?? data.slots[0]?.therapistName ?? null;
 
@@ -253,23 +255,35 @@ function Wizard({ data }: { data: ReturnType<typeof useBookingData> }) {
     ) : step === 4 && service && slot ? (
       <>
         {error ? <AlertBanner title="We couldn't make this booking">{error}</AlertBanner> : null}
-        <ReviewPayStep service={service} slot={slot} state={state} dispatch={dispatch} bankTransfer={data.bankTransfer} tenantId={practice.id} cancellationHours={practice.cancellationHours} />
+        <ReviewPayStep
+          service={service}
+          slot={slot}
+          state={state}
+          dispatch={dispatch}
+          bankTransfer={data.bankTransfer}
+          tenantId={practice.id}
+          cancellationHours={practice.cancellationHours}
+          showSummary={layout !== 'desktop'}
+        />
       </>
     ) : null;
 
   const desktopNav = (
     <>
       {onBack ? <Button variant="secondary" size="xl" onClick={onBack}>Back</Button> : <span />}
-      <Button variant="primary" size="cta" disabled={ctaDisabled || busy} onClick={() => void onContinue()}>
-        {busy ? 'One moment…' : ctaLabel}
-      </Button>
+      {showCta ? (
+        <Button variant="primary" size="cta" disabled={ctaDisabled || busy} onClick={() => void onContinue()}>
+          {busy ? 'One moment…' : ctaLabel}
+        </Button>
+      ) : null}
     </>
   );
 
   return (
     <>
       <main className="flex-1 overflow-y-auto overflow-x-hidden px-4 py-4 min-[601px]:px-8 min-[601px]:pt-7 min-[601px]:pb-6 min-[1024px]:pb-10">
-        <div className={layout === 'desktop' ? 'max-w-[1200px] mx-auto grid gap-6 grid-cols-[minmax(0,1.55fr)_minmax(320px,1fr)] items-start' : 'max-w-[640px] mx-auto'}>
+        {/* Capped at 960px on desktop so fields and buttons keep a comfortable length. */}
+        <div className={layout === 'desktop' ? 'max-w-[960px] mx-auto grid gap-6 grid-cols-[minmax(0,1fr)_340px] items-start' : 'max-w-[640px] mx-auto'}>
           <div className="flex flex-col gap-[18px] min-w-0">
             <BookingProgress step={state.step as Step} firstStep={state.firstStep} onGoTo={(s) => dispatch({ type: 'goTo', step: s })} />
             <StepCard step={step} title={TITLES[step]} sub={subs[step]} onBack={onBack} footer={desktopNav}>
@@ -284,13 +298,14 @@ function Wizard({ data }: { data: ReturnType<typeof useBookingData> }) {
               serviceLabel={service ? `${service.title} · ${service.durationMinutes} min` : null}
               whenLabel={slot ? whenLabel(slot.startsAt) : null}
               formatLabel={slot ? formatOf(slot.channel) : null}
+              discount={state.discount.status === 'applied' ? { code: state.discount.code, savingKobo: state.discount.savingKobo } : null}
               totalKobo={total}
               cancellationHours={practice.cancellationHours}
             />
           ) : null}
         </div>
       </main>
-      {layout !== 'desktop' && !(step === 1 && data.services.length === 0) ? (
+      {layout !== 'desktop' && showCta ? (
         <StickyActionBar totalKobo={service ? total : null} label={ctaLabel} disabled={ctaDisabled} busy={busy} onClick={() => void onContinue()} />
       ) : null}
     </>

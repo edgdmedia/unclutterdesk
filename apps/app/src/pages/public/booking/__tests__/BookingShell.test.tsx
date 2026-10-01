@@ -68,4 +68,11 @@ describe('sticky action bar', () => {
     const button = screen.getByRole('button', { name: 'Continue' }) as HTMLButtonElement;
     expect(button.disabled).toBe(true);
   });
+
+  it('shows an applied discount and the discounted total', () => {
+    renderWithApp(<SummaryCard serviceLabel="Individual therapy · 50 min" discount={{ code: 'CALM10', savingKobo: '350000' }} totalKobo="3150000" cancellationHours={24} />);
+    expect(screen.getByText('Discount · CALM10')).toBeTruthy();
+    expect(screen.getByText('−₦3,500')).toBeTruthy();
+    expect(screen.getByText('₦31,500')).toBeTruthy();
+  });
 });

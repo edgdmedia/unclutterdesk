@@ -43,7 +43,9 @@ describe('ClientAuthPanel', () => {
   });
   it('explains that one account works everywhere and each practice sees only its own records', async () => {
     renderWithApp(<ClientAuthPanel onDone={() => {}} />);
-    expect(await screen.findByText('Use the same account with any practice on Unclutter Desk. Each practice only sees its own records.')).toBeTruthy();
+    // Said once, in the booking design's words (BKG-04).
+    expect(await screen.findAllByText(/account works with every practice|same account with any practice/)).toHaveLength(1);
+    expect(screen.getByText('One Unclutter Desk account works with every practice. Each practice sees only its own records with you.')).toBeTruthy();
   });
   it('signs in through the shared login', async () => {
     const onDone = vi.fn();

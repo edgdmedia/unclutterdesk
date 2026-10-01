@@ -71,7 +71,7 @@ export function BookingHeader({
       className="shrink-0 border-b border-[#E2E8F0] px-4 py-3 min-[601px]:px-8 min-[601px]:py-4"
       style={{ background: 'linear-gradient(120deg, var(--brand-tint), var(--brand-secondary-tint)), #FFFFFF' }}
     >
-      <div className="max-w-[1200px] mx-auto flex items-center gap-3">
+      <div className="max-w-[640px] min-[1024px]:max-w-[960px] mx-auto flex items-center gap-3">
         <LogoTile name={name} logoUrl={logoUrl} />
         <div className="min-w-0 flex-1">
           <div className="text-[16px] font-bold tracking-[-0.01em] text-[#0F172A] truncate">{name}</div>
@@ -208,10 +208,12 @@ export function SummaryCard({
   serviceLabel,
   whenLabel,
   formatLabel,
+  discount,
   totalKobo,
   cancellationHours,
 }: {
   therapist?: { name: string; title?: string | null } | null;
+  discount?: { code: string; savingKobo: string } | null;
   practiceName?: string;
   serviceLabel?: string | null;
   whenLabel?: string | null;
@@ -238,6 +240,12 @@ export function SummaryCard({
         <SummaryRow label="Session" value={serviceLabel} placeholder="Choose a session" />
         <SummaryRow label="When" value={whenLabel} placeholder="Pick a time" />
         <SummaryRow label="Format" value={formatLabel} placeholder="—" />
+        {discount ? (
+          <div className="py-3 border-t border-[#F1F5F9] flex items-baseline justify-between gap-3 text-[#16A34A]">
+            <span className="text-[13px] font-semibold">Discount · {discount.code}</span>
+            <span className="text-[14px] font-semibold" style={TABULAR}>−{naira(discount.savingKobo)}</span>
+          </div>
+        ) : null}
       </div>
       <div className="pt-3.5 border-t border-[#E2E8F0] flex items-baseline justify-between">
         <span className="text-[14px] font-semibold text-[#475569]">Total</span>
