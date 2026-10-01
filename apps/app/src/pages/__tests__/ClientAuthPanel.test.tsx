@@ -41,6 +41,10 @@ describe('ClientAuthPanel', () => {
     await waitFor(() => expect(screen.getByText(/already have an account/i)).toBeTruthy());
     expect(screen.getByRole('button', { name: 'Sign in' }).getAttribute('aria-pressed')).toBe('true');
   });
+  it('explains that one account works everywhere and each practice sees only its own records', async () => {
+    renderWithApp(<ClientAuthPanel onDone={() => {}} />);
+    expect(await screen.findByText('Use the same account with any practice on Unclutter Desk. Each practice only sees its own records.')).toBeTruthy();
+  });
   it('signs in through the shared login', async () => {
     const onDone = vi.fn();
     renderWithApp(<ClientAuthPanel onDone={onDone} />);
