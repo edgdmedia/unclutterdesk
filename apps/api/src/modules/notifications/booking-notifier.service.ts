@@ -48,14 +48,17 @@ export class BookingNotifier {
   }
 
   /**
-   * A booking was made. Online and awaiting payment: the pay email, no join
-   * link. A transfer hold: nothing — announce already sent the bank details.
-   * Confirmed at once (free, waived, or staff-made): the confirmed email.
+   * A booking was made. The practice hears about it either way. Online and
+   * awaiting payment: the pay email, no join link. A transfer hold: nothing to
+   * the client — announce already sent the bank details. Confirmed at once
+   * (free, waived, or staff-made): the confirmed email.
    */
   async booked(bookingId: bigint): Promise<void> {
     const b = await this.load(bookingId);
     if (!b) return;
-    if (b.status === 'CONFIRMED') return this.confirmed(bookingId);
+    // Best effort: a failed staff notice must not cost the client their email.
+    await this.notifyStaff(bookingId, 'booked').catch(() => undefined);
+    if (b.status === 'CONFIRMED') return this.confirmedEmail(b);
     if (b.paymentMethod === 'MANUAL') return;
     const amount = formatNaira(Number(chargedKobo(b)));
     await this.notifications
@@ -82,6 +85,13 @@ export class BookingNotifier {
   async confirmed(bookingId: bigint): Promise<void> {
     const b = await this.load(bookingId);
     if (!b) return;
+    await this.confirmedEmail(b);
+    // Money that actually moved is worth telling the practice about; a waived
+    // fee was already announced as the booking itself.
+    if (chargedKobo(b) > 0n) await this.notifyStaff(bookingId, 'paid').catch(() => undefined);
+  }
+
+  private async confirmedEmail(b: Awaited<ReturnType<BookingNotifier['load']>> & object): Promise<void> {
     const join = b.availability.channel === 'VIDEO' ? roomLink(b.videoRoomName) : null;
     const portal = `${tenantWebOrigin(b.tenant)}/portal`;
     await this.notifications
@@ -99,6 +109,79 @@ export class BookingNotifier {
         tenantId: b.tenantId,
         profileId: b.clientProfileId,
       })
-      .catch((err) => this.logger.warn(`Could not send the confirmation email for booking ${bookingId}: ${(err as Error).message}`));
+      .catch((err) => this.logger.warn(`Could not send the confirmation email for booking ${b.id}: ${(err as Error).message}`));
   }
+/**
+   * In-app notices for the practice: the session's therapist plus this
+   * tenant's active owners and admins (the front desk too for transfers,
+   * since they confirm them). Never anyone from another practice.
+   */
+  async notifyStaff(bookingId: bigint, event: 'booked' | 'paid' | 'transfer_sent' | 'cancelled'): Promise<void> {
+    const b = await this.load(bookingId);
+    if (!b) return;
+    const roles = event === 'transfer_sent' ? ['OWNER', 'ADMIN', 'RECEPTIONIST'] : ['OWNER', 'ADMIN'];
+    const staff = await this.prisma.profile.findMany({
+      where: { tenantId: b.tenantId, role: { in: roles }, status: 'active' },
+      select: { id: true },
+    });
+    const profileIds = [...new Set([b.availability.providerProfileId, ...staff.map((s: { id: bigint }) => s.id)])].sort((a, c) => Number(a - c));
+    const name = [b.client.firstName, b.client.lastName].filter(Boolean).join(' ') || b.client.email;
+    const when = this.shortWhen(b.availability.startsAt);
+    const amount = formatNaira(Number(chargedKobo(b)));
+    const copy = {
+      booked: {
+        type: 'consult.booking_created',
+        title: 'New booking',
+        message:
+          `${name} booked ${b.service.title} for ${when}.` +
+          (b.status === 'PENDING_PAYMENT'
+            ? b.paymentMethod === 'MANUAL'
+              ? ` Waiting for a transfer (ref UD-${b.id}).`
+              : ' Waiting for payment.'
+            : ''),
+      },
+      paid: { type: 'consult.booking_paid', title: 'Payment received', message: `${name} paid ${amount} for ${when}.` },
+      transfer_sent: {
+        type: 'consult.transfer_sent',
+        title: 'Transfer to confirm',
+        message: `${name} says they’ve sent ${amount} (ref UD-${b.id}). Check your account and mark it paid.`,
+      },
+      cancelled: { type: 'consult.booking_cancelled', title: 'Session cancelled', message: `${name}’s session on ${when} was cancelled.` },
+    }[event];
+    await this.notifications
+      .notify({
+        tenantId: b.tenantId,
+        profileIds,
+        ...copy,
+        link: `/dashboard/sessions/${b.id}`,
+        preferenceCategory: 'activity',
+      })
+      .catch((err) => this.logger.warn(`Could not tell staff about booking ${bookingId}: ${(err as Error).message}`));
+  }
+
+  /** A client handed in a form: the practice is told, linked to the client. */
+  async notifyFormSubmitted(tenantId: bigint, input: { clientProfileId: bigint; clientName: string; formTitle: string }): Promise<void> {
+    const staff = await this.prisma.profile.findMany({
+      where: { tenantId, role: { in: ['OWNER', 'ADMIN'] }, status: 'active' },
+      select: { id: true },
+    });
+    await this.notifications
+      .notify({
+        tenantId,
+        profileIds: staff.map((s: { id: bigint }) => s.id),
+        type: 'intake.form_submitted',
+        title: 'Form received',
+        message: `${input.clientName} completed ${input.formTitle}.`,
+        link: `/dashboard/clients/${input.clientProfileId}`,
+        preferenceCategory: 'activity',
+      })
+      .catch((err) => this.logger.warn(`Could not report form submission: ${(err as Error).message}`));
+  }
+
+  private shortWhen(startsAt: Date): string {
+    const day = `${startsAt.toLocaleString('en-GB', { weekday: 'short', timeZone: 'Africa/Lagos' })}, ${startsAt.toLocaleString('en-GB', { day: 'numeric', month: 'short', timeZone: 'Africa/Lagos' })}`;
+    const time = startsAt.toLocaleString('en-GB', { hour: '2-digit', minute: '2-digit', hour12: true, timeZone: 'Africa/Lagos' });
+    return `${day} · ${time.replace('am', 'AM').replace('pm', 'PM')}`;
+  }
+
 }

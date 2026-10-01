@@ -1,4 +1,5 @@
-import { Injectable, BadRequestException, NotFoundException } from '@nestjs/common';
+import { Injectable, BadRequestException, NotFoundException, Optional } from '@nestjs/common';
+import { BookingNotifier } from '../notifications/booking-notifier.service';
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '../../common/prisma/prisma.service';
 
@@ -23,7 +24,10 @@ type DerivedAssessmentPayload = {
 
 @Injectable()
 export class IntakeService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    @Optional() private readonly notifier?: BookingNotifier,
+  ) {}
 
   private normalizeTargetType(targetType?: string) {
     return (targetType || 'INTAKE').toUpperCase();
@@ -348,6 +352,13 @@ export class IntakeService {
         answersJson: dto.answersJson,
         derivedJson: derived,
       },
+    });
+
+    // NOT-05: the practice hears that a form arrived, linked to the client.
+    await this.notifier?.notifyFormSubmitted(tenantId, {
+      clientProfileId: clientProfile.id,
+      clientName: [clientProfile.firstName, clientProfile.lastName].filter(Boolean).join(' ') || clientProfile.email,
+      formTitle: form.title,
     });
 
     return {

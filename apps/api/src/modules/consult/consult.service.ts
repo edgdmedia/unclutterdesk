@@ -1244,6 +1244,10 @@ export class ConsultService {
       },
     });
 
+    if (status === 'CANCELLED') {
+      await this.notifier?.notifyStaff(bookingId, 'cancelled').catch(() => undefined);
+    }
+
     if (status === 'COMPLETED') {
       const note = await this.prisma.clinicalNote.findFirst({
         where: { bookingId },

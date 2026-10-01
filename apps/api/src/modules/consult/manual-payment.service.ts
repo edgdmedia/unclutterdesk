@@ -136,7 +136,8 @@ export class ManualPaymentService {
     } catch (err) {
       this.logger.warn(`Could not email transfer details for booking ${b.id}: ${(err as Error).message}`);
     }
-    await this.tellConfirmers(b, `New booking awaiting a bank transfer`, `${this.clientName(b)} booked ${b.service.title} on ${when} and will pay ${amount} by transfer (reference ${transferReference(b.id)}).`);
+    // Staff hear about the booking from BookingNotifier.booked — with the
+    // transfer reference — so announce only owns the client's bank details.
   }
 
   /** Bookings waiting on a transfer, soonest hold first. */
@@ -204,7 +205,7 @@ export class ManualPaymentService {
     if (updated.count === 0) throw new NotFoundException('No booking waiting for a transfer was found.');
     const b = await this.loadBooking(bookingId);
     if (b) {
-      await this.tellConfirmers(b, `${this.clientName(b)} says they have paid`, `Check for a transfer of ${formatNaira(Number(chargedKobo(b)))} with reference ${transferReference(b.id)}, then mark it paid.`);
+      await this.notifier.notifyStaff(bookingId, 'transfer_sent');
     }
     return { ok: true };
   }
@@ -253,24 +254,4 @@ export class ManualPaymentService {
     }).format(d);
   }
 
-  private async tellConfirmers(b: { tenantId: bigint }, title: string, message: string) {
-    try {
-      const staff = await this.prisma.profile.findMany({
-        where: { tenantId: b.tenantId, role: { in: FRONT_DESK }, status: 'active' },
-        select: { id: true },
-      });
-      if (!staff.length) return;
-      await this.notifications.notify({
-        tenantId: b.tenantId,
-        profileIds: staff.map((s) => s.id),
-        type: 'bookings.manual_payment',
-        title,
-        message,
-        link: '/dashboard',
-        actionLabel: 'Review payments',
-      });
-    } catch (err) {
-      this.logger.warn(`Could not notify staff about a transfer: ${(err as Error).message}`);
-    }
-  }
 }

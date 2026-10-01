@@ -28,10 +28,13 @@ function booking(over: Record<string, unknown> = {}) {
   };
 }
 
-function make(b: ReturnType<typeof booking> | null) {
+function make(b: ReturnType<typeof booking> | null, staff: { id: bigint }[] = [{ id: 11n }, { id: 12n }]) {
   const prisma: any = {
     consultBooking: { findUnique: vi.fn().mockResolvedValue(b) },
-    profile: { findUnique: vi.fn().mockResolvedValue({ firstName: 'Jane', lastName: 'Smith' }) },
+    profile: {
+      findUnique: vi.fn().mockResolvedValue({ firstName: 'Jane', lastName: 'Smith' }),
+      findMany: vi.fn().mockResolvedValue(staff),
+    },
   };
   const notifications = { sendEmail: vi.fn().mockResolvedValue({ success: true }), notify: vi.fn().mockResolvedValue([]) } as unknown as NotificationService;
   const notifier = new BookingNotifier(prisma, notifications);
@@ -85,5 +88,75 @@ describe('BookingNotifier.confirmed', () => {
     expect(email.message).not.toMatch(/meet\.jit\.si/);
     expect(email.actionLabel).toBe('View my bookings');
     expect(email.link).toMatch(/\/portal$/);
+  });
+});
+
+
+describe('BookingNotifier.notifyStaff (NOT-05)', () => {
+  it('tells the therapist and this practice’s owners and admins about a new booking', async () => {
+    const { notifier, prisma, notifications } = make(booking());
+    await notifier.notifyStaff(900n, 'booked');
+    const where = (prisma.profile.findMany as any).mock.calls[0][0].where;
+    expect(where.tenantId).toBe(1n);
+    expect(where.role.in).toEqual(['OWNER', 'ADMIN']);
+    expect(where.status).toBe('active');
+    const notice = (notifications.notify as any).mock.calls[0][0];
+    expect(notice.profileIds).toEqual(expect.arrayContaining([7n, 11n, 12n]));
+    expect(notice.profileIds).toHaveLength(3);
+    expect(notice.type).toBe('consult.booking_created');
+    expect(notice.title).toBe('New booking');
+    expect(notice.message).toBe('Ada Okafor booked Individual Therapy for Tue, 6 Oct · 11:30 AM. Waiting for payment.');
+    expect(notice.link).toBe('/dashboard/sessions/900');
+    expect(notice.preferenceCategory).toBe('activity');
+  });
+
+  it('lists the therapist once when they are also an owner', async () => {
+    const { notifier, notifications } = make(booking(), [{ id: 7n }, { id: 12n }]);
+    await notifier.notifyStaff(900n, 'booked');
+    const ids = (notifications.notify as any).mock.calls[0][0].profileIds;
+    expect(ids.filter((id: bigint) => id === 7n)).toHaveLength(1);
+  });
+
+  it('includes the front desk only for a transfer to confirm', async () => {
+    const { notifier, prisma, notifications } = make(booking());
+    await notifier.notifyStaff(900n, 'transfer_sent');
+    expect((prisma.profile.findMany as any).mock.calls[0][0].where.role.in).toEqual(['OWNER', 'ADMIN', 'RECEPTIONIST']);
+    const notice = (notifications.notify as any).mock.calls[0][0];
+    expect(notice.title).toBe('Transfer to confirm');
+    expect(notice.message).toBe('Ada Okafor says they’ve sent ₦35,000 (ref UD-900). Check your account and mark it paid.');
+  });
+
+  it('reports money received', async () => {
+    const { notifier, notifications } = make(booking({ status: 'CONFIRMED' }));
+    await notifier.notifyStaff(900n, 'paid');
+    const notice = (notifications.notify as any).mock.calls[0][0];
+    expect(notice.type).toBe('consult.booking_paid');
+    expect(notice.message).toBe('Ada Okafor paid ₦35,000 for Tue, 6 Oct · 11:30 AM.');
+  });
+
+  it('reports a cancellation', async () => {
+    const { notifier, notifications } = make(booking({ status: 'CANCELLED' }));
+    await notifier.notifyStaff(900n, 'cancelled');
+    const notice = (notifications.notify as any).mock.calls[0][0];
+    expect(notice.type).toBe('consult.booking_cancelled');
+    expect(notice.message).toBe('Ada Okafor’s session on Tue, 6 Oct · 11:30 AM was cancelled.');
+  });
+
+  it('tells the practice a form arrived, linked to the client', async () => {
+    const { notifier, notifications } = make(booking());
+    await notifier.notifyFormSubmitted(1n, { clientProfileId: 42n, clientName: 'Ada Okafor', formTitle: 'About you' });
+    const notice = (notifications.notify as any).mock.calls[0][0];
+    expect(notice.type).toBe('intake.form_submitted');
+    expect(notice.title).toBe('Form received');
+    expect(notice.message).toBe('Ada Okafor completed About you.');
+    expect(notice.link).toBe('/dashboard/clients/42');
+  });
+
+  it('booked() also tells staff, and a free booking is not reported as paid', async () => {
+    const { notifier, notifications } = make(booking({ status: 'CONFIRMED', paymentMethod: 'NONE', amountKobo: null, service: { title: 'Individual Therapy', priceKobo: 0n } }));
+    await notifier.booked(900n);
+    const types = (notifications.notify as any).mock.calls.map((c: any[]) => c[0].type);
+    expect(types).toContain('consult.booking_created');
+    expect(types).not.toContain('consult.booking_paid');
   });
 });
