@@ -35,3 +35,4 @@ export * from './layout/PageHeader';
 export * from './layout/AppShell';
 export * from './data/sort';
 export * from './data/ResponsiveTable';
+export * from './brand/tenantBrandStyle';
