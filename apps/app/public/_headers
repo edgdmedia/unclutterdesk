@@ -26,7 +26,7 @@
   # 'unsafe-inline' is present for style-src only: the built index.html has no
   # inline <style>, but component libraries commonly inject one at runtime.
   # script-src has no 'unsafe-inline' — the build emits only external modules.
-  Content-Security-Policy-Report-Only: default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; font-src 'self'; connect-src 'self' https://api.unclutterdesk.com; worker-src 'self'; manifest-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'; object-src 'none'; upgrade-insecure-requests
+  Content-Security-Policy-Report-Only: default-src 'self'; script-src 'self' https://js.paystack.co; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; font-src 'self'; connect-src 'self' https://api.unclutterdesk.com https://api.paystack.co; frame-src https://checkout.paystack.com; worker-src 'self'; manifest-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'; object-src 'none'; upgrade-insecure-requests
 
 # The service worker must not be cached, or clients pin an old bundle.
 /sw.js

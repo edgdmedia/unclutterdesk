@@ -247,7 +247,7 @@ export class StaffBookingService {
       );
     }
     const reference = `booking-${b.id}-${Date.now()}`;
-    const paymentUrl = await this.consult.startOnlinePayment(
+    const { url: paymentUrl } = await this.consult.startOnlinePayment(
       tenantId,
       chargedKobo(b),
       b.client.email,

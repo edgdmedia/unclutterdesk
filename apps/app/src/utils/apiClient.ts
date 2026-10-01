@@ -12,8 +12,9 @@
  *   torn down via a session-expired handler.
  */
 
-const DEFAULT_API_BASE = import.meta.env.DEV ? 'http://localhost:3001' : 'https://api.unclutterdesk.com';
-const API_BASE = import.meta.env.VITE_API_URL || DEFAULT_API_BASE;
+// '' in development: same origin, through the dev server's /v1 proxy (vite.config).
+const DEFAULT_API_BASE = import.meta.env.DEV ? '' : 'https://api.unclutterdesk.com';
+export const API_BASE = import.meta.env.VITE_API_URL || DEFAULT_API_BASE;
 
 const RESERVED_SUBDOMAINS = new Set([
   'www', 'app', 'os', 'admin', 'api', 'book', 'mail', 'docs', 'help', 'blog',

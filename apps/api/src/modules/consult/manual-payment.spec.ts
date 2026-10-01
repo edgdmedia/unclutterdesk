@@ -17,7 +17,8 @@ function manualService(tenant: Record<string, unknown> = {}) {
   };
   const notifications: any = { sendEmail: vi.fn().mockResolvedValue({ success: true }), notify: vi.fn() };
   const calendar: any = { pushBookingToGoogle: vi.fn().mockResolvedValue(undefined) };
-  return { prisma, notifications, calendar, service: new ManualPaymentService(prisma, notifications, calendar) };
+  const notifier = { booked: vi.fn(), confirmed: vi.fn().mockResolvedValue(undefined) };
+  return { prisma, notifications, calendar, notifier, service: new ManualPaymentService(prisma, notifications, calendar, notifier as any) };
 }
 
 describe('the hold on a bank-transfer booking', () => {
@@ -70,7 +71,7 @@ describe('confirming a transfer', () => {
   });
 
   it('emails the client that the session is confirmed', async () => {
-    const { prisma, notifications, service } = manualService();
+    const { prisma, notifier, service } = manualService();
     prisma.consultBooking.findUnique.mockResolvedValue({
       id: 100n, tenantId: TENANT, clientProfileId: 5n, amountKobo: 2_500_000n,
       tenant: { name: 'Calm', slug: 'calm', manualPaymentDetails: DETAILS },
@@ -79,11 +80,13 @@ describe('confirming a transfer', () => {
       client: { firstName: 'Ada', lastName: null, email: 'ada@example.com' },
     });
     await service.markPaid(TENANT, 9n, 100n);
-    expect(notifications.sendEmail).toHaveBeenCalledWith(expect.objectContaining({ to: 'ada@example.com', type: 'bookings.manual_payment_received' }));
+    // One confirmed email for every path; it carries the join link, which a
+    // hold must never have seen before this moment.
+    expect(notifier.confirmed).toHaveBeenCalledWith(100n);
   });
 
-  it('does not tell a client who paid in person that their transfer arrived', async () => {
-    const { prisma, notifications, service } = manualService();
+  it('confirms through the same notifier whatever the payment was', async () => {
+    const { prisma, notifier, service } = manualService();
     const booked = {
       id: 900n, tenantId: TENANT, clientProfileId: 5n, amountKobo: 2_500_000n,
       tenant: { name: 'Calm', slug: 'calm', manualPaymentDetails: DETAILS },
@@ -93,14 +96,11 @@ describe('confirming a transfer', () => {
     };
     prisma.consultBooking.findUnique.mockResolvedValue({ ...booked, paymentMethod: 'PAYSTACK' });
     await service.markPaid(TENANT, 9n, 900n);
-    const inPerson = notifications.sendEmail.mock.calls[0][0].message;
-    expect(inPerson).toContain('has recorded your payment');
-    expect(inPerson).not.toContain('transfer');
+    expect(notifier.confirmed).toHaveBeenCalledWith(900n);
 
-    notifications.sendEmail.mockClear();
     prisma.consultBooking.findUnique.mockResolvedValue({ ...booked, paymentMethod: 'MANUAL' });
     await service.markPaid(TENANT, 9n, 900n);
-    expect(notifications.sendEmail.mock.calls[0][0].message).toContain('has received your transfer');
+    expect(notifier.confirmed).toHaveBeenCalledTimes(2);
   });
 
   it('lets only the booking’s own client report a transfer', async () => {

@@ -1,4 +1,5 @@
 import { Inject, Injectable, Logger, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
+import { logoUrlFor } from '../../common/logo-url';
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '../../common/prisma/prisma.service';
 import {
@@ -292,6 +293,7 @@ export class NotificationService implements OnModuleInit, OnModuleDestroy {
     const tenant = await this.prisma.tenant.findUnique({
       where: { id: tenantId },
       select: {
+        id: true,
         name: true,
         logoUrl: true,
         primaryColor: true,
@@ -304,7 +306,7 @@ export class NotificationService implements OnModuleInit, OnModuleDestroy {
       practiceName: tenant?.name ?? 'Unclutter Desk',
       primaryColor: tenant?.primaryColor,
       secondaryColor: tenant?.secondaryColor,
-      logoUrl: tenant?.logoUrl,
+      logoUrl: tenant ? logoUrlFor(tenant) : undefined,
       publicEmail: tenant?.publicEmail,
       publicPhone: tenant?.publicPhone,
     };

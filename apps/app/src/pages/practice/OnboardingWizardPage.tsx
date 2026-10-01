@@ -1,11 +1,15 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { initialsOf } from '../../utils/initials';
-import { useLocation, useNavigate } from 'react-router-dom';
-import { Check, Copy, ArrowRight, ArrowLeft, Loader2, Sparkles, Building2, Calendar, ShieldCheck, ExternalLink, Palette, Image, Mail, Phone, MapPin, Info, Globe, Upload, Settings, CreditCard, Landmark } from 'lucide-react';
+import { Navigate, useLocation, useNavigate } from 'react-router-dom';
+import { Check, Copy, ArrowRight, ArrowLeft, Loader2, Sparkles, Building2, Calendar, ShieldCheck, ExternalLink, Palette, Mail, Phone, MapPin, Info, Globe, Settings, CreditCard, Landmark } from 'lucide-react';
 import { UnclutterLockup, Eyebrow } from '@unclutterdesk/ui';
 import { useAuth } from '../../context/AuthContext';
 import { api, getBookingUrl } from '../../utils/apiClient';
 import { ManualPaymentFields, type ManualPaymentForm } from '../../components/payments/ManualPaymentSettingsCard';
+import { dropLegacyOnboardingDraft, onboardingDraftKey } from '../../utils/onboardingDraft';
+import { isPracticeAccount } from '../../utils/accounts';
+import { usePracticeBrand } from '../../context/PracticeBrandContext';
+import { LogoField } from '../../components/settings/LogoField';
 
 type SignupState = {
   practiceName?: string;
@@ -59,17 +63,67 @@ function nairaToKobo(value: string) {
   return Number(clean || 0) * 100;
 }
 
+/**
+ * Setup changes a practice, so it needs a signed-in practice account. The
+ * session is shared across tabs: signing in to the admin console elsewhere
+ * swaps it, and without this check setup kept going and every save failed
+ * with a bare "requires a practice profile".
+ */
 export function OnboardingWizardPage() {
+  const { profile, isLoading, logout } = useAuth();
+  const navigate = useNavigate();
+
+  if (!profile) {
+    if (isLoading) {
+      return (
+        <div className="min-h-screen flex items-center justify-center bg-[#F8FAFC]">
+          <Loader2 className="h-6 w-6 animate-spin text-[#94A3B8]" />
+        </div>
+      );
+    }
+    return <Navigate to="/login" replace state={{ returnTo: '/onboarding' }} />;
+  }
+
+  if (!isPracticeAccount(profile)) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-[#F8FAFC] px-5 font-outfit">
+        <div className="w-full max-w-[440px] bg-white rounded-[24px] border border-[#E2E8F0] p-[30px] space-y-4">
+          <UnclutterLockup markSize={28} variant="light" />
+          <h1 className="text-[22px] font-bold tracking-[-0.02em] text-[#0F172A]">Sign in as the practice to continue</h1>
+          <p className="text-[14px] text-[#64748B] leading-[1.6]">
+            You're signed in as <span className="font-semibold text-[#0F172A]">{profile.email}</span>, which isn't a practice account.
+            Practice setup is saved as you go, so you'll pick up where you left off.
+          </p>
+          <button
+            type="button"
+            onClick={async () => {
+              await logout();
+              navigate('/login', { replace: true, state: { returnTo: '/onboarding' } });
+            }}
+            className="w-full h-[50px] rounded-[14px] bg-[#0F3A53] text-white text-[14px] font-bold cursor-pointer"
+          >
+            Sign in as the practice
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // Keyed so a different practice signing in starts from its own draft.
+  return <OnboardingWizard key={profile.tenantId} tenantId={profile.tenantId!} />;
+}
+
+function OnboardingWizard({ tenantId }: { tenantId: string }) {
   const navigate = useNavigate();
   const location = useLocation();
   const { profile: authUser } = useAuth();
+  const { refresh: refreshBrand } = usePracticeBrand();
   const signupState = (location.state || {}) as SignupState;
 
   const persona = signupState.persona || 'therapist';
   const alsoTherapist = signupState.alsoTherapist || false;
   const isTherapist = persona === 'therapist' || alsoTherapist;
 
-  const logoInputRef = useRef<HTMLInputElement>(null);
 
   const steps = useMemo<Array<{ key: StepKey; label: string; desc: string }>>(() => {
     const list: Array<{ key: StepKey; label: string; desc: string }> = [
@@ -88,16 +142,18 @@ export function OnboardingWizardPage() {
     return list;
   }, [isTherapist]);
 
-  const WIZARD_KEY = 'unclutter_onboarding_v1';
+  const WIZARD_KEY = onboardingDraftKey(tenantId);
   const saved = useMemo(() => {
+    dropLegacyOnboardingDraft();
     try {
       return JSON.parse(localStorage.getItem(WIZARD_KEY) || 'null');
     } catch {
       return null;
     }
-  }, []);
+  }, [WIZARD_KEY]);
 
-  const [stepIndex, setStepIndex] = useState(saved?.stepIndex ?? 0);
+  // A draft from an older version of setup can point past the last step.
+  const [stepIndex, setStepIndex] = useState(Math.min(saved?.stepIndex ?? 0, steps.length - 1));
   const stepKey = steps[stepIndex].key;
 
   const initialPracticeName = signupState.practiceName || authUser?.practiceName || '';
@@ -165,7 +221,12 @@ export function OnboardingWizardPage() {
     }
   }, [accountNumber, bankCode]);
 
+  // Until the saved brand has loaded, the state holds defaults; writing those
+  // as the draft made a refresh show default colours over the saved ones.
+  const [hydrated, setHydrated] = useState(false);
+
   useEffect(() => {
+    if (!hydrated) return;
     localStorage.setItem(WIZARD_KEY, JSON.stringify({
       stepIndex,
       practiceName,
@@ -224,23 +285,6 @@ export function OnboardingWizardPage() {
       cancelled = true;
     };
   }, []);
-
-  const handleLogoFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    if (file.size > 5 * 1024 * 1024) {
-      setError('Logo image file must be under 5MB');
-      return;
-    }
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      if (event.target?.result) {
-        setLogoUrl(event.target.result as string);
-        setError(null);
-      }
-    };
-    reader.readAsDataURL(file);
-  };
 
   useEffect(() => {
     if (!slug || slug.length < 2) {
@@ -305,43 +349,43 @@ export function OnboardingWizardPage() {
           cancellationHours?: number;
         }>('/v1/tenant/brand');
         if (cancelled) return;
-        if (brand.name) {
-          setPracticeName(brand.name);
-          if (!slugTouched && !brand.slug) {
-            setSlug(slugify(brand.name));
-          }
-        }
-        if (brand.slug) {
+        // Unsaved edits in this browser's draft win; the server fills in the rest.
+        const inDraft = (key: string) => saved != null && saved[key] !== undefined && saved[key] !== null && saved[key] !== '';
+        if (brand.name && !inDraft('practiceName')) setPracticeName(brand.name);
+        if (brand.slug && !inDraft('slug')) {
           setSlug(brand.slug);
           setSlugTouched(true);
         }
-        if (brand.customDomain) {
+        if (brand.customDomain && !inDraft('customDomain')) {
           setCustomDomain(brand.customDomain);
           setShowAdvancedDomain(true);
         }
-        if (brand.customDomainStatus) {
-          setCustomDomainStatus(brand.customDomainStatus);
-        }
+        if (brand.customDomainStatus) setCustomDomainStatus(brand.customDomainStatus);
         setCustomDomainTarget(brand.customDomainTarget ?? null);
-        if (brand.primaryColor) setPrimaryColor(brand.primaryColor);
-        if (brand.secondaryColor) setSecondaryColor(brand.secondaryColor);
-        if (brand.logoUrl) setLogoUrl(brand.logoUrl);
-        if (brand.welcomeMessage) setWelcomeMessage(brand.welcomeMessage);
-        if (brand.publicEmail) setPublicEmail(brand.publicEmail);
-        if (brand.publicPhone) setPublicPhone(brand.publicPhone);
-        if (brand.city) setCity(brand.city);
-        if (brand.address) setAddress(brand.address);
-        if (brand.category) setCategory(brand.category);
-        if (brand.cancellationHours) setCancellationHours(brand.cancellationHours);
+        if (brand.primaryColor && !inDraft('primaryColor')) setPrimaryColor(brand.primaryColor);
+        if (brand.secondaryColor && !inDraft('secondaryColor')) setSecondaryColor(brand.secondaryColor);
+        if (brand.logoUrl && !inDraft('logoUrl')) setLogoUrl(brand.logoUrl);
+        if (brand.welcomeMessage && !inDraft('welcomeMessage')) setWelcomeMessage(brand.welcomeMessage);
+        if (brand.publicEmail && !inDraft('publicEmail')) setPublicEmail(brand.publicEmail);
+        if (brand.publicPhone && !inDraft('publicPhone')) setPublicPhone(brand.publicPhone);
+        if (brand.city && !inDraft('city')) setCity(brand.city);
+        if (brand.address && !inDraft('address')) setAddress(brand.address);
+        if (brand.category && !inDraft('category')) setCategory(brand.category);
+        if (brand.cancellationHours && !inDraft('cancellationHours')) setCancellationHours(brand.cancellationHours);
       } catch {
-        // Ignore errors; fallback to initial state
+        // Ignore errors; fall back to the initial state.
+      } finally {
+        if (!cancelled) setHydrated(true);
       }
     }
     void loadExistingBrand();
     return () => {
       cancelled = true;
     };
-  }, [slugTouched]);
+    // Once. Re-running whenever the booking link was edited put the saved link,
+    // colours and logo back over what the practice had just chosen.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const handleCopyLink = () => {
     navigator.clipboard.writeText(bookingUrl);
@@ -362,6 +406,7 @@ export function OnboardingWizardPage() {
         city: city.trim() || undefined,
         address: address.trim() || undefined,
       });
+      await refreshBrand();
       return true;
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Unable to save practice details.');
@@ -380,8 +425,10 @@ export function OnboardingWizardPage() {
         customDomain: customDomain.trim() || undefined,
         primaryColor,
         secondaryColor,
-        logoUrl: logoUrl.trim() || undefined,
+        // null clears it: an empty value used to be dropped, so a removed logo came back.
+        logoUrl: logoUrl.trim() || null,
       });
+      await refreshBrand();
       return true;
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Unable to save your practice brand.');
@@ -680,10 +727,11 @@ export function OnboardingWizardPage() {
                       </div>
                       <div className="space-y-4">
                         <div>
-                          <label className={labelCls}>Subdomain Handle</label>
+                          <label htmlFor="setup-booking-link" className={labelCls}>Booking link</label>
                           <div className="h-[48px] bg-[#F8FAFC] border border-[#E2E8F0] rounded-[14px] px-3.5 flex items-center gap-1.5 focus-within:bg-white focus-within:border-[#0F3A53] transition-all">
                             <span className="text-xs font-semibold text-[#64748B] shrink-0">https://</span>
                             <input
+                              id="setup-booking-link"
                               type="text"
                               value={slug}
                               onChange={(e) => handleSlugChange(e.target.value)}
@@ -742,36 +790,8 @@ export function OnboardingWizardPage() {
 
                       <div className="space-y-4">
                         <div>
-                          <label className={labelCls}>Practice Logo</label>
-                          <div className="flex items-center gap-3">
-                            <div
-                              onClick={() => logoInputRef.current?.click()}
-                              className="h-[52px] w-[52px] rounded-[16px] bg-[#F8FAFC] border border-[#E2E8F0] flex items-center justify-center overflow-hidden shrink-0 cursor-pointer hover:border-[#0F3A53] transition-all group shadow-xs"
-                            >
-                              {logoUrl ? (
-                                <img src={logoUrl} alt="Logo" className="w-full h-full object-cover" />
-                              ) : (
-                                <Image className="h-6 w-6 text-[#94A3B8] group-hover:text-[#0F3A53] transition-colors" />
-                              )}
-                            </div>
-
-                            <div className="flex-1 flex items-center gap-2">
-                              <button
-                                type="button"
-                                onClick={() => logoInputRef.current?.click()}
-                                className="h-[44px] px-4 rounded-[12px] bg-[#F1F5F9] border border-[#E2E8F0] text-xs font-bold text-[#0F172A] hover:bg-slate-200 transition-colors flex items-center gap-2 cursor-pointer"
-                              >
-                                <Upload className="h-4 w-4 text-[#64748B]" />
-                                <span>Choose logo image</span>
-                              </button>
-                              <input ref={logoInputRef} type="file" accept="image/*" onChange={handleLogoFileUpload} className="hidden" />
-                              {logoUrl && (
-                                <button type="button" onClick={() => setLogoUrl('')} className="h-[44px] px-3 rounded-[12px] text-xs font-bold text-red-600 hover:bg-red-50 transition-colors cursor-pointer">
-                                  Remove
-                                </button>
-                              )}
-                            </div>
-                          </div>
+                          <span className={labelCls}>Practice Logo</span>
+                          <LogoField value={logoUrl} onChange={setLogoUrl} />
                         </div>
 
                         <div>

@@ -34,6 +34,13 @@ const CLIENT_SURFACE = [
   'GET /v1/auth/sessions',
   'POST /v1/auth/sessions/revoke-others',
   'DELETE /v1/auth/sessions/:id',
+  // ONB-06: the walkthrough belongs to the signed-in person, clients included.
+  'POST /v1/auth/me/tour-complete',
+
+  // BKG-06: a client's own outstanding forms, for the portal and the wizard.
+  'GET /v1/intake/mine/forms',
+  // Forms the client fills in, filed under the profile from their session.
+  'POST /v1/intake/mine/submissions',
 
   // Their own care
   'GET /v1/consult/portal',
@@ -42,6 +49,8 @@ const CLIENT_SURFACE = [
   'POST /v1/consult/portal/bookings/:bookingId/reschedule',
   // Booking needs a client session now: name and email come from the account.
   'POST /v1/consult/public/bookings',
+  // Paystack's pop-up reported success: the server asks Paystack itself, and only for the caller's own booking.
+  'POST /v1/consult/public/bookings/:bookingId/confirm-payment',
   // Assessments sent to them; every query is scoped to their own profile id.
   'GET /v1/assessments/mine',
   'GET /v1/assessments/mine/:id',

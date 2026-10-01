@@ -1,0 +1,58 @@
+/* ═══════════════════════════════════════════════
+   UNCLUTTER DESK — SPACING, RADIUS, CONTROL HEIGHTS
+   Values unchanged from the previous system.
+   ═══════════════════════════════════════════════ */
+
+:root {
+  /* Spacing scale */
+  --space-1:  4px;
+  --space-2:  8px;
+  --space-3:  12px;
+  --space-4:  16px;
+  --space-5:  20px;
+  --space-6:  24px;
+  --space-7:  26px;
+  --space-8:  30px;
+  --space-10: 40px;
+
+  /* Radius */
+  --desk-radius-card:    24px;   /* standard card */
+  --desk-radius-panel:   22px;   /* booking cards, scheduling widget */
+  --desk-radius-nested:  20px;   /* nested / secondary card, KPI tile */
+  --desk-radius-row:     18px;   /* list row */
+  --desk-radius-control: 14px;   /* button, input, header field */
+  --desk-radius-chip:    12px;   /* avatar chip, small tile */
+  --desk-radius-sm:      10px;   /* small control, icon button */
+  --desk-radius-pill:    999px;  /* pill, dot, badge */
+  --desk-radius-phone:   46px;   /* phone frame — presentation only */
+
+  /* Control heights */
+  --desk-h-sm:  32px;
+  --desk-h-md:  40px;
+  --desk-h-lg:  44px;
+  --desk-h-xl:  48px;
+  --desk-h-cta: 52px;   /* booking portal primary CTA (mobile 54px) */
+
+  /* Padding conventions
+     app header      0 26px, 80px tall
+     workspace body  24px 26px 30px
+     standard card   20–26px
+     list row        13–16px
+     table row       14px 22px */
+  --pad-header:    0 26px;
+  --pad-body:      24px 26px 30px;
+  --pad-card:      24px 26px;
+  --pad-row:       14px 16px;
+  --pad-table-row: 14px 22px;
+
+  /* Gaps */
+  --gap-card-grid: 20px;
+  --gap-kpi:       14px;
+  --gap-rows:      10px;
+  --gap-inline:    8px;
+
+  /* Layout */
+  --sidebar-width: 248px;
+  --header-height: 80px;
+  --min-viewport:  1440px;  /* workspace is authored for this and up */
+}

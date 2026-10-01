@@ -14,7 +14,11 @@ vi.mock('../../utils/apiClient', () => ({
   getBookingUrl: (slug: string) => `https://${slug}.unclutterdesk.com`,
 }));
 vi.mock('../../context/AuthContext', () => ({
-  useAuth: () => ({ profile: { id: '1', role: 'THERAPIST', practiceName: 'Calm Rooms', email: 'a@calm.ng' } }),
+  useAuth: () => ({
+    profile: { id: '1', type: 'therapist', role: 'OWNER', status: 'active', tenantId: '27', practiceName: 'Calm Rooms', email: 'a@calm.ng' },
+    isLoading: false,
+    logout: vi.fn(),
+  }),
 }));
 const { OnboardingWizardPage } = await import('../practice/OnboardingWizardPage');
 
@@ -33,7 +37,7 @@ function network({ onPlan, enabled = false }: { onPlan: boolean; enabled?: boole
 }
 
 function renderStep() {
-  localStorage.setItem('unclutter_onboarding_v1', JSON.stringify({ stepIndex: PAYOUT_STEP }));
+  localStorage.setItem('unclutter_onboarding_v1:27', JSON.stringify({ stepIndex: PAYOUT_STEP }));
   return renderWithApp(<OnboardingWizardPage />, { route: '/onboarding' });
 }
 

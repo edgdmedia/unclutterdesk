@@ -1,4 +1,6 @@
-import { Injectable, BadRequestException, NotFoundException } from '@nestjs/common';
+import { Injectable, BadRequestException, NotFoundException, Optional } from '@nestjs/common';
+import { BookingNotifier } from '../notifications/booking-notifier.service';
+import { listPendingForms } from './default-forms';
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '../../common/prisma/prisma.service';
 
@@ -21,9 +23,15 @@ type DerivedAssessmentPayload = {
   severity: 'Minimal' | 'Mild' | 'Moderate' | 'Severe';
 } | null;
 
+/** System forms the practice may edit; everything else with a systemKey is locked. */
+export const EDITABLE_SYSTEM_KEYS = ['CLIENT_INTAKE', 'CONFIDENTIALITY'];
+
 @Injectable()
 export class IntakeService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    @Optional() private readonly notifier?: BookingNotifier,
+  ) {}
 
   private normalizeTargetType(targetType?: string) {
     return (targetType || 'INTAKE').toUpperCase();
@@ -176,6 +184,11 @@ export class IntakeService {
     return null;
   }
 
+  /** BKG-06: the default forms this client still needs to fill in. */
+  pendingForms(tenantId: bigint, clientProfileId: bigint) {
+    return listPendingForms(this.prisma, tenantId, clientProfileId);
+  }
+
   async getPublicForms(tenantId: bigint, targetType?: string) {
     const where = {
       tenantId,
@@ -252,7 +265,10 @@ export class IntakeService {
     const existing = await this.prisma.universalForm.findFirst({ where: { id: formId, tenantId } });
     if (!existing) throw new NotFoundException('Form not found');
 
-    if (existing.systemKey) {
+    // BKG-06: the default forms ship with every practice and the practice owns
+    // their wording. The assessment instruments stay locked — their scoring
+    // depends on the exact questions.
+    if (existing.systemKey && !EDITABLE_SYSTEM_KEYS.includes(existing.systemKey)) {
       const isTryingToEditLockedFields =
         dto.title !== undefined ||
         dto.description !== undefined ||
@@ -287,15 +303,38 @@ export class IntakeService {
     return this.mapForm(form);
   }
 
+  /**
+   * The public, signed-out route: a guest identified by email. Any profile id
+   * in the request is ignored — trusting it let anyone file answers into
+   * another client's record by guessing a number.
+   */
   async submitIntakeAnswers(tenantId: bigint, dto: {
     formId: string;
     bookingId?: string;
-    clientEmail: string;
+    clientEmail?: string;
     clientName?: string;
     answersJson: Record<string, any>;
   }) {
+    const { clientProfileId: _ignored, ...rest } = dto as typeof dto & { clientProfileId?: unknown };
+    return this.recordSubmission(tenantId, rest, null);
+  }
+
+  /** A signed-in client: who they are comes from the token, never the request. */
+  async submitAsClient(tenantId: bigint, clientProfileId: bigint, dto: {
+    formId: string;
+    bookingId?: string;
+    answersJson: Record<string, any>;
+  }) {
+    return this.recordSubmission(tenantId, dto, clientProfileId);
+  }
+
+  private async recordSubmission(
+    tenantId: bigint,
+    dto: { formId: string; bookingId?: string; clientEmail?: string; clientName?: string; answersJson: Record<string, any> },
+    trustedClientId: bigint | null,
+  ) {
     const formId = BigInt(dto.formId);
-    const email = dto.clientEmail.toLowerCase().trim();
+    const email = String(dto.clientEmail ?? '').toLowerCase().trim();
 
     const form = await this.prisma.universalForm.findFirst({
       where: { id: formId, tenantId },
@@ -305,9 +344,15 @@ export class IntakeService {
     const [firstName, ...restName] = (dto.clientName || '').trim().split(/\s+/).filter(Boolean);
     const lastName = restName.join(' ');
 
-    let clientProfile = await this.prisma.profile.findFirst({
-      where: { tenantId, email },
-    });
+    let clientProfile = trustedClientId
+      ? await this.prisma.profile.findFirst({ where: { id: trustedClientId, tenantId } })
+      : null;
+    if (trustedClientId && !clientProfile) throw new NotFoundException('Client not found');
+    if (!clientProfile) {
+      clientProfile = await this.prisma.profile.findFirst({
+        where: { tenantId, email },
+      });
+    }
     if (!clientProfile) {
       clientProfile = await this.prisma.profile.create({
         data: {
@@ -331,6 +376,17 @@ export class IntakeService {
       });
     }
 
+    // A booking named in the request must be this practice's — and, for a
+    // signed-in client, their own.
+    const bookingId = dto.bookingId ? BigInt(dto.bookingId) : null;
+    if (bookingId !== null) {
+      const booking = await this.prisma.consultBooking.findFirst({
+        where: trustedClientId ? { id: bookingId, tenantId, clientProfileId: trustedClientId } : { id: bookingId, tenantId },
+        select: { id: true },
+      });
+      if (!booking) throw new NotFoundException('Booking not found');
+    }
+
     const status = form.targetType === 'REVIEW' && form.reviewPublicationMode === 'AUTO' ? 'PUBLISHED' : 'UNREAD';
     const now = new Date();
     const derived = this.deriveAssessmentPayload(form, dto.answersJson);
@@ -339,7 +395,7 @@ export class IntakeService {
       data: {
         tenantId,
         formId,
-        bookingId: dto.bookingId ? BigInt(dto.bookingId) : null,
+        bookingId,
         clientProfileId: clientProfile.id,
         targetType: form.targetType,
         status,
@@ -348,6 +404,13 @@ export class IntakeService {
         answersJson: dto.answersJson,
         derivedJson: derived,
       },
+    });
+
+    // NOT-05: the practice hears that a form arrived, linked to the client.
+    await this.notifier?.notifyFormSubmitted(tenantId, {
+      clientProfileId: clientProfile.id,
+      clientName: [clientProfile.firstName, clientProfile.lastName].filter(Boolean).join(' ') || clientProfile.email,
+      formTitle: form.title,
     });
 
     return {

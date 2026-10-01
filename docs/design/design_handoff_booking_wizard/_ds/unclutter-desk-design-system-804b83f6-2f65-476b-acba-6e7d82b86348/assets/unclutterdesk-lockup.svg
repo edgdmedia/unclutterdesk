@@ -1,0 +1,15 @@
+<svg width="880" height="200" viewBox="0 0 880 200" fill="none" xmlns="http://www.w3.org/2000/svg">
+<g transform="translate(8 20)">
+<rect width="160" height="160" rx="38" fill="#1C4E3F"></rect>
+<g transform="translate(80 76) scale(0.2) translate(-256 -280)" stroke="#F8FAFC" stroke-width="42" stroke-linecap="round" stroke-linejoin="round">
+<path d="M256 464C256 464 160 384 128 304C96 224 128 128 128 128C128 128 224 160 304 192C384 224 464 320 464 320C464 320 384 416 304 448C224 480 256 464 256 464Z" fill="#7DB8A5" fill-opacity="0.30"></path>
+<path d="M256 464C256 464 352 384 384 304C416 224 384 128 384 128C384 128 288 160 208 192C128 224 48 320 48 320C48 320 128 416 208 448C288 480 256 464 256 464Z" fill="#7DB8A5" fill-opacity="0.30"></path>
+<path d="M256 80V464"></path>
+</g>
+</g>
+<text x="196" y="126" font-family="Outfit, Inter, Helvetica, Arial, sans-serif" font-size="86" font-weight="600" letter-spacing="-3" fill="#143A2F">unclutter</text>
+<g transform="translate(626 56)">
+<rect x="1.5" y="1.5" width="169" height="69" rx="34.5" fill="none" stroke="#24614F" stroke-width="3"></rect>
+<text x="86" y="49" text-anchor="middle" font-family="Outfit, Inter, Helvetica, Arial, sans-serif" font-size="40" font-weight="800" letter-spacing="1.5" fill="#143A2F">DESK</text>
+</g>
+</svg>

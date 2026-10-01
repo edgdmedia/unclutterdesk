@@ -5,8 +5,7 @@ import {
   UnauthorizedException,
   NotFoundException,
   ForbiddenException,
-  Logger,
-} from '@nestjs/common';
+  Logger, Optional } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcryptjs';
 import { createHash, randomBytes } from 'crypto';
@@ -16,6 +15,7 @@ import { DeviceInfo, SessionService } from './session.service';
 import { JWT_EXPIRES_IN, REFRESH_SECRET, REFRESH_EXPIRES_IN } from '../../common/auth.config';
 import { NotificationService } from '../notifications/notification.service';
 import { InviteService } from '../invites/invite.service';
+import { DefaultFormsService } from '../intake/default-forms.service';
 import { effectivePermissions } from '../../common/permissions';
 import { appOrigin } from '../../common/origins';
 
@@ -67,6 +67,7 @@ export class AuthService {
     private readonly notifications: NotificationService,
     private readonly sessions: SessionService,
     private readonly invites?: InviteService,
+    @Optional() private readonly defaultForms?: DefaultFormsService,
   ) {}
 
   /** `base`, or `base-xxxx` when an account already has that username. */
@@ -146,6 +147,8 @@ export class AuthService {
         },
       });
       targetTenantId = newTenant.id;
+      // BKG-06: a brand-new practice starts with its default forms.
+      await this.defaultForms?.ensureFor(newTenant.id).catch(() => undefined);
     }
 
     // Check if user profile already exists for this tenant
@@ -935,6 +938,21 @@ export class AuthService {
     return this.practiceProfile(profile, profile.user?.platformRole);
   }
 
+  /**
+   * ONB-06: mark the dashboard walkthrough as taken, for the caller's own
+   * profile only. The update is scoped to profiles that have never completed
+   * it, so a second call keeps the first date.
+   */
+  async completeTour(profileId: bigint, profile?: { tourCompletedAt?: Date | null }) {
+    if (profile?.tourCompletedAt) return { tourCompletedAt: profile.tourCompletedAt };
+    const stamp = new Date();
+    await this.prisma.profile.updateMany({
+      where: { id: profileId, tourCompletedAt: null },
+      data: { tourCompletedAt: stamp },
+    });
+    return { tourCompletedAt: profile?.tourCompletedAt ?? stamp };
+  }
+
   /** The live sessions of the signed-in account, newest use first. */
   listSessions(userId: bigint, currentSessionId?: string) {
     return this.sessions.listForUser(userId, currentSessionId);
@@ -1103,6 +1121,7 @@ export class AuthService {
     status: string;
     permissions?: string[] | null;
     avatarUrl: string | null;
+    tourCompletedAt?: Date | null;
     // Required, not optional: a caller that forgets the include would otherwise
     // hand back tenantSlug: null, which is worse than the inconsistency this
     // replaces — silently wrong instead of visibly absent.
@@ -1133,6 +1152,8 @@ export class AuthService {
       // The effective set, computed here once: the app shows and hides with
       // it, and the guard still enforces independently on every call.
       permissions: [...effectivePermissions(profile.role, profile.permissions ?? [])],
+      // ONB-06: whether this person has had the dashboard walkthrough yet.
+      tourCompletedAt: profile.tourCompletedAt ? profile.tourCompletedAt.toISOString() : null,
     };
   }
 
@@ -1146,7 +1167,7 @@ export class AuthService {
    */
   async clientSignup(
     tenantId: bigint | undefined,
-    dto: { firstName?: string; lastName?: string; email?: string; password?: string },
+    dto: { firstName?: string; lastName?: string; email?: string; phone?: string; password?: string },
     device: DeviceInfo = {},
   ) {
     if (!tenantId) throw new BadRequestException('Choose a practice first.');
@@ -1156,6 +1177,7 @@ export class AuthService {
     if (password.length < 8) throw new BadRequestException('Use a password of at least 8 characters.');
     const firstName = String(dto.firstName ?? '').trim().slice(0, 100);
     if (!firstName) throw new BadRequestException('Enter your first name.');
+    const phone = String(dto.phone ?? '').trim().slice(0, 30) || null;
 
     const existingUser = await this.prisma.user.findUnique({
       where: { email },
@@ -1184,6 +1206,7 @@ export class AuthService {
             userId: user.id,
             emailVerified: true,
             firstName: firstName || profileByEmail.firstName,
+            ...(phone && !profileByEmail.phone ? { phone } : {}),
             // A used invite must stop working the moment an account exists.
             accountTokenHash: null,
             accountTokenExpiresAt: null,
@@ -1197,6 +1220,7 @@ export class AuthService {
             username: await this.freeUsername(email.split('@')[0]),
             firstName,
             lastName: dto.lastName?.trim() || null,
+            phone,
             type: 'user',
             role: 'CLIENT',
             status: 'active',

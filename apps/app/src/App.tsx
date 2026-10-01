@@ -5,6 +5,7 @@ import useSWR from 'swr';
 import { BrandProvider } from '@unclutterdesk/ui';
 import { PracticeShell } from './components/shell/PracticeShell';
 import { AuthProvider, useAuth } from './context/AuthContext';
+import { PracticeBrandProvider, usePracticeBrand } from './context/PracticeBrandContext';
 import { api, getSubdomainTenantSlug, getAppType } from './utils/apiClient';
 import { ExternalRedirect } from './components/ExternalRedirect';
 import { LEGAL_URLS } from './utils/legal';
@@ -30,9 +31,10 @@ const TelehealthVideoRoomPage = lazy(() => import('./pages/practice/TelehealthVi
 const SessionPrepPage = lazy(() => import('./pages/practice/SessionPrepPage').then((m) => ({ default: m.SessionPrepPage })));
 const ClientPortalPage = lazy(() => import('./pages/client/ClientPortalPage').then((m) => ({ default: m.ClientPortalPage })));
 const OnboardingWizardPage = lazy(() => import('./pages/practice/OnboardingWizardPage').then((m) => ({ default: m.OnboardingWizardPage })));
-const ClientBookingPage = lazy(() => import('./pages/public/ClientBookingPage').then((m) => ({ default: m.ClientBookingPage })));
+const BookingWizardPage = lazy(() => import('./pages/public/booking/BookingWizardPage').then((m) => ({ default: m.BookingWizardPage })));
 const PublicProfilePage = lazy(() => import('./pages/public/PublicProfilePage').then((m) => ({ default: m.PublicProfilePage })));
 const PublicReviewFormPage = lazy(() => import('./pages/public/PublicReviewFormPage').then((m) => ({ default: m.PublicReviewFormPage })));
+const ClientFormPage = lazy(() => import('./pages/client/ClientFormPage').then((m) => ({ default: m.ClientFormPage })));
 // The documents live on the marketing site — see utils/legal.ts. These routes
 // stay because they are linked and bookmarked, but they no longer hold a second
 // copy of the text to drift from.
@@ -248,8 +250,9 @@ function PageFallback() {
 function AppLayout() {
   const { profile, isAuthenticated, isLoading } = useAuth();
   const [tenantStatus, setTenantStatus] = useState<'ACTIVE' | 'PAUSED'>('ACTIVE');
-  const [primaryColor, setPrimaryColor] = useState('#0F3A53');
-  const [secondaryColor, setSecondaryColor] = useState('#E3B341');
+  const { brand: savedBrand } = usePracticeBrand();
+  const primaryColor = savedBrand?.primaryColor || '#0F3A53';
+  const secondaryColor = savedBrand?.secondaryColor || '#E3B341';
   // Private workspace data comes only from the authenticated API.
   // Keys are null until a tenant session is active: anonymous visitors on the
   // login screen, and platform admins (no tenant workspace) don't fetch.
@@ -318,11 +321,12 @@ function AppLayout() {
   const privateDataError = clientsError || sessionsError || staffError;
 
   const practiceBrand = useMemo(() => ({
-    name: profile?.practiceName || (profile?.firstName ? `${profile.firstName}'s Practice` : 'Unclutter Desk Practice'),
-    slug: profile?.tenantSlug || getSubdomainTenantSlug() || 'practice',
+    name: savedBrand?.name || profile?.practiceName || (profile?.firstName ? `${profile.firstName}'s Practice` : 'Unclutter Desk Practice'),
+    slug: savedBrand?.slug || profile?.tenantSlug || getSubdomainTenantSlug() || 'practice',
+    logoUrl: savedBrand?.logoUrl ?? null,
     primaryColor,
     secondaryColor,
-  }), [profile, primaryColor, secondaryColor]);
+  }), [profile, savedBrand, primaryColor, secondaryColor]);
 
   // Platform admin console — own shell, no tenant branding.
   if (isAdminRoute) {
@@ -341,6 +345,7 @@ function AppLayout() {
     location.pathname === '/set-password' ||
     location.pathname === '/portal' ||
     location.pathname.startsWith('/portal/') ||
+    location.pathname.startsWith('/forms') ||
     location.pathname === '/login' ||
     location.pathname === '/register' ||
     location.pathname === '/forgot-password' ||
@@ -356,6 +361,7 @@ function AppLayout() {
             <Route path="/session/:id" element={<TelehealthVideoRoomPage />} />
             <Route path="/portal" element={<ClientPortalPage />} />
             <Route path="/portal/assessments/:id" element={<PortalAssessmentPage />} />
+            <Route path="/forms/:id" element={<ClientFormPage />} />
             <Route path="/onboarding" element={<OnboardingWizardPage />} />
             <Route path="/booking/confirmed" element={<BookingConfirmedPage />} />
             <Route path="/pay/:bookingId" element={<PayBookingPage />} />
@@ -429,9 +435,7 @@ function AppLayout() {
                     tenantStatus={tenantStatus}
                     setTenantStatus={setTenantStatus}
                     primaryColor={primaryColor}
-                    setPrimaryColor={setPrimaryColor}
                     secondaryColor={secondaryColor}
-                    setSecondaryColor={setSecondaryColor}
                     clients={resolvedClients}
                     sessions={resolvedSessions}
                   />
@@ -456,12 +460,7 @@ function AppLayout() {
               <Route
                 path="/dashboard/settings/brand"
                 element={
-                  <BrandSettingsPage
-                    primaryColor={primaryColor}
-                    setPrimaryColor={setPrimaryColor}
-                    secondaryColor={secondaryColor}
-                    setSecondaryColor={setSecondaryColor}
-                  />
+                  <BrandSettingsPage />
                 }
               />
               <Route path="/dashboard/settings/team" element={<TeamSettingsPage staff={resolvedStaff} onRefresh={refreshStaff} />} />
@@ -577,8 +576,9 @@ export function App() {
             <Suspense fallback={<PageFallback />}>
               <Routes>
                 <Route path="/" element={<PublicProfilePage />} />
-                <Route path="/book" element={<ClientBookingPage />} />
+                <Route path="/book" element={<BookingWizardPage />} />
                 <Route path="/review" element={<PublicReviewFormPage />} />
+                <Route path="/forms/:id" element={<ClientFormPage />} />
                 <Route path="/assessment/:token" element={<AssessmentPage />} />
                 <Route path="/booking/confirmed" element={<BookingConfirmedPage />} />
                 <Route path="/pay/:bookingId" element={<PayBookingPage />} />
@@ -606,7 +606,9 @@ export function App() {
               errorRetryCount: 1,
             }}
           >
-          <AppLayout />
+          <PracticeBrandProvider>
+            <AppLayout />
+          </PracticeBrandProvider>
         </SWRConfig>
       </AuthProvider>
     </BrowserRouter>

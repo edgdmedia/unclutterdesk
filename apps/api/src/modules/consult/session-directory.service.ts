@@ -1,6 +1,7 @@
-import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ForbiddenException, Injectable, NotFoundException, Optional } from '@nestjs/common';
 import { PrismaService } from '../../common/prisma/prisma.service';
 import { NotificationService } from '../notifications/notification.service';
+import { BookingNotifier } from '../notifications/booking-notifier.service';
 import { chargedKobo } from '../../common/revenue';
 import { tenantWebOrigin } from '../../common/origins';
 
@@ -27,6 +28,7 @@ export class SessionDirectoryService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly notifications: NotificationService,
+    @Optional() private readonly notifier?: BookingNotifier,
   ) {}
 
   private include() {
@@ -146,6 +148,7 @@ export class SessionDirectoryService {
     }
     await this.prisma.consultBooking.updateMany({ where: { id: b.id, tenantId }, data: { status } });
     if (status === 'CANCELLED') {
+      await this.notifier?.notifyStaff(b.id, 'cancelled').catch(() => undefined);
       // The time goes back on the shelf, as the expiry cron does.
       await this.prisma.consultAvailability.updateMany({
         where: { id: b.availabilityId, tenantId },

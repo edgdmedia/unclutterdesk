@@ -23,6 +23,8 @@ interface AuthProfile {
   hasPractice?: boolean;
   /** The effective permission set, computed server-side. */
   permissions?: string[];
+  /** ONB-06: when this person took the dashboard walkthrough; null until they do. */
+  tourCompletedAt?: string | null;
 }
 
 interface AuthContextValue {
@@ -48,6 +50,8 @@ interface AuthContextValue {
     inviteCode?: string;
   }) => Promise<RegisterResult>;
   logout: () => Promise<void>;
+  /** Re-reads the signed-in profile, e.g. after the practice changed its booking link. */
+  refreshProfile: () => Promise<void>;
   /** Practice session → admin console. Asks for the password again. */
   switchToAdmin: (password: string) => Promise<AuthProfile>;
   /** Admin console → the user's own practice. */
@@ -115,6 +119,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return () => {
       active = false;
     };
+  }, []);
+
+  // The session cookie is shared by every tab. When another tab signs in as
+  // someone else (the admin console, say) or signs out, follow it: otherwise
+  // this tab keeps showing the old account while its requests go out as the
+  // new one.
+  useEffect(() => {
+    const onStorage = (e: StorageEvent) => {
+      if (e.key === PROFILE_KEY || e.key === null) setProfile(readCachedProfile());
+    };
+    window.addEventListener('storage', onStorage);
+    return () => window.removeEventListener('storage', onStorage);
   }, []);
 
   // Global session-expired hook: called by apiClient when a refresh fails.
@@ -195,6 +211,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return res.profile;
   }, []);
 
+  const refreshProfile = useCallback(async () => {
+    const p = await api.get<AuthProfile>('/v1/auth/status');
+    setProfile(p);
+    cacheProfile(p);
+  }, []);
+
   const logout = useCallback(async () => {
     setProfile(null);
     cacheProfile(null);
@@ -213,6 +235,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         claimInvite,
         register,
         logout,
+        refreshProfile,
         switchToAdmin,
         switchToPractice,
       }}

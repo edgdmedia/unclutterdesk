@@ -41,6 +41,12 @@ describe('ClientAuthPanel', () => {
     await waitFor(() => expect(screen.getByText(/already have an account/i)).toBeTruthy());
     expect(screen.getByRole('button', { name: 'Sign in' }).getAttribute('aria-pressed')).toBe('true');
   });
+  it('explains that one account works everywhere and each practice sees only its own records', async () => {
+    renderWithApp(<ClientAuthPanel onDone={() => {}} />);
+    // Said once, in the booking design's words (BKG-04).
+    expect(await screen.findAllByText(/account works with every practice|same account with any practice/)).toHaveLength(1);
+    expect(screen.getByText('One Unclutter Desk account works with every practice. Each practice sees only its own records with you.')).toBeTruthy();
+  });
   it('signs in through the shared login', async () => {
     const onDone = vi.fn();
     renderWithApp(<ClientAuthPanel onDone={onDone} />);
@@ -50,5 +56,17 @@ describe('ClientAuthPanel', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Sign in and continue' }));
     await waitFor(() => expect(login).toHaveBeenCalledWith('ada@x.com', 'password1234'));
     await waitFor(() => expect(onDone).toHaveBeenCalled());
+  });
+
+  it('asks for a phone number when creating an account, and says one account works everywhere', async () => {
+    const onDone = vi.fn();
+    renderWithApp(<ClientAuthPanel onDone={onDone} />);
+    expect(screen.getByText(/One Unclutter Desk account works with every practice/)).toBeTruthy();
+    fireEvent.change(screen.getByLabelText('First name'), { target: { value: 'Ada' } });
+    fireEvent.change(screen.getByLabelText('Email'), { target: { value: 'ada@x.com' } });
+    fireEvent.change(screen.getByLabelText('Phone'), { target: { value: '0801 234 5678' } });
+    fireEvent.change(screen.getByLabelText('Password'), { target: { value: 'password1234' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Create account and continue' }));
+    await waitFor(() => expect(post).toHaveBeenCalledWith('/v1/auth/client-signup', expect.objectContaining({ phone: '0801 234 5678' })));
   });
 });

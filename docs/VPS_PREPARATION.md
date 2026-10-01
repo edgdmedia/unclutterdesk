@@ -105,6 +105,11 @@ PAYSTACK_PLAN_CLINIC=PLN_leght05vpcu41ad
 # Only needed if an origin outside *.unclutterdesk.com calls the API
 # CORS_ORIGINS=https://example.com
 
+# The API's own public address. Practice logos in emails are served from
+# GET /v1/tenant/:id/logo, and the emails need the absolute URL. Defaults to
+# https://api.unclutterdesk.com in production; set it explicitly if that ever moves.
+API_URL=https://api.unclutterdesk.com
+
 NODE_ENV=production
 ```
 
@@ -236,3 +241,25 @@ curl -s https://api.unclutterdesk.com/health
 ```
 
 Expect `{"status":"ok","database":"up",...}`.
+
+## Email sender name (NOT-03)
+
+The app always builds a full `From` with a display name —
+`"EDGD Media" <no-reply@unclutterdesk.com>` for a branded mail,
+`"Unclutter Desk" <no-reply@unclutterdesk.com>` otherwise
+(`mail.service.ts` `formatSender`, covered by `mail.service.spec.ts`).
+
+What an inbox then *shows* depends on the transport:
+
+- **Local/dev Gmail SMTP:** Gmail ignores or rewrites the display name unless
+  the `From` address is the signed-in account or a verified "Send mail as"
+  alias. So mail from a Gmail SMTP relay can arrive as `no-r…@unclutterdesk.com`
+  even though the code asked for the practice's name. This is transport
+  behaviour, not an app bug.
+- **Production (Resend with a verified sending domain):** Resend honours the
+  display name, and verified-domain mail gets the practice's name on a domain
+  it owns (`tenantSendingDomain`, `unclutter.com.ng` verified). Inbox clients
+  show the practice name.
+
+If a branded display name ever matters on SMTP, either set Gmail's
+"Send mail as" for the relay account or move that environment to Resend.

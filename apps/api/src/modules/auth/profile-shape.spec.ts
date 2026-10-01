@@ -28,6 +28,7 @@ const FIELDS = [
   'isTherapist',
   'platformAdmin',
   'permissions',
+  'tourCompletedAt',
 ].sort();
 
 const PROFILE = {

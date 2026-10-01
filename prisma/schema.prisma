@@ -206,6 +206,9 @@ model Profile {
   emailVerified   Boolean   @default(false)
   emailVerifiedAt DateTime?
 
+  // ONB-06: when this person took the dashboard walkthrough. Once, any device.
+  tourCompletedAt DateTime?
+
   // A pending "set your password" invite for a client the practice added.
   accountTokenHash      String?   @unique
   accountTokenExpiresAt DateTime?

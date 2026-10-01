@@ -13,6 +13,8 @@ interface NavEntry {
   href: string;
   label: string;
   icon: LucideIcon;
+  /** Element id for the guided tour. */
+  tourId?: string;
   tier?: 'pro' | 'clinic';
   /** Only for roles that see clients clinically (owner, admin, therapist). */
   clinicalOnly?: boolean;
@@ -21,8 +23,8 @@ interface NavEntry {
 const MAIN: NavEntry[] = [
   { href: '/dashboard', label: 'Overview', icon: LayoutDashboard },
   { href: '/dashboard/schedule', label: 'Schedule', icon: Calendar },
-  { href: '/dashboard/sessions', label: 'Sessions', icon: ClipboardList },
-  { href: '/dashboard/clients', label: 'Clients', icon: Users },
+  { href: '/dashboard/sessions', label: 'Sessions', icon: ClipboardList, tourId: 'nav-sessions' },
+  { href: '/dashboard/clients', label: 'Clients', icon: Users, tourId: 'nav-clients' },
   { href: '/dashboard/assessments', label: 'Assessments', icon: Activity },
   { href: '/dashboard/hours', label: 'Hours log', icon: Clock, clinicalOnly: true },
   { href: '/dashboard/submissions', label: 'Submissions', icon: ClipboardCheck },
@@ -42,12 +44,12 @@ const OWNER_GROUPS: { label: string; items: NavEntry[] }[] = [
   {
     label: 'Operations',
     items: [
-      { href: '/dashboard/settings/availability', label: 'Availability', icon: CalendarClock },
+      { href: '/dashboard/settings/availability', label: 'Availability', icon: CalendarClock, tourId: 'nav-availability' },
       { href: '/dashboard/settings/services', label: 'Services & pricing', icon: Settings },
       { href: '/dashboard/settings/team', label: 'Team & staff', icon: Users, tier: 'clinic' },
       { href: '/dashboard/settings/subscription', label: 'Subscription', icon: CreditCard },
-      { href: '/dashboard/settings/payouts', label: 'Payouts', icon: CreditCard },
-      { href: '/dashboard/settings/forms', label: 'Forms', icon: FileText, tier: 'pro' },
+      { href: '/dashboard/settings/payouts', label: 'Payouts', icon: CreditCard, tourId: 'nav-payouts' },
+      { href: '/dashboard/settings/forms', label: 'Forms', icon: FileText, tier: 'pro', tourId: 'nav-forms' },
       { href: '/dashboard/settings/discounts', label: 'Discounts & promos', icon: Tag, tier: 'pro' },
     ],
   },
@@ -55,14 +57,14 @@ const OWNER_GROUPS: { label: string; items: NavEntry[] }[] = [
 
 // Therapists and receptionists manage their own availability only.
 const OWN_AVAILABILITY: { label: string; items: NavEntry[] }[] = [
-  { label: 'My settings', items: [{ href: '/dashboard/settings/availability', label: 'Availability', icon: CalendarClock }] },
+  { label: 'My settings', items: [{ href: '/dashboard/settings/availability', label: 'Availability', icon: CalendarClock, tourId: 'nav-availability' }] },
 ];
 
 /** The phone's bottom bar; everything else is under "More". */
-export const PRACTICE_BOTTOM_NAV: { href: string; label: string; icon: LucideIcon }[] = [
+export const PRACTICE_BOTTOM_NAV: { href: string; label: string; icon: LucideIcon; tourId?: string }[] = [
   { href: '/dashboard', label: 'Today', icon: Home },
   { href: '/dashboard/schedule', label: 'Schedule', icon: Calendar },
-  { href: '/dashboard/clients', label: 'Clients', icon: Users },
+  { href: '/dashboard/clients', label: 'Clients', icon: Users, tourId: 'nav-clients' },
   { href: '/dashboard/notifications', label: 'Notifications', icon: Bell },
 ];
 
@@ -102,6 +104,7 @@ export function practiceSections(profile: NavProfile | null | undefined, plan: s
     icon: <e.icon />,
     // Only for features outside the practice's plan, as an upgrade hint.
     badge: e.tier && !planIncludes(plan, e.tier) ? <PlanTag tier={e.tier} /> : undefined,
+    tourId: e.tourId,
   });
   return [
     { key: 'main', groups: [{ key: 'main', items: MAIN.filter((e) => !e.clinicalOnly || !receptionist).map(toItem) }] },

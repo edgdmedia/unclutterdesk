@@ -1,13 +1,14 @@
-import { Injectable, BadRequestException, ConflictException, NotFoundException, ForbiddenException } from '@nestjs/common';
+import { Injectable, BadRequestException, ConflictException, NotFoundException, ForbiddenException, Optional } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { createHash, randomBytes } from 'crypto';
 import { promises as dns } from 'dns';
 import { Logger } from '@nestjs/common';
 import { PrismaService } from '../../common/prisma/prisma.service';
 import { NotificationService } from '../notifications/notification.service';
+import { DefaultFormsService } from '../intake/default-forms.service';
 import { decryptNoteFields } from '../../common/field-encryption';
 import { isPlatformHostname, isReservedSlug, normalizeSlug } from './reserved-slugs';
-import { appOrigin, ROOT_DOMAIN, tenantWebOrigin } from '../../common/origins';
+import { apiOrigin, appOrigin, ROOT_DOMAIN, tenantWebOrigin } from '../../common/origins';
 import { EmergencyContactInput, emergencyContactData, emergencyContactOf, emergencyContactText } from './emergency-contact';
 import { GRANTABLE, PERMISSIONS } from '../../common/permissions';
 
@@ -20,6 +21,12 @@ const RESERVED_SLUG_MESSAGE = 'That booking handle is reserved. Try another one.
  * colleague.
  */
 export const INVITE_ID_PREFIX = 'invite-';
+
+const DATA_IMAGE = /^data:(image\/(?:png|jpeg|gif|webp|svg\+xml));base64,([A-Za-z0-9+/=]+)$/;
+
+export type LogoResult = { contentType: string; body: Buffer } | { redirect: string };
+
+export { logoUrlFor } from '../../common/logo-url';
 
 export function parseInviteRef(ref: string): bigint | null {
   const raw = ref.startsWith(INVITE_ID_PREFIX) ? ref.slice(INVITE_ID_PREFIX.length) : ref;
@@ -80,6 +87,39 @@ export function publicTenantFields(tenant: Record<string, unknown>): Record<stri
   return out;
 }
 
+/** A logo is an image the browser has encoded, or a hosted https image. */
+const IMAGE_DATA_URL: Record<'logo' | 'photo', RegExp> = {
+  logo: /^data:image\/(?:png|jpeg|gif|webp|svg\+xml);base64,[A-Za-z0-9+/=]+$/,
+  photo: /^data:image\/(?:png|jpeg|webp|gif);base64,[A-Za-z0-9+/=]+$/,
+};
+/** The app shrinks images to well under this before sending them. */
+const MAX_LOGO_LENGTH = 100_000;
+
+/**
+ * undefined: not being changed. null: remove it. Anything else must be an image.
+ * Empty used to be dropped, so a practice that removed its logo got it back.
+ */
+export function cleanImageUrl(value: unknown, what: 'logo' | 'photo' = 'logo'): string | null | undefined {
+  if (value === undefined) return undefined;
+  const image = typeof value === 'string' ? value.trim() : value === null ? '' : null;
+  if (image === null) throw new BadRequestException(`The ${what} must be an image.`);
+  if (!image) return null;
+  if (image.length > MAX_LOGO_LENGTH) {
+    throw new BadRequestException(`That ${what} is too large. Choose a smaller image (under about 60 KB).`);
+  }
+  if (IMAGE_DATA_URL[what].test(image)) return image;
+  try {
+    const url = new URL(image);
+    if (url.protocol === 'https:') return image;
+  } catch {
+    // Falls through to the error below.
+  }
+  throw new BadRequestException(`The ${what} must be an image.`);
+}
+
+/** Kept so logo callers read as before. */
+export const cleanLogoUrl = (value: unknown): string | null | undefined => cleanImageUrl(value, 'logo');
+
 @Injectable()
 export class TenantService {
   private readonly logger = new Logger(TenantService.name);
@@ -87,6 +127,7 @@ export class TenantService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly notifications: NotificationService,
+    @Optional() private readonly defaultForms?: DefaultFormsService,
   ) {}
 
   private normalizeCustomDomain(input?: string | null) {
@@ -137,18 +178,21 @@ export class TenantService {
     const existing = await this.prisma.tenant.findUnique({ where: { slug } });
     if (existing) throw new BadRequestException('This practice slug is already taken');
 
-    return this.prisma.tenant.create({
+    const tenant = await this.prisma.tenant.create({
       data: {
         name: dto.name.trim(),
         slug,
         customDomain: this.validateCustomDomain(dto.customDomain),
         customDomainStatus: 'PENDING',
-        logoUrl: dto.logoUrl,
+        logoUrl: cleanLogoUrl(dto.logoUrl) ?? null,
         primaryColor: dto.primaryColor || '#0F3A53',
         secondaryColor: dto.secondaryColor || '#E3B341',
         currency: dto.currency || 'NGN',
       },
     });
+    // BKG-06: a new practice starts with the intake and confidentiality forms.
+    await this.defaultForms?.ensureFor(tenant.id).catch(() => undefined);
+    return tenant;
   }
 
   async checkSlugAvailability(slug: string, tenantId?: bigint) {
@@ -220,7 +264,7 @@ export class TenantService {
     name?: string;
     slug?: string;
     shortName?: string;
-    logoUrl?: string;
+    logoUrl?: string | null;
     faviconUrl?: string;
     primaryColor?: string;
     secondaryColor?: string;
@@ -242,6 +286,8 @@ export class TenantService {
       }
     }
 
+    const logoUrl = cleanLogoUrl(dto.logoUrl);
+
     let slug: string | undefined;
     if (dto.slug) {
       slug = normalizeSlug(dto.slug);
@@ -259,7 +305,7 @@ export class TenantService {
       ...(dto.name ? { name: dto.name.trim() } : {}),
       ...(slug ? { slug } : {}),
       ...(dto.shortName !== undefined ? { shortName: dto.shortName?.trim() || null } : {}),
-      ...(dto.logoUrl !== undefined ? { logoUrl: dto.logoUrl } : {}),
+      ...(logoUrl !== undefined ? { logoUrl } : {}),
       ...(dto.faviconUrl !== undefined ? { faviconUrl: dto.faviconUrl } : {}),
       ...(dto.primaryColor ? { primaryColor: dto.primaryColor } : {}),
       ...(dto.secondaryColor ? { secondaryColor: dto.secondaryColor } : {}),
@@ -778,6 +824,16 @@ export class TenantService {
       select: { id: true, permissions: true },
     });
     return { id: updated.id.toString(), permissions: updated.permissions };
+  }
+
+  /** The practice's logo bytes, or a redirect to where it is hosted. */
+  async getLogo(tenantId: bigint): Promise<LogoResult> {
+    const tenant = await this.prisma.tenant.findUnique({ where: { id: tenantId }, select: { id: true, logoUrl: true } });
+    const logo = tenant?.logoUrl?.trim();
+    if (logo && /^https:\/\//i.test(logo)) return { redirect: logo };
+    const match = logo?.match(DATA_IMAGE);
+    if (!match) throw new NotFoundException('No logo');
+    return { contentType: match[1], body: Buffer.from(match[2], 'base64') };
   }
 
   // ── Client (Patient) Management ──────────────────────────────────────────────

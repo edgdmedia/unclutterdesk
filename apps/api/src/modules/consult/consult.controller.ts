@@ -230,6 +230,16 @@ export class ConsultController {
     );
   }
 
+  @Permissions('any.authenticated')
+  @Post('public/bookings/:bookingId/confirm-payment')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @ApiBearerAuth('access-token')
+  @ApiOperation({ summary: "Confirm a booking once Paystack's pop-up reports the payment went through" })
+  confirmPayment(@Req() req: any, @Param('bookingId') bookingId: string) {
+    if (!/^\d+$/.test(bookingId)) throw new NotFoundException('Booking not found');
+    return this.consultService.confirmPublicPayment(authenticatedTenantId(req), authenticatedProfileId(req), BigInt(bookingId));
+  }
+
   @Get('public/payment-options')
   @ApiOperation({ summary: 'How clients can pay this practice (bank details are only given with a booking)' })
   async paymentOptions(@Req() req: TenantRequest) {

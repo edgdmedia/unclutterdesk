@@ -9,6 +9,8 @@ export interface SidebarItem {
   icon: ReactNode;
   /** Shown after the label in full mode, e.g. a plan tag. */
   badge?: ReactNode;
+  /** The element's id for the guided tour: rendered as data-tour on the link. */
+  tourId?: string;
 }
 export interface SidebarGroup {
   key: string;
@@ -51,6 +53,7 @@ function Item({ item, active, rail, Link, onNavigate }: { item: SidebarItem; act
       <div className="group relative">
         <Link
           href={item.href}
+          data-tour={item.tourId}
           aria-label={item.label}
           aria-current={active ? 'page' : undefined}
           onClick={onNavigate}
@@ -70,6 +73,7 @@ function Item({ item, active, rail, Link, onNavigate }: { item: SidebarItem; act
   return (
     <Link
       href={item.href}
+      data-tour={item.tourId}
       aria-current={active ? 'page' : undefined}
       onClick={onNavigate}
       className={`${ITEM_BASE} ${state} px-3 gap-2.5`}

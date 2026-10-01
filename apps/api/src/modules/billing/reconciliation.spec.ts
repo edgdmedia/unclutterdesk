@@ -146,8 +146,9 @@ describe('the webhook that confirms payment', () => {
       tenant: { findUnique: vi.fn(), update: vi.fn() },
     };
     const calendar = { pushBookingToGoogle: vi.fn().mockResolvedValue(undefined) };
-    const service = new BillingService(prisma, {} as any, calendar as any);
-    return { service, prisma };
+    const bookingNotifier = { confirmed: vi.fn().mockResolvedValue(undefined) };
+    const service = new BillingService(prisma, {} as any, calendar as any, undefined, bookingNotifier as any);
+    return { service, prisma, bookingNotifier };
   }
 
   it('confirms only the booking named in the reference', async () => {
@@ -167,6 +168,17 @@ describe('the webhook that confirms payment', () => {
     const { service, prisma } = makeWebhook();
     await service.handleWebhook('charge.success', { reference: 'booking-100-1' });
     expect(prisma.consultBooking.updateMany.mock.calls[0][0].where.status).toBe('PENDING_PAYMENT');
+  });
+
+  // NOT-04: the webhook and the pop-up confirm race; only the one that flips
+  // the booking sends the "Your session is booked" email.
+  it('sends the confirmation once, and not on a replay', async () => {
+    const { service, prisma, bookingNotifier } = makeWebhook();
+    await service.handleWebhook('charge.success', { reference: 'booking-100-1' });
+    expect(bookingNotifier.confirmed).toHaveBeenCalledWith(100n);
+    prisma.consultBooking.updateMany.mockResolvedValue({ count: 0 });
+    await service.handleWebhook('charge.success', { reference: 'booking-100-1' });
+    expect(bookingNotifier.confirmed).toHaveBeenCalledTimes(1);
   });
 
   it('records when Paystack says it was paid, not when we processed it', async () => {

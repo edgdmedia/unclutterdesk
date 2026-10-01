@@ -1,6 +1,7 @@
 import { describe, it, expect, vi } from 'vitest';
 import { BadRequestException } from '@nestjs/common';
 import { ConsultService } from './consult.service';
+import { BookingNotifier } from '../notifications/booking-notifier.service';
 
 /**
  * Which service a booking is for, and so what it costs.
@@ -39,11 +40,24 @@ function makeService({
       }),
     },
     consultService: { findFirst: vi.fn().mockResolvedValue(chosen) },
-    consultBooking: { count: vi.fn().mockResolvedValue(0) },
-    profile: { findFirst: vi.fn().mockResolvedValue({ id: 5n, email: 'ada@example.com', firstName: 'Ada', lastName: 'Obi', phone: '080' }) },
+    consultBooking: {
+      count: vi.fn().mockResolvedValue(0),
+      findUnique: vi.fn().mockResolvedValue({
+        id: 100n, tenantId: TENANT, status: 'CONFIRMED', paymentMethod: 'NONE', amountKobo: null, videoRoomName: 'room-100', clientProfileId: 5n,
+        service: { title: 'Couples Session', priceKobo: 0n },
+        availability: { startsAt: startsAt, channel: 'VIDEO', providerProfileId: 7n },
+        client: { firstName: 'Ada', lastName: 'Obi', email: 'ada@example.com' },
+        tenant: { name: 'Practice', slug: 'practice', customDomain: null, customDomainStatus: null },
+      }),
+    },
+    profile: {
+      findFirst: vi.fn().mockResolvedValue({ id: 5n, email: 'ada@example.com', firstName: 'Ada', lastName: 'Obi', phone: '080' }),
+      findUnique: vi.fn().mockResolvedValue({ firstName: 'Jane', lastName: 'Smith' }),
+    },
     $transaction: vi.fn(async (cb: any) => cb(tx)),
   };
   const notifications = { notify: vi.fn(), sendEmail: vi.fn().mockResolvedValue({ success: true }) };
+  const notifier = new BookingNotifier(prisma as any, notifications as any);
   const service = new ConsultService(
     prisma,
     notifications as any,
@@ -51,6 +65,7 @@ function makeService({
     { calculateSplitPayout: vi.fn() } as any,
     {} as any,
     { pushBookingToGoogle: vi.fn() } as any, {} as any,
+    notifier,
   );
   return { service, prisma, tx, notifications };
 }

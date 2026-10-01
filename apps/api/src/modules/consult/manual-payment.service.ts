@@ -6,6 +6,7 @@ import { chargedKobo } from '../../common/revenue';
 import { NotificationService } from '../notifications/notification.service';
 import { CalendarService } from '../calendar/calendar.service';
 import { formatNaira } from '../billing/subscription-plans';
+import { BookingNotifier } from '../notifications/booking-notifier.service';
 import { FRONT_DESK } from '../../common/roles';
 
 /** How long a bank-transfer booking holds its slot. */
@@ -58,6 +59,7 @@ export class ManualPaymentService {
     private readonly prisma: PrismaService,
     private readonly notifications: NotificationService,
     private readonly calendar: CalendarService,
+    private readonly notifier: BookingNotifier,
   ) {}
 
   // ── Practice settings ──
@@ -134,7 +136,8 @@ export class ManualPaymentService {
     } catch (err) {
       this.logger.warn(`Could not email transfer details for booking ${b.id}: ${(err as Error).message}`);
     }
-    await this.tellConfirmers(b, `New booking awaiting a bank transfer`, `${this.clientName(b)} booked ${b.service.title} on ${when} and will pay ${amount} by transfer (reference ${transferReference(b.id)}).`);
+    // Staff hear about the booking from BookingNotifier.booked — with the
+    // transfer reference — so announce only owns the client's bank details.
   }
 
   /** Bookings waiting on a transfer, soonest hold first. */
@@ -179,21 +182,9 @@ export class ManualPaymentService {
     }
     const b = await this.loadBooking(bookingId);
     if (b) {
-      try {
-        await this.notifications.sendEmail({
-          to: b.client.email,
-          type: 'bookings.manual_payment_received',
-          title: 'Payment received: your session is confirmed',
-          // A booking staff made may have been paid in person, not by transfer.
-          message: `${b.tenant.name} ${b.paymentMethod === 'MANUAL' ? 'has received your transfer' : 'has recorded your payment'}. Your ${b.service.title} on ${this.sessionTime(b.availability.startsAt)} is confirmed.`,
-          link: `${tenantWebOrigin(b.tenant)}/portal`,
-          actionLabel: 'View my booking',
-          tenantId: b.tenantId,
-          profileId: b.clientProfileId,
-        });
-      } catch (err) {
-        this.logger.warn(`Could not email payment confirmation for booking ${b.id}: ${(err as Error).message}`);
-      }
+      // The same confirmed email as every other path — with the join link,
+      // which a transfer hold must never have received before this moment.
+      await this.notifier.confirmed(bookingId).catch(() => undefined);
       await this.calendar.pushBookingToGoogle(bookingId).catch(() => undefined);
     }
     return { id: bookingId.toString(), status: 'CONFIRMED' };
@@ -214,7 +205,7 @@ export class ManualPaymentService {
     if (updated.count === 0) throw new NotFoundException('No booking waiting for a transfer was found.');
     const b = await this.loadBooking(bookingId);
     if (b) {
-      await this.tellConfirmers(b, `${this.clientName(b)} says they have paid`, `Check for a transfer of ${formatNaira(Number(chargedKobo(b)))} with reference ${transferReference(b.id)}, then mark it paid.`);
+      await this.notifier.notifyStaff(bookingId, 'transfer_sent');
     }
     return { ok: true };
   }
@@ -263,24 +254,4 @@ export class ManualPaymentService {
     }).format(d);
   }
 
-  private async tellConfirmers(b: { tenantId: bigint }, title: string, message: string) {
-    try {
-      const staff = await this.prisma.profile.findMany({
-        where: { tenantId: b.tenantId, role: { in: FRONT_DESK }, status: 'active' },
-        select: { id: true },
-      });
-      if (!staff.length) return;
-      await this.notifications.notify({
-        tenantId: b.tenantId,
-        profileIds: staff.map((s) => s.id),
-        type: 'bookings.manual_payment',
-        title,
-        message,
-        link: '/dashboard',
-        actionLabel: 'Review payments',
-      });
-    } catch (err) {
-      this.logger.warn(`Could not notify staff about a transfer: ${(err as Error).message}`);
-    }
-  }
 }

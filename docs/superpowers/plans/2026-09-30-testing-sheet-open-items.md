@@ -36,7 +36,7 @@
 
 ## Wave 1: confirmed bugs
 
-### Task 1: Setup keeps the booking link the practice typed (SET-01, part 1)
+### Task 1: Setup keeps the booking link the practice typed (SET-01, part 1). Done in `45230c9`
 
 **Root cause:** in `apps/app/src/pages/practice/OnboardingWizardPage.tsx`, the `loadExistingBrand` effect (around lines 288–344) depends on `[slugTouched]`. Typing a booking link calls `handleSlugChange`, which sets `slugTouched` to `true`. That re-runs the effect, which fetches `/v1/tenant/brand` and calls `setSlug(brand.slug)`, overwriting what was just typed with the link created at signup. Continue then saves the old link.
 
@@ -153,7 +153,7 @@ git commit -m "Setup keeps the booking link the practice typed"
 
 ---
 
-### Task 2: A Booking link setting, separate from the custom domain (SET-01 part 2, SET-02)
+### Task 2: A Booking link setting, separate from the custom domain (SET-01 part 2, SET-02). Done in `45230c9` (the card takes `slug` and `onSaved` props, and the page loads the brand once)
 
 **Current state:** `BrandSettingsPage.tsx` has a "Custom hostname" field and no way to change the booking link. The API already accepts `slug` on `PATCH /v1/tenant/brand` (checking reserved names, and returning a 409 "That booking handle is already taken" on a clash). `GET /v1/tenant/check-slug/:slug` checks whether a link is free.
 
@@ -598,7 +598,9 @@ git commit -m "The booking page shows the practice logo"
 
 ---
 
-### Task 5: Each slot carries its real session format (BKG-05, API side of ONB-05)
+### Task 5: Each slot carries its real session format (BKG-05, API side of ONB-05). Superseded
+
+> **Superseded 1 Oct 2026:** Tasks 5–6 are replaced by the fuller design in `docs/superpowers/specs/2026-10-01-session-formats-and-locations-design.md` (several locations, price per format, formats per block limited by each therapist). It's parked. Don't build Tasks 5–6 as written.
 
 **Root cause:** `ConsultAvailability.channel` already exists, but every slot is created with `channel: 'VIDEO'` (`consult.service.ts` `replaceTherapistAvailability`, around line 519, and `staff-booking.service.ts:339`). On the booking page, "Online / In-person" is a local toggle that's never sent anywhere.
 
@@ -859,40 +861,72 @@ git commit -m "The admin console uses the app's sidebar and account menu"
 
 Each task begins with a **Decide** step. Put the questions to the product owner, and record the answers under **Feedback / decision** in `docs/testing-feedback.md` before writing code. Where a task says **Spec first**, write `docs/superpowers/specs/2026-10-XX-<name>-design.md` and get it approved, then write a plan for it in the same format as Wave 1.
 
-### Task 8: Client accounts across practices (BKG-04)
+### Task 8: Say how client accounts work (BKG-04). Decided 30 Sep 2026
 
-**What the code does today:** one `User` per email address (`User.email @unique`), with a separate `Profile` per practice (`Profile.tenantId`, `Profile.userId`). A client signs in with one account everywhere, and each practice sees only its own profile and records for that client.
+**Decision:** keep one account per client across practices. In a practice's booking page and portal, the client sees their sessions with that practice. Each practice sees only what concerns it. This is how the code already works (one `User` per email, one `Profile` per practice).
 
-- [ ] **Decide:** keep this, which is recommended because clients have one password and practices stay isolated, or isolate accounts per practice.
-- [ ] **If kept:** mark BKG-04 `Won't fix` with the explanation above. Add one line under the sign-in form on the booking page: "Use the same account for any practice on Unclutter Desk. Each practice only sees its own records." Add a test asserting the line renders in `ClientAuthPanel.test.tsx`, then commit.
+- [ ] **Step 1: Write the failing test.** In `apps/app/src/pages/__tests__/ClientAuthPanel.test.tsx`, add:
 
-### Task 9: Booking as a step-by-step flow, with a layout that works (BKG-03, BKG-01)
+```tsx
+it('explains that one account works everywhere and each practice sees only its own records', async () => {
+  renderPanel(); // the helper already in this file
+  expect(await screen.findByText('Use the same account with any practice on Unclutter Desk. Each practice only sees its own records.')).toBeTruthy();
+});
+```
 
-**Spec first.** Proposed shape:
-1. **Service:** cards, one per service.
-2. **Time:** date strip, then times, with the format filter from Task 6.
-3. **Your details:** sign in or create an account (the existing `ClientAuthPanel`).
-4. **Review and pay:** summary, discount code, then pay or bank transfer.
+- [ ] **Step 2:** Run `cd apps/app && npx vitest run src/pages/__tests__/ClientAuthPanel.test.tsx`. Expected: FAIL.
+- [ ] **Step 3:** Add that sentence as a `<p className="text-[12px] text-[#64748B]">` under the sign-in and create-account forms in the client auth panel component the test renders.
+- [ ] **Step 4:** Run the test again. Expected: PASS.
+- [ ] **Step 5:** Also check `ClientPortal` pages load sessions scoped to the current practice. Every portal API call must filter by the request's tenant. Add an API spec asserting that the portal sessions query includes `tenantId`, then commit:
 
-It also needs a progress bar, Back on every step, the step kept in the URL (`?step=`) so a refresh doesn't lose progress, a single-column layout at 390px, and the practice logo and name in a slim header.
+```bash
+git commit -am "Clients are told one account works with every practice, and each sees only its own"
+```
 
-- [ ] **Decide:** approve these steps; decide whether intake and confidentiality forms (Task 11) become a step here or are sent after booking.
-- [ ] Write the spec, including a mockup of each step at 1280px and 390px.
-- [ ] Write the plan: one task per step component, plus a routing and state task and a visual check against the layout script. Each step's component gets a test with `renderWithApp` and the booking API faked.
+### Task 9: Booking as a step-by-step wizard (BKG-03, BKG-01). Approved 30 Sep 2026
 
-### Task 10: A first-run walkthrough after setup (ONB-06)
+**Decision:** four steps (service, time, your details, review and pay) and a confirmation screen. Intake and confidentiality forms come **after** booking (Task 11), shown on the confirmation screen.
 
-- [ ] **Decide:** a checklist card on the dashboard (recommended: it stays visible until done and survives reloads) or a guided tour with overlays.
-- [ ] **If checklist:** add `GET /v1/consult/dashboard/summary` fields for each step (`hasLogo`, `hasPayout`, `hasSharedLink`, `hasFirstBooking`, `hasIntakeForm`), which are server-derived so they're always true to the data. Add a `GettingStartedCard` on `DashboardPage` with a link per item and a dismiss button (stored on the server, not in localStorage). The wizard's "Go to therapist dashboard" lands on it. Tests: an API spec for each derived field, and an app test that the card lists only unfinished items and disappears when all are done.
+- [x] **Design:** done 1 Oct 2026, in `docs/design/design_handoff_booking_wizard/`. Decided: Paystack **pop-up** checkout (Paystack's inline script), not a redirect; build now, with formats, address and forms appearing once SET-06 and BKG-06 land; "Notify me" deferred (BKG-08). Keep the existing transfer reference `UD-<id>` rather than the design's `UDK-XXXX-YYYY`, and the existing `.ics` endpoint `GET /v1/calendar/bookings/:id/ical` for Add to calendar.
+- [ ] **Spec:** from the approved designs, write `docs/superpowers/specs/2026-10-XX-booking-wizard-design.md`. It names the components (`BookingHeader`, `BookingProgress`, `ServiceStep`, `TimeStep`, `DetailsStep`, `ReviewPayStep`, `BookingConfirmation`, `BookingSummaryCard`, `StickyBookingFooter`), the wizard state and the URL (`?step=service|time|details|pay`), and which existing pieces are reused: `ClientAuthPanel`, the discount preview, the Paystack and bank-transfer calls, `PracticeLogo` (Task 4) and `channelLabel` (Task 6).
+- [ ] **Plan:** write a plan in Wave 1's format, with one task per component, each tested through `renderWithApp` with the API faked. Add `/book` at all widths to `check-layout.mjs` as `STRICT`.
+- Depends on Tasks 4, 6 and 11.
 
-### Task 11: Default intake and confidentiality forms for every practice (BKG-06)
+### Task 10: A guided walkthrough of the dashboard (ONB-06). Decided 30 Sep 2026
 
-**What exists:** `UniversalForm` has `systemKey`, `isDefault` and `targetType` (`INTAKE` or `CONSENT`). System forms are locked to "activate or pause" (`intake.service.ts:255–265`). Only PHQ-9 and GAD-7 are seeded, and only in `prisma/seed.js`: new practices get nothing.
+**Decision:** the setup wizard already works as the checklist. What's missing is a **walkthrough**: a guided tour that points at the real parts of the dashboard, one at a time, the first time a practice lands there after setup.
 
-- [ ] **Decide:** (a) when clients fill them in: after booking, before the first session (recommended, since it keeps booking short) or as a booking step; (b) whether practices may edit the wording of these two, unlike PHQ-9 and GAD-7. The recommendation is yes: a new `EDITABLE_SYSTEM_KEYS = ['CLIENT_INTAKE', 'CONFIDENTIALITY']` list exempts them from the lock but keeps `systemKey`.
-- [ ] Write both templates' questions for product review: intake covers contact, emergency contact, reason for seeking help, history, current medication and consent to contact; confidentiality covers limits of confidentiality and a signature.
-- [ ] Build `DefaultFormsService.ensureFor(tenantId)`, idempotent on `(tenantId, systemKey)`. Call it from tenant creation, and backfill existing practices with a migration script `scripts/backfill-default-forms.mjs`. Tests: it creates both forms once, and a second call changes nothing.
-- [ ] Send the forms at the chosen moment through the existing assignment flow, and show the status on the session page.
+**Tour stops:** the anchors are `data-tour` attributes on the real elements.
+1. `booking-link`: "This is your booking link. Share it with clients, or copy it here."
+2. `nav-sessions`: "Every booking lands in Sessions. Open one to start the video call, take notes or mark it paid."
+3. `nav-clients`: "Each client's history, forms and notes live here."
+4. `nav-availability`: "Change your working hours, and whether each block is online or in person."
+5. `nav-forms`: "Your intake and confidentiality forms. Edit the wording to suit your practice."
+6. `nav-payouts`: "Where client payments go: Paystack, bank transfer, or both."
+7. `account-menu`: "Your profile and settings. You can replay this tour from here."
+
+**Files:**
+- Create: `packages/ui/src/components/Tour/Tour.tsx`, a shared component. It finds each step's `[data-tour=…]` element, dims the page around it, and shows a popover with the step text, "2 of 7", Back, Next and Skip tour. It's keyboard-accessible (Esc skips, and focus moves into the popover), skips steps whose anchor isn't on screen (for example a nav item hidden at phone width), and scrolls the anchor into view.
+- Create: `apps/app/src/components/onboarding/DashboardTour.tsx`, the steps above plus when to show them.
+- Modify: `apps/app/src/components/shell/practiceNav.tsx`, `AccountMenu.tsx` and `DashboardPage.tsx` to add the `data-tour` anchors, and add a **Take the tour** item to `AccountMenu`.
+- API: a new field `Profile.tourCompletedAt DateTime?` (with a migration) and `POST /v1/auth/me/tour-complete`. The field is returned on the profile, so the tour shows once per person, on any device, and not again after Skip or finish.
+- Tests:
+  - `packages/ui`: the Tour shows step 1's text next to its anchor, Next moves on, a missing anchor is skipped, and Esc ends the tour and calls `onDone`.
+  - `apps/app`: after setup, with `tourCompletedAt: null`, the dashboard starts the tour; finishing calls `POST /v1/auth/me/tour-complete`; with a date set, no tour appears; **Take the tour** starts it again.
+  - API: the endpoint sets `tourCompletedAt` for the caller's own profile only.
+- Commit message: "A first-time walkthrough shows new practices around the dashboard".
+
+### Task 11: Default intake and confidentiality forms, sent after booking (BKG-06). Decided 30 Sep 2026
+
+**Decisions:** every practice gets both forms by default. **Practices can edit the wording.** Clients receive the forms **after booking**, to complete before the first session.
+
+- [ ] **Templates:** write both forms' questions in `apps/api/src/modules/intake/default-forms.ts` as `CLIENT_INTAKE` and `CONFIDENTIALITY` schema arrays, and share them for a quick product read before coding.
+  - **Intake:** preferred name, date of birth, phone, emergency contact name and phone, what brings you to therapy, previous therapy (yes/no, details), current medication, anything else, and consent to be contacted by phone or email.
+  - **Confidentiality:** what is kept confidential; the limits (risk of serious harm to self or others, safeguarding, court order); how notes are stored; an "I have read and understood" checkbox; and a signature and date.
+- [ ] **Editable system forms:** in `intake.service.ts`, add `export const EDITABLE_SYSTEM_KEYS = ['CLIENT_INTAKE', 'CONFIDENTIALITY']`. The lock at lines ~255–265 skips forms whose `systemKey` is in that list, so title, description and schema can be edited. PHQ-9 and GAD-7 stay locked. Test: editing `CLIENT_INTAKE`'s schema succeeds, and editing `PHQ_9`'s still throws.
+- [ ] **Seed every practice:** `DefaultFormsService.ensureFor(tenantId)` creates any missing default forms, matched by `(tenantId, systemKey)`. It's called at the end of tenant creation. `scripts/backfill-default-forms.mjs` runs it for every existing practice. Tests: the first call creates both forms, the second changes nothing, and a practice's edited form is never overwritten.
+- [ ] **Send after booking:** when a booking is confirmed (paid, or bank transfer marked paid), assign both active default forms to the client unless they've already submitted them for this practice. Email one "Before your first session" message listing the forms, with a link to each, through `NotificationService.sendEmail`. Tests: confirmation assigns both forms; a returning client who already submitted them gets nothing; a paused form isn't sent.
+- [ ] **Show status:** the session page and client page show "Intake: done / waiting" and "Confidentiality: done / waiting". Test through `renderWithApp`.
 
 ### Task 12: Custom domains, end to end (SET-03)
 
@@ -925,4 +959,6 @@ It also needs a progress bar, Back on every step, the step kept in the URL (`?st
 1. Tasks 1–4, the quick, visible bugs. Retest with the product owner, then mark `Done` in the sheet.
 2. Tasks 5–6, session format, API first and then UI.
 3. Task 7, the admin shell.
-4. The Wave 2 decisions (Tasks 8–13) can be asked any time. Answers are needed before each task starts. Task 9 depends on Task 11's decision (a).
+4. Tasks 8, 10 and 11 are decided (30 Sep 2026) and can start after Wave 1.
+5. Task 9 waits for the designs from Claude Design (prompt: `docs/design/booking-wizard-design-prompt.md`).
+6. Tasks 12 (custom domains) and 13 (shared templates) are still waiting on decisions.

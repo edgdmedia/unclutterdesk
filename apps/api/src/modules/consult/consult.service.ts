@@ -1,4 +1,4 @@
-import { Injectable, BadRequestException, NotFoundException, ForbiddenException, Logger } from '@nestjs/common';
+import { Injectable, BadRequestException, NotFoundException, ForbiddenException, Logger, Optional } from '@nestjs/common';
 import { randomBytes } from 'crypto';
 import { PrismaService } from '../../common/prisma/prisma.service';
 import { NotificationService } from '../notifications/notification.service';
@@ -9,8 +9,13 @@ import { CalendarService } from '../calendar/calendar.service';
 import { changePercent, chargedKobo, revenueByMonth, startOfMonth } from '../../common/revenue';
 import { tenantWebOrigin } from '../../common/origins';
 import { decryptNoteFields } from '../../common/field-encryption';
+import { cleanImageUrl } from '../tenant/tenant.service';
 import { holdExpiry, ManualPaymentService, transferReference } from './manual-payment.service';
+import { BookingNotifier } from '../notifications/booking-notifier.service';
 import { assertWithinMonthlyLimit } from './booking-limits';
+
+/** A Paystack checkout: the page to send the payer to, and the code its pop-up opens with. */
+type StartedPayment = { url: string; accessCode: string };
 
 @Injectable()
 export class ConsultService {
@@ -24,6 +29,7 @@ export class ConsultService {
     private readonly paystack: PaystackService,
     private readonly calendar: CalendarService,
     private readonly manualPayments: ManualPaymentService,
+    @Optional() private readonly notifier?: BookingNotifier,
   ) { }
 
   async getPublicTherapists(tenantId: bigint) {
@@ -144,23 +150,23 @@ export class ConsultService {
   }
 
   async uploadTherapistAvatar(tenantId: bigint, profileId: bigint, avatarUrl: string) {
-    if (!avatarUrl || typeof avatarUrl !== 'string') {
-      throw new BadRequestException('Valid avatar URL or data is required');
-    }
+    // Same rules as the logo, in photo's words: a shrunken data URL, an https
+    // image, or nothing at all to clear it.
+    const cleaned = cleanImageUrl(avatarUrl, 'photo');
 
     // profileId comes from the caller's own token, so this was not reachable
     // across tenants — but scoping it here enforces the invariant in the query
     // rather than relying on every future caller passing the right thing.
     const result = await this.prisma.profile.updateMany({
       where: { id: profileId, tenantId },
-      data: { avatarUrl },
+      data: { avatarUrl: cleaned },
     });
 
     if (result.count === 0) {
       throw new NotFoundException('Profile not found in this practice');
     }
 
-    return { success: true, avatarUrl };
+    return { success: true, avatarUrl: cleaned };
   }
 
   async adminUpdateTherapistStatus(
@@ -370,6 +376,7 @@ export class ConsultService {
       serviceId: s.serviceId?.toString() || null,
       providerProfileId: s.providerProfileId.toString(),
       therapistName: `${s.therapist.profile.firstName || ''} ${s.therapist.profile.lastName || ''}`.trim() || 'Therapist',
+      therapistTitle: [s.therapist.credentials, s.therapist.specialty].filter(Boolean).join(' · ') || null,
       avatarUrl: s.therapist.profile.avatarUrl,
       startsAt: s.startsAt.toISOString(),
       endsAt: s.endsAt.toISOString(),
@@ -611,9 +618,11 @@ export class ConsultService {
 
     // Atomic transaction: claim the slot, find or create the client profile,
     // create the booking, and record discount usage.
-    let practiceName = 'your practice';
-    let tenantForLink: unknown = null;
-    const result = await this.prisma.$transaction(async (tx) => {
+    const result: {
+      bookingId: string; icalToken: string; status: string; serviceTitle: string; startsAt: string; endsAt: string;
+      therapistName: string; videoRoomLink: string | null; paymentUrl: string | null; accessCode: string | null;
+      reference: string | null; manualPayment: unknown; forms?: unknown[];
+    } = await this.prisma.$transaction(async (tx) => {
       // Claim the slot first, with the condition in the UPDATE itself.
       //
       // The availability check above runs outside this transaction, so two
@@ -673,7 +682,9 @@ export class ConsultService {
         });
       }
 
-      let paymentUrl = null;
+      let paymentUrl: string | null = null;
+      let accessCode: string | null = null;
+      let paymentRef: string | null = null;
       let manualPayment = null;
 
       if (manual) {
@@ -689,13 +700,17 @@ export class ConsultService {
         // redirects the payer to whatever it is given, so an unchecked value is
         // a phishing page wearing this checkout as its approach. Built from the
         // practice's own site instead.
-        paymentUrl = await this.startOnlinePayment(
+        const started = await this.startOnlinePayment(
           tenantId,
           finalPriceKobo,
           client.email,
           reference,
           `${tenantWebOrigin(slot.tenant)}/booking/confirmed`,
         );
+        paymentUrl = started.url;
+        // The booking wizard opens Paystack as a pop-up from this code.
+        accessCode = started.accessCode;
+        paymentRef = reference;
         await tx.consultBooking.update({
           where: { id: booking.id },
           data: { paymentRef: reference },
@@ -708,8 +723,6 @@ export class ConsultService {
         });
       }
 
-      practiceName = slot.tenant.name;
-      tenantForLink = slot.tenant;
       return {
         bookingId: booking.id.toString(),
         // Lets the confirmation page build the .ics link without a session —
@@ -722,6 +735,8 @@ export class ConsultService {
         therapistName: `${slot.therapist.profile.firstName || ''} ${slot.therapist.profile.lastName || ''}`.trim(),
         videoRoomLink,
         paymentUrl,
+        accessCode,
+        reference: paymentRef,
         manualPayment,
       };
     });
@@ -733,26 +748,18 @@ export class ConsultService {
       );
     }
 
-    // After commit, and never failing the booking: the client gets a written
-    // confirmation with the join link, so attending never depends on having
-    // the tab still open.
-    await this.notifications
-      .sendEmail({
-        to: client.email,
-        type: 'bookings.confirmed',
-        title: result.status === 'PENDING_PAYMENT' ? 'Almost there — pay to confirm your session' : 'Your session is booked',
-        message:
-          `${practiceName} has you down for ${result.serviceTitle} with ${result.therapistName} on ${new Date(result.startsAt).toLocaleString('en-GB', {
-            weekday: 'long', day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit', timeZone: 'Africa/Lagos',
-          })}.` +
-          (result.videoRoomLink ? ` Join link: ${result.videoRoomLink}` : '') +
-          (result.status === 'PENDING_PAYMENT' ? ' Your payment link is on the confirmation page.' : ''),
-        link: result.videoRoomLink ?? `${tenantWebOrigin(tenantForLink as any)}/portal`,
-        actionLabel: result.videoRoomLink ? 'Join the session' : 'View my sessions',
-        tenantId,
-        profileId: client.id,
-      })
-      .catch((err) => this.logger.warn(`Could not email booking confirmation: ${(err as Error).message}`));
+    // After commit, and never failing the booking. One service owns the
+    // booking messages: while money is due the client gets the pay link and
+    // never the join link; a free or waived booking is confirmed straight away.
+    await this.notifier?.booked(BigInt(result.bookingId)).catch((err) =>
+      this.logger.warn(`Could not send booking messages for ${result.bookingId}: ${(err as Error).message}`),
+    );
+    // BKG-06: the wizard's "What's next" block shows whatever the client still
+    // owes; it stays hidden while the list is empty.
+    result.forms = await this.notifier
+      ?.pendingFormsFor(tenantId, client.id)
+      .then((forms) => forms.map((f: any) => ({ ...f, href: `/forms/${f.id}?booking=${result.bookingId}` })))
+      .catch(() => []);
     return result;
   }
 
@@ -769,7 +776,7 @@ export class ConsultService {
     email: string,
     reference: string,
     callbackUrl: string,
-  ): Promise<string> {
+  ): Promise<StartedPayment> {
     const split = await this.billing.calculateSplitPayout(tenantId, amountKobo);
     if (split.payoutAccountBroken) {
       throw new BadRequestException(await this.billing.payoutAccountRejected(tenantId, 'previously rejected'));
@@ -784,7 +791,7 @@ export class ConsultService {
         split: split.tier === 'STARTER' ? 5 : 0,
         callback_url: callbackUrl,
       });
-      return pTx.authorization_url;
+      return { url: pTx.authorization_url, accessCode: pTx.access_code };
     } catch (e: any) {
       const message = String(e?.message ?? '');
       if (/subaccount/i.test(message)) {
@@ -814,7 +821,7 @@ export class ConsultService {
       where: { id: tenantId },
       select: { slug: true, customDomain: true, customDomainStatus: true },
     });
-    const paymentUrl = await this.startOnlinePayment(
+    const started = await this.startOnlinePayment(
       tenantId,
       chargeKobo,
       booking.client.email,
@@ -827,7 +834,37 @@ export class ConsultService {
       where: { id: booking.id },
       data: { paymentRef: reference },
     });
-    return { paymentUrl };
+    return { paymentUrl: started.url, accessCode: started.accessCode, reference };
+  }
+
+  /**
+   * Called when Paystack's pop-up reports success, so the client sees
+   * "You're booked" at once instead of waiting for the webhook. Asks Paystack
+   * itself rather than trusting the browser, and confirms through the same
+   * code as the webhook, which ignores a booking that's already confirmed.
+   */
+  async confirmPublicPayment(tenantId: bigint, clientProfileId: bigint, bookingId: bigint) {
+    const booking = await this.prisma.consultBooking.findFirst({
+      where: { id: bookingId, tenantId, clientProfileId },
+      select: { id: true, status: true, paymentRef: true },
+    });
+    if (!booking) throw new NotFoundException('Booking not found');
+    if (booking.status === 'CONFIRMED') return { status: 'CONFIRMED' as const, forms: await this.pendingFormLinks(tenantId, clientProfileId, bookingId) };
+    if (!booking.paymentRef) return { status: 'PENDING_PAYMENT' as const, forms: await this.pendingFormLinks(tenantId, clientProfileId, bookingId) };
+    const tx = await this.paystack.verifyTransaction(booking.paymentRef);
+    if (tx?.status !== 'success') return { status: 'PENDING_PAYMENT' as const, forms: await this.pendingFormLinks(tenantId, clientProfileId, bookingId) };
+    if (await this.billing.markBookingPaid(booking.paymentRef, tx)) {
+      // Only the call that actually flipped the booking sends: the pop-up and
+      // the webhook cannot both email "Your session is booked".
+      await this.notifier?.confirmed(bookingId).catch(() => undefined);
+    }
+    return { status: 'CONFIRMED' as const, forms: await this.pendingFormLinks(tenantId, clientProfileId, bookingId) };
+  }
+
+  /** BKG-06: the client's outstanding default forms, linked for the wizard. */
+  private async pendingFormLinks(tenantId: bigint, clientProfileId: bigint, bookingId: bigint) {
+    const forms = await this.notifier?.pendingFormsFor(tenantId, clientProfileId).catch(() => []);
+    return (forms ?? []).map((f: any) => ({ ...f, href: `/forms/${f.id}?booking=${bookingId}` }));
   }
 
   async getTherapistBookings(tenantId: bigint, providerProfileId: bigint) {
@@ -1223,6 +1260,10 @@ export class ConsultService {
         availability: true,
       },
     });
+
+    if (status === 'CANCELLED') {
+      await this.notifier?.notifyStaff(bookingId, 'cancelled').catch(() => undefined);
+    }
 
     if (status === 'COMPLETED') {
       const note = await this.prisma.clinicalNote.findFirst({

@@ -1,21 +1,18 @@
 import React, { useEffect, useState } from 'react';
 import { Globe, Palette, Sparkles } from 'lucide-react';
 import { Eyebrow, Card, BookingLinkField, useToast } from '@unclutterdesk/ui';
-import { ClientBookingPage } from '../../public/ClientBookingPage';
+import { BookingWizardPage } from '../../public/booking/BookingWizardPage';
 import { BookingConfirmedPage } from '../../public/BookingConfirmedPage';
 import { api, practiceBookingUrl } from '../../../utils/apiClient';
-import { useAuth } from '../../../context/AuthContext';
+import { usePracticeBrand } from '../../../context/PracticeBrandContext';
 import { SendingDomainCard } from '../../../components/email/SendingDomainCard';
-
-interface BrandSettingsPageProps {
-  primaryColor?: string;
-  setPrimaryColor?: (color: string) => void;
-  secondaryColor?: string;
-  setSecondaryColor?: (color: string) => void;
-}
+import { LogoField } from '../../../components/settings/LogoField';
+import { BookingLinkCard } from '../../../components/settings/BookingLinkCard';
 
 type BrandRecord = {
   name?: string;
+  slug?: string;
+  logoUrl?: string | null;
   customDomain?: string | null;
   customDomainStatus?: string;
   customDomainTarget?: string | null;
@@ -24,11 +21,20 @@ type BrandRecord = {
   secondaryColor?: string;
 };
 
-export function BrandSettingsPage(props: BrandSettingsPageProps) {
+const fieldCls = 'w-full h-[44px] px-3.5 rounded-[14px] bg-[#F8FAFC] border border-[#E2E8F0] text-[13px] font-medium text-[#0F172A] outline-none';
+
+/**
+ * Everything setup asks about the practice's look, editable again: logo,
+ * colours, name and contact email, the booking link, and a custom domain.
+ */
+export function BrandSettingsPage() {
   const toast = useToast();
-  const primaryColor = props.primaryColor || '#0F3A53';
-  const secondaryColor = props.secondaryColor || '#E3B341';
-  const [practiceName, setPracticeName] = useState('Your Practice Name');
+  const { refresh } = usePracticeBrand();
+  const [practiceName, setPracticeName] = useState('');
+  const [slug, setSlug] = useState('');
+  const [logoUrl, setLogoUrl] = useState('');
+  const [primaryColor, setPrimaryColor] = useState('#0F3A53');
+  const [secondaryColor, setSecondaryColor] = useState('#E3B341');
   const [customDomain, setCustomDomain] = useState('');
   const [customDomainStatus, setCustomDomainStatus] = useState('PENDING');
   const [customDomainTarget, setCustomDomainTarget] = useState<string | null>(null);
@@ -36,11 +42,11 @@ export function BrandSettingsPage(props: BrandSettingsPageProps) {
   const [previewTab, setPreviewTab] = useState<'booking' | 'confirmed'>('booking');
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [savingDomain, setSavingDomain] = useState(false);
   const [verifyingCustomDomain, setVerifyingCustomDomain] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const { profile } = useAuth();
-  const bookingUrl = practiceBookingUrl(profile?.tenantSlug, customDomain, customDomainStatus);
+  const bookingUrl = practiceBookingUrl(slug, customDomain, customDomainStatus);
 
   useEffect(() => {
     let cancelled = false;
@@ -49,13 +55,15 @@ export function BrandSettingsPage(props: BrandSettingsPageProps) {
       try {
         const brand = await api.get<BrandRecord>('/v1/tenant/brand');
         if (cancelled) return;
-        setPracticeName(brand.name || 'Your Practice Name');
+        setPracticeName(brand.name || '');
+        setSlug(brand.slug || '');
+        setLogoUrl(brand.logoUrl || '');
         setCustomDomain(brand.customDomain || '');
         setCustomDomainStatus(brand.customDomainStatus || 'PENDING');
         setCustomDomainTarget(brand.customDomainTarget ?? null);
         setPublicEmail(brand.publicEmail || '');
-        if (brand.primaryColor) props.setPrimaryColor?.(brand.primaryColor);
-        if (brand.secondaryColor) props.setSecondaryColor?.(brand.secondaryColor);
+        if (brand.primaryColor) setPrimaryColor(brand.primaryColor);
+        if (brand.secondaryColor) setSecondaryColor(brand.secondaryColor);
       } catch (err) {
         if (!cancelled) setError(err instanceof Error ? err.message : 'Unable to load brand settings');
       } finally {
@@ -72,17 +80,34 @@ export function BrandSettingsPage(props: BrandSettingsPageProps) {
     try {
       await api.patch('/v1/tenant/brand', {
         name: practiceName,
-        customDomain: customDomain || null,
         publicEmail,
         primaryColor,
         secondaryColor,
+        // null clears it: an empty value used to be dropped, so a removed logo came back.
+        logoUrl: logoUrl || null,
       });
-      toast.success('Brand settings saved');
+      toast.success('Brand saved');
+      await refresh();
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Could not save brand settings');
       setError(err instanceof Error ? err.message : 'Unable to save brand settings');
     } finally {
       setSaving(false);
+    }
+  }
+
+  async function handleSaveDomain() {
+    setSavingDomain(true);
+    setError(null);
+    try {
+      await api.patch('/v1/tenant/brand', { customDomain: customDomain || null });
+      setCustomDomainStatus('PENDING');
+      toast.success(customDomain ? 'Domain saved. Add the DNS record, then verify.' : 'Custom domain removed');
+      await refresh();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Unable to save the custom domain');
+    } finally {
+      setSavingDomain(false);
     }
   }
 
@@ -94,6 +119,7 @@ export function BrandSettingsPage(props: BrandSettingsPageProps) {
       setCustomDomain(verified.customDomain || '');
       setCustomDomainStatus(verified.customDomainStatus || 'ACTIVE');
       toast.success('Domain verified and live');
+      await refresh();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Unable to verify custom domain');
       // The API records why: FAILED for DNS, PENDING while the certificate issues.
@@ -108,37 +134,59 @@ export function BrandSettingsPage(props: BrandSettingsPageProps) {
     <div className="flex-1 min-w-0 flex flex-col bg-[#F8FAFC]">
       <header className="h-[80px] bg-white border-b border-[#E2E8F0] px-4 md:px-[26px] flex items-center justify-between gap-3 md:gap-5 shrink-0">
         <div>
-          <Eyebrow>WHITE-LABEL BRANDING</Eyebrow>
-          <h1 className="text-[16px] md:text-[20px] font-bold tracking-[-0.02em] text-[#0F172A]">Brand & Custom Domain Settings</h1>
+          <Eyebrow>BRAND & BOOKING PAGE</Eyebrow>
+          <h1 className="text-[16px] md:text-[20px] font-bold tracking-[-0.02em] text-[#0F172A]">How clients see your practice</h1>
         </div>
-        <BookingLinkField url={bookingUrl} className="ml-auto hidden md:flex" />
+        {slug ? <BookingLinkField url={bookingUrl} className="ml-auto hidden md:flex" /> : null}
       </header>
 
       <main className="p-4 md:p-[24px_26px_30px] grid grid-cols-1 lg:grid-cols-12 gap-4 md:gap-6 items-start flex-1">
         <div className="lg:col-span-5 space-y-4 md:space-y-5">
-          {error ? <div className="rounded-[18px] border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-medium text-rose-700">{error}</div> : null}
+          {error ? <div role="alert" className="rounded-[18px] border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-medium text-rose-700">{error}</div> : null}
 
-          <Card padding="p-[22px]" className="space-y-4">
-            <div className="flex items-center gap-2 border-b border-[#E2E8F0] pb-3">
-              <Palette className="h-4 w-4 text-[#E3B341]" />
-              <Eyebrow>BRAND THEME COLORS</Eyebrow>
-            </div>
-            <div className="grid grid-cols-2 gap-3">
-              <div className="p-[10px_12px] bg-[#F8FAFC] border border-[#E2E8F0] rounded-[16px] flex items-center gap-2"><input type="color" value={primaryColor} onChange={(e) => props.setPrimaryColor?.(e.target.value)} className="h-9 w-9 rounded-[10px] border-none cursor-pointer p-0 shrink-0" /><div><span className="text-[11px] font-bold text-[#64748B] block">Primary</span><span className="text-[12px] font-mono font-bold text-[#0F172A] uppercase">{primaryColor}</span></div></div>
-              <div className="p-[10px_12px] bg-[#F8FAFC] border border-[#E2E8F0] rounded-[16px] flex items-center gap-2"><input type="color" value={secondaryColor} onChange={(e) => props.setSecondaryColor?.(e.target.value)} className="h-9 w-9 rounded-[10px] border-none cursor-pointer p-0 shrink-0" /><div><span className="text-[11px] font-bold text-[#64748B] block">Secondary</span><span className="text-[12px] font-mono font-bold text-[#0F172A] uppercase">{secondaryColor}</span></div></div>
-            </div>
-          </Card>
+          {loading ? (
+            <Card padding="p-[22px]"><div className="text-sm font-medium text-[#64748B]">Loading brand settings…</div></Card>
+          ) : (
+            <>
+              <Card padding="p-[22px]" className="space-y-4">
+                <div className="flex items-center gap-2 border-b border-[#E2E8F0] pb-3">
+                  <Palette className="h-4 w-4 text-[#E3B341]" />
+                  <Eyebrow>BRAND</Eyebrow>
+                </div>
+                <div className="space-y-1.5">
+                  <span className="text-[11.5px] font-bold text-[#475569] block">Logo</span>
+                  <LogoField value={logoUrl} onChange={setLogoUrl} />
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <label className="p-[10px_12px] bg-[#F8FAFC] border border-[#E2E8F0] rounded-[16px] flex items-center gap-2 cursor-pointer">
+                    <input type="color" aria-label="Primary colour" value={primaryColor} onChange={(e) => setPrimaryColor(e.target.value)} className="h-9 w-9 rounded-[10px] border-none cursor-pointer p-0 shrink-0" />
+                    <span><span className="text-[11px] font-bold text-[#64748B] block">Primary</span><span className="text-[12px] font-mono font-bold text-[#0F172A] uppercase">{primaryColor}</span></span>
+                  </label>
+                  <label className="p-[10px_12px] bg-[#F8FAFC] border border-[#E2E8F0] rounded-[16px] flex items-center gap-2 cursor-pointer">
+                    <input type="color" aria-label="Accent colour" value={secondaryColor} onChange={(e) => setSecondaryColor(e.target.value)} className="h-9 w-9 rounded-[10px] border-none cursor-pointer p-0 shrink-0" />
+                    <span><span className="text-[11px] font-bold text-[#64748B] block">Accent</span><span className="text-[12px] font-mono font-bold text-[#0F172A] uppercase">{secondaryColor}</span></span>
+                  </label>
+                </div>
+                <div className="space-y-1.5"><label htmlFor="brand-name" className="text-[11.5px] font-bold text-[#475569]">Practice name</label><input id="brand-name" type="text" value={practiceName} onChange={(e) => setPracticeName(e.target.value)} className={fieldCls} /></div>
+                <div className="space-y-1.5"><label htmlFor="brand-email" className="text-[11.5px] font-bold text-[#475569]">Practice contact email</label><input id="brand-email" type="email" value={publicEmail} onChange={(e) => setPublicEmail(e.target.value)} className={fieldCls} /></div>
+                <button onClick={() => void handleSave()} disabled={saving} className="h-[42px] px-[15px] rounded-[13px] bg-[#0F3A53] text-white text-[13px] font-semibold cursor-pointer disabled:opacity-60">{saving ? 'Saving…' : 'Save brand'}</button>
+              </Card>
 
-          <Card padding="p-[22px]" className="space-y-3">
-            <div className="flex items-center gap-2 border-b border-[#E2E8F0] pb-3"><Globe className="h-4 w-4 text-blue-600" /><Eyebrow>DOMAIN & SENDER</Eyebrow></div>
-            {loading ? <div className="text-sm font-medium text-[#64748B]">Loading brand settings...</div> : (
-              <div className="space-y-3">
-                <div className="space-y-1.5"><label className="text-[11.5px] font-bold text-[#475569]">Practice name</label><input type="text" value={practiceName} onChange={(e) => setPracticeName(e.target.value)} className="w-full h-[44px] px-3.5 rounded-[14px] bg-[#F8FAFC] border border-[#E2E8F0] text-[13px] font-medium text-[#0F172A] outline-none" /></div>
-                <div className="space-y-1.5"><label className="text-[11.5px] font-bold text-[#475569]">Custom hostname</label><input type="text" value={customDomain} onChange={(e) => setCustomDomain(e.target.value)} placeholder="booking.yourpractice.com" className="w-full h-[44px] px-3.5 rounded-[14px] bg-[#F8FAFC] border border-[#E2E8F0] text-[13px] font-mono font-bold text-[#0F172A] outline-none" /></div>
+              <BookingLinkCard
+                slug={slug}
+                onSaved={(next) => {
+                  setSlug(next);
+                  void refresh();
+                }}
+              />
+
+              <Card padding="p-[22px]" className="space-y-3">
+                <div className="flex items-center gap-2 border-b border-[#E2E8F0] pb-3"><Globe className="h-4 w-4 text-blue-600" /><Eyebrow>CUSTOM DOMAIN</Eyebrow></div>
+                <p className="text-[11.5px] text-[#64748B] leading-relaxed">Optional. Use your own address, such as booking.yourpractice.com, instead of the booking link above.</p>
+                <div className="space-y-1.5"><label htmlFor="custom-domain" className="text-[11.5px] font-bold text-[#475569]">Custom domain</label><input id="custom-domain" type="text" value={customDomain} onChange={(e) => setCustomDomain(e.target.value)} placeholder="booking.yourpractice.com" className={`${fieldCls} font-mono font-bold`} /></div>
                 {!customDomainTarget ? (
                   <p className="text-[11.5px] text-[#64748B] leading-relaxed">
-                    Custom domains are not available yet. Clients book you at your unclutterdesk.com address,
-                    shown at the top of this page.
+                    Custom domains are not available yet. Clients book you at your booking link above.
                   </p>
                 ) : customDomain && customDomainStatus !== 'ACTIVE' ? (
                   <p className="text-[11.5px] text-[#64748B] leading-relaxed">
@@ -161,15 +209,14 @@ export function BrandSettingsPage(props: BrandSettingsPageProps) {
                       disabled={verifyingCustomDomain}
                       className="h-[34px] px-3 rounded-[10px] bg-[#0F3A53] text-white text-[11px] font-bold disabled:opacity-60 cursor-pointer"
                     >
-                      {verifyingCustomDomain ? 'Verifying...' : 'Verify domain'}
+                      {verifyingCustomDomain ? 'Verifying…' : 'Verify domain'}
                     </button>
                   </div>
                 ) : null}
-                <div className="space-y-1.5"><label className="text-[11.5px] font-bold text-[#475569]">Practice contact email</label><input type="email" value={publicEmail} onChange={(e) => setPublicEmail(e.target.value)} className="w-full h-[42px] px-3.5 rounded-[14px] bg-[#F8FAFC] border border-[#E2E8F0] text-[13px] font-medium text-[#0F172A] outline-none" /></div>
-                <button onClick={() => void handleSave()} disabled={saving} className="h-[42px] px-[15px] rounded-[13px] bg-[#0F3A53] text-white text-[13px] font-semibold cursor-pointer disabled:opacity-60">{saving ? 'Saving...' : 'Save brand settings'}</button>
-              </div>
-            )}
-          </Card>
+                <button onClick={() => void handleSaveDomain()} disabled={savingDomain} className="h-[40px] px-[15px] rounded-[12px] border border-[#E2E8F0] bg-white text-[#0F172A] text-[12.5px] font-semibold cursor-pointer disabled:opacity-60">{savingDomain ? 'Saving…' : 'Save domain'}</button>
+              </Card>
+            </>
+          )}
 
           <SendingDomainCard />
         </div>
@@ -184,7 +231,7 @@ export function BrandSettingsPage(props: BrandSettingsPageProps) {
               </div>
             </div>
             <div className="rounded-[20px] border border-[#E2E8F0] bg-[#F8FAFC] p-4 min-h-[500px] flex items-center justify-center overflow-hidden">
-              <div className="w-full h-[580px] overflow-auto relative rounded-[16px] bg-slate-50 border border-[#E2E8F0]"><div className="absolute origin-top-left pointer-events-none select-none" aria-hidden="true" style={{ width: '1180px', transform: 'scale(0.62)' }}>{previewTab === 'booking' ? <ClientBookingPage previewSlug={profile?.tenantSlug} /> : <BookingConfirmedPage />}</div></div>
+              <div className="w-full h-[580px] overflow-auto relative rounded-[16px] bg-slate-50 border border-[#E2E8F0]"><div className="absolute origin-top-left pointer-events-none select-none" aria-hidden="true" style={{ width: '1180px', transform: 'scale(0.62)' }}>{previewTab === 'booking' ? <BookingWizardPage previewSlug={slug} /> : <BookingConfirmedPage />}</div></div>
             </div>
           </Card>
         </div>
