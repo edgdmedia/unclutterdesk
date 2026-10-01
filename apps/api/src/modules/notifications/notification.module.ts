@@ -8,6 +8,7 @@ import { NOTIFICATION_CHANNELS } from './channels/notification.channel';
 import { MailService } from './mail/mail.service';
 import { NotificationController } from './notification.controller';
 import { NotificationService } from './notification.service';
+import { BookingNotifier } from './booking-notifier.service';
 import { ResendWebhookController, SendingDomainController } from './sending-domain/sending-domain.controller';
 import { SendingDomainService } from './sending-domain/sending-domain.service';
 
@@ -25,6 +26,7 @@ import { SendingDomainService } from './sending-domain/sending-domain.service';
   controllers: [NotificationController, SendingDomainController, ResendWebhookController],
   providers: [
     NotificationService,
+    BookingNotifier,
     SendingDomainService,
     PrismaService,
     MailService,
@@ -43,6 +45,6 @@ import { SendingDomainService } from './sending-domain/sending-domain.service';
       ],
     },
   ],
-  exports: [NotificationService, PrismaService, MailService, EmailChannel, InAppChannel, PushChannel, SmsChannel],
+  exports: [NotificationService, BookingNotifier, PrismaService, MailService, EmailChannel, InAppChannel, PushChannel, SmsChannel],
 })
 export class NotificationsModule {}

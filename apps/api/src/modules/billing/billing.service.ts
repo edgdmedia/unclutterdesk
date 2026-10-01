@@ -16,6 +16,7 @@ import {
   planCodeFor,
 } from './subscription-plans';
 import { PaystackService } from './paystack.service';
+import { BookingNotifier } from '../notifications/booking-notifier.service';
 import { CalendarService } from '../calendar/calendar.service';
 import { NotificationService } from '../notifications/notification.service';
 import { appOrigin } from '../../common/origins';
@@ -29,6 +30,7 @@ export class BillingService {
     private readonly paystack: PaystackService,
     private readonly calendar: CalendarService,
     @Optional() private readonly notifications?: NotificationService,
+    @Optional() private readonly bookingNotifier?: BookingNotifier,
   ) {}
 
   async getBankSubaccount(tenantId: bigint) {
@@ -468,7 +470,11 @@ export class BillingService {
     const reference: string | undefined = data?.reference;
 
     if (event === 'charge.success' && reference?.startsWith('booking-')) {
-      await this.markBookingPaid(reference, data);
+      // Exactly one "Your session is booked" per booking: only the call that
+      // flipped it from pending sends — the pop-up confirm may get here first.
+      if (await this.markBookingPaid(reference, data)) {
+        await this.bookingNotifier?.confirmed(BigInt(reference.split('-')[1])).catch(() => undefined);
+      }
       return;
     }
 

@@ -1,4 +1,4 @@
-import { Injectable, BadRequestException, NotFoundException, ForbiddenException, Logger } from '@nestjs/common';
+import { Injectable, BadRequestException, NotFoundException, ForbiddenException, Logger, Optional } from '@nestjs/common';
 import { randomBytes } from 'crypto';
 import { PrismaService } from '../../common/prisma/prisma.service';
 import { NotificationService } from '../notifications/notification.service';
@@ -10,6 +10,7 @@ import { changePercent, chargedKobo, revenueByMonth, startOfMonth } from '../../
 import { tenantWebOrigin } from '../../common/origins';
 import { decryptNoteFields } from '../../common/field-encryption';
 import { holdExpiry, ManualPaymentService, transferReference } from './manual-payment.service';
+import { BookingNotifier } from '../notifications/booking-notifier.service';
 import { assertWithinMonthlyLimit } from './booking-limits';
 
 /** A Paystack checkout: the page to send the payer to, and the code its pop-up opens with. */
@@ -27,6 +28,7 @@ export class ConsultService {
     private readonly paystack: PaystackService,
     private readonly calendar: CalendarService,
     private readonly manualPayments: ManualPaymentService,
+    @Optional() private readonly notifier?: BookingNotifier,
   ) { }
 
   async getPublicTherapists(tenantId: bigint) {
@@ -615,8 +617,6 @@ export class ConsultService {
 
     // Atomic transaction: claim the slot, find or create the client profile,
     // create the booking, and record discount usage.
-    let practiceName = 'your practice';
-    let tenantForLink: unknown = null;
     const result = await this.prisma.$transaction(async (tx) => {
       // Claim the slot first, with the condition in the UPDATE itself.
       //
@@ -718,8 +718,6 @@ export class ConsultService {
         });
       }
 
-      practiceName = slot.tenant.name;
-      tenantForLink = slot.tenant;
       return {
         bookingId: booking.id.toString(),
         // Lets the confirmation page build the .ics link without a session —
@@ -745,26 +743,12 @@ export class ConsultService {
       );
     }
 
-    // After commit, and never failing the booking: the client gets a written
-    // confirmation with the join link, so attending never depends on having
-    // the tab still open.
-    await this.notifications
-      .sendEmail({
-        to: client.email,
-        type: 'bookings.confirmed',
-        title: result.status === 'PENDING_PAYMENT' ? 'Almost there — pay to confirm your session' : 'Your session is booked',
-        message:
-          `${practiceName} has you down for ${result.serviceTitle} with ${result.therapistName} on ${new Date(result.startsAt).toLocaleString('en-GB', {
-            weekday: 'long', day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit', timeZone: 'Africa/Lagos',
-          })}.` +
-          (result.videoRoomLink ? ` Join link: ${result.videoRoomLink}` : '') +
-          (result.status === 'PENDING_PAYMENT' ? ' Your payment link is on the confirmation page.' : ''),
-        link: result.videoRoomLink ?? `${tenantWebOrigin(tenantForLink as any)}/portal`,
-        actionLabel: result.videoRoomLink ? 'Join the session' : 'View my sessions',
-        tenantId,
-        profileId: client.id,
-      })
-      .catch((err) => this.logger.warn(`Could not email booking confirmation: ${(err as Error).message}`));
+    // After commit, and never failing the booking. One service owns the
+    // booking messages: while money is due the client gets the pay link and
+    // never the join link; a free or waived booking is confirmed straight away.
+    await this.notifier?.booked(BigInt(result.bookingId)).catch((err) =>
+      this.logger.warn(`Could not send booking messages for ${result.bookingId}: ${(err as Error).message}`),
+    );
     return result;
   }
 
@@ -858,7 +842,11 @@ export class ConsultService {
     if (!booking.paymentRef) return { status: 'PENDING_PAYMENT' as const };
     const tx = await this.paystack.verifyTransaction(booking.paymentRef);
     if (tx?.status !== 'success') return { status: 'PENDING_PAYMENT' as const };
-    await this.billing.markBookingPaid(booking.paymentRef, tx);
+    if (await this.billing.markBookingPaid(booking.paymentRef, tx)) {
+      // Only the call that actually flipped the booking sends: the pop-up and
+      // the webhook cannot both email "Your session is booked".
+      await this.notifier?.confirmed(bookingId).catch(() => undefined);
+    }
     return { status: 'CONFIRMED' as const };
   }
 

@@ -6,6 +6,7 @@ import { chargedKobo } from '../../common/revenue';
 import { NotificationService } from '../notifications/notification.service';
 import { CalendarService } from '../calendar/calendar.service';
 import { formatNaira } from '../billing/subscription-plans';
+import { BookingNotifier } from '../notifications/booking-notifier.service';
 import { FRONT_DESK } from '../../common/roles';
 
 /** How long a bank-transfer booking holds its slot. */
@@ -58,6 +59,7 @@ export class ManualPaymentService {
     private readonly prisma: PrismaService,
     private readonly notifications: NotificationService,
     private readonly calendar: CalendarService,
+    private readonly notifier: BookingNotifier,
   ) {}
 
   // ── Practice settings ──
@@ -179,21 +181,9 @@ export class ManualPaymentService {
     }
     const b = await this.loadBooking(bookingId);
     if (b) {
-      try {
-        await this.notifications.sendEmail({
-          to: b.client.email,
-          type: 'bookings.manual_payment_received',
-          title: 'Payment received: your session is confirmed',
-          // A booking staff made may have been paid in person, not by transfer.
-          message: `${b.tenant.name} ${b.paymentMethod === 'MANUAL' ? 'has received your transfer' : 'has recorded your payment'}. Your ${b.service.title} on ${this.sessionTime(b.availability.startsAt)} is confirmed.`,
-          link: `${tenantWebOrigin(b.tenant)}/portal`,
-          actionLabel: 'View my booking',
-          tenantId: b.tenantId,
-          profileId: b.clientProfileId,
-        });
-      } catch (err) {
-        this.logger.warn(`Could not email payment confirmation for booking ${b.id}: ${(err as Error).message}`);
-      }
+      // The same confirmed email as every other path — with the join link,
+      // which a transfer hold must never have received before this moment.
+      await this.notifier.confirmed(bookingId).catch(() => undefined);
       await this.calendar.pushBookingToGoogle(bookingId).catch(() => undefined);
     }
     return { id: bookingId.toString(), status: 'CONFIRMED' };
