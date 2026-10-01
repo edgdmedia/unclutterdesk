@@ -25,5 +25,13 @@ export default defineConfig({
   ],
   server: {
     port: 5173,
+    // In development the API is reached through this server, so every page
+    // (app.localhost, a practice's *.localhost booking host) talks to it on its
+    // own origin. Calling the API on another *.localhost host is cross-site:
+    // the browser drops the session and CSRF cookies, and booking failed with
+    // "Your session has expired". Production is one site under unclutterdesk.com.
+    proxy: {
+      '/v1': { target: process.env.API_PROXY_TARGET ?? 'http://localhost:3099', changeOrigin: false },
+    },
   },
 });
