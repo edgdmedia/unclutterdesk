@@ -72,8 +72,10 @@ echo "⚙️ Generating Prisma Client..."
 npx prisma generate
 
 # 4. Build NestJS Backend API
+# nest build needs more than Node's ~2 GB default heap on this codebase;
+# without it the deploy dies with an OOM abort (exit 134).
 echo "🔨 Building NestJS API..."
-pnpm --filter @unclutterdesk/api run build
+NODE_OPTIONS="--max-old-space-size=3072${NODE_OPTIONS:+ $NODE_OPTIONS}" pnpm --filter @unclutterdesk/api run build
 
 # 5. Back up the database BEFORE touching the schema.
 # This holds real clinical records, so a deploy that cannot produce a restore
