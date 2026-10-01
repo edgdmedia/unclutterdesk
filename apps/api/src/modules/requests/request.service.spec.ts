@@ -39,6 +39,13 @@ describe('requests from practices', () => {
     expect(row.formTemplateId).toBe('50');
   });
 
+  it("won't change a template request outside its review, so the two can't drift apart", async () => {
+    const { service, prisma } = setup({ ...existing, type: 'TEMPLATE', formTemplateId: 50n });
+    await expect(service.update(4n, { status: 'done' })).rejects.toThrow(/approve or decline/i);
+    expect(prisma.platformRequest.update).not.toHaveBeenCalled();
+    await expect(service.update(4n, { status: 'done' }, { templateReview: true })).resolves.toMatchObject({ status: 'DONE' });
+  });
+
   it('needs a known type and a title', async () => {
     const { service } = setup();
     await expect(service.create(1n, 2n, { type: 'SHOPPING', subject: 'x y' })).rejects.toThrow(/what kind/);

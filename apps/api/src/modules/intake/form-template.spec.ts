@@ -133,13 +133,26 @@ describe('form templates', () => {
     await service.review(4n, 'APPROVED');
     expect(prisma.formTemplate.update).toHaveBeenCalledWith(expect.objectContaining({ where: { id: 4n }, data: { shareStatus: 'APPROVED' } }));
     expect(prisma.platformRequest.findMany.mock.calls[0][0].where).toEqual({ formTemplateId: 4n });
-    expect(requests.update).toHaveBeenCalledWith(30n, { status: 'DONE', adminNote: 'Approved. Every practice can now use it.' });
+    expect(requests.update).toHaveBeenCalledWith(30n, { status: 'DONE', adminNote: 'Approved. Every practice can now use it.' }, { templateReview: true });
+  });
+
+  it('the admin preview names the real practice, even for an anonymous share', async () => {
+    const { service, prisma } = make();
+    prisma.formTemplate.findUnique = vi.fn().mockResolvedValue({ id: 3n, tenantId: OTHER, title: 'Anon', shareStatus: 'PENDING', anonymous: true, schemaJson: questions, tenant: { name: 'Secret Clinic' } });
+    const t = await service.adminPreview(3n);
+    expect(t).toMatchObject({ practiceName: 'Secret Clinic', schemaJson: questions, questionCount: 1 });
+  });
+
+  it('the admin preview of a missing template is not found', async () => {
+    const { service, prisma } = make();
+    prisma.formTemplate.findUnique = vi.fn().mockResolvedValue(null);
+    await expect(service.adminPreview(3n)).rejects.toBeInstanceOf(NotFoundException);
   });
 
   it('a declined template passes the admin note to the practice', async () => {
     const { service, prisma, requests } = make([{ id: 4n, tenantId: OTHER, shareStatus: 'PENDING', schemaJson: questions }]);
     prisma.platformRequest.findMany.mockResolvedValue([{ id: 30n }]);
     await service.review(4n, 'DECLINED', 'Needs a consent question.');
-    expect(requests.update).toHaveBeenCalledWith(30n, { status: 'DECLINED', adminNote: 'Needs a consent question.' });
+    expect(requests.update).toHaveBeenCalledWith(30n, { status: 'DECLINED', adminNote: 'Needs a consent question.' }, { templateReview: true });
   });
 });

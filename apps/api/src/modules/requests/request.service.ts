@@ -92,9 +92,13 @@ export class RequestService {
   }
 
   /** Updates the status and note, and tells whoever asked. */
-  async update(id: bigint, dto: { status?: string; adminNote?: string }) {
+  async update(id: bigint, dto: { status?: string; adminNote?: string }, opts: { templateReview?: boolean } = {}) {
     const existing = await this.prisma.platformRequest.findUnique({ where: { id } });
     if (!existing) throw new NotFoundException('Request not found');
+    // A template request's status mirrors the template's; only its review moves it.
+    if (existing.type === 'TEMPLATE' && !opts.templateReview) {
+      throw new BadRequestException('Approve or decline this template from its review.');
+    }
     const status = dto?.status === undefined ? existing.status : String(dto.status).toUpperCase();
     if (!(REQUEST_STATUSES as readonly string[]).includes(status)) throw new BadRequestException('Unknown status.');
     const updated = await this.prisma.platformRequest.update({

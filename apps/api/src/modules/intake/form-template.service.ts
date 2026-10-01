@@ -152,11 +152,22 @@ export class FormTemplateService {
     const template = await this.prisma.formTemplate.update({ where: { id }, data: { shareStatus: decision } });
     const requests = await this.prisma.platformRequest.findMany({ where: { formTemplateId: id } });
     for (const request of requests) {
-      await this.requests.update(request.id, {
-        status: decision === 'APPROVED' ? 'DONE' : 'DECLINED',
-        adminNote: note ?? (decision === 'APPROVED' ? 'Approved. Every practice can now use it.' : 'Not approved for sharing.'),
-      });
+      await this.requests.update(
+        request.id,
+        {
+          status: decision === 'APPROVED' ? 'DONE' : 'DECLINED',
+          adminNote: note ?? (decision === 'APPROVED' ? 'Approved. Every practice can now use it.' : 'Not approved for sharing.'),
+        },
+        { templateReview: true },
+      );
     }
     return this.view(template, null);
+  }
+
+  /** Platform admin only: the real practice is always visible here. */
+  async adminPreview(id: bigint) {
+    const template = await this.prisma.formTemplate.findUnique({ where: { id }, include: withTenantName });
+    if (!template) throw new NotFoundException('Template not found');
+    return { ...this.view(template, null, true), practiceName: template.tenant?.name ?? '' };
   }
 }
