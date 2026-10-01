@@ -56,9 +56,9 @@ A running log of what shows up in testing, what we decide about it, and when it'
 | SET-05 | Settings | After setup there's nowhere to change the logo or booking link | Bug | P1 | Fixed |
 | SET-06 | Settings | No way to say if the practice offers online, in person or both, or to manage several locations | Feature | P1 | Discuss |
 | SET-07 | Settings | Services can't have a different price online and in person | Feature | P1 | Discuss |
-| BKG-01 | Booking page | Layout is incoherent and doesn't work | UX | | Ready |
+| BKG-01 | Booking page | Layout is incoherent and doesn't work | UX | | Fixed |
 | BKG-02 | Booking page | Practice logo never loads | Bug | | Open |
-| BKG-03 | Booking page | "Book now" should be a step-by-step wizard | UX | | Ready |
+| BKG-03 | Booking page | "Book now" should be a step-by-step wizard | UX | | Fixed |
 | BKG-04 | Booking page | Is a client's sign-in tied to one practice or shared across practices? | Question | | Ready |
 | BKG-05 | Booking page | Session format should come from what the practice offers for each slot | Bug | | Discuss |
 | BKG-06 | Booking page | Default intake and confidentiality form templates for every practice | Feature | | Ready |
@@ -212,10 +212,10 @@ A running log of what shows up in testing, what we decide about it, and when it'
 ## Client booking link / page
 
 ### BKG-01 · Booking page layout is incoherent
-- **Type:** UX · **Priority:** · **Status:** Ready
+- **Type:** UX · **Priority:** · **Status:** Fixed
 - **Observed:** The design looks bad and doesn't work. There's empty space that serves no purpose, no visual coherence, and the elements don't work together.
 - **Feedback / decision:** Designs done (1 Oct 2026): `docs/design/design_handoff_booking_wizard/` (README + screenshots). Decided: Paystack opens as a **pop-up** over the wizard; build the wizard **now**, with the format labels, filter, address and the forms section switching on once SET-06 and BKG-06 provide the data; **Notify me** is later (BKG-08). Plan Task 9.
-- **Fix:**
+- **Fix:** `c161e99..7b42194` on `dev` (plan `docs/superpowers/plans/2026-10-01-booking-wizard.md`). `/book` is the step-by-step wizard, with a Paystack pop-up, bank-transfer hold and confirmation. Browser-checked at 390, 820, 1024 and 1280px; the Paystack test pop-up opens with the right amount. A test-card payment wasn't completed in the browser.
 - **Verified:**
 
 ### BKG-02 · Practice logo never loads
@@ -226,10 +226,10 @@ A running log of what shows up in testing, what we decide about it, and when it'
 - **Verified:**
 
 ### BKG-03 · "Book now" should be a step wizard
-- **Type:** UX · **Priority:** · **Status:** Ready
+- **Type:** UX · **Priority:** · **Status:** Fixed
 - **Observed:** **Book now** shows everything at once. It should be a step-by-step wizard.
 - **Feedback / decision:** Designs done (1 Oct 2026): `docs/design/design_handoff_booking_wizard/` (README + screenshots). Decided: Paystack opens as a **pop-up** over the wizard; build the wizard **now**, with the format labels, filter, address and the forms section switching on once SET-06 and BKG-06 provide the data; **Notify me** is later (BKG-08). Plan Task 9.
-- **Fix:**
+- **Fix:** `c161e99..7b42194` on `dev` (plan `docs/superpowers/plans/2026-10-01-booking-wizard.md`). `/book` is the step-by-step wizard, with a Paystack pop-up, bank-transfer hold and confirmation. Browser-checked at 390, 820, 1024 and 1280px; the Paystack test pop-up opens with the right amount. A test-card payment wasn't completed in the browser.
 - **Verified:**
 
 ### BKG-04 · Is client sign-in tied to the practice?
