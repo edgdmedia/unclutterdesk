@@ -1,9 +1,11 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Copy, Check, Bell, Link2, Calendar, FileText, Video, Upload, Globe, Palette, Sparkles, TrendingUp, CheckCircle2, ArrowRight } from 'lucide-react';
+import { Copy, Check, Bell, Link2, Calendar, FileText, Video, Globe, Palette, Sparkles, TrendingUp, CheckCircle2, ArrowRight } from 'lucide-react';
 import { Button, Page, PageHeader, Grid, MetricTile } from '@unclutterdesk/ui';
 import { useAuth } from '../../context/AuthContext';
 import { PendingTransfersCard } from '../../components/payments/PendingTransfersCard';
+import { ImageField } from '../../components/settings/ImageField';
+import { DashboardTour } from '../../components/onboarding/DashboardTour';
 import { api, practiceBookingUrl } from '../../utils/apiClient';
 
 interface DashboardPageProps {
@@ -19,7 +21,7 @@ interface DashboardPageProps {
 
 export function DashboardPage(props: DashboardPageProps) {
   const navigate = useNavigate();
-  const { profile: authUser } = useAuth();
+  const { profile: authUser, refreshProfile } = useAuth();
 
   const userFullName = `${authUser?.firstName || ''} ${authUser?.lastName || ''}`.trim();
   const [profileName, setProfileName] = useState(userFullName || authUser?.email || '');
@@ -58,6 +60,13 @@ export function DashboardPage(props: DashboardPageProps) {
   });
 
   const bookingUrl = practiceBookingUrl(authUser?.tenantSlug, customDomain, customDomainStatus);
+
+  // The photo lives on the server, not just in this screen: after saving, the
+  // signed-in profile is re-read so the account menu shows it too.
+  async function savePhoto(dataUrl: string) {
+    await api.post('/v1/consult/therapist/profile/avatar', { avatarUrl: dataUrl });
+    await refreshProfile();
+  }
 
   useEffect(() => {
     let cancelled = false;
@@ -217,7 +226,7 @@ export function DashboardPage(props: DashboardPageProps) {
             </>
           }
           secondaryActions={
-            <div className="flex h-[44px] min-w-0 bg-[#F1F5F9] border border-[#E2E8F0] rounded-[14px] px-3.5 items-center gap-2.5">
+            <div data-tour="booking-link" className="flex h-[44px] min-w-0 bg-[#F1F5F9] border border-[#E2E8F0] rounded-[14px] px-3.5 items-center gap-2.5">
               <Link2 className="h-4 w-4 text-[#64748B] shrink-0" />
               <input
                 type="text"
@@ -231,6 +240,7 @@ export function DashboardPage(props: DashboardPageProps) {
         />
       }
     >
+      <DashboardTour />
       <div className="grid grid-cols-1 @min-[1200px]/page:grid-cols-[1fr_372px] gap-4 md:gap-5 items-start">
         {/* Left Column */}
         <div className="space-y-4 md:space-y-[20px]">
@@ -456,39 +466,17 @@ export function DashboardPage(props: DashboardPageProps) {
               <div className="space-y-1">
                 <h3 className="text-[15px] font-bold text-[#0F172A] leading-tight">{profileName}</h3>
                 <p className="text-[12.5px] text-[#64748B] font-medium">{profileTitle}</p>
-                <p className="text-[11.5px] text-[#94A3B8] font-medium">JPG or PNG · max 2 MB</p>
+                <p className="text-[11.5px] text-[#94A3B8] font-medium">PNG, JPG or WebP</p>
               </div>
             </div>
 
-            <div className="flex items-center gap-2">
-              <label className="flex-1">
-                <input
-                  type="file"
-                  accept="image/jpeg,image/png"
-                  onChange={(e) => {
-                    const file = e.target.files?.[0];
-                    if (!file) return;
-                    const reader = new FileReader();
-                    reader.onload = (ev) => setProfileAvatar(ev.target?.result as string);
-                    reader.readAsDataURL(file);
-                  }}
-                  className="hidden"
-                />
-                <span
-                  className="os-brand-btn h-[40px] px-4 rounded-[14px] font-bold text-xs flex items-center justify-center gap-2 cursor-pointer w-full"
-                  style={{ backgroundColor: primaryColor }}
-                >
-                  <Upload className="h-3.5 w-3.5" />
-                  <span>Upload Photo</span>
-                </span>
-              </label>
-              <button
-                onClick={() => setProfileAvatar(null)}
-                className="h-[40px] px-4 rounded-[14px] bg-[#F1F5F9] text-[#475569] text-xs font-bold hover:bg-[#E2E8F0]"
-              >
-                Remove
-              </button>
-            </div>
+            <ImageField
+              label="profile photo"
+              shape="circle"
+              value={profileAvatar ?? ''}
+              onChange={setProfileAvatar}
+              onSave={savePhoto}
+            />
           </div>
 
           {/* Practice Status Card */}

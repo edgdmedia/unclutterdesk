@@ -938,6 +938,21 @@ export class AuthService {
     return this.practiceProfile(profile, profile.user?.platformRole);
   }
 
+  /**
+   * ONB-06: mark the dashboard walkthrough as taken, for the caller's own
+   * profile only. The update is scoped to profiles that have never completed
+   * it, so a second call keeps the first date.
+   */
+  async completeTour(profileId: bigint, profile?: { tourCompletedAt?: Date | null }) {
+    if (profile?.tourCompletedAt) return { tourCompletedAt: profile.tourCompletedAt };
+    const stamp = new Date();
+    await this.prisma.profile.updateMany({
+      where: { id: profileId, tourCompletedAt: null },
+      data: { tourCompletedAt: stamp },
+    });
+    return { tourCompletedAt: profile?.tourCompletedAt ?? stamp };
+  }
+
   /** The live sessions of the signed-in account, newest use first. */
   listSessions(userId: bigint, currentSessionId?: string) {
     return this.sessions.listForUser(userId, currentSessionId);
@@ -1106,6 +1121,7 @@ export class AuthService {
     status: string;
     permissions?: string[] | null;
     avatarUrl: string | null;
+    tourCompletedAt?: Date | null;
     // Required, not optional: a caller that forgets the include would otherwise
     // hand back tenantSlug: null, which is worse than the inconsistency this
     // replaces — silently wrong instead of visibly absent.
@@ -1136,6 +1152,8 @@ export class AuthService {
       // The effective set, computed here once: the app shows and hides with
       // it, and the guard still enforces independently on every call.
       permissions: [...effectivePermissions(profile.role, profile.permissions ?? [])],
+      // ONB-06: whether this person has had the dashboard walkthrough yet.
+      tourCompletedAt: profile.tourCompletedAt ? profile.tourCompletedAt.toISOString() : null,
     };
   }
 

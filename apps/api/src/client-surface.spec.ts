@@ -34,6 +34,8 @@ const CLIENT_SURFACE = [
   'GET /v1/auth/sessions',
   'POST /v1/auth/sessions/revoke-others',
   'DELETE /v1/auth/sessions/:id',
+  // ONB-06: the walkthrough belongs to the signed-in person, clients included.
+  'POST /v1/auth/me/tour-complete',
 
   // BKG-06: a client's own outstanding forms, for the portal and the wizard.
   'GET /v1/intake/mine/forms',

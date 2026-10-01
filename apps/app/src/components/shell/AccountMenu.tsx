@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { ChevronDown, IdCard, Loader2, LogOut, MessageSquarePlus, ShieldCheck, UserCog } from 'lucide-react';
+import { ChevronDown, Compass, IdCard, Loader2, LogOut, MessageSquarePlus, ShieldCheck, UserCog } from 'lucide-react';
 import { useBrand, type SidebarMode } from '@unclutterdesk/ui';
 import { useAuth } from '../../context/AuthContext';
 import { AdminSwitchDialog } from '../AdminSwitchDialog';
@@ -51,6 +51,7 @@ export function AccountMenu({ mode }: { mode: SidebarMode }) {
     <div ref={ref} className="relative w-full">
       <button
         type="button"
+        data-tour="account-menu"
         aria-haspopup="menu"
         aria-expanded={open}
         aria-label={compact ? `Account: ${displayName}` : undefined}
@@ -100,6 +101,21 @@ export function AccountMenu({ mode }: { mode: SidebarMode }) {
               Platform admin
             </button>
           ) : null}
+          <button
+            type="button"
+            role="menuitem"
+            onClick={() => {
+              setOpen(false);
+              // The tour lives on the dashboard, so go there first; the tour
+              // itself also jumps back to /dashboard if this was elsewhere.
+              navigate('/dashboard');
+              setTimeout(() => window.dispatchEvent(new CustomEvent('unclutter:tour-start')), 100);
+            }}
+            className={MENU_ITEM}
+          >
+            <Compass className="h-4 w-4 shrink-0" />
+            Take the tour
+          </button>
           <div className="h-px bg-white/10 my-1.5" />
           <button
             type="button"

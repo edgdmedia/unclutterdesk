@@ -28,6 +28,7 @@ export * from './components/Toggle';
 export * from './components/UnclutterLockup';
 export * from './components/UnclutterMark';
 export * from './components/Toast';
+export * from './components/Tour';
 export * from './layout/useViewport';
 export * from './layout/Grid';
 export * from './layout/Page';
