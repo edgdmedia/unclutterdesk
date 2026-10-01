@@ -48,6 +48,8 @@ interface AuthContextValue {
     inviteCode?: string;
   }) => Promise<RegisterResult>;
   logout: () => Promise<void>;
+  /** Re-reads the signed-in profile, e.g. after the practice changed its booking link. */
+  refreshProfile: () => Promise<void>;
   /** Practice session → admin console. Asks for the password again. */
   switchToAdmin: (password: string) => Promise<AuthProfile>;
   /** Admin console → the user's own practice. */
@@ -207,6 +209,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return res.profile;
   }, []);
 
+  const refreshProfile = useCallback(async () => {
+    const p = await api.get<AuthProfile>('/v1/auth/status');
+    setProfile(p);
+    cacheProfile(p);
+  }, []);
+
   const logout = useCallback(async () => {
     setProfile(null);
     cacheProfile(null);
@@ -225,6 +233,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         claimInvite,
         register,
         logout,
+        refreshProfile,
         switchToAdmin,
         switchToPractice,
       }}

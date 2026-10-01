@@ -5,6 +5,7 @@ import useSWR from 'swr';
 import { BrandProvider } from '@unclutterdesk/ui';
 import { PracticeShell } from './components/shell/PracticeShell';
 import { AuthProvider, useAuth } from './context/AuthContext';
+import { PracticeBrandProvider, usePracticeBrand } from './context/PracticeBrandContext';
 import { api, getSubdomainTenantSlug, getAppType } from './utils/apiClient';
 import { ExternalRedirect } from './components/ExternalRedirect';
 import { LEGAL_URLS } from './utils/legal';
@@ -248,8 +249,9 @@ function PageFallback() {
 function AppLayout() {
   const { profile, isAuthenticated, isLoading } = useAuth();
   const [tenantStatus, setTenantStatus] = useState<'ACTIVE' | 'PAUSED'>('ACTIVE');
-  const [primaryColor, setPrimaryColor] = useState('#0F3A53');
-  const [secondaryColor, setSecondaryColor] = useState('#E3B341');
+  const { brand: savedBrand } = usePracticeBrand();
+  const primaryColor = savedBrand?.primaryColor || '#0F3A53';
+  const secondaryColor = savedBrand?.secondaryColor || '#E3B341';
   // Private workspace data comes only from the authenticated API.
   // Keys are null until a tenant session is active: anonymous visitors on the
   // login screen, and platform admins (no tenant workspace) don't fetch.
@@ -318,11 +320,12 @@ function AppLayout() {
   const privateDataError = clientsError || sessionsError || staffError;
 
   const practiceBrand = useMemo(() => ({
-    name: profile?.practiceName || (profile?.firstName ? `${profile.firstName}'s Practice` : 'Unclutter Desk Practice'),
-    slug: profile?.tenantSlug || getSubdomainTenantSlug() || 'practice',
+    name: savedBrand?.name || profile?.practiceName || (profile?.firstName ? `${profile.firstName}'s Practice` : 'Unclutter Desk Practice'),
+    slug: savedBrand?.slug || profile?.tenantSlug || getSubdomainTenantSlug() || 'practice',
+    logoUrl: savedBrand?.logoUrl ?? null,
     primaryColor,
     secondaryColor,
-  }), [profile, primaryColor, secondaryColor]);
+  }), [profile, savedBrand, primaryColor, secondaryColor]);
 
   // Platform admin console — own shell, no tenant branding.
   if (isAdminRoute) {
@@ -429,9 +432,7 @@ function AppLayout() {
                     tenantStatus={tenantStatus}
                     setTenantStatus={setTenantStatus}
                     primaryColor={primaryColor}
-                    setPrimaryColor={setPrimaryColor}
                     secondaryColor={secondaryColor}
-                    setSecondaryColor={setSecondaryColor}
                     clients={resolvedClients}
                     sessions={resolvedSessions}
                   />
@@ -456,12 +457,7 @@ function AppLayout() {
               <Route
                 path="/dashboard/settings/brand"
                 element={
-                  <BrandSettingsPage
-                    primaryColor={primaryColor}
-                    setPrimaryColor={setPrimaryColor}
-                    secondaryColor={secondaryColor}
-                    setSecondaryColor={setSecondaryColor}
-                  />
+                  <BrandSettingsPage />
                 }
               />
               <Route path="/dashboard/settings/team" element={<TeamSettingsPage staff={resolvedStaff} onRefresh={refreshStaff} />} />
@@ -606,7 +602,9 @@ export function App() {
               errorRetryCount: 1,
             }}
           >
-          <AppLayout />
+          <PracticeBrandProvider>
+            <AppLayout />
+          </PracticeBrandProvider>
         </SWRConfig>
       </AuthProvider>
     </BrowserRouter>
