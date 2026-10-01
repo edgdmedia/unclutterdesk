@@ -1146,7 +1146,7 @@ export class AuthService {
    */
   async clientSignup(
     tenantId: bigint | undefined,
-    dto: { firstName?: string; lastName?: string; email?: string; password?: string },
+    dto: { firstName?: string; lastName?: string; email?: string; phone?: string; password?: string },
     device: DeviceInfo = {},
   ) {
     if (!tenantId) throw new BadRequestException('Choose a practice first.');
@@ -1156,6 +1156,7 @@ export class AuthService {
     if (password.length < 8) throw new BadRequestException('Use a password of at least 8 characters.');
     const firstName = String(dto.firstName ?? '').trim().slice(0, 100);
     if (!firstName) throw new BadRequestException('Enter your first name.');
+    const phone = String(dto.phone ?? '').trim().slice(0, 30) || null;
 
     const existingUser = await this.prisma.user.findUnique({
       where: { email },
@@ -1184,6 +1185,7 @@ export class AuthService {
             userId: user.id,
             emailVerified: true,
             firstName: firstName || profileByEmail.firstName,
+            ...(phone && !profileByEmail.phone ? { phone } : {}),
             // A used invite must stop working the moment an account exists.
             accountTokenHash: null,
             accountTokenExpiresAt: null,
@@ -1197,6 +1199,7 @@ export class AuthService {
             username: await this.freeUsername(email.split('@')[0]),
             firstName,
             lastName: dto.lastName?.trim() || null,
+            phone,
             type: 'user',
             role: 'CLIENT',
             status: 'active',

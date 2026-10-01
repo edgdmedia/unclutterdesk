@@ -53,6 +53,11 @@ describe('clientSignup', () => {
     expect(res.profile.role).toBe('CLIENT');
     expect(sessions.startSession).toHaveBeenCalled();
   });
+  it('keeps the phone number given at sign-up', async () => {
+    const { service, prisma } = make({ profileByEmail: null });
+    await service.clientSignup(TENANT, { firstName: 'Ada', lastName: 'O', email: 'ada@x.com', phone: ' 0801 234 5678 ', password: 'password1234' }, {} as any);
+    expect(prisma.profile.create.mock.calls[0][0].data.phone).toBe('0801 234 5678');
+  });
   it('links a profile staff already created', async () => {
     const { service, prisma } = make({ profileByEmail: { id: 40n, tenantId: TENANT, email: 'ada@x.com', userId: null, role: 'CLIENT', status: 'active', type: 'user', firstName: 'Ada', lastName: null, username: 'ada', emailVerified: false } });
     await service.clientSignup(TENANT, { firstName: 'Ada', lastName: 'O', email: 'ada@x.com', password: 'password1234' }, {} as any);

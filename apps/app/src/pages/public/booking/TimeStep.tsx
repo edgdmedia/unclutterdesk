@@ -13,6 +13,7 @@ import {
   weekLabel,
   WINDOW_DAYS,
   addDays,
+  dayLabel,
   type Slot,
 } from './bookingSlots';
 import type { WizardAction, WizardState, FormatFilter } from './bookingWizard';
@@ -22,14 +23,7 @@ import { AlertBanner, StateBox, naira } from './BookingShell';
 const ZONE = 'Africa/Lagos';
 const weekdayFmt = new Intl.DateTimeFormat('en-GB', { timeZone: ZONE, weekday: 'short' });
 const dayFmt = new Intl.DateTimeFormat('en-GB', { timeZone: ZONE, day: 'numeric' });
-const monthFmt = new Intl.DateTimeFormat('en-GB', { timeZone: ZONE, month: 'short' });
 const noon = (key: string) => new Date(`${key}T12:00:00Z`);
-
-/** "Tue, 6 Oct" */
-export function dayLabel(key: string): string {
-  const d = noon(key);
-  return `${weekdayFmt.format(d)}, ${dayFmt.format(d)} ${monthFmt.format(d)}`;
-}
 
 function daysBetween(fromKey: string, toKey: string) {
   return Math.round((noon(toKey).getTime() - noon(fromKey).getTime()) / 86_400_000);

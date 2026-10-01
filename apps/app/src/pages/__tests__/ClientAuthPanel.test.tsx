@@ -51,4 +51,16 @@ describe('ClientAuthPanel', () => {
     await waitFor(() => expect(login).toHaveBeenCalledWith('ada@x.com', 'password1234'));
     await waitFor(() => expect(onDone).toHaveBeenCalled());
   });
+
+  it('asks for a phone number when creating an account, and says one account works everywhere', async () => {
+    const onDone = vi.fn();
+    renderWithApp(<ClientAuthPanel onDone={onDone} />);
+    expect(screen.getByText(/One Unclutter Desk account works with every practice/)).toBeTruthy();
+    fireEvent.change(screen.getByLabelText('First name'), { target: { value: 'Ada' } });
+    fireEvent.change(screen.getByLabelText('Email'), { target: { value: 'ada@x.com' } });
+    fireEvent.change(screen.getByLabelText('Phone'), { target: { value: '0801 234 5678' } });
+    fireEvent.change(screen.getByLabelText('Password'), { target: { value: 'password1234' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Create account and continue' }));
+    await waitFor(() => expect(post).toHaveBeenCalledWith('/v1/auth/client-signup', expect.objectContaining({ phone: '0801 234 5678' })));
+  });
 });

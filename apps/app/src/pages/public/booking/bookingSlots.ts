@@ -76,3 +76,18 @@ export function nextDayWithSlots(slots: Slot[], afterDay: string): string | null
   const days = slots.map((s) => dayKeyWAT(s.startsAt)).filter((d) => d > afterDay).sort();
   return days[0] ?? null;
 }
+
+const weekdayShort = new Intl.DateTimeFormat('en-GB', { timeZone: ZONE, weekday: 'short' });
+const dayNumeric = new Intl.DateTimeFormat('en-GB', { timeZone: ZONE, day: 'numeric' });
+const monthShort = new Intl.DateTimeFormat('en-GB', { timeZone: ZONE, month: 'short' });
+
+/** "Tue, 6 Oct" for a 'YYYY-MM-DD' day key. */
+export function dayLabel(key: string): string {
+  const d = noonOf(key);
+  return `${weekdayShort.format(d)}, ${dayNumeric.format(d)} ${monthShort.format(d)}`;
+}
+
+/** "Tue, 6 Oct · 11:30 AM WAT" */
+export function whenLabel(iso: string): string {
+  return `${dayLabel(dayKeyWAT(iso))} · ${timeLabelWAT(iso)} WAT`;
+}
