@@ -31,7 +31,7 @@ const TelehealthVideoRoomPage = lazy(() => import('./pages/practice/TelehealthVi
 const SessionPrepPage = lazy(() => import('./pages/practice/SessionPrepPage').then((m) => ({ default: m.SessionPrepPage })));
 const ClientPortalPage = lazy(() => import('./pages/client/ClientPortalPage').then((m) => ({ default: m.ClientPortalPage })));
 const OnboardingWizardPage = lazy(() => import('./pages/practice/OnboardingWizardPage').then((m) => ({ default: m.OnboardingWizardPage })));
-const ClientBookingPage = lazy(() => import('./pages/public/ClientBookingPage').then((m) => ({ default: m.ClientBookingPage })));
+const BookingWizardPage = lazy(() => import('./pages/public/booking/BookingWizardPage').then((m) => ({ default: m.BookingWizardPage })));
 const PublicProfilePage = lazy(() => import('./pages/public/PublicProfilePage').then((m) => ({ default: m.PublicProfilePage })));
 const PublicReviewFormPage = lazy(() => import('./pages/public/PublicReviewFormPage').then((m) => ({ default: m.PublicReviewFormPage })));
 // The documents live on the marketing site — see utils/legal.ts. These routes
@@ -573,7 +573,7 @@ export function App() {
             <Suspense fallback={<PageFallback />}>
               <Routes>
                 <Route path="/" element={<PublicProfilePage />} />
-                <Route path="/book" element={<ClientBookingPage />} />
+                <Route path="/book" element={<BookingWizardPage />} />
                 <Route path="/review" element={<PublicReviewFormPage />} />
                 <Route path="/assessment/:token" element={<AssessmentPage />} />
                 <Route path="/booking/confirmed" element={<BookingConfirmedPage />} />

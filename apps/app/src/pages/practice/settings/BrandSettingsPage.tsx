@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Globe, Palette, Sparkles } from 'lucide-react';
 import { Eyebrow, Card, BookingLinkField, useToast } from '@unclutterdesk/ui';
-import { ClientBookingPage } from '../../public/ClientBookingPage';
+import { BookingWizardPage } from '../../public/booking/BookingWizardPage';
 import { BookingConfirmedPage } from '../../public/BookingConfirmedPage';
 import { api, practiceBookingUrl } from '../../../utils/apiClient';
 import { usePracticeBrand } from '../../../context/PracticeBrandContext';
@@ -231,7 +231,7 @@ export function BrandSettingsPage() {
               </div>
             </div>
             <div className="rounded-[20px] border border-[#E2E8F0] bg-[#F8FAFC] p-4 min-h-[500px] flex items-center justify-center overflow-hidden">
-              <div className="w-full h-[580px] overflow-auto relative rounded-[16px] bg-slate-50 border border-[#E2E8F0]"><div className="absolute origin-top-left pointer-events-none select-none" aria-hidden="true" style={{ width: '1180px', transform: 'scale(0.62)' }}>{previewTab === 'booking' ? <ClientBookingPage previewSlug={slug} /> : <BookingConfirmedPage />}</div></div>
+              <div className="w-full h-[580px] overflow-auto relative rounded-[16px] bg-slate-50 border border-[#E2E8F0]"><div className="absolute origin-top-left pointer-events-none select-none" aria-hidden="true" style={{ width: '1180px', transform: 'scale(0.62)' }}>{previewTab === 'booking' ? <BookingWizardPage previewSlug={slug} /> : <BookingConfirmedPage />}</div></div>
             </div>
           </Card>
         </div>

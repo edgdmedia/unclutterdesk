@@ -76,6 +76,22 @@ for (const [routes, strict] of [[STRICT, true], [REPORT, false]]) {
     }
   }
 }
+// The public booking wizard, on a practice's own host. No sign-in, and no
+// app sidebar (its summary card is an <aside>), so only sideways scroll counts.
+const BOOKING = process.env.BOOKING_URL ?? 'http://dr-smith.localhost:5173';
+for (const w of WIDTHS) {
+  await page.setViewportSize({ width: w, height: 900 });
+  await page.goto(`${BOOKING}/book`);
+  await page.waitForTimeout(1500);
+  const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
+  const label = `STRICT ${w}px ${BOOKING}/book`;
+  if (overflow > 0) {
+    console.log(`✗ ${label}: scrolls sideways by ${overflow}px`);
+    failures++;
+  } else {
+    console.log(`✓ ${label}`);
+  }
+}
 await browser.close();
 if (failures) {
   console.error(`\n${failures} strict check(s) failed.`);
