@@ -74,7 +74,7 @@ export function ClientFormPage() {
     const missing = answerable.find((f) => f.required && (Array.isArray(answers[f.id]) ? answers[f.id].length === 0 : !answers[f.id]));
     if (missing) {
       setError(`Please answer “${missing.label}”.`);
-      document.getElementById(`f-${missing.id}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      document.getElementById(`f-${missing.id}`)?.scrollIntoView?.({ behavior: 'smooth', block: 'center' });
       return;
     }
     setSubmitting(true);
