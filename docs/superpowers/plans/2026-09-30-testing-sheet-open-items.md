@@ -36,7 +36,7 @@
 
 ## Wave 1: confirmed bugs
 
-### Task 1: Setup keeps the booking link the practice typed (SET-01, part 1)
+### Task 1: Setup keeps the booking link the practice typed (SET-01, part 1). Done in `45230c9`
 
 **Root cause:** in `apps/app/src/pages/practice/OnboardingWizardPage.tsx`, the `loadExistingBrand` effect (around lines 288–344) depends on `[slugTouched]`. Typing a booking link calls `handleSlugChange`, which sets `slugTouched` to `true`. That re-runs the effect, which fetches `/v1/tenant/brand` and calls `setSlug(brand.slug)`, overwriting what was just typed with the link created at signup. Continue then saves the old link.
 
@@ -153,7 +153,7 @@ git commit -m "Setup keeps the booking link the practice typed"
 
 ---
 
-### Task 2: A Booking link setting, separate from the custom domain (SET-01 part 2, SET-02)
+### Task 2: A Booking link setting, separate from the custom domain (SET-01 part 2, SET-02). Done in `45230c9` (the card takes `slug` and `onSaved` props, and the page loads the brand once)
 
 **Current state:** `BrandSettingsPage.tsx` has a "Custom hostname" field and no way to change the booking link. The API already accepts `slug` on `PATCH /v1/tenant/brand` (checking reserved names, and returning a 409 "That booking handle is already taken" on a clash). `GET /v1/tenant/check-slug/:slug` checks whether a link is free.
 

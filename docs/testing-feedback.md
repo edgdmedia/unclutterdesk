@@ -48,9 +48,12 @@ A running log of what shows up in testing, what we decide about it, and when it'
 | ONB-04 | Onboarding | Payout step says payments are processed by Paystack | UX | P2 | Fixed |
 | ONB-05 | Onboarding | No way to set a session as virtual or physical | Bug | | Open |
 | ONB-06 | Onboarding | No walkthrough after "Go to Dashboard" | Feature | | Ready |
-| SET-01 | Settings | Booking link picked during setup isn't saved, and can't be changed | Bug | | Open |
-| SET-02 | Settings | Booking subdomain should be a separate setting from the custom hostname | UX | | Open |
+| ONB-07 | Onboarding | Continue in setup fails with "This endpoint requires a practice profile" | Bug | P0 | Fixed |
+| SET-01 | Settings | Booking link picked during setup isn't saved, and can't be changed | Bug | P1 | Fixed |
+| SET-02 | Settings | Booking subdomain should be a separate setting from the custom hostname | UX | P2 | Fixed |
 | SET-03 | Settings | No custom hostname setup (add domain, DNS records, auto-configure) | Feature | | Open |
+| SET-04 | Settings | Link, logo and colours set in setup don't show afterwards | Bug | P0 | Fixed |
+| SET-05 | Settings | After setup there's nowhere to change the logo or booking link | Bug | P1 | Fixed |
 | BKG-01 | Booking page | Layout is incoherent and doesn't work | UX | | Discuss |
 | BKG-02 | Booking page | Practice logo never loads | Bug | | Open |
 | BKG-03 | Booking page | "Book now" should be a step-by-step wizard | UX | | Discuss |
@@ -144,20 +147,27 @@ A running log of what shows up in testing, what we decide about it, and when it'
 - **Fix:**
 - **Verified:**
 
+### ONB-07 · Continue in setup fails with "This endpoint requires a practice profile"
+- **Type:** Bug · **Priority:** P0 · **Status:** Fixed
+- **Observed:** Clicking Continue on the Brand step returned a 403 from `PATCH /v1/tenant/brand`.
+- **Feedback / decision:** Cause: the browser was signed in as `admin@unclutterdesk.com` (the admin console shares the browser's sign-in), and the setup page carried on with the practice's saved draft. Fix: setup needs a practice account (signed out goes to sign-in; admin or client accounts get "Sign in as the practice"); open tabs follow sign-ins made in other tabs; each practice's setup draft is stored separately, because it held bank details visible to any account in the browser.
+- **Fix:** `5808ffc` on `dev`. Covered by `OnboardingAccess.test.tsx` and `AuthContext.crossTab.test.tsx`.
+- **Verified:**
+
 ## Settings
 
 ### SET-01 · Booking link from setup isn't saved
-- **Type:** Bug · **Priority:** · **Status:** Open
+- **Type:** Bug · **Priority:** P1 · **Status:** Fixed
 - **Observed:** The booking link chosen during setup wasn't saved, and there's nowhere in Settings to change it.
-- **Feedback / decision:**
-- **Fix:**
+- **Feedback / decision:** Two causes. Setup's brand loader re-ran when the link was edited and put the old one back. And no settings page had a link field. Both fixed with SET-04/05.
+- **Fix:** `45230c9` on `dev`. Setup no longer overwrites the link being typed, and the link can be changed in Settings → Brand & booking page.
 - **Verified:**
 
 ### SET-02 · Booking subdomain vs custom hostname
-- **Type:** UX · **Priority:** · **Status:** Open
+- **Type:** UX · **Priority:** P2 · **Status:** Fixed
 - **Observed:** The booking link setting (`demo.unclutterdesk.com` format) should be separate from the custom hostname settings.
-- **Feedback / decision:**
-- **Fix:**
+- **Feedback / decision:** The Booking link and the Custom domain are now separate sections, each with its own save.
+- **Fix:** `45230c9` on `dev`.
 - **Verified:**
 
 ### SET-03 · No custom hostname setup
@@ -165,6 +175,20 @@ A running log of what shows up in testing, what we decide about it, and when it'
 - **Observed:** There's no place to set a custom hostname: add a domain, see the DNS records to add, auto-configure it, and so on.
 - **Feedback / decision:**
 - **Fix:**
+- **Verified:**
+
+### SET-04 · Link, logo and colours set in setup don't show afterwards
+- **Type:** Bug · **Priority:** P0 · **Status:** Fixed
+- **Observed:** The booking link, logo and colours chosen in setup didn't seem to stick, even after setup was finally completed (after several refreshes and sign-ins).
+- **Feedback / decision:** They did save: the database has link `edgdmedia`, both colours and the logo. The app doesn't show them: the colours are hard-coded defaults in `App.tsx` and only change after visiting Brand settings; the logo is never loaded into the app; the booking link comes from the sign-in profile and goes stale after setup changes it. Fix: one shared practice brand, loaded from the server and refreshed after every save, used by the sidebar, links and previews.
+- **Fix:** `45230c9` on `dev`. Checked in the browser: after Save, the sidebar logo and colours update straight away, and they survive a reload.
+- **Verified:**
+
+### SET-05 · After setup there's nowhere to change the logo or booking link
+- **Type:** Bug · **Priority:** P1 · **Status:** Fixed
+- **Observed:** Once setup is done, there's no other place to set the logo, link or colours again.
+- **Feedback / decision:** Settings → Brand & booking page has the colours and the custom domain, but no logo upload and no booking-link field. Fix: that page gets the full set (logo, colours, booking link, then custom domain as its own section), sharing its pieces with setup. Covers SET-01 part 2 and SET-02.
+- **Fix:** `45230c9` on `dev`. Settings → Brand & booking page now has logo, colours, name, email, booking link, and custom domain as its own section.
 - **Verified:**
 
 ## Client booking link / page
