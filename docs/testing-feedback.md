@@ -71,7 +71,7 @@ A running log of what shows up in testing, what we decide about it, and when it'
 | BKG-08 | Booking page | "Notify me" when a practice has no free times in the next 4 weeks | Feature | P3 | Deferred |
 | BKG-09 | Booking page | An abandoned online payment keeps the time blocked for everyone | Bug | P1 | Ready |
 | BKG-10 | Booking page | After booking, clients aren't offered their account to manage the booking | UX | P1 | Fixed |
-| VID-01 | Video | The session room is a mock-up, not a real video call | Feature | P0 | Discuss |
+| VID-01 | Video | The session room is a mock-up, not a real video call | Feature | P0 | Ready |
 | FRM-01 | Forms | Save forms as templates and optionally share them with other practices | Feature | | Open |
 
 ---
@@ -327,6 +327,18 @@ A running log of what shows up in testing, what we decide about it, and when it'
 - **Feedback / decision:** Proposed: the confirmation screen gets a primary "Go to my bookings" (the client portal, already signed in), and the booking emails link there too.
 - **Fix:** `60ba7a5` on `dev`. The confirmation screen's first action is **Go to my bookings** → `/portal`; the confirmed email carries the portal link too. Covered by `ConfirmationStep.test.tsx`.
 - **Verified:** Browser check 1 Oct: the button is the confirmation screen's first action and points at `/portal`.
+
+### VID-01 · The session room isn't a real video call
+- **Type:** Feature · **Priority:** P0 · **Status:** Ready
+- **Observed:** The telehealth room (`TelehealthVideoRoomPage.tsx`, the designed video screen) is a mock-up labelled "Room preview" with the client's initials; there's no camera or call in it.
+- **Feedback / decision:** Decided 1 Oct 2026.
+  - **Daily is the default for every plan**, running inside our designed room (our own mute, camera and leave buttons; private rooms with short-lived access tokens per session). Pricing checked: 10,000 free participant-minutes a month, then $0.004 per participant-minute, about 100 one-to-one 50-minute sessions free a month, then about $0.40 a session ([Daily pricing](https://www.daily.co/pricing/video-sdk/)).
+  - **JaaS (hosted Jitsi) in reserve**, behind the same provider interface: embeddable from 8x8.vc and protected (every room needs a JWT signed with our key). Free up to 25 monthly active users, then from $99/month for 300 ([JaaS](https://jitsi.org/jaas/)).
+  - **The free meet.jit.si can no longer be embedded** in other sites, so it stops being the default.
+  - **Google Meet stays opt-in** per therapist, created in the therapist's own Google account (as today), so the therapist is host. It opens in a new tab and can't be embedded. Free Google accounts allow one-to-one calls up to 24 hours, but 3 or more people only 60 minutes.
+  - Needs a Daily account and API key before building. ONB-08 (setup asks for the video platform) follows from this.
+- **Fix:**
+- **Verified:**
 
 ## Forms & templates
 
