@@ -5,12 +5,13 @@ import { useBrand } from '@unclutterdesk/ui';
 import { api, apiRequest, getSubdomainTenantSlug } from '../../utils/apiClient';
 import { useAuth } from '../../context/AuthContext';
 import { ClientAuthPanel } from './ClientAuthPanel';
+import { PracticeLogo } from '../../components/public/PracticeLogo';
 
 type PublicReview = { id: string; rating: number | null; testimonial: string; displayName: string; publishedAt: string };
 type PublicReviewsPayload = { averageRating: number | null; count: number; reviews: PublicReview[] };
 type PublicService = { id: string; title: string; description?: string; durationMinutes: number; priceKobo: string };
 type PublicAvailability = { id: string; serviceId: string | null; therapistName: string; startsAt: string; endsAt: string };
-type PublicTenantInfo = { id: string; name: string; slug: string; customDomain?: string | null; primaryColor?: string; secondaryColor?: string };
+type PublicTenantInfo = { id: string; name: string; slug: string; customDomain?: string | null; logoUrl?: string | null; primaryColor?: string; secondaryColor?: string };
 type DiscountPreview = {
   code: string;
   label?: string | null;
@@ -222,7 +223,9 @@ export function ClientBookingPage({ previewSlug }: { previewSlug?: string } = {}
       <div className="w-full max-w-[1180px] shadow-2xl md:rounded-3xl overflow-hidden md:my-8 border-y md:border border-[#E2E8F0] bg-white pb-[100px] md:pb-0">
         <header className="p-[20px] md:p-[30px_40px_26px] border-b" style={{ background: `linear-gradient(120deg, ${primaryColor}14, ${secondaryColor}1F)`, borderColor: `${primaryColor}33` }}>
           <div className="flex flex-col md:flex-row items-start md:items-center gap-4 md:gap-5">
-            <div className="h-[82px] w-[82px] rounded-[26px] bg-white shadow-[0_8px_24px_rgba(15,23,42,.10)] flex items-center justify-center font-extrabold text-[26px] shrink-0 border border-slate-100" style={{ color: primaryColor }}>{initials}</div>
+            <div className="h-[82px] w-[82px] rounded-[26px] bg-white shadow-[0_8px_24px_rgba(15,23,42,.10)] flex items-center justify-center shrink-0 border border-slate-100 overflow-hidden">
+              <PracticeLogo name={practiceName} logoUrl={tenantInfo?.logoUrl} size={64} color={primaryColor} />
+            </div>
             <div className="space-y-1 flex-1">
               <span className="text-[11px] font-black tracking-[0.2em] uppercase block" style={{ color: primaryColor }}>{practiceName}</span>
               <div className="flex items-center gap-3"><h1 className="text-[30px] font-extrabold tracking-[-0.035em] text-[#0F172A]">Book a session with {therapistName}</h1><span className="h-[20px] px-3 rounded-full text-[10px] font-bold tracking-[0.06em] uppercase flex items-center" style={{ backgroundColor: `${secondaryColor}1A`, color: '#8A6512' }}>CLINICAL PRACTICE</span></div>
