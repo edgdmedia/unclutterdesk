@@ -1,11 +1,12 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { initialsOf } from '../../utils/initials';
-import { useLocation, useNavigate } from 'react-router-dom';
+import { Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { Check, Copy, ArrowRight, ArrowLeft, Loader2, Sparkles, Building2, Calendar, ShieldCheck, ExternalLink, Palette, Image, Mail, Phone, MapPin, Info, Globe, Upload, Settings, CreditCard, Landmark } from 'lucide-react';
 import { UnclutterLockup, Eyebrow } from '@unclutterdesk/ui';
 import { useAuth } from '../../context/AuthContext';
 import { api, getBookingUrl } from '../../utils/apiClient';
 import { ManualPaymentFields, type ManualPaymentForm } from '../../components/payments/ManualPaymentSettingsCard';
+import { dropLegacyOnboardingDraft, onboardingDraftKey } from '../../utils/onboardingDraft';
 
 type SignupState = {
   practiceName?: string;
@@ -59,7 +60,62 @@ function nairaToKobo(value: string) {
   return Number(clean || 0) * 100;
 }
 
+/** Practice staff; not a client, and not the platform admin console. */
+function isPracticeAccount(profile: { type?: string; tenantId?: string } | null): boolean {
+  return Boolean(profile?.tenantId) && profile?.type !== 'user' && profile?.type !== 'platform_admin';
+}
+
+/**
+ * Setup changes a practice, so it needs a signed-in practice account. The
+ * session is shared across tabs: signing in to the admin console elsewhere
+ * swaps it, and without this check setup kept going and every save failed
+ * with a bare "requires a practice profile".
+ */
 export function OnboardingWizardPage() {
+  const { profile, isLoading, logout } = useAuth();
+  const navigate = useNavigate();
+
+  if (!profile) {
+    if (isLoading) {
+      return (
+        <div className="min-h-screen flex items-center justify-center bg-[#F8FAFC]">
+          <Loader2 className="h-6 w-6 animate-spin text-[#94A3B8]" />
+        </div>
+      );
+    }
+    return <Navigate to="/login" replace state={{ returnTo: '/onboarding' }} />;
+  }
+
+  if (!isPracticeAccount(profile)) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-[#F8FAFC] px-5 font-outfit">
+        <div className="w-full max-w-[440px] bg-white rounded-[24px] border border-[#E2E8F0] p-[30px] space-y-4">
+          <UnclutterLockup markSize={28} variant="light" />
+          <h1 className="text-[22px] font-bold tracking-[-0.02em] text-[#0F172A]">Sign in as the practice to continue</h1>
+          <p className="text-[14px] text-[#64748B] leading-[1.6]">
+            You're signed in as <span className="font-semibold text-[#0F172A]">{profile.email}</span>, which isn't a practice account.
+            Practice setup is saved as you go, so you'll pick up where you left off.
+          </p>
+          <button
+            type="button"
+            onClick={async () => {
+              await logout();
+              navigate('/login', { replace: true, state: { returnTo: '/onboarding' } });
+            }}
+            className="w-full h-[50px] rounded-[14px] bg-[#0F3A53] text-white text-[14px] font-bold cursor-pointer"
+          >
+            Sign in as the practice
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // Keyed so a different practice signing in starts from its own draft.
+  return <OnboardingWizard key={profile.tenantId} tenantId={profile.tenantId!} />;
+}
+
+function OnboardingWizard({ tenantId }: { tenantId: string }) {
   const navigate = useNavigate();
   const location = useLocation();
   const { profile: authUser } = useAuth();
@@ -88,16 +144,18 @@ export function OnboardingWizardPage() {
     return list;
   }, [isTherapist]);
 
-  const WIZARD_KEY = 'unclutter_onboarding_v1';
+  const WIZARD_KEY = onboardingDraftKey(tenantId);
   const saved = useMemo(() => {
+    dropLegacyOnboardingDraft();
     try {
       return JSON.parse(localStorage.getItem(WIZARD_KEY) || 'null');
     } catch {
       return null;
     }
-  }, []);
+  }, [WIZARD_KEY]);
 
-  const [stepIndex, setStepIndex] = useState(saved?.stepIndex ?? 0);
+  // A draft from an older version of setup can point past the last step.
+  const [stepIndex, setStepIndex] = useState(Math.min(saved?.stepIndex ?? 0, steps.length - 1));
   const stepKey = steps[stepIndex].key;
 
   const initialPracticeName = signupState.practiceName || authUser?.practiceName || '';

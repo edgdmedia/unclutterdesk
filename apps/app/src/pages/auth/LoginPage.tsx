@@ -5,6 +5,7 @@ import { useAuth } from '../../context/AuthContext';
 import { AuthSplitShell } from '../../components/AuthSplitShell';
 import { AuthField, authInputCls } from '../../components/AuthField';
 import { api } from '../../utils/apiClient';
+import { onboardingDraftKey } from '../../utils/onboardingDraft';
 
 function looksLikeVerificationPending(message: string): boolean {
   const normalized = message.toLowerCase();
@@ -43,7 +44,7 @@ export function LoginPage() {
       }
 
       if (profile.type !== 'user') {
-        const hasSavedOnboarding = !!localStorage.getItem('unclutter_onboarding_v1');
+        const hasSavedOnboarding = !!profile.tenantId && !!localStorage.getItem(onboardingDraftKey(profile.tenantId));
 
         if (hasSavedOnboarding) {
           try {

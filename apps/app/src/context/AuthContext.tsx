@@ -117,6 +117,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     };
   }, []);
 
+  // The session cookie is shared by every tab. When another tab signs in as
+  // someone else (the admin console, say) or signs out, follow it: otherwise
+  // this tab keeps showing the old account while its requests go out as the
+  // new one.
+  useEffect(() => {
+    const onStorage = (e: StorageEvent) => {
+      if (e.key === PROFILE_KEY || e.key === null) setProfile(readCachedProfile());
+    };
+    window.addEventListener('storage', onStorage);
+    return () => window.removeEventListener('storage', onStorage);
+  }, []);
+
   // Global session-expired hook: called by apiClient when a refresh fails.
   useEffect(() => {
     setSessionExpiredHandler(() => {
