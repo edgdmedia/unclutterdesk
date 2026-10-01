@@ -1,7 +1,8 @@
-import React, { useEffect, useRef, useState } from 'react';
-import { Copy, Eye, Loader2, Trash2, X } from 'lucide-react';
-import { Eyebrow, useFocusTrap, useToast } from '@unclutterdesk/ui';
+import React, { useEffect, useState } from 'react';
+import { Copy, Eye, Trash2 } from 'lucide-react';
+import { Eyebrow, useToast } from '@unclutterdesk/ui';
 import { api } from '../../../utils/apiClient';
+import { TemplateQuestionsDialog, type TemplateQuestions } from '../../../components/TemplateQuestionsDialog';
 
 export type TemplateView = {
   id: string;
@@ -15,8 +16,6 @@ export type TemplateView = {
   timesUsed: number;
 };
 
-type Question = { id?: string; label?: string; type?: string; required?: boolean };
-
 const STATUS_LABEL: Record<string, { text: string; cls: string }> = {
   PRIVATE: { text: 'Private', cls: 'bg-[#F1F5F9] text-[#475569]' },
   PENDING: { text: 'In review', cls: 'bg-amber-100 text-amber-800' },
@@ -25,44 +24,6 @@ const STATUS_LABEL: Record<string, { text: string; cls: string }> = {
 };
 
 const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? '' : 's'}`;
-
-function PreviewDialog({ id, onClose }: { id: string; onClose: () => void }) {
-  const ref = useRef<HTMLDivElement>(null);
-  useFocusTrap(ref, true);
-  const [template, setTemplate] = useState<(TemplateView & { schemaJson?: Question[] }) | null>(null);
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    api
-      .get<TemplateView & { schemaJson?: Question[] }>(`/v1/intake/templates/${id}`)
-      .then(setTemplate)
-      .catch((err) => setError(err instanceof Error ? err.message : 'Could not load the template'));
-  }, [id]);
-
-  return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-[#0F172A]/60 p-4" role="dialog" aria-modal="true" aria-labelledby="template-preview-title">
-      <div ref={ref} className="w-full max-w-[520px] max-h-[85vh] overflow-y-auto rounded-[20px] bg-white p-6 shadow-2xl space-y-4">
-        <div className="flex items-start justify-between gap-3">
-          <h2 id="template-preview-title" className="text-[16px] font-bold text-[#0F172A]">{template?.title ?? 'Template'}</h2>
-          <button type="button" onClick={onClose} aria-label="Close" className="h-7 w-7 inline-flex items-center justify-center rounded-[8px] text-[#64748B] hover:bg-[#F1F5F9] cursor-pointer">
-            <X className="h-4 w-4" />
-          </button>
-        </div>
-        {error ? <p className="text-[13px] font-medium text-rose-700">{error}</p> : null}
-        {!template && !error ? <Loader2 className="h-5 w-5 animate-spin text-[#64748B]" /> : null}
-        {template?.description ? <p className="text-[13px] text-[#475569]">{template.description}</p> : null}
-        <ol className="space-y-2">
-          {(template?.schemaJson ?? []).map((q, i) => (
-            <li key={q.id ?? i} className="rounded-[12px] border border-[#E2E8F0] px-3.5 py-2.5">
-              <p className="text-[13.5px] font-semibold text-[#0F172A]">{i + 1}. {q.label}</p>
-              <p className="text-[11.5px] text-[#64748B]">{(q.type ?? 'text').replace(/_/g, ' ')}{q.required ? ' · required' : ''}</p>
-            </li>
-          ))}
-        </ol>
-      </div>
-    </div>
-  );
-}
 
 /**
  * FRM-01: the practice's own templates and the ones other practices shared
@@ -169,7 +130,9 @@ export function FormTemplateLibrary({ onUsed }: { onUsed: (formId: string) => vo
           </div>
         </div>
       ) : null}
-      {previewId ? <PreviewDialog id={previewId} onClose={() => setPreviewId(null)} /> : null}
+      {previewId ? (
+        <TemplateQuestionsDialog load={() => api.get<TemplateQuestions>(`/v1/intake/templates/${previewId}`)} onClose={() => setPreviewId(null)} />
+      ) : null}
     </section>
   );
 }

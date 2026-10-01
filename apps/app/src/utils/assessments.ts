@@ -112,13 +112,17 @@ export type OpenedAssessment =
 export type RequestType = 'ASSESSMENT' | 'FEATURE' | 'SERVICE' | 'FEEDBACK' | 'OTHER';
 export type RequestStatus = 'OPEN' | 'PLANNED' | 'DONE' | 'DECLINED';
 
+/** What a request row can be: anything a practice asks for, plus a shared form template under review (FRM-01). */
+export type RequestKind = RequestType | 'TEMPLATE';
+
 export interface PlatformRequestRow {
   id: string;
-  type: RequestType;
+  type: RequestKind;
   subject: string;
   details: string | null;
   status: RequestStatus;
   adminNote: string | null;
+  formTemplateId?: string | null;
   createdAt: string;
   updatedAt: string;
   practice?: { id: string; name: string; slug: string };
@@ -131,6 +135,8 @@ export const REQUEST_TYPE_LABEL: Record<RequestType, string> = {
   FEEDBACK: 'Feedback',
   OTHER: 'Something else',
 };
+
+export const REQUEST_KIND_LABEL: Record<RequestKind, string> = { ...REQUEST_TYPE_LABEL, TEMPLATE: 'Form template' };
 
 export const REQUEST_STATUS_LABEL: Record<RequestStatus, string> = {
   OPEN: 'Received',
