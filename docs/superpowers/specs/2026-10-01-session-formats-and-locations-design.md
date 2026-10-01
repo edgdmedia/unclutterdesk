@@ -122,11 +122,11 @@ Nothing that works today changes behaviour: everyone stays online until they tur
 
 **Booking page:**
 - **Service cards:** "Online ₦30,000 · In person ₦35,000".
-- **Format choice:** shown only when the service and practice offer both, with the price on each option. A choice of in person with several locations shows the locations to pick from.
+- **Format choice:** shown only when the service and practice offer both, with the price on each option. Clients never pick a location: it comes from the time they pick (each in-person block of hours names its location).
 - **Times:** only slots that allow the chosen format (and location). Each time shows its format when the list mixes formats.
 - **Summary and payment:** use the chosen format's price.
 - **Confirmation, email and calendar invite:**
-  - In person: the location's name, address and directions.
+  - In person: the location's name, full address, directions note and an **"Open in Google Maps" link** built from the address (no Maps API key needed).
   - Online: "Your video link will be emailed and shown in your account".
 - The hard-coded "Lagos, Nigeria · Online & in-person" header is replaced by the practice's real cities and formats.
 
@@ -159,8 +159,8 @@ Nothing that works today changes behaviour: everyone stays online until they tur
 6. **Setup:** "How do you see clients?", the inline first location, and the per-format prices.
 7. **Staff booking, reschedule and session pages.**
 
-## Open questions
+## Decisions on the open questions (1 Oct 2026)
 
-- Should a location have its own opening hours, or only through therapists' blocks? **Proposed:** only through blocks.
-- Should clients see a map? **Proposed:** a "Get directions" link opening Google Maps with the address. No embedded map.
-- When the online and in-person times for a service differ in length (for example 50 and 60 minutes), should length also be per format? **Proposed:** not now, since length stays per service. Revisit if a practice asks.
+- **Session length** is set by the practice per service (a solo therapist is their own practice), and is the same online and in person. Only the price differs by format.
+- **Clients don't find or choose a location.** They receive the full address, directions note and a Google Maps link in the booking confirmation, the confirmation email and the calendar invite.
+- **Locations have no opening hours of their own.** Clients book the therapist; only the therapist's hours matter, and each in-person block of hours names where the therapist is.
