@@ -2,7 +2,8 @@ import { BadRequestException, Injectable, Logger, NotFoundException } from '@nes
 import { PrismaService } from '../../common/prisma/prisma.service';
 import { NotificationService } from '../notifications/notification.service';
 
-export const REQUEST_TYPES = ['ASSESSMENT', 'FEATURE', 'SERVICE', 'FEEDBACK', 'OTHER'] as const;
+/** TEMPLATE is a shared form template awaiting review (FRM-01). */
+export const REQUEST_TYPES = ['ASSESSMENT', 'FEATURE', 'SERVICE', 'FEEDBACK', 'TEMPLATE', 'OTHER'] as const;
 export const REQUEST_STATUSES = ['OPEN', 'PLANNED', 'DONE', 'DECLINED'] as const;
 type RequestType = (typeof REQUEST_TYPES)[number];
 
@@ -11,6 +12,7 @@ const TYPE_LABEL: Record<RequestType, string> = {
   FEATURE: 'Feature',
   SERVICE: 'Service',
   FEEDBACK: 'Feedback',
+  TEMPLATE: 'Form template',
   OTHER: 'Request',
 };
 
@@ -30,7 +32,10 @@ export class RequestService {
     private readonly notifications: NotificationService,
   ) {}
 
-  private shape(r: { id: bigint; type: string; subject: string; details: string | null; status: string; adminNote: string | null; createdAt: Date; updatedAt: Date }) {
+  private shape(r: {
+    id: bigint; type: string; subject: string; details: string | null; status: string; adminNote: string | null;
+    formTemplateId?: bigint | null; createdAt: Date; updatedAt: Date;
+  }) {
     return {
       id: r.id.toString(),
       type: r.type,
@@ -38,6 +43,7 @@ export class RequestService {
       details: r.details,
       status: r.status,
       adminNote: r.adminNote,
+      formTemplateId: r.formTemplateId?.toString() ?? null,
       createdAt: r.createdAt.toISOString(),
       updatedAt: r.updatedAt.toISOString(),
     };
@@ -46,6 +52,8 @@ export class RequestService {
   async create(tenantId: bigint, profileId: bigint, dto: { type?: string; subject?: string; details?: string }) {
     const type = String(dto?.type ?? 'OTHER').toUpperCase() as RequestType;
     if (!REQUEST_TYPES.includes(type)) throw new BadRequestException('Choose what kind of request this is.');
+    // A template request must point at a saved template, which only the form editor makes.
+    if (type === 'TEMPLATE') throw new BadRequestException('Share a template from the form editor.');
     const subject = String(dto?.subject ?? '').trim();
     if (subject.length < 2) throw new BadRequestException('Give your request a short title.');
     const created = await this.prisma.platformRequest.create({

@@ -25,6 +25,20 @@ describe('requests from practices', () => {
     await expect(service.create(1n, 2n, { type: type.toLowerCase(), subject: 'Something' })).resolves.toMatchObject({ type, status: 'OPEN' });
   });
 
+  it('only takes template shares from the form editor, never as a plain request', async () => {
+    const { service, prisma } = setup();
+    await expect(service.create(1n, 2n, { type: 'template', subject: 'My form' })).rejects.toThrow(/form editor/);
+    expect(prisma.platformRequest.create).not.toHaveBeenCalled();
+  });
+
+  it('says which shared template a request is about', async () => {
+    const { service, prisma } = setup();
+    prisma.platformRequest.findMany.mockResolvedValue([{ ...existing, type: 'TEMPLATE', formTemplateId: 50n, tenant: { name: 'Calm Rooms', slug: 'calm' } }]);
+    const [row] = await service.all({ type: 'TEMPLATE' });
+    expect(prisma.platformRequest.findMany.mock.calls[0][0].where).toMatchObject({ type: 'TEMPLATE' });
+    expect(row.formTemplateId).toBe('50');
+  });
+
   it('needs a known type and a title', async () => {
     const { service } = setup();
     await expect(service.create(1n, 2n, { type: 'SHOPPING', subject: 'x y' })).rejects.toThrow(/what kind/);
