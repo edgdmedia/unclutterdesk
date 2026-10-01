@@ -318,11 +318,11 @@ A running log of what shows up in testing, what we decide about it, and when it'
 - **Verified:**
 
 ### BKG-10 · No offer to the client's account after booking
-- **Type:** UX · **Priority:** P1 · **Status:** Open
+- **Type:** UX · **Priority:** P1 · **Status:** Fixed
 - **Observed:** After booking, the client isn't offered their dashboard (portal) to manage the booking: reschedule, cancel, pay, forms, join link.
 - **Feedback / decision:** Proposed: the confirmation screen gets a primary "Go to my bookings" (the client portal, already signed in), and the booking emails link there too.
-- **Fix:**
-- **Verified:**
+- **Fix:** The confirmation screen's first action is now **Go to my bookings** → `/portal`, with the line "reschedule, cancel, pay or fill in your forms". The "Your session is booked" email (`BookingNotifier.confirmed`) carries the portal URL in its body and uses it as the action when there is no join link. Covered by `ConfirmationStep.test.tsx` and `booking-notifier.spec.ts`.
+- **Verified:
 
 ### VID-01 · The session room isn't a real video call
 - **Type:** Feature · **Priority:** P0 · **Status:** Discuss

@@ -18,6 +18,18 @@ const booking = {
 };
 
 describe('ConfirmationStep', () => {
+  // BKG-10: the confirmation screen hands the client to their own bookings.
+  it('points the client to their bookings, above the calendar links', () => {
+    renderWithApp(<ConfirmationStep booking={booking} channel="VIDEO" mode="paid" apiBase="https://api.x" />);
+    const portal = screen.getByRole('link', { name: /Go to my bookings/ });
+    expect(portal.getAttribute('href')).toBe('/portal');
+    expect(portal.textContent).toBeTruthy();
+    expect(screen.getByText(/reschedule, cancel, pay or fill in your forms/i)).toBeTruthy();
+    // The portal call comes first: it is before "Add to calendar" in the document.
+    const cal = screen.getByRole('link', { name: /Add to calendar/ });
+    expect(portal.compareDocumentPosition(cal) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+
   it('confirms a paid online session, with calendar links and the video note', () => {
     renderWithApp(<ConfirmationStep booking={booking} channel="VIDEO" mode="paid" apiBase="https://api.x" />);
     expect(screen.getByRole('heading', { name: "You're booked" })).toBeTruthy();

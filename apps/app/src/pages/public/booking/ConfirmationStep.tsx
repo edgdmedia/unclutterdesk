@@ -142,6 +142,14 @@ export function ConfirmationStep({
           </div>
         ))}
         <div className="bg-[#F8FAFC] px-4 py-3.5 flex flex-col gap-2">
+          <a
+            href="/portal"
+            className="h-11 px-5 rounded-[14px] text-[14px] font-semibold inline-flex items-center justify-center gap-2 self-start"
+            style={{ background: 'var(--brand-primary, #0F3A53)', color: '#FFFFFF' }}
+          >
+            <Check className="h-4 w-4" aria-hidden="true" /> Go to my bookings
+          </a>
+          <p className="text-[13px] text-[#64748B]">Manage your booking any time: reschedule, cancel, pay or fill in your forms.</p>
           <div className="flex flex-wrap gap-2">
             <a
               href={`${apiBase}/v1/calendar/bookings/${booking.bookingId}/ical?token=${booking.icalToken ?? ''}`}
