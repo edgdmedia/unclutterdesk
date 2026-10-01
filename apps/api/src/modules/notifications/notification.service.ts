@@ -1,5 +1,5 @@
 import { Inject, Injectable, Logger, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
-import { logoUrlFor } from '../tenant/tenant.service';
+import { logoUrlFor } from '../../common/logo-url';
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '../../common/prisma/prisma.service';
 import {

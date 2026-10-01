@@ -26,15 +26,7 @@ const DATA_IMAGE = /^data:(image\/(?:png|jpeg|gif|webp|svg\+xml));base64,([A-Za-
 
 export type LogoResult = { contentType: string; body: Buffer } | { redirect: string };
 
-/** Where a practice's logo can be loaded from outside the app, e.g. in an email. */
-export function logoUrlFor(tenant: { id: bigint; logoUrl: string | null }): string | null {
-  const logo = tenant.logoUrl?.trim();
-  if (!logo) return null;
-  if (/^https:\/\//i.test(logo)) return logo;
-  if (!DATA_IMAGE.test(logo)) return null;
-  const version = createHash('sha1').update(logo).digest('hex').slice(0, 8);
-  return `${apiOrigin()}/v1/tenant/${tenant.id}/logo?v=${version}`;
-}
+export { logoUrlFor } from '../../common/logo-url';
 
 export function parseInviteRef(ref: string): bigint | null {
   const raw = ref.startsWith(INVITE_ID_PREFIX) ? ref.slice(INVITE_ID_PREFIX.length) : ref;

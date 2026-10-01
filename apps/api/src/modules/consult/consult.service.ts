@@ -849,20 +849,22 @@ export class ConsultService {
       select: { id: true, status: true, paymentRef: true },
     });
     if (!booking) throw new NotFoundException('Booking not found');
-    if (booking.status === 'CONFIRMED') return { status: 'CONFIRMED' as const };
-    if (!booking.paymentRef) return { status: 'PENDING_PAYMENT' as const };
+    if (booking.status === 'CONFIRMED') return { status: 'CONFIRMED' as const, forms: await this.pendingFormLinks(tenantId, clientProfileId, bookingId) };
+    if (!booking.paymentRef) return { status: 'PENDING_PAYMENT' as const, forms: await this.pendingFormLinks(tenantId, clientProfileId, bookingId) };
     const tx = await this.paystack.verifyTransaction(booking.paymentRef);
-    if (tx?.status !== 'success') return { status: 'PENDING_PAYMENT' as const };
+    if (tx?.status !== 'success') return { status: 'PENDING_PAYMENT' as const, forms: await this.pendingFormLinks(tenantId, clientProfileId, bookingId) };
     if (await this.billing.markBookingPaid(booking.paymentRef, tx)) {
       // Only the call that actually flipped the booking sends: the pop-up and
       // the webhook cannot both email "Your session is booked".
       await this.notifier?.confirmed(bookingId).catch(() => undefined);
     }
-    const forms = await this.notifier
-      ?.pendingFormsFor(tenantId, clientProfileId)
-      .then((f) => f.map((x: any) => ({ ...x, href: `/forms/${x.id}?booking=${bookingId}` })))
-      .catch(() => []);
-    return { status: 'CONFIRMED' as const, forms };
+    return { status: 'CONFIRMED' as const, forms: await this.pendingFormLinks(tenantId, clientProfileId, bookingId) };
+  }
+
+  /** BKG-06: the client's outstanding default forms, linked for the wizard. */
+  private async pendingFormLinks(tenantId: bigint, clientProfileId: bigint, bookingId: bigint) {
+    const forms = await this.notifier?.pendingFormsFor(tenantId, clientProfileId).catch(() => []);
+    return (forms ?? []).map((f: any) => ({ ...f, href: `/forms/${f.id}?booking=${bookingId}` }));
   }
 
   async getTherapistBookings(tenantId: bigint, providerProfileId: bigint) {

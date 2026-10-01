@@ -78,21 +78,21 @@ describe('paying for a booking in the pop-up', () => {
   it('confirms a paid booking straight away, the same way the webhook does', async () => {
     const { service, paystack, billing } = make({ booking: { id: 900n, tenantId: TENANT, clientProfileId: CLIENT, paymentRef: 'booking-900-1', status: 'PENDING_PAYMENT' } });
     paystack.verifyTransaction.mockResolvedValue({ status: 'success', reference: 'booking-900-1', paid_at: '2026-10-01T10:00:00Z' });
-    await expect(service.confirmPublicPayment(TENANT, CLIENT, 900n)).resolves.toEqual({ status: 'CONFIRMED' });
+    await expect(service.confirmPublicPayment(TENANT, CLIENT, 900n)).resolves.toEqual({ status: 'CONFIRMED', forms: [] });
     expect(paystack.verifyTransaction).toHaveBeenCalledWith('booking-900-1');
     expect(billing.markBookingPaid).toHaveBeenCalledWith('booking-900-1', expect.objectContaining({ status: 'success' }));
   });
 
   it('reports an already-confirmed booking as confirmed without asking Paystack', async () => {
     const { service, paystack } = make({ booking: { id: 900n, tenantId: TENANT, clientProfileId: CLIENT, paymentRef: 'booking-900-1', status: 'CONFIRMED' } });
-    await expect(service.confirmPublicPayment(TENANT, CLIENT, 900n)).resolves.toEqual({ status: 'CONFIRMED' });
+    await expect(service.confirmPublicPayment(TENANT, CLIENT, 900n)).resolves.toEqual({ status: 'CONFIRMED', forms: [] });
     expect(paystack.verifyTransaction).not.toHaveBeenCalled();
   });
 
   it('leaves an unpaid booking pending', async () => {
     const { service, paystack, billing } = make({ booking: { id: 900n, tenantId: TENANT, clientProfileId: CLIENT, paymentRef: 'booking-900-1', status: 'PENDING_PAYMENT' } });
     paystack.verifyTransaction.mockResolvedValue({ status: 'abandoned' });
-    await expect(service.confirmPublicPayment(TENANT, CLIENT, 900n)).resolves.toEqual({ status: 'PENDING_PAYMENT' });
+    await expect(service.confirmPublicPayment(TENANT, CLIENT, 900n)).resolves.toEqual({ status: 'PENDING_PAYMENT', forms: [] });
     expect(billing.markBookingPaid).not.toHaveBeenCalled();
   });
 
