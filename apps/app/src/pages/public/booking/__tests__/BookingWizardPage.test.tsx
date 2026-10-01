@@ -164,7 +164,8 @@ describe('BookingWizardPage', () => {
     fireEvent.click(cta('Continue'));
     await screen.findByRole('heading', { name: 'Your details' });
     expect(screen.getByRole('button', { name: 'Create account' })).toBeTruthy();
-    expect((cta('Continue to payment') as HTMLButtonElement).disabled).toBe(true);
+    // The account form's own button is the only way on: no second, disabled Continue.
+    expect(screen.queryByRole('button', { name: 'Continue to payment' })).toBeNull();
   });
 
   it('opens at the start when the address asks for a later step it cannot show yet', async () => {

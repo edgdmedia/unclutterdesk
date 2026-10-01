@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Video, Calendar, Check, ClipboardList, ChevronRight } from 'lucide-react';
 import { useBrand, useToast } from '@unclutterdesk/ui';
-import { api, getBookingUrl, TENANT_SLUG } from '../../utils/apiClient';
+import { api, getBookingUrl, TENANT_SLUG, API_BASE } from '../../utils/apiClient';
 import { RescheduleDialog } from '../../components/RescheduleDialog';
 import { initialsOf } from '../../utils/initials';
 import { useAuth } from '../../context/AuthContext';
@@ -329,7 +329,7 @@ export function ClientPortalPage() {
               </div>
               <div className="flex gap-3 shrink-0">
                 <a 
-                  href={`${import.meta.env.VITE_API_URL || 'http://localhost:3001'}/v1/calendar/bookings/${nextSession.id}/ical?token=${nextSession.icalToken ?? ''}`}
+                  href={`${API_BASE}/v1/calendar/bookings/${nextSession.id}/ical?token=${nextSession.icalToken ?? ''}`}
                   download
                   className="h-[48px] px-5 rounded-[16px] bg-transparent border border-[rgba(255,255,255,0.22)] text-white text-[13.5px] font-bold flex items-center gap-2 hover:bg-white/10 cursor-pointer"
                 >

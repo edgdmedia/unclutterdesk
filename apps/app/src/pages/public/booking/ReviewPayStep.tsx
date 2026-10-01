@@ -56,6 +56,7 @@ export function ReviewPayStep({
   bankTransfer,
   tenantId,
   cancellationHours,
+  showSummary = true,
 }: {
   service: PublicService;
   slot: Slot;
@@ -64,6 +65,8 @@ export function ReviewPayStep({
   bankTransfer: boolean;
   tenantId: string;
   cancellationHours?: number | null;
+  /** False on desktop, where the side card is the summary. */
+  showSummary?: boolean;
 }) {
   const [discountOpen, setDiscountOpen] = useState(state.discount.status !== 'idle');
   const [code, setCode] = useState(state.discount.code);
@@ -103,6 +106,7 @@ export function ReviewPayStep({
         </AlertBanner>
       ) : null}
 
+      {showSummary ? (
       <div className="rounded-[20px] border border-[#E2E8F0] overflow-hidden">
         <Row label="Session" value={`${service.title} · ${service.durationMinutes} min`} />
         <Row label="When" value={whenLabel(slot.startsAt)} />
@@ -112,6 +116,7 @@ export function ReviewPayStep({
         {applied ? <Row tone="discount" label={`Discount · ${state.discount.code}`} value={`−${naira(state.discount.savingKobo)}`} /> : null}
         <Row tone="total" label="Total" value={naira(total)} />
       </div>
+      ) : null}
 
       {discountOpen ? (
         <div className="flex flex-col gap-1.5">
@@ -158,7 +163,7 @@ export function ReviewPayStep({
         </div>
       ) : null}
 
-      {cancellationHours ? (
+      {showSummary && cancellationHours ? (
         <p className="flex items-center gap-2 text-[13px] text-[#475569]">
           <Clock className="h-[15px] w-[15px]" aria-hidden="true" /> Free cancellation up to {cancellationHours} hours before.
         </p>

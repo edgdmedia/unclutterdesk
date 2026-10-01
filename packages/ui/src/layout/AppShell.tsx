@@ -39,6 +39,13 @@ export function AppShell({ sidebar, collapsed = false, onCollapsedChange, bottom
     if (viewport === 'desktop') setOverlayOpen(false);
   }, [viewport]);
 
+  // A guided tour walks the page itself, so the drawer must step aside for it.
+  useEffect(() => {
+    const close = () => setOverlayOpen(false);
+    window.addEventListener('unclutter:tour-start', close);
+    return () => window.removeEventListener('unclutter:tour-start', close);
+  }, []);
+
   const inlineMode: SidebarMode | null = !sidebar || viewport === 'phone' ? null : viewport === 'desktop' && !collapsed ? 'full' : 'rail';
   const onToggleCollapse =
     viewport === 'desktop' ? (onCollapsedChange ? () => onCollapsedChange(!collapsed) : undefined) : openOverlay;

@@ -95,31 +95,37 @@ export function publicTenantFields(tenant: Record<string, unknown>): Record<stri
 }
 
 /** A logo is an image the browser has encoded, or a hosted https image. */
-const LOGO_DATA_URL = /^data:image\/(?:png|jpeg|gif|webp|svg\+xml);base64,[A-Za-z0-9+/=]+$/;
-/** The app shrinks logos to well under this before sending them. */
+const IMAGE_DATA_URL: Record<'logo' | 'photo', RegExp> = {
+  logo: /^data:image\/(?:png|jpeg|gif|webp|svg\+xml);base64,[A-Za-z0-9+/=]+$/,
+  photo: /^data:image\/(?:png|jpeg|webp|gif);base64,[A-Za-z0-9+/=]+$/,
+};
+/** The app shrinks images to well under this before sending them. */
 const MAX_LOGO_LENGTH = 100_000;
 
 /**
  * undefined: not being changed. null: remove it. Anything else must be an image.
  * Empty used to be dropped, so a practice that removed its logo got it back.
  */
-export function cleanLogoUrl(value: unknown): string | null | undefined {
+export function cleanImageUrl(value: unknown, what: 'logo' | 'photo' = 'logo'): string | null | undefined {
   if (value === undefined) return undefined;
-  const logo = typeof value === 'string' ? value.trim() : value === null ? '' : null;
-  if (logo === null) throw new BadRequestException('The logo must be an image.');
-  if (!logo) return null;
-  if (logo.length > MAX_LOGO_LENGTH) {
-    throw new BadRequestException('That logo is too large. Choose a smaller image (under about 60 KB).');
+  const image = typeof value === 'string' ? value.trim() : value === null ? '' : null;
+  if (image === null) throw new BadRequestException(`The ${what} must be an image.`);
+  if (!image) return null;
+  if (image.length > MAX_LOGO_LENGTH) {
+    throw new BadRequestException(`That ${what} is too large. Choose a smaller image (under about 60 KB).`);
   }
-  if (LOGO_DATA_URL.test(logo)) return logo;
+  if (IMAGE_DATA_URL[what].test(image)) return image;
   try {
-    const url = new URL(logo);
-    if (url.protocol === 'https:') return logo;
+    const url = new URL(image);
+    if (url.protocol === 'https:') return image;
   } catch {
     // Falls through to the error below.
   }
-  throw new BadRequestException('The logo must be an image.');
+  throw new BadRequestException(`The ${what} must be an image.`);
 }
+
+/** Kept so logo callers read as before. */
+export const cleanLogoUrl = (value: unknown): string | null | undefined => cleanImageUrl(value, 'logo');
 
 @Injectable()
 export class TenantService {
