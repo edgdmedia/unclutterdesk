@@ -38,9 +38,9 @@ A running log of what shows up in testing, what we decide about it, and when it'
 | ID | Area | Item | Type | Pri | Status |
 |---|---|---|---|---|---|
 | ADM-01 | Admin | Share link: custom message, send or invite by email | Feature | P1 | Fixed |
-| ADM-02 | Admin | Admin sidebar doesn't match the app sidebar (account dropdown, Back to Practice) | UX | | Open |
+| ADM-02 | Admin | Admin sidebar doesn't match the app sidebar (account dropdown, Back to Practice) | UX | P2 | Fixed |
 | ADM-03 | Admin | Admin sign-in fields don't match the rest of the app | UX | P2 | Fixed |
-| NOT-01 | Notifications | Email branding has no logo | Bug | | Open |
+| NOT-01 | Notifications | Email branding has no logo | Bug | P1 | Fixed |
 | NOT-02 | Notifications | Email template rendered free text as HTML | Bug | P0 | Fixed |
 | ONB-01 | Onboarding | Does Direct Payout create a Paystack subaccount automatically? (Yes. The step's copy is wrong) | Bug | P1 | Fixed |
 | ONB-02 | Onboarding | Can a practice bring its own Paystack keys? | Question | | Won't fix |
@@ -57,9 +57,9 @@ A running log of what shows up in testing, what we decide about it, and when it'
 | SET-06 | Settings | No way to say if the practice offers online, in person or both, or to manage several locations | Feature | P1 | Discuss |
 | SET-07 | Settings | Services can't have a different price online and in person | Feature | P1 | Discuss |
 | BKG-01 | Booking page | Layout is incoherent and doesn't work | UX | | Fixed |
-| BKG-02 | Booking page | Practice logo never loads | Bug | | Open |
+| BKG-02 | Booking page | Practice logo never loads | Bug | P1 | Fixed |
 | BKG-03 | Booking page | "Book now" should be a step-by-step wizard | UX | | Fixed |
-| BKG-04 | Booking page | Is a client's sign-in tied to one practice or shared across practices? | Question | | Ready |
+| BKG-04 | Booking page | Is a client's sign-in tied to one practice or shared across practices? | Question | P2 | Fixed |
 | BKG-05 | Booking page | Session format should come from what the practice offers for each slot | Bug | | Discuss |
 | BKG-06 | Booking page | Default intake and confidentiality form templates for every practice | Feature | | Ready |
 | BKG-07 | Booking page | Header shows a hard-coded "Lagos, Nigeria · Online & in-person" for every practice | Bug | P1 | Discuss |
@@ -79,10 +79,10 @@ A running log of what shows up in testing, what we decide about it, and when it'
 - **Verified:**
 
 ### ADM-02 · Admin sidebar doesn't match the app sidebar
-- **Type:** UX · **Priority:** · **Status:** Open
+- **Type:** UX · **Priority:** P2 · **Status:** Fixed
 - **Observed:** The admin sidebar doesn't look or behave like the app sidebar. The biggest gap is the account dropdown, which should include **Back to Practice**.
-- **Feedback / decision:**
-- **Fix:**
+- **Feedback / decision:** The admin console now rides the same shared shell as the practice app: full sidebar, icon rail, phone drawer, same collapse memory. Its account menu matches the practice one and offers **Back to my practice** (only when the operator has a practice) and **Sign out**. The layout check gained an admin pass at all four widths.
+- **Fix:** `a2be2d5` on `dev`. Covered by `AdminAccountMenu.test.tsx`; `check:layout` reports `/admin` and `/admin/invites` clean at 390–1280px.
 - **Verified:**
 
 ### ADM-03 · Admin sign-in fields don't match the rest of the app
@@ -95,10 +95,10 @@ A running log of what shows up in testing, what we decide about it, and when it'
 ## Notifications / Email
 
 ### NOT-01 · Email branding has no logo
-- **Type:** Bug · **Priority:** · **Status:** Open
+- **Type:** Bug · **Priority:** P1 · **Status:** Fixed
 - **Observed:** The email branding doesn't include the logo.
-- **Feedback / decision:**
-- **Fix:**
+- **Feedback / decision:** The logo was stored as an inline `data:` URL, which Gmail and most clients block. Logos are now served from a real address, `GET /v1/tenant/:id/logo` (public, cached for a year, versioned by content hash; a hosted `https://` logo redirects; none or a non-image answers 404), and emails resolve that absolute URL instead.
+- **Fix:** `d49d37e` on `dev`. Covered by `tenant-logo.spec.ts` and `notification.service.spec.ts`. `API_URL` documented in `docs/VPS_PREPARATION.md`.
 - **Verified:**
 
 ### NOT-02 · Email template rendered free text as HTML
@@ -220,10 +220,10 @@ A running log of what shows up in testing, what we decide about it, and when it'
 - **Verified:**
 
 ### BKG-02 · Practice logo never loads
-- **Type:** Bug · **Priority:** · **Status:** Open
+- **Type:** Bug · **Priority:** P1 · **Status:** Fixed
 - **Observed:** The practice's logo never loads on the booking page.
-- **Feedback / decision:**
-- **Fix:**
+- **Feedback / decision:** The page simply never read the saved logo. A shared `PracticeLogo` component now renders it in the booking header, falling back to the initials badge when there is no logo or the image fails.
+- **Fix:** `05bb601` on `dev`, after `d49d37e` gave logos a real URL. Covered by `PracticeLogo.test.tsx`; checked live on `dr-smith.localhost:5173/book` at 1280px and 390px.
 - **Verified:**
 
 ### BKG-03 · "Book now" should be a step wizard
@@ -234,10 +234,10 @@ A running log of what shows up in testing, what we decide about it, and when it'
 - **Verified:**
 
 ### BKG-04 · Is client sign-in tied to the practice?
-- **Type:** Question · **Priority:** · **Status:** Ready
+- **Type:** Question · **Priority:** P2 · **Status:** Fixed
 - **Observed:** It's unclear whether a client's sign-in belongs to one practice, or whether one account can book with any practice and sign in everywhere.
 - **Feedback / decision:** Keep one account per client (decided 30 Sep 2026). The client sees their sessions with whichever practice they're booking with, and each practice sees only what concerns it. This is already how the data works. The booking sign-in will say so in one line. Plan Task 8.
-- **Fix:**
+- **Fix:** `054a8c9` on `dev`. One line under the booking sign-in/create panel; covered by `ClientAuthPanel.test.tsx`. Portal tenancy was already asserted in `consult.service.spec.ts` (queries scoped by tenant and the session's profile id).
 - **Verified:**
 
 ### BKG-05 · Session format should follow the practice's slot options
