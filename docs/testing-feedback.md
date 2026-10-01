@@ -71,7 +71,12 @@ A running log of what shows up in testing, what we decide about it, and when it'
 | BKG-08 | Booking page | "Notify me" when a practice has no free times in the next 4 weeks | Feature | P3 | Deferred |
 | BKG-09 | Booking page | An abandoned online payment keeps the time blocked for everyone | Bug | P1 | Ready |
 | BKG-10 | Booking page | After booking, clients aren't offered their account to manage the booking | UX | P1 | Fixed |
+| SET-09 | Settings | A practice discount can be turned off, but not back on, edited or deleted | Bug | P1 | Open |
+| BKG-11 | Booking page | The practice's booking link doesn't carry the new wizard design: too wide, no practice logo | Bug | P1 | Open |
+| BKG-12 | Booking page | "Go to my bookings" and the calendar buttons should share one row; the two calendar links can be one dropdown | UX | P3 | Open |
 | VID-01 | Video | The session room is a mock-up, not a real video call | Feature | P0 | Ready |
+| POR-01 | Client portal | /portal only works on app.unclutterdesk.com, not on the practice's own link | Bug | P1 | Open |
+| POR-02 | Client portal | The portal should look like a dashboard, not a plain list | UX | P2 | Open |
 | FRM-01 | Forms | Save forms as templates and optionally share them with other practices | Feature | | Ready |
 
 ---
@@ -257,6 +262,13 @@ A running log of what shows up in testing, what we decide about it, and when it'
 - **Fix:** `b4cab4e`–`71a7449` on `opencode/walkthrough-uploads`. One `ImageField` (preparing / saving / saved / error, previous image restored on failure) backs both the logo field and the dashboard's profile photo; the photo now posts to `/v1/consult/therapist/profile/avatar`, which validates like the logo (`cleanImageUrl`) and accepts clearing. Covered by `ImageField.test.tsx`, `DashboardProfilePhoto.test.tsx`, `therapist-avatar.spec.ts`.
 - **Verified:** Browser check on the worktree (ports 3299/5273): a chosen photo shows Saving… → Saved and survives a reload; the account-menu avatar refreshes.
 
+### SET-09 · Discounts can be turned off, but not back on, edited or deleted
+- **Type:** Bug · **Priority:** P1 · **Status:** Open
+- **Observed:** In Discounts & promos a practice discount can be deactivated, but once off there is no way to turn it back on, edit it, or delete it.
+- **Feedback / decision:**
+- **Fix:**
+- **Verified:**
+
 ## Client booking link / page
 
 ### BKG-01 · Booking page layout is incoherent
@@ -333,6 +345,20 @@ A running log of what shows up in testing, what we decide about it, and when it'
 - **Fix:** `60ba7a5` on `dev`. The confirmation screen's first action is **Go to my bookings** → `/portal`; the confirmed email carries the portal link too. Covered by `ConfirmationStep.test.tsx`.
 - **Verified:** Browser check 1 Oct: the button is the confirmation screen's first action and points at `/portal`.
 
+### BKG-11 · The booking link doesn't carry the new wizard design
+- **Type:** Bug · **Priority:** P1 · **Status:** Open
+- **Observed:** Opening the practice's booking link shows a page that doesn't match the new booking wizard: the layout is too wide and the practice logo is missing.
+- **Feedback / decision:**
+- **Fix:**
+- **Verified:**
+
+### BKG-12 · Confirmation actions should share a row; calendar links can be one dropdown
+- **Type:** UX · **Priority:** P3 · **Status:** Open
+- **Observed:** On the booking confirmation, "Go to my bookings" sits on its own row above the calendar buttons, and "Add to calendar" and "Google Calendar" are two separate buttons.
+- **Feedback / decision:** Put "Go to my bookings" in the same row as the calendar actions, and collapse the two calendar options into one button with a dropdown of the two.
+- **Fix:**
+- **Verified:**
+
 ### VID-01 · The session room isn't a real video call
 - **Type:** Feature · **Priority:** P0 · **Status:** Ready
 - **Observed:** The telehealth room (`TelehealthVideoRoomPage.tsx`, the designed video screen) is a mock-up labelled "Room preview" with the client's initials; there's no camera or call in it.
@@ -346,6 +372,22 @@ A running log of what shows up in testing, what we decide about it, and when it'
   - **Usage records** (decided 1 Oct 2026): every video session stores practice, therapist, provider, start, end and participant-minutes. The router reads the monthly totals, and the admin console shows minutes by month, practice and provider for planning.
   - To confirm in the JaaS dashboard before building: what the free plan does at the 26th user (blocked or prompted), and the paid per-user price (about $0.35 per user per a third-party summary).
   - Needs a Daily account and API key, and a JaaS app (app ID and signing key), before building. ONB-08 (setup asks for the video platform) follows from this.
+- **Fix:**
+- **Verified:**
+
+## Client portal
+
+### POR-01 · The portal only works on the app host, not on the practice's link
+- **Type:** Bug · **Priority:** P1 · **Status:** Open
+- **Observed:** https://unclutter.unclutterdesk.com/portal does not work; the client portal only loads on app.unclutterdesk.com. Clients who booked from a practice subdomain (and emails/confirmation links that point at /portal on the practice host) don't get their portal.
+- **Feedback / decision:**
+- **Fix:**
+- **Verified:**
+
+### POR-02 · The portal should look like a dashboard
+- **Type:** UX · **Priority:** P2 · **Status:** Open
+- **Observed:** The client portal is a plain list; it needs a better design that reads like a dashboard.
+- **Feedback / decision:**
 - **Fix:**
 - **Verified:**
 
