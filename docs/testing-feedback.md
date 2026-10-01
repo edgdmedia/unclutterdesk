@@ -44,6 +44,7 @@ A running log of what shows up in testing, what we decide about it, and when it'
 | NOT-02 | Notifications | Email template rendered free text as HTML | Bug | P0 | Fixed |
 | NOT-03 | Notifications | Emails show the sender as no-r...@unclutterdesk.com, not the practice or Unclutter Desk | Bug | P1 | Open |
 | NOT-04 | Notifications | "Pay to confirm" email already gives the join link, and points to a payment link that isn't in it | Bug | P1 | Open |
+| NOT-05 | Notifications | The notifications page stays empty, even after bookings | Bug | P1 | Open |
 | ONB-01 | Onboarding | Does Direct Payout create a Paystack subaccount automatically? (Yes. The step's copy is wrong) | Bug | P1 | Fixed |
 | ONB-02 | Onboarding | Can a practice bring its own Paystack keys? | Question | | Won't fix |
 | ONB-03 | Onboarding | Setup step offers online payment and bank transfer | Feature | P1 | Fixed |
@@ -51,6 +52,7 @@ A running log of what shows up in testing, what we decide about it, and when it'
 | ONB-05 | Onboarding | No way to set a session as virtual or physical | Bug | | Discuss |
 | ONB-06 | Onboarding | No walkthrough after "Go to Dashboard" | Feature | | Ready |
 | ONB-07 | Onboarding | Continue in setup fails with "This endpoint requires a practice profile" | Bug | P0 | Fixed |
+| ONB-08 | Onboarding | Setup doesn't ask for the practice's preferred video platform | Feature | P2 | Open |
 | SET-01 | Settings | Booking link picked during setup isn't saved, and can't be changed | Bug | P1 | Fixed |
 | SET-02 | Settings | Booking subdomain should be a separate setting from the custom hostname | UX | P2 | Fixed |
 | SET-03 | Settings | No custom hostname setup (add domain, DNS records, auto-configure) | Feature | | Open |
@@ -58,6 +60,7 @@ A running log of what shows up in testing, what we decide about it, and when it'
 | SET-05 | Settings | After setup there's nowhere to change the logo or booking link | Bug | P1 | Fixed |
 | SET-06 | Settings | No way to say if the practice offers online, in person or both, or to manage several locations | Feature | P1 | Discuss |
 | SET-07 | Settings | Services can't have a different price online and in person | Feature | P1 | Discuss |
+| SET-08 | Settings | Uploading a profile photo or practice logo shows no progress or result | UX | P2 | Open |
 | BKG-01 | Booking page | Layout is incoherent and doesn't work | UX | | Fixed |
 | BKG-02 | Booking page | Practice logo never loads | Bug | P1 | Fixed |
 | BKG-03 | Booking page | "Book now" should be a step-by-step wizard | UX | | Fixed |
@@ -67,6 +70,8 @@ A running log of what shows up in testing, what we decide about it, and when it'
 | BKG-07 | Booking page | Header shows a hard-coded "Lagos, Nigeria · Online & in-person" for every practice | Bug | P1 | Discuss |
 | BKG-08 | Booking page | "Notify me" when a practice has no free times in the next 4 weeks | Feature | P3 | Deferred |
 | BKG-09 | Booking page | An abandoned online payment keeps the time blocked for everyone | Bug | P1 | Discuss |
+| BKG-10 | Booking page | After booking, clients aren't offered their account to manage the booking | UX | P1 | Open |
+| VID-01 | Video | The session room is a mock-up, not a real video call | Feature | P0 | Discuss |
 | FRM-01 | Forms | Save forms as templates and optionally share them with other practices | Feature | | Open |
 
 ---
@@ -124,6 +129,13 @@ A running log of what shows up in testing, what we decide about it, and when it'
 - **Fix:**
 - **Verified:**
 
+### NOT-05 · The notifications page stays empty
+- **Type:** Bug · **Priority:** P1 · **Status:** Open
+- **Observed:** Nothing appears under Notifications, even after successful bookings.
+- **Feedback / decision:** In-app notifications are only created for rescheduled sessions and session-note reminders (`consult.service.ts` `notify(...)`). New bookings, payments received, bank transfers to confirm, cancellations and form submissions create none. Proposed: notify the session's therapist (and practice owners/admins where relevant) for: new booking, payment received, transfer marked sent / hold about to lapse, cancellation, client form submitted. Each in-app, with email/push following the existing per-type preferences.
+- **Fix:**
+- **Verified:**
+
 ## Onboarding
 
 ### ONB-01 · Does Direct Payout create a subaccount automatically?
@@ -175,6 +187,13 @@ A running log of what shows up in testing, what we decide about it, and when it'
 - **Fix:** `5808ffc` on `dev`. Covered by `OnboardingAccess.test.tsx` and `AuthContext.crossTab.test.tsx`.
 - **Verified:**
 
+### ONB-08 · Setup doesn't ask for the video platform
+- **Type:** Feature · **Priority:** P2 · **Status:** Open
+- **Observed:** Practice setup has no option to choose the default video platform.
+- **Feedback / decision:** It exists per therapist (`ConsultTherapistProfile.videoProvider`: Jitsi, Daily, Google Meet, Zoom; Jitsi by default), set in My profile only. Proposed: ask once in setup ("How do you run online sessions?") as the practice default, still changeable per therapist. Depends on VID-01 for which platforms run inside the app.
+- **Fix:**
+- **Verified:**
+
 ## Settings
 
 ### SET-01 · Booking link from setup isn't saved
@@ -223,6 +242,13 @@ A running log of what shows up in testing, what we decide about it, and when it'
 - **Type:** Feature · **Priority:** P1 · **Status:** Discuss
 - **Observed:** Some practices charge differently for online and in-person sessions, but a service has one price.
 - **Feedback / decision:** Decided 1 Oct 2026: price **per service, per format** (for example Individual Therapy online ₦30,000, in person ₦35,000; they can be the same). Part of the same design, `docs/superpowers/specs/2026-10-01-session-formats-and-locations-design.md`. **Parked.**
+- **Fix:**
+- **Verified:**
+
+### SET-08 · Photo and logo uploads show no progress or result
+- **Type:** UX · **Priority:** P2 · **Status:** Open
+- **Observed:** Uploading a profile photo or practice logo gives no sign it's working, finished or failed.
+- **Feedback / decision:** Proposed: one shared image upload control (the logo field from SET-04/05 extended) with a preparing/uploading state, a preview, a clear error when the file is refused, and a confirmation once saved. Use it for both the practice logo and profile photos.
 - **Fix:**
 - **Verified:**
 
@@ -291,6 +317,20 @@ A running log of what shows up in testing, what we decide about it, and when it'
 - **Fix:**
 - **Verified:**
 
+### BKG-10 · No offer to the client's account after booking
+- **Type:** UX · **Priority:** P1 · **Status:** Open
+- **Observed:** After booking, the client isn't offered their dashboard (portal) to manage the booking: reschedule, cancel, pay, forms, join link.
+- **Feedback / decision:** Proposed: the confirmation screen gets a primary "Go to my bookings" (the client portal, already signed in), and the booking emails link there too.
+- **Fix:**
+- **Verified:**
+
+### VID-01 · The session room isn't a real video call
+- **Type:** Feature · **Priority:** P0 · **Status:** Discuss
+- **Observed:** The telehealth room (`TelehealthVideoRoomPage.tsx`, the designed video screen) is a mock-up labelled "Room preview" with the client's initials; there's no camera or call in it. The question was whether the video platforms can work inside our own design.
+- **Feedback / decision:** Partly. **Jitsi** (the default) and **Daily** can run *inside* our screen: Jitsi through its IFrame API, Daily through its call object or Prebuilt, both controllable from our own mute/camera/leave buttons. **Google Meet** can't be embedded; it only opens in a new tab. **Zoom** only through its separate Video SDK (different product and pricing). Proposed: build the room on one embeddable provider first (Jitsi is free; Daily gives more control and recording), and offer Meet/Zoom as "opens in a new tab". Needs a decision on the provider before building.
+- **Fix:**
+- **Verified:**
+
 ## Forms & templates
 
 ### FRM-01 · Save forms as templates, optionally shared
@@ -315,4 +355,4 @@ Copy this block under the right area. Add a matching row to the tracker.
 - **Verified:** date · environment · who
 ```
 
-Area prefixes: `ADM` Admin · `NOT` Notifications/Email · `ONB` Onboarding · `SET` Settings · `BKG` Booking page · `FRM` Forms & templates · `POR` Client portal · `GEN` General
+Area prefixes: `ADM` Admin · `NOT` Notifications/Email · `ONB` Onboarding · `SET` Settings · `BKG` Booking page · `VID` Video sessions · `FRM` Forms & templates · `POR` Client portal · `GEN` General
