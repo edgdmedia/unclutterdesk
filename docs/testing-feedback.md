@@ -336,7 +336,10 @@ A running log of what shows up in testing, what we decide about it, and when it'
   - **JaaS (hosted Jitsi) in reserve**, behind the same provider interface: embeddable from 8x8.vc and protected (every room needs a JWT signed with our key). Free up to 25 monthly active users, then from $99/month for 300 ([JaaS](https://jitsi.org/jaas/)).
   - **The free meet.jit.si can no longer be embedded** in other sites, so it stops being the default.
   - **Google Meet stays opt-in** per therapist, created in the therapist's own Google account (as today), so the therapist is host. It opens in a new tab and can't be embedded. Free Google accounts allow one-to-one calls up to 24 hours, but 3 or more people only 60 minutes.
-  - Needs a Daily account and API key before building. ONB-08 (setup asks for the video platform) follows from this.
+  - **Provider by monthly budget** (decided 1 Oct 2026): the provider is chosen when a session's room is created, so a call is never switched mid-way. (1) **Daily** until this month's participant-minutes reach a set limit (e.g. 9,500 of the free 10,000), counted from Daily's per-session participant durations (REST `/meetings` and the `meeting.ended` webhook). (2) **JaaS** in the same room until about 23 of its 25 free monthly active users (each distinct person who joins counts). (3) **Opens in a new tab**: the therapist's own Google Meet if connected, otherwise meet.jit.si. It resets to Daily each month. The limits are settings, so Daily's can be raised later (about $0.40 a session) instead of switching.
+  - **Later:** replace JaaS with a self-hosted Jitsi server (same embedding API), when usage grows.
+  - To confirm in the JaaS dashboard before building: what the free plan does at the 26th user (blocked or prompted), and the paid per-user price (about $0.35 per user per a third-party summary).
+  - Needs a Daily account and API key, and a JaaS app (app ID and signing key), before building. ONB-08 (setup asks for the video platform) follows from this.
 - **Fix:**
 - **Verified:**
 
