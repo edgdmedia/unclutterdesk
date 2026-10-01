@@ -9,7 +9,7 @@ function makeService() {
   const prisma: any = {
     tenant: { findUnique: vi.fn(), update: vi.fn(), updateMany: vi.fn() },
     profile: { findFirst: vi.fn(), count: vi.fn().mockResolvedValue(0) },
-    consultBooking: { updateMany: vi.fn() },
+    consultBooking: { updateMany: vi.fn().mockResolvedValue({ count: 1 }) },
   };
   const paystack: any = { initializeTransaction: vi.fn() };
   const calendar: any = { pushBookingToGoogle: vi.fn() };
@@ -157,6 +157,15 @@ describe('BillingService.handleWebhook — subscriptions', () => {
     });
     expect(prisma.consultBooking.updateMany).toHaveBeenCalled();
     expect(prisma.tenant.update).not.toHaveBeenCalled();
+  });
+
+  it('confirms a booking payment once, however many times it is reported', async () => {
+    const calendar = (service as any).calendar;
+    prisma.consultBooking.updateMany.mockResolvedValueOnce({ count: 1 }).mockResolvedValueOnce({ count: 0 });
+    await expect(service.markBookingPaid('booking-42-999', { paid_at: '2026-01-01T00:00:00Z' })).resolves.toBe(true);
+    await expect(service.markBookingPaid('booking-42-999', { paid_at: '2026-01-01T00:00:00Z' })).resolves.toBe(false);
+    expect(prisma.consultBooking.updateMany.mock.calls[0][0].where).toEqual({ paymentRef: 'booking-42-999', status: 'PENDING_PAYMENT' });
+    expect(calendar.pushBookingToGoogle).toHaveBeenCalledTimes(1);
   });
 
   it('flags a failed renewal without downgrading the practice', async () => {

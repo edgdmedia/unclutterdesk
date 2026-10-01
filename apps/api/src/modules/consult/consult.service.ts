@@ -12,6 +12,9 @@ import { decryptNoteFields } from '../../common/field-encryption';
 import { holdExpiry, ManualPaymentService, transferReference } from './manual-payment.service';
 import { assertWithinMonthlyLimit } from './booking-limits';
 
+/** A Paystack checkout: the page to send the payer to, and the code its pop-up opens with. */
+type StartedPayment = { url: string; accessCode: string };
+
 @Injectable()
 export class ConsultService {
   private readonly logger = new Logger(ConsultService.name);
@@ -370,6 +373,7 @@ export class ConsultService {
       serviceId: s.serviceId?.toString() || null,
       providerProfileId: s.providerProfileId.toString(),
       therapistName: `${s.therapist.profile.firstName || ''} ${s.therapist.profile.lastName || ''}`.trim() || 'Therapist',
+      therapistTitle: [s.therapist.credentials, s.therapist.specialty].filter(Boolean).join(' · ') || null,
       avatarUrl: s.therapist.profile.avatarUrl,
       startsAt: s.startsAt.toISOString(),
       endsAt: s.endsAt.toISOString(),
@@ -673,7 +677,9 @@ export class ConsultService {
         });
       }
 
-      let paymentUrl = null;
+      let paymentUrl: string | null = null;
+      let accessCode: string | null = null;
+      let paymentRef: string | null = null;
       let manualPayment = null;
 
       if (manual) {
@@ -689,13 +695,17 @@ export class ConsultService {
         // redirects the payer to whatever it is given, so an unchecked value is
         // a phishing page wearing this checkout as its approach. Built from the
         // practice's own site instead.
-        paymentUrl = await this.startOnlinePayment(
+        const started = await this.startOnlinePayment(
           tenantId,
           finalPriceKobo,
           client.email,
           reference,
           `${tenantWebOrigin(slot.tenant)}/booking/confirmed`,
         );
+        paymentUrl = started.url;
+        // The booking wizard opens Paystack as a pop-up from this code.
+        accessCode = started.accessCode;
+        paymentRef = reference;
         await tx.consultBooking.update({
           where: { id: booking.id },
           data: { paymentRef: reference },
@@ -722,6 +732,8 @@ export class ConsultService {
         therapistName: `${slot.therapist.profile.firstName || ''} ${slot.therapist.profile.lastName || ''}`.trim(),
         videoRoomLink,
         paymentUrl,
+        accessCode,
+        reference: paymentRef,
         manualPayment,
       };
     });
@@ -769,7 +781,7 @@ export class ConsultService {
     email: string,
     reference: string,
     callbackUrl: string,
-  ): Promise<string> {
+  ): Promise<StartedPayment> {
     const split = await this.billing.calculateSplitPayout(tenantId, amountKobo);
     if (split.payoutAccountBroken) {
       throw new BadRequestException(await this.billing.payoutAccountRejected(tenantId, 'previously rejected'));
@@ -784,7 +796,7 @@ export class ConsultService {
         split: split.tier === 'STARTER' ? 5 : 0,
         callback_url: callbackUrl,
       });
-      return pTx.authorization_url;
+      return { url: pTx.authorization_url, accessCode: pTx.access_code };
     } catch (e: any) {
       const message = String(e?.message ?? '');
       if (/subaccount/i.test(message)) {
@@ -814,7 +826,7 @@ export class ConsultService {
       where: { id: tenantId },
       select: { slug: true, customDomain: true, customDomainStatus: true },
     });
-    const paymentUrl = await this.startOnlinePayment(
+    const started = await this.startOnlinePayment(
       tenantId,
       chargeKobo,
       booking.client.email,
@@ -827,7 +839,27 @@ export class ConsultService {
       where: { id: booking.id },
       data: { paymentRef: reference },
     });
-    return { paymentUrl };
+    return { paymentUrl: started.url, accessCode: started.accessCode, reference };
+  }
+
+  /**
+   * Called when Paystack's pop-up reports success, so the client sees
+   * "You're booked" at once instead of waiting for the webhook. Asks Paystack
+   * itself rather than trusting the browser, and confirms through the same
+   * code as the webhook, which ignores a booking that's already confirmed.
+   */
+  async confirmPublicPayment(tenantId: bigint, clientProfileId: bigint, bookingId: bigint) {
+    const booking = await this.prisma.consultBooking.findFirst({
+      where: { id: bookingId, tenantId, clientProfileId },
+      select: { id: true, status: true, paymentRef: true },
+    });
+    if (!booking) throw new NotFoundException('Booking not found');
+    if (booking.status === 'CONFIRMED') return { status: 'CONFIRMED' as const };
+    if (!booking.paymentRef) return { status: 'PENDING_PAYMENT' as const };
+    const tx = await this.paystack.verifyTransaction(booking.paymentRef);
+    if (tx?.status !== 'success') return { status: 'PENDING_PAYMENT' as const };
+    await this.billing.markBookingPaid(booking.paymentRef, tx);
+    return { status: 'CONFIRMED' as const };
   }
 
   async getTherapistBookings(tenantId: bigint, providerProfileId: bigint) {

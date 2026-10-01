@@ -11,7 +11,7 @@ function setup(booking: Record<string, any> | null) {
   const prisma: any = {
     consultBooking: { findFirst: vi.fn().mockResolvedValue(booking), update: vi.fn() },
   };
-  const consult: any = { startOnlinePayment: vi.fn().mockResolvedValue('https://checkout.paystack.com/abc') };
+  const consult: any = { startOnlinePayment: vi.fn().mockResolvedValue({ url: 'https://checkout.paystack.com/abc', accessCode: 'ac_abc' }) };
   const service = new StaffBookingService(prisma, consult, {} as any, {} as any);
   return { service, prisma, consult };
 }

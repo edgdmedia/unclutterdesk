@@ -42,6 +42,8 @@ const CLIENT_SURFACE = [
   'POST /v1/consult/portal/bookings/:bookingId/reschedule',
   // Booking needs a client session now: name and email come from the account.
   'POST /v1/consult/public/bookings',
+  // Paystack's pop-up reported success: the server asks Paystack itself, and only for the caller's own booking.
+  'POST /v1/consult/public/bookings/:bookingId/confirm-payment',
   // Assessments sent to them; every query is scoped to their own profile id.
   'GET /v1/assessments/mine',
   'GET /v1/assessments/mine/:id',

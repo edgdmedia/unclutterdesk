@@ -444,21 +444,31 @@ export class BillingService {
     };
   }
 
+  /**
+   * Confirms the booking a Paystack payment was for. Shared by the webhook and
+   * the booking wizard's pop-up, so a payment is confirmed the same way
+   * whichever arrives first; the second finds nothing pending and does nothing.
+   */
+  async markBookingPaid(reference: string, data: { paid_at?: string | null } | null | undefined): Promise<boolean> {
+    if (!reference.startsWith('booking-')) return false;
+    const bookingId = BigInt(reference.split('-')[1]);
+    const updated = await this.prisma.consultBooking.updateMany({
+      where: { paymentRef: reference, status: 'PENDING_PAYMENT' },
+      data: {
+        status: 'CONFIRMED',
+        paidAt: new Date(data?.paid_at || Date.now()),
+      },
+    });
+    if (updated.count === 0) return false;
+    await this.calendar.pushBookingToGoogle(bookingId);
+    return true;
+  }
+
   async handleWebhook(event: string, data: any) {
     const reference: string | undefined = data?.reference;
 
     if (event === 'charge.success' && reference?.startsWith('booking-')) {
-      const bookingId = BigInt(reference.split('-')[1]);
-
-      await this.prisma.consultBooking.updateMany({
-        where: { paymentRef: reference, status: 'PENDING_PAYMENT' },
-        data: {
-          status: 'CONFIRMED',
-          paidAt: new Date(data.paid_at || Date.now()),
-        },
-      });
-
-      await this.calendar.pushBookingToGoogle(bookingId);
+      await this.markBookingPaid(reference, data);
       return;
     }
 

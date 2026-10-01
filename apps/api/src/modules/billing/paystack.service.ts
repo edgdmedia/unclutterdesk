@@ -71,7 +71,7 @@ export class PaystackService {
       payload.transaction_charge = Math.round(dto.amount * ((dto.split ?? 0) / 100));
     }
 
-    return this.request('POST', '/transaction/initialize', payload);
+    return this.request('POST', '/transaction/initialize', payload) as Promise<{ authorization_url: string; access_code: string; reference: string }>;
   }
 
   private banksCache: { at: number; banks: Array<{ name: string; code: string }> } | null = null;
