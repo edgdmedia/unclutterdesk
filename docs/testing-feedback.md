@@ -55,7 +55,7 @@ A running log of what shows up in testing, what we decide about it, and when it'
 | ONB-08 | Onboarding | Setup doesn't ask for the practice's preferred video platform | Feature | P2 | Open |
 | SET-01 | Settings | Booking link picked during setup isn't saved, and can't be changed | Bug | P1 | Fixed |
 | SET-02 | Settings | Booking subdomain should be a separate setting from the custom hostname | UX | P2 | Fixed |
-| SET-03 | Settings | No custom hostname setup (add domain, DNS records, auto-configure) | Feature | | Open |
+| SET-03 | Settings | No custom hostname setup (add domain, DNS records, auto-configure) | Feature | P2 | Ready |
 | SET-04 | Settings | Link, logo and colours set in setup don't show afterwards | Bug | P0 | Fixed |
 | SET-05 | Settings | After setup there's nowhere to change the logo or booking link | Bug | P1 | Fixed |
 | SET-06 | Settings | No way to say if the practice offers online, in person or both, or to manage several locations | Feature | P1 | Ready |
@@ -211,9 +211,13 @@ A running log of what shows up in testing, what we decide about it, and when it'
 - **Verified:**
 
 ### SET-03 · No custom hostname setup
-- **Type:** Feature · **Priority:** · **Status:** Open
+- **Type:** Feature · **Priority:** P2 · **Status:** Ready
 - **Observed:** There's no place to set a custom hostname: add a domain, see the DNS records to add, auto-configure it, and so on.
-- **Feedback / decision:**
+- **Feedback / decision:** Decided 1 Oct 2026. Today a domain can be typed and verified, but nothing provisions it, so it never goes live.
+  1. **Provider: Cloudflare for SaaS** (custom hostnames). It issues each practice's certificate automatically. Needs the Cloudflare zone ID and an API token with SSL and Certificates: Edit. The first 100 custom hostnames are free, then a small fee each (confirm before building).
+  2. **Plans: Pro and Clinic**, as the API already enforces. Starter keeps its unclutterdesk.com booking link.
+  3. **"Auto-configure" means guided, not hands-on:** show the exact DNS records (the CNAME, plus a TXT if Cloudflare asks for one), with copy buttons and step-by-step guides for Cloudflare, GoDaddy, Namecheap and Whogohost, then check automatically until the domain is live, and email the practice when it is. We never ask for a practice's registrar login.
+  - Also **Remove domain**, which deletes it at Cloudflare. Booking emails, the calendar invite and CORS switch to the domain only once it's active (as today).
 - **Fix:**
 - **Verified:**
 
