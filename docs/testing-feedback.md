@@ -77,7 +77,8 @@ A running log of what shows up in testing, what we decide about it, and when it'
 | VID-01 | Video | The session room is a mock-up, not a real video call | Feature | P0 | Ready |
 | POR-01 | Client portal | /portal only works on app.unclutterdesk.com, not on the practice's own link | Bug | P1 | Open |
 | POR-02 | Client portal | The portal should look like a dashboard, not a plain list | UX | P2 | Open |
-| FRM-01 | Forms | Save forms as templates and optionally share them with other practices | Feature | | Ready |
+| FRM-01 | Forms | Save forms as templates and optionally share them with other practices | Feature | | Fixed |
+| FRM-02 | Forms | The Forms page is wider than a phone screen | Bug | P2 | Open |
 
 ---
 
@@ -394,13 +395,20 @@ A running log of what shows up in testing, what we decide about it, and when it'
 ## Forms & templates
 
 ### FRM-01 · Save forms as templates, optionally shared
-- **Type:** Feature · **Priority:** · **Status:** Ready
+- **Type:** Feature · **Priority:** · **Status:** Fixed
 - **Observed:** A practice that builds a useful form should be able to save it as a template, and choose whether to share it with other practices.
 - **Feedback / decision:** Decided 1 Oct 2026. **Save as template** in the form editor. Sharing is optional: a shared template is visible to **every practice** in a "Template library" beside their own forms, after **admin approval** through the admin console's Requests queue (clinical forms must not spread unchecked). It's credited "Shared by <practice>" unless the author shares anonymously. **Use template** gives the practice its own copy, so later edits never change the original or anyone else's.
-- **Fix:**
-- **Verified:**
+- **Fix:** branch `feat/frm-01-form-templates`: 3c2acb3 (FormTemplate model), 1d966f9 (save, share, library, use), 983004d (admin preview and review; template requests only move through review), 40efe8b (Save as template, Template library), e3e80dd (admin review UI, shared question preview), 2205b60 (approved/not approved wording).
+- **Verified:** 2 Oct 2026 in the browser on a copy of the local database: Dr Jane saved Telehealth Consent as a shared template ("In review"); the admin previewed it ("Shared by Dr. Jane Smith Therapy", questions listed) and approved it; the demo practice saw it under "From other practices" with credit, pressed Use and landed in its own copy (form 60, its own practice); the template counted 1 use, the request closed as done with the note, and Dr Jane's notification read 'Form template "Telehealth Consent" is approved'. API 1010, app 378 and UI 83 tests pass, with no type errors.
 
 ---
+
+### FRM-02 · The Forms page is wider than a phone screen
+- **Type:** Bug · **Priority:** P2 · **Status:** Open
+- **Observed:** At 390px the Forms page (Settings → Forms) scrolls sideways: the page has a fixed `min-w-[1192px]` and a three-column card grid, so the form cards and the template library run off the right edge. Found during FRM-01's browser check; it predates FRM-01.
+- **Feedback / decision:**
+- **Fix:**
+- **Verified:**
 
 ## Template for new items
 
