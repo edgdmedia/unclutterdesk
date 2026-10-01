@@ -303,14 +303,36 @@ export class IntakeService {
     return this.mapForm(form);
   }
 
+  /**
+   * The public, signed-out route: a guest identified by email. Any profile id
+   * in the request is ignored — trusting it let anyone file answers into
+   * another client's record by guessing a number.
+   */
   async submitIntakeAnswers(tenantId: bigint, dto: {
     formId: string;
     bookingId?: string;
-    clientProfileId?: string;
     clientEmail?: string;
     clientName?: string;
     answersJson: Record<string, any>;
   }) {
+    const { clientProfileId: _ignored, ...rest } = dto as typeof dto & { clientProfileId?: unknown };
+    return this.recordSubmission(tenantId, rest, null);
+  }
+
+  /** A signed-in client: who they are comes from the token, never the request. */
+  async submitAsClient(tenantId: bigint, clientProfileId: bigint, dto: {
+    formId: string;
+    bookingId?: string;
+    answersJson: Record<string, any>;
+  }) {
+    return this.recordSubmission(tenantId, dto, clientProfileId);
+  }
+
+  private async recordSubmission(
+    tenantId: bigint,
+    dto: { formId: string; bookingId?: string; clientEmail?: string; clientName?: string; answersJson: Record<string, any> },
+    trustedClientId: bigint | null,
+  ) {
     const formId = BigInt(dto.formId);
     const email = String(dto.clientEmail ?? '').toLowerCase().trim();
 
@@ -322,11 +344,10 @@ export class IntakeService {
     const [firstName, ...restName] = (dto.clientName || '').trim().split(/\s+/).filter(Boolean);
     const lastName = restName.join(' ');
 
-    // A signed-in client is identified by their profile id, from the token;
-    // the email path stays for guests.
-    let clientProfile = dto.clientProfileId
-      ? await this.prisma.profile.findFirst({ where: { id: BigInt(dto.clientProfileId), tenantId } })
+    let clientProfile = trustedClientId
+      ? await this.prisma.profile.findFirst({ where: { id: trustedClientId, tenantId } })
       : null;
+    if (trustedClientId && !clientProfile) throw new NotFoundException('Client not found');
     if (!clientProfile) {
       clientProfile = await this.prisma.profile.findFirst({
         where: { tenantId, email },
@@ -355,6 +376,17 @@ export class IntakeService {
       });
     }
 
+    // A booking named in the request must be this practice's — and, for a
+    // signed-in client, their own.
+    const bookingId = dto.bookingId ? BigInt(dto.bookingId) : null;
+    if (bookingId !== null) {
+      const booking = await this.prisma.consultBooking.findFirst({
+        where: trustedClientId ? { id: bookingId, tenantId, clientProfileId: trustedClientId } : { id: bookingId, tenantId },
+        select: { id: true },
+      });
+      if (!booking) throw new NotFoundException('Booking not found');
+    }
+
     const status = form.targetType === 'REVIEW' && form.reviewPublicationMode === 'AUTO' ? 'PUBLISHED' : 'UNREAD';
     const now = new Date();
     const derived = this.deriveAssessmentPayload(form, dto.answersJson);
@@ -363,7 +395,7 @@ export class IntakeService {
       data: {
         tenantId,
         formId,
-        bookingId: dto.bookingId ? BigInt(dto.bookingId) : null,
+        bookingId,
         clientProfileId: clientProfile.id,
         targetType: form.targetType,
         status,

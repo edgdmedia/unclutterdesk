@@ -71,6 +71,19 @@ export class IntakeController {
   }
 
   @Permissions('any.authenticated')
+  @Post('mine/submissions')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @ApiBearerAuth('access-token')
+  @ApiOperation({ summary: 'The signed-in client submits a form, filed under their own profile' })
+  submitMine(@Req() req: any, @Body() dto: { formId: string; bookingId?: string; answersJson: Record<string, any> }) {
+    return this.intakeService.submitAsClient(authenticatedTenantId(req), authenticatedProfileId(req), {
+      formId: String(dto?.formId ?? ''),
+      bookingId: dto?.bookingId ? String(dto.bookingId) : undefined,
+      answersJson: dto?.answersJson ?? {},
+    });
+  }
+
+  @Permissions('any.authenticated')
   @Get('mine/forms')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @ApiBearerAuth('access-token')

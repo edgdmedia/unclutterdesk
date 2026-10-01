@@ -39,6 +39,8 @@ const CLIENT_SURFACE = [
 
   // BKG-06: a client's own outstanding forms, for the portal and the wizard.
   'GET /v1/intake/mine/forms',
+  // Forms the client fills in, filed under the profile from their session.
+  'POST /v1/intake/mine/submissions',
 
   // Their own care
   'GET /v1/consult/portal',

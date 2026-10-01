@@ -47,15 +47,16 @@ describe('the client form page', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Submit' }));
     await waitFor(() =>
       expect(post).toHaveBeenCalledWith(
-        '/v1/intake/public/submissions',
+        '/v1/intake/mine/submissions',
         expect.objectContaining({
           formId: '20',
           bookingId: '900',
-          clientProfileId: '42',
           answersJson: expect.objectContaining({ preferred_name: 'Ada', previous: 'Yes' }),
         }),
       ),
     );
+    // Who submitted comes from the sign-in, not from the request.
+    expect(post.mock.calls[0][1]).not.toHaveProperty('clientProfileId');
     await screen.findByText(/that’s saved/i);
   });
 

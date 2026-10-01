@@ -1,3 +1,4 @@
+import { NotFoundException } from '@nestjs/common';
 import { describe, expect, it, vi } from 'vitest';
 import { IntakeService } from './intake.service';
 import { BookingNotifier } from '../notifications/booking-notifier.service';
@@ -22,6 +23,7 @@ function makePrisma({ forms = [INTAKE, CONF], submissions = [] as any[] } = {}) 
       findMany: vi.fn().mockResolvedValue(submissions),
       create: vi.fn().mockImplementation(async ({ data }: any) => ({ id: 77n, ...data, createdAt: new Date() })),
     },
+    consultBooking: { findFirst: vi.fn().mockResolvedValue({ id: 900n }) },
     profile: {
       findFirst: vi.fn().mockResolvedValue({ id: 42n, tenantId: TENANT, email: 'ada@example.com', firstName: 'Ada', lastName: 'O', type: 'user', role: 'CLIENT', status: 'active' }),
       create: vi.fn(),
@@ -62,21 +64,53 @@ describe('IntakeService.pendingForms', () => {
 });
 
 describe('submitting as the signed-in client', () => {
-  it('links the submission to the profile id when the caller is signed in', async () => {
+  const answers = { a: '1', b: '2', c: '3', d: '4' };
+
+  it("files the answers under the caller's own profile, from the token", async () => {
     const prisma = makePrisma();
     prisma.universalForm.findFirst.mockResolvedValue(INTAKE);
     const service = new IntakeService(prisma);
-    await service.submitIntakeAnswers(TENANT, {
-      formId: '20',
-      bookingId: '900',
-      clientProfileId: '42',
-      answersJson: { a: '1', b: '2', c: '3', d: '4' },
-    } as any);
+    await service.submitAsClient(TENANT, 42n, { formId: '20', bookingId: '900', answersJson: answers });
     const created = prisma.universalFormSubmission.create.mock.calls[0][0].data;
     expect(created.clientProfileId).toBe(42n);
     expect(created.bookingId).toBe(900n);
-    // The email path is not needed when the profile id is trusted.
-    expect(prisma.profile.findFirst.mock.calls[0][0].where).toEqual({ id: 42n, tenantId: TENANT });
+    expect(prisma.profile.findFirst.mock.calls[0][0].where).toMatchObject({ id: 42n, tenantId: TENANT });
+    // The booking must be this client's, at this practice.
+    expect(prisma.consultBooking.findFirst.mock.calls[0][0].where).toEqual({ id: 900n, tenantId: TENANT, clientProfileId: 42n });
+  });
+
+  it("refuses a booking that isn't the caller's", async () => {
+    const prisma = makePrisma();
+    prisma.universalForm.findFirst.mockResolvedValue(INTAKE);
+    prisma.consultBooking.findFirst.mockResolvedValue(null);
+    const service = new IntakeService(prisma);
+    await expect(service.submitAsClient(TENANT, 42n, { formId: '20', bookingId: '901', answersJson: answers })).rejects.toBeInstanceOf(NotFoundException);
+    expect(prisma.universalFormSubmission.create).not.toHaveBeenCalled();
+  });
+});
+
+describe('the public submission route', () => {
+  const answers = { a: '1', b: '2', c: '3', d: '4' };
+
+  it('never trusts a profile id sent in the request', async () => {
+    const prisma = makePrisma();
+    prisma.universalForm.findFirst.mockResolvedValue(INTAKE);
+    const service = new IntakeService(prisma);
+    await service.submitIntakeAnswers(TENANT, { formId: '20', clientProfileId: '42', clientEmail: 'eve@example.com', answersJson: answers } as any);
+    const lookups = prisma.profile.findFirst.mock.calls.map((c: any[]) => c[0].where);
+    expect(lookups).not.toContainEqual(expect.objectContaining({ id: 42n }));
+    expect(lookups[0]).toEqual({ tenantId: TENANT, email: 'eve@example.com' });
+  });
+
+  it("refuses a booking from outside the practice", async () => {
+    const prisma = makePrisma();
+    prisma.universalForm.findFirst.mockResolvedValue(INTAKE);
+    prisma.consultBooking.findFirst.mockResolvedValue(null);
+    const service = new IntakeService(prisma);
+    await expect(
+      service.submitIntakeAnswers(TENANT, { formId: '20', bookingId: '555', clientEmail: 'eve@example.com', answersJson: answers } as any),
+    ).rejects.toBeInstanceOf(NotFoundException);
+    expect(prisma.consultBooking.findFirst.mock.calls[0][0].where).toEqual({ id: 555n, tenantId: TENANT });
   });
 });
 

@@ -80,11 +80,10 @@ export function ClientFormPage() {
     setSubmitting(true);
     setError(null);
     try {
-      await api.post('/v1/intake/public/submissions', {
+      // Signed in: the API takes who you are from the session, not the request.
+      await api.post('/v1/intake/mine/submissions', {
         formId: form.id,
         bookingId,
-        clientProfileId: profile?.id,
-        clientEmail: profile?.email,
         answersJson: answers,
       });
       setDone(true);
