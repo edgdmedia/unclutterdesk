@@ -617,7 +617,11 @@ export class ConsultService {
 
     // Atomic transaction: claim the slot, find or create the client profile,
     // create the booking, and record discount usage.
-    const result = await this.prisma.$transaction(async (tx) => {
+    const result: {
+      bookingId: string; icalToken: string; status: string; serviceTitle: string; startsAt: string; endsAt: string;
+      therapistName: string; videoRoomLink: string | null; paymentUrl: string | null; accessCode: string | null;
+      reference: string | null; manualPayment: unknown; forms?: unknown[];
+    } = await this.prisma.$transaction(async (tx) => {
       // Claim the slot first, with the condition in the UPDATE itself.
       //
       // The availability check above runs outside this transaction, so two
@@ -749,6 +753,12 @@ export class ConsultService {
     await this.notifier?.booked(BigInt(result.bookingId)).catch((err) =>
       this.logger.warn(`Could not send booking messages for ${result.bookingId}: ${(err as Error).message}`),
     );
+    // BKG-06: the wizard's "What's next" block shows whatever the client still
+    // owes; it stays hidden while the list is empty.
+    result.forms = await this.notifier
+      ?.pendingFormsFor(tenantId, client.id)
+      .then((forms) => forms.map((f: any) => ({ ...f, href: `/forms/${f.id}?booking=${result.bookingId}` })))
+      .catch(() => []);
     return result;
   }
 
@@ -847,7 +857,11 @@ export class ConsultService {
       // the webhook cannot both email "Your session is booked".
       await this.notifier?.confirmed(bookingId).catch(() => undefined);
     }
-    return { status: 'CONFIRMED' as const };
+    const forms = await this.notifier
+      ?.pendingFormsFor(tenantId, clientProfileId)
+      .then((f) => f.map((x: any) => ({ ...x, href: `/forms/${x.id}?booking=${bookingId}` })))
+      .catch(() => []);
+    return { status: 'CONFIRMED' as const, forms };
   }
 
   async getTherapistBookings(tenantId: bigint, providerProfileId: bigint) {

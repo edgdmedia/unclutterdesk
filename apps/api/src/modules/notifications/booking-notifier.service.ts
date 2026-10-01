@@ -4,6 +4,7 @@ import { tenantWebOrigin } from '../../common/origins';
 import { chargedKobo } from '../../common/revenue';
 import { formatNaira } from '../billing/subscription-plans';
 import { NotificationService } from './notification.service';
+import { listPendingForms } from '../intake/default-forms';
 
 /** A room name may already be a full URL (a scheduled provider room). */
 const roomLink = (roomName: string | null) =>
@@ -94,6 +95,11 @@ export class BookingNotifier {
   private async confirmedEmail(b: Awaited<ReturnType<BookingNotifier['load']>> & object): Promise<void> {
     const join = b.availability.channel === 'VIDEO' ? roomLink(b.videoRoomName) : null;
     const portal = `${tenantWebOrigin(b.tenant)}/portal`;
+    // BKG-06: point the client at the forms they still owe, before the session.
+    const pending = await this.pendingFormsFor(b.tenantId, b.clientProfileId).catch(() => []);
+    const formsLine = pending.length
+      ? `\n\nBefore your first session:\n${pending.map((f) => `${f.title} — ${tenantWebOrigin(b.tenant)}/forms/${f.id}?booking=${b.id} (${f.minutes} min)`).join('\n')}`
+      : '';
     await this.notifications
       .sendEmail({
         to: b.client.email,
@@ -103,7 +109,7 @@ export class BookingNotifier {
           `${b.tenant.name} has confirmed your ${b.service.title} with ${await this.therapistName(b.availability.providerProfileId)} ` +
           `on ${this.when(b.availability.startsAt)}.` +
           (join ? ` Join link: ${join}` : '') +
-          ` Manage your booking any time — reschedule, cancel, pay or fill in your forms — at ${portal}.`,
+          ` Manage your booking any time — reschedule, cancel, pay or fill in your forms — at ${portal}.` + formsLine,
         link: join ?? portal,
         actionLabel: join ? 'Join the session' : 'View my bookings',
         tenantId: b.tenantId,
@@ -111,6 +117,11 @@ export class BookingNotifier {
       })
       .catch((err) => this.logger.warn(`Could not send the confirmation email for booking ${b.id}: ${(err as Error).message}`));
   }
+  /** BKG-06: the default forms this client still needs, for the app's response. */
+  pendingFormsFor(tenantId: bigint, clientProfileId: bigint) {
+    return listPendingForms(this.prisma as any, tenantId, clientProfileId);
+  }
+
 /**
    * In-app notices for the practice: the session's therapist plus this
    * tenant's active owners and admins (the front desk too for transfers,

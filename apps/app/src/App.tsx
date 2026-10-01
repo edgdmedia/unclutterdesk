@@ -34,6 +34,7 @@ const OnboardingWizardPage = lazy(() => import('./pages/practice/OnboardingWizar
 const BookingWizardPage = lazy(() => import('./pages/public/booking/BookingWizardPage').then((m) => ({ default: m.BookingWizardPage })));
 const PublicProfilePage = lazy(() => import('./pages/public/PublicProfilePage').then((m) => ({ default: m.PublicProfilePage })));
 const PublicReviewFormPage = lazy(() => import('./pages/public/PublicReviewFormPage').then((m) => ({ default: m.PublicReviewFormPage })));
+const ClientFormPage = lazy(() => import('./pages/client/ClientFormPage').then((m) => ({ default: m.ClientFormPage })));
 // The documents live on the marketing site — see utils/legal.ts. These routes
 // stay because they are linked and bookmarked, but they no longer hold a second
 // copy of the text to drift from.
@@ -344,6 +345,7 @@ function AppLayout() {
     location.pathname === '/set-password' ||
     location.pathname === '/portal' ||
     location.pathname.startsWith('/portal/') ||
+    location.pathname.startsWith('/forms') ||
     location.pathname === '/login' ||
     location.pathname === '/register' ||
     location.pathname === '/forgot-password' ||
@@ -359,6 +361,7 @@ function AppLayout() {
             <Route path="/session/:id" element={<TelehealthVideoRoomPage />} />
             <Route path="/portal" element={<ClientPortalPage />} />
             <Route path="/portal/assessments/:id" element={<PortalAssessmentPage />} />
+            <Route path="/forms/:id" element={<ClientFormPage />} />
             <Route path="/onboarding" element={<OnboardingWizardPage />} />
             <Route path="/booking/confirmed" element={<BookingConfirmedPage />} />
             <Route path="/pay/:bookingId" element={<PayBookingPage />} />
@@ -575,6 +578,7 @@ export function App() {
                 <Route path="/" element={<PublicProfilePage />} />
                 <Route path="/book" element={<BookingWizardPage />} />
                 <Route path="/review" element={<PublicReviewFormPage />} />
+                <Route path="/forms/:id" element={<ClientFormPage />} />
                 <Route path="/assessment/:token" element={<AssessmentPage />} />
                 <Route path="/booking/confirmed" element={<BookingConfirmedPage />} />
                 <Route path="/pay/:bookingId" element={<PayBookingPage />} />

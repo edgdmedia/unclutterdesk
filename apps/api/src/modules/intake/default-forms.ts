@@ -47,3 +47,28 @@ export const CONFIDENTIALITY: DefaultFormTemplate = {
 };
 
 export const DEFAULT_FORMS: DefaultFormTemplate[] = [CLIENT_INTAKE, CONFIDENTIALITY];
+
+/** The default forms this client has not filled in for this practice yet. */
+export async function listPendingForms(
+  prisma: any,
+  tenantId: bigint,
+  clientProfileId: bigint,
+): Promise<{ id: string; title: string; kind: string; minutes: number }[]> {
+  const forms = await prisma.universalForm.findMany({
+    where: { tenantId, isActive: true, systemKey: { in: ['CLIENT_INTAKE', 'CONFIDENTIALITY'] } },
+    orderBy: { createdAt: 'asc' },
+  });
+  const submitted = await prisma.universalFormSubmission.findMany({
+    where: { tenantId, clientProfileId, formId: { in: forms.map((f: { id: bigint }) => f.id) } },
+    select: { formId: true },
+  });
+  const done = new Set(submitted.map((s: { formId: bigint }) => s.formId.toString()));
+  return forms
+    .filter((f: { id: bigint }) => !done.has(f.id.toString()))
+    .map((f: { id: bigint; title: string; targetType: string; schemaJson: any }) => ({
+      id: f.id.toString(),
+      title: f.title,
+      kind: f.targetType,
+      minutes: Math.max(2, Math.ceil((Array.isArray(f.schemaJson) ? f.schemaJson : []).filter((field: any) => field.type !== 'text_block').length / 3)),
+    }));
+}

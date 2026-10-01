@@ -35,6 +35,9 @@ const CLIENT_SURFACE = [
   'POST /v1/auth/sessions/revoke-others',
   'DELETE /v1/auth/sessions/:id',
 
+  // BKG-06: a client's own outstanding forms, for the portal and the wizard.
+  'GET /v1/intake/mine/forms',
+
   // Their own care
   'GET /v1/consult/portal',
   'GET /v1/consult/portal/payments',

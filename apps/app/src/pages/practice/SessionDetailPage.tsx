@@ -29,6 +29,8 @@ export function SessionDetailPage() {
   const [internal, setInternal] = useState('');
   const [recap, setRecap] = useState('');
   const [busy, setBusy] = useState(false);
+  // BKG-06: whether the client's default forms are in yet.
+  const [forms, setForms] = useState<{ intake: boolean; confidentiality: boolean } | null>(null);
 
   useEffect(() => {
     api.get<SessionDetail>(`/v1/consult/practice/sessions/${id}`)
@@ -38,6 +40,15 @@ export function SessionDetailPage() {
         setRecap(r.clientRecap ?? '');
       })
       .catch((err) => setError(err instanceof Error ? err.message : 'Could not load this session'));
+    api
+      .get<Array<{ targetType: string }>>(`/v1/intake/submissions/booking/${id}`)
+      .then((subs) =>
+        setForms({
+          intake: subs.some((x) => x.targetType === 'INTAKE'),
+          confidentiality: subs.some((x) => x.targetType === 'CONSENT'),
+        }),
+      )
+      .catch(() => setForms(null));
   }, [id]);
 
   async function act(fn: () => Promise<unknown>, ok: string) {
@@ -134,6 +145,14 @@ export function SessionDetailPage() {
         {d.note ? (
           <p className="text-[12.5px] font-medium text-[#475569] inline-flex items-center gap-1.5">
             <CalendarClock className="h-4 w-4" /> Note {d.note.status === 'COMPLETED' ? 'signed' : 'in draft'}
+          </p>
+        ) : null}
+        {forms ? (
+          <p className="text-[12.5px] font-medium text-[#475569] inline-flex items-center gap-2">
+            <FileText className="h-4 w-4" />
+            <span>Intake: {forms.intake ? 'done' : 'waiting'}</span>
+            <span aria-hidden="true">·</span>
+            <span>Confidentiality: {forms.confidentiality ? 'done' : 'waiting'}</span>
           </p>
         ) : null}
       </Card>

@@ -5,7 +5,7 @@ import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { RolesGuard } from '../../common/roles.guard';
 import { Permissions } from '../../common/permissions';
 import { TenantRequest } from '../../common/middleware/tenant.middleware';
-import { authenticatedTenantId } from '../../common/authenticated-tenant';
+import { authenticatedProfileId, authenticatedTenantId } from '../../common/authenticated-tenant';
 
 @ApiTags('Intake')
 @Controller('v1/intake')
@@ -68,6 +68,15 @@ export class IntakeController {
       BigInt(formId),
       dto,
     );
+  }
+
+  @Permissions('any.authenticated')
+  @Get('mine/forms')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @ApiBearerAuth('access-token')
+  @ApiOperation({ summary: "The signed-in client's forms still to do" })
+  getMyForms(@Req() req: any) {
+    return this.intakeService.pendingForms(authenticatedTenantId(req), authenticatedProfileId(req));
   }
 
   @Post('public/submissions')

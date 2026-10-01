@@ -1,5 +1,6 @@
 import { Injectable, BadRequestException, NotFoundException, Optional } from '@nestjs/common';
 import { BookingNotifier } from '../notifications/booking-notifier.service';
+import { listPendingForms } from './default-forms';
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '../../common/prisma/prisma.service';
 
@@ -183,6 +184,11 @@ export class IntakeService {
     return null;
   }
 
+  /** BKG-06: the default forms this client still needs to fill in. */
+  pendingForms(tenantId: bigint, clientProfileId: bigint) {
+    return listPendingForms(this.prisma, tenantId, clientProfileId);
+  }
+
   async getPublicForms(tenantId: bigint, targetType?: string) {
     const where = {
       tenantId,
@@ -300,12 +306,13 @@ export class IntakeService {
   async submitIntakeAnswers(tenantId: bigint, dto: {
     formId: string;
     bookingId?: string;
-    clientEmail: string;
+    clientProfileId?: string;
+    clientEmail?: string;
     clientName?: string;
     answersJson: Record<string, any>;
   }) {
     const formId = BigInt(dto.formId);
-    const email = dto.clientEmail.toLowerCase().trim();
+    const email = String(dto.clientEmail ?? '').toLowerCase().trim();
 
     const form = await this.prisma.universalForm.findFirst({
       where: { id: formId, tenantId },
@@ -315,9 +322,16 @@ export class IntakeService {
     const [firstName, ...restName] = (dto.clientName || '').trim().split(/\s+/).filter(Boolean);
     const lastName = restName.join(' ');
 
-    let clientProfile = await this.prisma.profile.findFirst({
-      where: { tenantId, email },
-    });
+    // A signed-in client is identified by their profile id, from the token;
+    // the email path stays for guests.
+    let clientProfile = dto.clientProfileId
+      ? await this.prisma.profile.findFirst({ where: { id: BigInt(dto.clientProfileId), tenantId } })
+      : null;
+    if (!clientProfile) {
+      clientProfile = await this.prisma.profile.findFirst({
+        where: { tenantId, email },
+      });
+    }
     if (!clientProfile) {
       clientProfile = await this.prisma.profile.create({
         data: {

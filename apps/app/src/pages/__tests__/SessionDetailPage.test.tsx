@@ -31,8 +31,10 @@ const DETAIL = {
 beforeEach(() => { apiGet.mockReset(); apiPatch.mockReset(); apiPost.mockReset(); });
 afterEach(cleanup);
 
-function renderPage(detail = DETAIL) {
-  apiGet.mockImplementation((p: string) => (p === '/v1/consult/practice/sessions/900' ? Promise.resolve(detail) : Promise.resolve([])));
+function renderPage(detail = DETAIL, submissions: unknown[] = []) {
+  apiGet.mockImplementation((p: string) =>
+    p === '/v1/consult/practice/sessions/900' ? Promise.resolve(detail) : p === '/v1/intake/submissions/booking/900' ? Promise.resolve(submissions) : Promise.resolve([]),
+  );
   return renderWithApp(
     <Routes><Route path="/dashboard/sessions/:id" element={<SessionDetailPage />} /></Routes>,
     { route: '/dashboard/sessions/900' },
@@ -70,5 +72,20 @@ describe('SessionDetailPage', () => {
     expect(screen.queryByRole('button', { name: /Mark as paid/ })).toBeNull();
     expect(screen.queryByRole('button', { name: 'Save' })).toBeNull();
     expect(screen.queryByRole('button', { name: /Cancel session/ })).toBeNull();
+  });
+});
+
+
+describe('the default forms on a session', () => {
+  it('shows intake and confidentiality as waiting when nothing is in', async () => {
+    renderPage();
+    const line = await screen.findByText(/Intake: waiting/);
+    expect(line.parentElement?.textContent).toMatch(/Confidentiality: waiting/);
+  });
+
+  it('shows them as done when the submissions are in', async () => {
+    renderPage(DETAIL, [{ targetType: 'INTAKE' }, { targetType: 'CONSENT' }]);
+    const line = await screen.findByText(/Intake: done/);
+    expect(line.parentElement?.textContent).toMatch(/Confidentiality: done/);
   });
 });
