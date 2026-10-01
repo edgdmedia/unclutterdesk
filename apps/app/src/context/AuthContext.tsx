@@ -23,6 +23,8 @@ interface AuthProfile {
   hasPractice?: boolean;
   /** The effective permission set, computed server-side. */
   permissions?: string[];
+  /** ONB-06: when this person took the dashboard walkthrough; null until they do. */
+  tourCompletedAt?: string | null;
 }
 
 interface AuthContextValue {

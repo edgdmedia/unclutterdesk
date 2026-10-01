@@ -5,6 +5,7 @@ import { Button, Page, PageHeader, Grid, MetricTile } from '@unclutterdesk/ui';
 import { useAuth } from '../../context/AuthContext';
 import { PendingTransfersCard } from '../../components/payments/PendingTransfersCard';
 import { ImageField } from '../../components/settings/ImageField';
+import { DashboardTour } from '../../components/onboarding/DashboardTour';
 import { api, practiceBookingUrl } from '../../utils/apiClient';
 
 interface DashboardPageProps {
@@ -225,7 +226,7 @@ export function DashboardPage(props: DashboardPageProps) {
             </>
           }
           secondaryActions={
-            <div className="flex h-[44px] min-w-0 bg-[#F1F5F9] border border-[#E2E8F0] rounded-[14px] px-3.5 items-center gap-2.5">
+            <div data-tour="booking-link" className="flex h-[44px] min-w-0 bg-[#F1F5F9] border border-[#E2E8F0] rounded-[14px] px-3.5 items-center gap-2.5">
               <Link2 className="h-4 w-4 text-[#64748B] shrink-0" />
               <input
                 type="text"
@@ -239,6 +240,7 @@ export function DashboardPage(props: DashboardPageProps) {
         />
       }
     >
+      <DashboardTour />
       <div className="grid grid-cols-1 @min-[1200px]/page:grid-cols-[1fr_372px] gap-4 md:gap-5 items-start">
         {/* Left Column */}
         <div className="space-y-4 md:space-y-[20px]">
