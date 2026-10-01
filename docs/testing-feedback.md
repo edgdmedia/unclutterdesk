@@ -69,7 +69,7 @@ A running log of what shows up in testing, what we decide about it, and when it'
 | BKG-06 | Booking page | Default intake and confidentiality form templates for every practice | Feature | | Fixed |
 | BKG-07 | Booking page | Header shows a hard-coded "Lagos, Nigeria · Online & in-person" for every practice | Bug | P1 | Discuss |
 | BKG-08 | Booking page | "Notify me" when a practice has no free times in the next 4 weeks | Feature | P3 | Deferred |
-| BKG-09 | Booking page | An abandoned online payment keeps the time blocked for everyone | Bug | P1 | Discuss |
+| BKG-09 | Booking page | An abandoned online payment keeps the time blocked for everyone | Bug | P1 | Ready |
 | BKG-10 | Booking page | After booking, clients aren't offered their account to manage the booking | UX | P1 | Fixed |
 | VID-01 | Video | The session room is a mock-up, not a real video call | Feature | P0 | Discuss |
 | FRM-01 | Forms | Save forms as templates and optionally share them with other practices | Feature | | Open |
@@ -311,9 +311,13 @@ A running log of what shows up in testing, what we decide about it, and when it'
 - **Verified:**
 
 ### BKG-09 · An abandoned online payment keeps the time blocked
-- **Type:** Bug · **Priority:** P1 · **Status:** Discuss
+- **Type:** Bug · **Priority:** P1 · **Status:** Ready
 - **Observed:** Found in the booking wizard's final review (1 Oct 2026). A booking waiting for online payment (`PENDING_PAYMENT`) has no hold expiry, unlike bank-transfer holds (48h). If a client closes Paystack and leaves, or picks a different time, the first booking stays pending and its time can't be booked by anyone until staff cancel it. The old one-page booking form had the same gap; the wizard makes it a little more likely.
-- **Feedback / decision:** Needs a decision: (1) how long an unpaid online booking holds its time (e.g. 30 minutes), and (2) what happens if Paystack confirms a payment after that hold has lapsed and the time has gone to someone else (refund, or offer the client another time). Proposed: a 30-minute online hold released by the existing hold-expiry job, with a late payment flagged to the practice to refund or rebook.
+- **Feedback / decision:** Decided 1 Oct 2026. Paystack facts checked: Pay-with-Transfer account numbers expire after **30 minutes** (a transfer after that is refunded by Paystack automatically; [docs](https://support.paystack.com/hc/en-us/articles/360018995019-Pay-with-Transfer)), while a card checkout's access code can stay payable for roughly **24 hours** (no published limit). So a late payment can't be prevented, only handled. Design:
+  1. **Hold 35 minutes** from Pay (30-minute transfer window plus 5 for a slow webhook), shown as a countdown on the pay step and "held until 3:42 PM" in the pay email.
+  2. **Before releasing**, ask Paystack (verify the reference): paid → confirm; not paid → cancel, reopen the time, email the client "your hold ended, book again".
+  3. **Late payment** (card paid after release): re-confirm automatically if the time is still free; if it's been taken, **refund automatically** through Paystack, and tell the client and the practice.
+  4. **Retry** from the email or pay page: a fresh 35-minute hold if the time is still free; if not, show other times instead of taking payment.
 - **Fix:**
 - **Verified:**
 
