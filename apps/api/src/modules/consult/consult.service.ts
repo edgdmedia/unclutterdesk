@@ -9,6 +9,7 @@ import { CalendarService } from '../calendar/calendar.service';
 import { changePercent, chargedKobo, revenueByMonth, startOfMonth } from '../../common/revenue';
 import { tenantWebOrigin } from '../../common/origins';
 import { decryptNoteFields } from '../../common/field-encryption';
+import { cleanImageUrl } from '../tenant/tenant.service';
 import { holdExpiry, ManualPaymentService, transferReference } from './manual-payment.service';
 import { assertWithinMonthlyLimit } from './booking-limits';
 
@@ -147,23 +148,23 @@ export class ConsultService {
   }
 
   async uploadTherapistAvatar(tenantId: bigint, profileId: bigint, avatarUrl: string) {
-    if (!avatarUrl || typeof avatarUrl !== 'string') {
-      throw new BadRequestException('Valid avatar URL or data is required');
-    }
+    // Same rules as the logo, in photo's words: a shrunken data URL, an https
+    // image, or nothing at all to clear it.
+    const cleaned = cleanImageUrl(avatarUrl, 'photo');
 
     // profileId comes from the caller's own token, so this was not reachable
     // across tenants — but scoping it here enforces the invariant in the query
     // rather than relying on every future caller passing the right thing.
     const result = await this.prisma.profile.updateMany({
       where: { id: profileId, tenantId },
-      data: { avatarUrl },
+      data: { avatarUrl: cleaned },
     });
 
     if (result.count === 0) {
       throw new NotFoundException('Profile not found in this practice');
     }
 
-    return { success: true, avatarUrl };
+    return { success: true, avatarUrl: cleaned };
   }
 
   async adminUpdateTherapistStatus(

@@ -29,8 +29,9 @@ describe('ImageField', () => {
     const onSave = vi.fn().mockReturnValue(save.promise);
     renderWithApp(<ImageField label="logo" value="" onChange={() => undefined} onSave={onSave} />);
     pick();
-    const status = (await screen.findAllByRole('status')).find((el) => el.tagName === 'P');
-    expect(status?.textContent).toMatch('Saving…');
+    await waitFor(() =>
+      expect(screen.queryAllByRole('status').some((el) => el.tagName === 'P' && el.textContent?.includes('Saving…'))).toBe(true),
+    );
     await act(async () => {
       save.resolve();
     });
