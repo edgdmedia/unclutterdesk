@@ -22,6 +22,12 @@ const REPORT = [
   '/dashboard/settings/account', '/dashboard/settings/availability',
 ];
 
+// The admin console shares the shell now (ADM-02); checked in a second pass,
+// signed in as an operator rather than practice staff.
+const ADMIN_REPORT = ['/admin', '/admin/invites'];
+const ADMIN_EMAIL = process.env.LAYOUT_ADMIN_EMAIL ?? 'admin@unclutterdesk.com';
+const ADMIN_PASSWORD = process.env.LAYOUT_ADMIN_PASSWORD ?? 'password123';
+
 const expectedSidebar = (w) => (w < 768 ? 'none' : w < 1280 ? 'rail' : 'full');
 
 const browser = await chromium.launch(process.env.CHROME_PATH ? { executablePath: process.env.CHROME_PATH } : {});
@@ -91,6 +97,32 @@ for (const w of WIDTHS) {
   } else {
     console.log(`✓ ${label}`);
   }
+}
+for (const route of ADMIN_REPORT) {
+  const ctx = await browser.newContext({ viewport: { width: 1280, height: 900 } });
+  const adminPage = await ctx.newPage();
+  await adminPage.goto(`${BASE}/admin/login`);
+  await adminPage.fill('input[type="email"]', ADMIN_EMAIL);
+  await adminPage.fill('input[type="password"]', ADMIN_PASSWORD);
+  await adminPage.click('button[type="submit"]');
+  // /admin/login also matches /\/admin/, so wait for the real landing instead.
+  await adminPage.waitForURL((u) => /\/admin(?!\/login)/.test(u.pathname), { timeout: 20000 });
+  for (const w of WIDTHS) {
+    await adminPage.setViewportSize({ width: w, height: 900 });
+    await adminPage.goto(BASE + route);
+    await adminPage.waitForTimeout(1200);
+    const r = await adminPage.evaluate(() => {
+      const doc = document.documentElement;
+      const aside = document.querySelector('aside:not([role="dialog"])');
+      const width = aside ? Math.round(aside.getBoundingClientRect().width) : 0;
+      return { overflow: doc.scrollWidth - doc.clientWidth, sidebar: !aside ? 'none' : width <= 80 ? 'rail' : 'full' };
+    });
+    const problems = [];
+    if (r.overflow > 0) problems.push(`scrolls sideways by ${r.overflow}px`);
+    if (r.sidebar !== expectedSidebar(w)) problems.push(`sidebar is ${r.sidebar}, expected ${expectedSidebar(w)}`);
+    console.log(problems.length ? `· report ${w}px ${route}: ${problems.join('; ')}` : `✓ report ${w}px ${route}`);
+  }
+  await ctx.close();
 }
 await browser.close();
 if (failures) {
