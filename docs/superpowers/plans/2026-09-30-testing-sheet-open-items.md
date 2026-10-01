@@ -887,7 +887,7 @@ git commit -am "Clients are told one account works with every practice, and each
 
 **Decision:** four steps (service, time, your details, review and pay) and a confirmation screen. Intake and confidentiality forms come **after** booking (Task 11), shown on the confirmation screen.
 
-- [ ] **Design:** share `docs/design/booking-wizard-design-prompt.md` with Claude Design. Save the returned designs under `docs/design/booking-wizard/`.
+- [x] **Design:** done 1 Oct 2026, in `docs/design/design_handoff_booking_wizard/`. Decided: Paystack **pop-up** checkout (Paystack's inline script), not a redirect; build now, with formats, address and forms appearing once SET-06 and BKG-06 land; "Notify me" deferred (BKG-08). Keep the existing transfer reference `UD-<id>` rather than the design's `UDK-XXXX-YYYY`, and the existing `.ics` endpoint `GET /v1/calendar/bookings/:id/ical` for Add to calendar.
 - [ ] **Spec:** from the approved designs, write `docs/superpowers/specs/2026-10-XX-booking-wizard-design.md`. It names the components (`BookingHeader`, `BookingProgress`, `ServiceStep`, `TimeStep`, `DetailsStep`, `ReviewPayStep`, `BookingConfirmation`, `BookingSummaryCard`, `StickyBookingFooter`), the wizard state and the URL (`?step=service|time|details|pay`), and which existing pieces are reused: `ClientAuthPanel`, the discount preview, the Paystack and bank-transfer calls, `PracticeLogo` (Task 4) and `channelLabel` (Task 6).
 - [ ] **Plan:** write a plan in Wave 1's format, with one task per component, each tested through `renderWithApp` with the API faked. Add `/book` at all widths to `check-layout.mjs` as `STRICT`.
 - Depends on Tasks 4, 6 and 11.

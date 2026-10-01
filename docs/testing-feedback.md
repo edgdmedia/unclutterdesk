@@ -56,13 +56,14 @@ A running log of what shows up in testing, what we decide about it, and when it'
 | SET-05 | Settings | After setup there's nowhere to change the logo or booking link | Bug | P1 | Fixed |
 | SET-06 | Settings | No way to say if the practice offers online, in person or both, or to manage several locations | Feature | P1 | Discuss |
 | SET-07 | Settings | Services can't have a different price online and in person | Feature | P1 | Discuss |
-| BKG-01 | Booking page | Layout is incoherent and doesn't work | UX | | Discuss |
+| BKG-01 | Booking page | Layout is incoherent and doesn't work | UX | | Ready |
 | BKG-02 | Booking page | Practice logo never loads | Bug | | Open |
-| BKG-03 | Booking page | "Book now" should be a step-by-step wizard | UX | | Discuss |
+| BKG-03 | Booking page | "Book now" should be a step-by-step wizard | UX | | Ready |
 | BKG-04 | Booking page | Is a client's sign-in tied to one practice or shared across practices? | Question | | Ready |
 | BKG-05 | Booking page | Session format should come from what the practice offers for each slot | Bug | | Discuss |
 | BKG-06 | Booking page | Default intake and confidentiality form templates for every practice | Feature | | Ready |
 | BKG-07 | Booking page | Header shows a hard-coded "Lagos, Nigeria · Online & in-person" for every practice | Bug | P1 | Discuss |
+| BKG-08 | Booking page | "Notify me" when a practice has no free times in the next 4 weeks | Feature | P3 | Deferred |
 | FRM-01 | Forms | Save forms as templates and optionally share them with other practices | Feature | | Open |
 
 ---
@@ -211,9 +212,9 @@ A running log of what shows up in testing, what we decide about it, and when it'
 ## Client booking link / page
 
 ### BKG-01 · Booking page layout is incoherent
-- **Type:** UX · **Priority:** · **Status:** Discuss
+- **Type:** UX · **Priority:** · **Status:** Ready
 - **Observed:** The design looks bad and doesn't work. There's empty space that serves no purpose, no visual coherence, and the elements don't work together.
-- **Feedback / decision:** Approved as a step-by-step wizard (30 Sep 2026). The designs are coming from Claude Design, using the brief in `docs/design/booking-wizard-design-prompt.md`. Plan Task 9.
+- **Feedback / decision:** Designs done (1 Oct 2026): `docs/design/design_handoff_booking_wizard/` (README + screenshots). Decided: Paystack opens as a **pop-up** over the wizard; build the wizard **now**, with the format labels, filter, address and the forms section switching on once SET-06 and BKG-06 provide the data; **Notify me** is later (BKG-08). Plan Task 9.
 - **Fix:**
 - **Verified:**
 
@@ -225,9 +226,9 @@ A running log of what shows up in testing, what we decide about it, and when it'
 - **Verified:**
 
 ### BKG-03 · "Book now" should be a step wizard
-- **Type:** UX · **Priority:** · **Status:** Discuss
+- **Type:** UX · **Priority:** · **Status:** Ready
 - **Observed:** **Book now** shows everything at once. It should be a step-by-step wizard.
-- **Feedback / decision:** Approved (30 Sep 2026): Service, then Time, then Your details, then Review and pay, then a confirmation screen. Waiting on the designs, then plan Task 9.
+- **Feedback / decision:** Designs done (1 Oct 2026): `docs/design/design_handoff_booking_wizard/` (README + screenshots). Decided: Paystack opens as a **pop-up** over the wizard; build the wizard **now**, with the format labels, filter, address and the forms section switching on once SET-06 and BKG-06 provide the data; **Notify me** is later (BKG-08). Plan Task 9.
 - **Fix:**
 - **Verified:**
 
@@ -256,6 +257,13 @@ A running log of what shows up in testing, what we decide about it, and when it'
 - **Type:** Bug · **Priority:** P1 · **Status:** Discuss
 - **Observed:** Found while checking SET-06. The booking page header says "Lagos, Nigeria · Online & in-person" for every practice, whatever it offers or wherever it is.
 - **Feedback / decision:** Replace it with the practice's real cities and formats, as part of SET-06. **Parked with SET-06.**
+- **Fix:**
+- **Verified:**
+
+### BKG-08 · "Notify me" when there are no free times
+- **Type:** Feature · **Priority:** P3 · **Status:** Deferred
+- **Observed:** The booking wizard design offers "Notify me" (enter your email) when a practice has no free times in the next 4 weeks.
+- **Feedback / decision:** Later (1 Oct 2026). Until then the wizard shows the practice's email and phone in that state. Needs a waiting list: store the email, and email the client when times open up.
 - **Fix:**
 - **Verified:**
 

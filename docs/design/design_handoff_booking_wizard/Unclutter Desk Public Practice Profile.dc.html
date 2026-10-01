@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<meta name="design_doc_mode" content="canvas">
+<link rel="stylesheet" href="_ds/unclutter-desk-design-system-804b83f6-2f65-476b-acba-6e7d82b86348/tokens/fonts.css">
+<link rel="stylesheet" href="_ds/unclutter-desk-design-system-804b83f6-2f65-476b-acba-6e7d82b86348/tokens/colors.css">
+<link rel="stylesheet" href="_ds/unclutter-desk-design-system-804b83f6-2f65-476b-acba-6e7d82b86348/tokens/brand-slots.css">
+<link rel="stylesheet" href="_ds/unclutter-desk-design-system-804b83f6-2f65-476b-acba-6e7d82b86348/tokens/typography.css">
+<link rel="stylesheet" href="_ds/unclutter-desk-design-system-804b83f6-2f65-476b-acba-6e7d82b86348/tokens/spacing.css">
+<link rel="stylesheet" href="_ds/unclutter-desk-design-system-804b83f6-2f65-476b-acba-6e7d82b86348/tokens/elevation.css">
+<link rel="stylesheet" href="_ds/unclutter-desk-design-system-804b83f6-2f65-476b-acba-6e7d82b86348/tokens/base.css">
+<link rel="stylesheet" href="_ds/unclutter-desk-design-system-804b83f6-2f65-476b-acba-6e7d82b86348/styles.css">
+<script src="_ds/unclutter-desk-design-system-804b83f6-2f65-476b-acba-6e7d82b86348/_ds_bundle.js"></script>
+<style>
+  body { margin:0; background:#F8FAFC; font-family:'Outfit',system-ui,sans-serif; -webkit-font-smoothing:antialiased; }
+  a { color:{{ brandPrimary }}; text-decoration:none; }
+  a:hover { text-decoration:underline; }
+  input, textarea, select, button { font-family:'Outfit',sans-serif; }
+  input:focus { outline:none; }
+  ::placeholder { color:#94A3B8; }
+</style>
+</helmet>
+
+<!-- DESKTOP VIEW -->
+<div data-screen-label="Desktop Profile">
+  <div style="min-height:100vh; background:#F8FAFC; display:flex; flex-direction:column">
+    <!-- nav -->
+    <header style="position:sticky; top:0; z-index:50; height:64px; padding:0 40px; display:flex; align-items:center; gap:20px; background:rgba(255,255,255,.95); backdrop-filter:blur(18px); border-bottom:1px solid #E2E8F0">
+      <img src="_ds/unclutter-desk-design-system-804b83f6-2f65-476b-acba-6e7d82b86348/assets/unclutterdesk-mark.svg" alt="unclutter desk" style="height:32px; width:auto">
+      <div style="flex:1"></div>
+      <button style="height:40px; padding:0 16px; border-radius:12px; background:#fff; border:1px solid #CBD5E1; color:{{ brandPrimary }}; font-size:13px; font-weight:700">Log in</button>
+    </header>
+
+    <!-- hero -->
+    <section style="padding:60px 40px; display:grid; grid-template-columns:1fr 1fr; gap:60px; align-items:center; max-width:1320px; margin:0 auto; width:100%">
+      <div style="display:flex; flex-direction:column; gap:24px">
+        <div style="display:flex; flex-direction:column; gap:12px">
+          <div style="font-size:13px; font-weight:900; letter-spacing:.22em; color:#94A3B8">THERAPIST PROFILE</div>
+          <h1 style="margin:0; font-size:46px; line-height:1.08; font-weight:800; letter-spacing:-.035em; color:#0F172A">{{ practiceName }}</h1>
+          <p style="margin:0; font-size:17px; font-weight:700; color:{{ brandPrimary }}">{{ therapistName }}</p>
+          <p style="margin:0; font-size:14px; color:#64748B; max-width:520px; line-height:1.65">{{ bio }}</p>
+        </div>
+        <div style="display:flex; gap:12px">
+          <button style="height:52px; padding:0 28px; border-radius:16px; background:{{ brandPrimary }}; border:none; color:#fff; font-size:15px; font-weight:700; box-shadow:0 10px 26px rgba(0,0,0,.12); cursor:pointer">Book Consultation</button>
+          <button style="height:52px; padding:0 28px; border-radius:16px; background:#fff; border:1px solid #CBD5E1; color:{{ brandPrimary }}; font-size:15px; font-weight:700; cursor:pointer">Learn More</button>
+        </div>
+      </div>
+
+      <div style="display:flex; justify-content:center">
+        <div style="width:320px; height:320px; border-radius:32px; overflow:hidden; box-shadow:0 24px 80px rgba(0,0,0,.12); background:url('{{ therapistPhoto }}') center/cover no-repeat; background-color:#f0f0f0"></div>
+      </div>
+    </section>
+
+    <!-- about -->
+    <section style="padding:80px 40px; background:#fff; border-top:1px solid #E2E8F0">
+      <div style="max-width:1320px; margin:0 auto; display:grid; grid-template-columns:1fr 1fr; gap:60px; align-items:start">
+        <div style="display:flex; flex-direction:column; gap:20px">
+          <div style="font-size:13px; font-weight:900; letter-spacing:.22em; color:#94A3B8">ABOUT THE PRACTICE</div>
+          <h2 style="margin:0; font-size:34px; font-weight:800; letter-spacing:-.035em; color:#0F172A">A calm, evidence-based approach to therapy</h2>
+          <p style="margin:0; font-size:15px; line-height:1.7; color:#475569">{{ fullBio }}</p>
+        </div>
+
+        <div style="display:flex; flex-direction:column; gap:20px">
+          <div style="display:flex; flex-direction:column; gap:12px">
+            <div style="font-size:12px; font-weight:900; letter-spacing:.12em; color:#0F172A">SPECIALTIES</div>
+            <div style="display:flex; flex-wrap:wrap; gap:10px">
+              <sc-for list="{{ specialties }}" as="spec" hint-placeholder-count="4">
+                <div style="height:36px; padding:0 16px; border-radius:999px; background:#F1F5F9; color:{{ brandPrimary }}; font-size:13px; font-weight:700; display:flex; align-items:center">{{ spec }}</div>
+              </sc-for>
+            </div>
+          </div>
+
+          <div style="display:flex; flex-direction:column; gap:12px">
+            <div style="font-size:12px; font-weight:900; letter-spacing:.12em; color:#0F172A">CREDENTIALS</div>
+            <p style="margin:0; font-size:14px; line-height:1.6; color:#475569">{{ credentials }}</p>
+          </div>
+
+          <div style="display:flex; flex-direction:column; gap:12px">
+            <div style="font-size:12px; font-weight:900; letter-spacing:.12em; color:#0F172A">EXPERIENCE</div>
+            <p style="margin:0; font-size:14px; line-height:1.6; color:#475569">{{ experience }}</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- details -->
+    <section style="padding:80px 40px; background:#F8FAFC">
+      <div style="max-width:1320px; margin:0 auto; display:grid; grid-template-columns:repeat(3,1fr); gap:20px">
+        <div style="background:#fff; border:1px solid #E2E8F0; border-radius:24px; padding:32px; display:flex; flex-direction:column; gap:16px">
+          <div style="font-size:12px; font-weight:900; letter-spacing:.12em; color:#94A3B8">LOCATION &amp; FORMAT</div>
+          <div style="display:flex; flex-direction:column; gap:12px">
+            <sc-for list="{{ locations }}" as="loc" hint-placeholder-count="2">
+              <div style="display:flex; align-items:flex-start; gap:10px">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="{{ brandPrimary }}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-top:2px; flex:none"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path><circle cx="12" cy="10" r="3"></circle></svg>
+                <span style="font-size:14px; color:#475569">{{ loc }}</span>
+              </div>
+            </sc-for>
+          </div>
+        </div>
+
+        <div style="background:#fff; border:1px solid #E2E8F0; border-radius:24px; padding:32px; display:flex; flex-direction:column; gap:16px">
+          <div style="font-size:12px; font-weight:900; letter-spacing:.12em; color:#94A3B8">INSURANCE ACCEPTED</div>
+          <div style="display:flex; flex-wrap:wrap; gap:10px">
+            <sc-for list="{{ insurances }}" as="ins" hint-placeholder-count="3">
+              <div style="height:32px; padding:0 12px; border-radius:999px; background:#F1F5F9; color:#475569; font-size:12px; font-weight:700; display:flex; align-items:center">{{ ins }}</div>
+            </sc-for>
+          </div>
+        </div>
+
+        <div style="background:#fff; border:1px solid #E2E8F0; border-radius:24px; padding:32px; display:flex; flex-direction:column; gap:16px">
+          <div style="font-size:12px; font-weight:900; letter-spacing:.12em; color:#94A3B8">AVAILABILITY</div>
+          <div style="display:flex; flex-direction:column; gap:10px">
+            <div style="display:flex; justify-content:space-between; align-items:center">
+              <span style="font-size:13px; color:#475569">Monday – Friday</span>
+              <span style="font-size:13px; font-weight:700; color:#0F172A">9 AM – 6 PM</span>
+            </div>
+            <div style="display:flex; justify-content:space-between; align-items:center">
+              <span style="font-size:13px; color:#475569">Saturday</span>
+              <span style="font-size:13px; font-weight:700; color:#0F172A">By appointment</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- cta -->
+    <section style="padding:80px 40px; background:#fff; text-align:center">
+      <div style="max-width:760px; margin:0 auto; display:flex; flex-direction:column; gap:20px; align-items:center">
+        <h2 style="margin:0; font-size:34px; font-weight:800; letter-spacing:-.035em; color:#0F172A">Ready to start your journey?</h2>
+        <p style="margin:0; font-size:15px; color:#64748B; text-wrap:pretty">Book a free 30-minute consultation to see if we're a good fit for your needs.</p>
+        <button style="height:52px; padding:0 32px; border-radius:16px; background:{{ brandPrimary }}; border:none; color:#fff; font-size:15px; font-weight:700; box-shadow:0 10px 26px rgba(0,0,0,.12); cursor:pointer">Book Now</button>
+      </div>
+    </section>
+
+    <!-- footer -->
+    <footer style="background:#0F172A; padding:40px; text-align:center; border-top:1px solid rgba(255,255,255,.08)">
+      <div style="font-size:12px; color:#94A3B8">© 2026 {{ practiceName }}. Powered by <span style="color:#7DB8A5">unclutter desk</span>.</div>
+    </footer>
+  </div>
+</div>
+
+<!-- MOBILE VIEW -->
+<div style="width:390px; border-radius:46px; overflow:hidden; background:#F8FAFC; box-shadow:0 24px 70px rgba(0,0,0,.20); margin:0 auto" data-screen-label="Mobile Profile">
+  <div style="display:flex; flex-direction:column; min-height:100vh">
+    <!-- nav -->
+    <header style="height:56px; padding:0 16px; display:flex; align-items:center; gap:12px; background:rgba(255,255,255,.95); backdrop-filter:blur(18px); border-bottom:1px solid #E2E8F0">
+      <img src="_ds/unclutter-desk-design-system-804b83f6-2f65-476b-acba-6e7d82b86348/assets/unclutterdesk-mark.svg" alt="unclutter desk" style="height:28px; width:auto">
+      <div style="flex:1"></div>
+      <button style="height:36px; padding:0 12px; border-radius:10px; background:#fff; border:1px solid #CBD5E1; color:{{ brandPrimary }}; font-size:12px; font-weight:700">Log in</button>
+    </header>
+
+    <!-- hero -->
+    <section style="padding:24px 16px; display:flex; flex-direction:column; gap:20px; align-items:center; text-align:center">
+      <div style="width:200px; height:200px; border-radius:24px; overflow:hidden; box-shadow:0 12px 40px rgba(0,0,0,.12); background:url('{{ therapistPhoto }}') center/cover no-repeat; background-color:#f0f0f0"></div>
+      <div style="display:flex; flex-direction:column; gap:10px">
+        <h1 style="margin:0; font-size:26px; font-weight:800; letter-spacing:-.03em; color:#0F172A">{{ practiceName }}</h1>
+        <p style="margin:0; font-size:15px; font-weight:700; color:{{ brandPrimary }}">{{ therapistName }}</p>
+        <p style="margin:0; font-size:13px; color:#64748B; text-wrap:pretty">{{ bio }}</p>
+      </div>
+      <button style="height:48px; width:100%; border-radius:14px; background:{{ brandPrimary }}; border:none; color:#fff; font-size:14px; font-weight:700; box-shadow:0 10px 26px rgba(0,0,0,.12); cursor:pointer">Book Consultation</button>
+    </section>
+
+    <!-- about -->
+    <section style="padding:32px 16px; background:#fff; border-top:1px solid #E2E8F0; display:flex; flex-direction:column; gap:20px">
+      <div style="display:flex; flex-direction:column; gap:8px">
+        <div style="font-size:11px; font-weight:900; letter-spacing:.12em; color:#94A3B8">ABOUT</div>
+        <p style="margin:0; font-size:13px; line-height:1.6; color:#475569">{{ fullBio }}</p>
+      </div>
+
+      <div style="display:flex; flex-direction:column; gap:10px">
+        <div style="font-size:11px; font-weight:900; letter-spacing:.12em; color:#0F172A">SPECIALTIES</div>
+        <div style="display:flex; flex-wrap:wrap; gap:8px">
+          <sc-for list="{{ specialties }}" as="spec" hint-placeholder-count="3">
+            <div style="height:32px; padding:0 12px; border-radius:999px; background:#F1F5F9; color:{{ brandPrimary }}; font-size:12px; font-weight:700; display:flex; align-items:center">{{ spec }}</div>
+          </sc-for>
+        </div>
+      </div>
+    </section>
+
+    <!-- details -->
+    <section style="padding:24px 16px; background:#F8FAFC; display:flex; flex-direction:column; gap:14px">
+      <div style="background:#fff; border:1px solid #E2E8F0; border-radius:18px; padding:16px; display:flex; flex-direction:column; gap:10px">
+        <div style="font-size:11px; font-weight:900; letter-spacing:.12em; color:#94A3B8">LOCATION &amp; FORMAT</div>
+        <div style="display:flex; flex-direction:column; gap:8px">
+          <sc-for list="{{ locations }}" as="loc" hint-placeholder-count="2">
+            <div style="display:flex; align-items:flex-start; gap:8px; font-size:13px; color:#475569">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="{{ brandPrimary }}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-top:2px; flex:none"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path><circle cx="12" cy="10" r="3"></circle></svg>
+              {{ loc }}
+            </div>
+          </sc-for>
+        </div>
+      </div>
+
+      <div style="background:#fff; border:1px solid #E2E8F0; border-radius:18px; padding:16px; display:flex; flex-direction:column; gap:10px">
+        <div style="font-size:11px; font-weight:900; letter-spacing:.12em; color:#94A3B8">INSURANCE</div>
+        <div style="display:flex; flex-wrap:wrap; gap:8px">
+          <sc-for list="{{ insurances }}" as="ins" hint-placeholder-count="3">
+            <div style="height:28px; padding:0 10px; border-radius:999px; background:#F1F5F9; color:#475569; font-size:11px; font-weight:700; display:flex; align-items:center">{{ ins }}</div>
+          </sc-for>
+        </div>
+      </div>
+    </section>
+
+    <!-- cta -->
+    <section style="padding:20px 16px; background:#fff; text-align:center; border-top:1px solid #E2E8F0">
+      <button style="height:50px; width:100%; border-radius:14px; background:{{ brandPrimary }}; border:none; color:#fff; font-size:14px; font-weight:700; box-shadow:0 10px 26px rgba(0,0,0,.12); cursor:pointer">Book Now</button>
+    </section>
+
+    <!-- footer -->
+    <footer style="background:#0F172A; padding:20px; text-align:center; font-size:11px; color:#94A3B8; border-top:1px solid rgba(255,255,255,.08)">
+      © 2026 {{ practiceName }}. Powered by <span style="color:#7DB8A5">unclutter desk</span>.
+    </footer>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+class Component extends DCLogic {
+  renderVals() {
+    const brandPrimary = "#24614F";
+    
+    return {
+      brandPrimary,
+      practiceName: "Smith Therapy & Wellness",
+      therapistName: "Dr. Sarah Smith, PhD, LCSW",
+      therapistPhoto: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=400&h=400&fit=crop",
+      bio: "Specializing in anxiety, depression, and life transitions with a warm, evidence-based approach.",
+      fullBio: "With over 12 years of clinical experience, Dr. Smith provides compassionate, evidence-based therapy tailored to each client's unique needs. Her approach integrates cognitive-behavioral therapy, acceptance and commitment therapy, and mindfulness practices to help clients build resilience and lead more fulfilling lives.",
+      credentials: "PhD in Clinical Psychology, Licensed Clinical Social Worker (LCSW), Certified in Cognitive-Behavioral Therapy",
+      experience: "12+ years in private practice and clinical settings. Specializes in anxiety disorders, depression, relationship counseling, and trauma recovery.",
+      specialties: ["Anxiety", "Depression", "Couples Therapy", "Trauma Recovery", "Life Transitions"],
+      locations: ["Lagos, Nigeria (in-person)", "Online via secure video"],
+      insurances: ["NHIS", "Private Insurance", "Cash Pay"]
+    };
+  }
+}
+
+</script>
+</body>
+</html>

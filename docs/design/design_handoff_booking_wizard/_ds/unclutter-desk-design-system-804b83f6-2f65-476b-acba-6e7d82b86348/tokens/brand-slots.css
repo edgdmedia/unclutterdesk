@@ -1,0 +1,74 @@
+/* ═══════════════════════════════════════════════
+   UNCLUTTER DESK — WHITE-LABEL TENANT SLOTS
+
+   The product's central idea: one pair of tenant colors drives the
+   entire public booking experience. A therapist picks a primary and a
+   secondary in Brand Settings; every branded element of the booking
+   portal, confirmation screen and their own workspace accents reads
+   from these slots.
+
+   Override per tenant on any ancestor:
+     <html data-tenant="dr-smith" style="--brand-primary:#007BFF; --brand-secondary:#6F42C1">
+
+   Defaults are the Unclutter Desk house palette, so a tenant who never
+   opens Brand Settings still gets a finished page.
+
+   THE SIDEBAR SHELL STAYS SLATE IN EVERY TENANCY. Tenant color enters
+   the workspace only through the active nav item's gradient and accent
+   elements; it never becomes the sidebar background.
+   ═══════════════════════════════════════════════ */
+
+:root {
+  --brand-primary:         var(--desk-pine-600);
+  --brand-primary-hover:   var(--desk-pine-700);
+  --brand-primary-soft:    var(--desk-pine-100);
+  --brand-on-primary:      #FFFFFF;
+
+  --brand-secondary:       var(--desk-clay-600);
+  --brand-secondary-hover: var(--desk-clay-700);
+  --brand-secondary-soft:  var(--desk-clay-100);
+  --brand-on-secondary:    #FFFFFF;
+
+  /* Product literals — the naming rename lives here so generated strings
+     never hard-code the old product name. */
+  --product-name:   "Unclutter Desk";         /* @kind other */
+  --booking-host:   "unclutterdesk.com";      /* @kind other */
+  --cname-host:     "cname.unclutterdesk.com";/* @kind other */
+  --booking-prefix: "UDK";                    /* @kind other */
+}
+
+/* ── Derived tints ──
+   A tenant only ever stores two hexes; these six derive from them.
+
+   Custom-property substitution resolves where a declaration is WRITTEN, so
+   these must be redeclared on any element that overrides the slots — hence
+   the .desk-tenant hook. Put it on the same element carrying the override:
+
+     <div class="desk-tenant" style="--brand-primary:#007BFF; --brand-secondary:#6F42C1">
+
+   Without it the derived tints keep resolving against the house pine.
+   Hover for arbitrary tenant colors is filter: brightness(1.08) on the
+   element, which works for any hue without a second stored token. */
+:root,
+.desk-tenant,
+[data-tenant] {
+  --brand-ring:  color-mix(in srgb, var(--brand-primary) 20%, transparent); /* focus rings, colored button shadow */
+  --brand-tint:  color-mix(in srgb, var(--brand-primary)  8%, transparent); /* booking header gradient start */
+  --brand-fill:  color-mix(in srgb, var(--brand-primary)  9%, transparent); /* avatar chips, icon containers, hover */
+  --brand-dot:   color-mix(in srgb, var(--brand-primary) 40%, transparent); /* availability dot on dates */
+  --brand-bar:   color-mix(in srgb, var(--brand-primary) 18%, transparent); /* non-current months in charts */
+  --brand-secondary-tint: color-mix(in srgb, var(--brand-secondary) 10%, transparent); /* credentials badge */
+}
+
+/* ── Brand Settings presets ──
+   The five preset pairs offered to tenants. Values unchanged from the
+   previous system; only the first one's LABEL changed, since it carried
+   the old product name.
+
+   | Label                          | Primary | Secondary |
+   | Deep navy (was "UnclutterOS")  | #0F3A53 | #E3B341   |
+   | Signal blue (demo default)     | #007BFF | #6F42C1   |
+   | Calm teal                      | #0E7490 | #F59E0B   |
+   | Deep violet                    | #7C3AED | #EC4899   |
+   | Forest                         | #15803D | #B45309   |
+*/

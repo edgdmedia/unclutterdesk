@@ -1,0 +1,94 @@
+/* ═══════════════════════════════════════════════
+   UNCLUTTER DESK — COLOR
+   Self-contained. No import from, dependency on, or override against
+   any other Unclutter app's token file. No data-app scoping.
+   ═══════════════════════════════════════════════ */
+
+:root {
+
+  /* ── BRAND — PINE ──
+     Derived from Unclutter's sage #4A7C6F: same hue neighbourhood (~164°),
+     pushed from 25% → 40% saturation and 39% → 24% lightness.
+     Deep pine/forest, not pastel sage. */
+  --desk-pine-900:      #0E2A22;   /* text on pale pine, DESK badge text */
+  --desk-pine-800:      #143A2F;   /* wordmark fill, dark pine surfaces */
+  --desk-pine-700:      #1C4E3F;   /* primary hover / pressed, mark tile */
+  --desk-pine-600:      #24614F;   /* ★ PRIMARY — 7.35:1 on white */
+  --desk-pine-500:      #2E7A63;   /* links on pale, rating glyph */
+  --desk-pine-400:      #4A9781;   /* active-nav marker, icon accent on slate */
+  --desk-pine-300:      #7DB8A5;   /* mark leaf fill, decorative linework */
+  --desk-pine-200:      #B6D8CC;   /* DESK badge fill, inactive chart bars */
+  --desk-pine-100:      #DDEDE6;   /* ★ PRIMARY SOFT — chips, icon tiles, hover */
+  --desk-pine-050:      #F0F7F4;   /* faintest pine surface */
+
+  /* ── SECONDARY — CLAY ──
+     Warm, low-chroma. Far enough from pine in hue and temperature that
+     category coding (Individual vs Couples) reads instantly. */
+  --desk-clay-700:      #6F4830;
+  --desk-clay-600:      #8A5A3C;
+  --desk-clay-100:      #F3EAE3;
+
+  /* ── RARE ACCENT — BRASS ──
+     ONE decorative flourish per surface. Never a badge, never the
+     active-nav marker, never the star rating, never a status. */
+  --desk-accent-brass:  #B08320;
+
+  /* ── SYSTEM NEUTRALS — SLATE ──
+     Product chrome. Never tenant-themed. */
+  --desk-sidebar:        #0F172A;   /* sidebar, dark hero cards */
+  --desk-sidebar-hover:  #1E293B;   /* sidebar item hover */
+  --desk-sidebar-active: #17293F;   /* sidebar item active base */
+  --desk-surface:        #F8FAFC;   /* app background, muted fills */
+  --desk-surface-alt:    #FCFDFE;   /* table headers, booking body */
+  --desk-surface-muted:  #F1F5F9;   /* segmented controls, search, read-only */
+  --desk-canvas:         #EEF2F6;   /* presentation backdrop — not app chrome */
+  --desk-card:           #FFFFFF;
+  --desk-border:         #E2E8F0;   /* standard border, dividers */
+  --desk-border-soft:    #F1F5F9;   /* table row dividers */
+  --desk-border-strong:  #CBD5E1;   /* secondary button border, uploader */
+  --desk-text:           #0F172A;   /* primary text */
+  --desk-text-body:      #475569;   /* body copy */
+  --desk-text-muted:     #64748B;   /* secondary text */
+  --desk-text-subtle:    #94A3B8;   /* eyebrows, placeholders, tertiary */
+  --desk-text-invert:    #FFFFFF;
+
+  /* ── STATUS ──
+     Success moved off emerald #10B981 (too close to pine primary) to a
+     yellower, lighter green. Pending moved off amber to warm orange, so
+     no gold-family tone survives in routine UI.
+     Inactive, danger and info are unchanged. */
+  --desk-active:         #16A34A;
+  --desk-active-dot:     #22C55E;
+  --desk-active-bg:      #F0FDF4;
+  --desk-active-border:  #BBF7D0;
+
+  --desk-pending:        #C2410C;
+  --desk-pending-dot:    #EA580C;
+  --desk-pending-bg:     #FFF7ED;
+  --desk-pending-border: #FED7AA;
+
+  --desk-inactive:        #64748B;
+  --desk-inactive-bg:     #F1F5F9;
+  --desk-inactive-border: #E2E8F0;
+
+  --desk-danger:         #E11D48;
+  --desk-danger-bg:      #FFF1F2;
+  --desk-danger-border:  #FECDD3;
+
+  --desk-info:           #0284C7;
+  --desk-info-bg:        #F0F9FF;
+  --desk-info-border:    #BAE6FD;
+
+  /* ── SEMANTIC ALIASES ── */
+  --text-primary:    var(--desk-text);
+  --text-body:       var(--desk-text-body);
+  --text-muted:      var(--desk-text-muted);
+  --text-subtle:     var(--desk-text-subtle);
+  --text-invert:     var(--desk-text-invert);
+  --surface-app:     var(--desk-surface);
+  --surface-card:    var(--desk-card);
+  --surface-muted:   var(--desk-surface-muted);
+  --surface-dark:    var(--desk-sidebar);
+  --border-default:  var(--desk-border);
+  --border-strong:   var(--desk-border-strong);
+}

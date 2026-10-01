@@ -1,0 +1,78 @@
+/* ═══════════════════════════════════════════════
+   UNCLUTTER DESK — TYPOGRAPHY
+   Values unchanged from the previous system.
+   Outfit throughout, weights 300–900.
+   ═══════════════════════════════════════════════ */
+
+:root {
+  /* Type scale — literal px, because this is a dense workspace UI
+     authored at a fixed 1440px+ canvas, not a fluid marketing page. */
+  --text-eyebrow: 9px;      /* 900 / 0.22em uppercase — the signature label */
+  --text-2xs:     10px;     /* badge / pill */
+  --text-xs:      11px;     /* meta, constraint lines */
+  --text-sm:      12px;     /* caption */
+  --text-base:    13px;     /* body small, nav */
+  --text-md:      14px;     /* body */
+  --text-lg:      15.5px;   /* row title */
+  --text-xl:      17px;     /* card title */
+  --text-2xl:     20px;     /* screen title (header bar) */
+  --text-3xl:     24px;     /* page title (in-body) */
+  --text-4xl:     26px;     /* stat value (KPI) */
+  --text-5xl:     30px;     /* booking H1 */
+  --text-6xl:     32px;     /* confirmation display */
+  --text-hero:    40px;     /* stat hero — ₦450,000 */
+
+  /* Weights */
+  --weight-regular: 400;
+  --weight-medium:  500;
+  --weight-semi:    600;
+  --weight-bold:    700;
+  --weight-xbold:   800;
+  --weight-black:   900;
+
+  /* Letter spacing */
+  --tracking-eyebrow:  0.22em;   /* 9px eyebrow */
+  --tracking-nav:      0.18em;   /* table headers, mobile day letters */
+  --tracking-badge:    0.08em;   /* pills */
+  --tracking-tight:   -0.02em;   /* screen title, card title */
+  --tracking-tighter: -0.03em;   /* stat value */
+  --tracking-display: -0.035em;  /* page title, booking H1 */
+  --tracking-hero:    -0.04em;   /* stat hero */
+
+  /* Line height */
+  --leading-tight:   1;
+  --leading-snug:    1.25;
+  --leading-normal:  1.5;
+  --leading-relaxed: 1.6;
+}
+
+/* ── Semantic type utilities ── */
+
+/* The system's most distinctive signature. Sits above nearly every card
+   and section. Use it consistently. */
+.d-eyebrow {
+  font-size: var(--text-eyebrow);
+  font-weight: var(--weight-black);
+  text-transform: uppercase;
+  letter-spacing: var(--tracking-eyebrow);
+  color: var(--desk-text-subtle);
+  line-height: 1;
+}
+
+.d-screen-title { font-size: var(--text-2xl); font-weight: var(--weight-bold);  letter-spacing: var(--tracking-tight);   color: var(--desk-text); }
+.d-page-title   { font-size: var(--text-3xl); font-weight: var(--weight-xbold); letter-spacing: var(--tracking-display); color: var(--desk-text); }
+.d-card-title   { font-size: var(--text-xl);  font-weight: var(--weight-bold);  letter-spacing: var(--tracking-tight);   color: var(--desk-text); }
+.d-row-title    { font-size: var(--text-md);  font-weight: var(--weight-bold);  letter-spacing: -0.01em;                 color: var(--desk-text); }
+
+.d-stat      { font-size: var(--text-4xl);  font-weight: var(--weight-xbold); letter-spacing: var(--tracking-tighter); font-variant-numeric: tabular-nums; color: var(--desk-text); }
+.d-stat-hero { font-size: var(--text-hero); font-weight: var(--weight-xbold); letter-spacing: var(--tracking-hero);    font-variant-numeric: tabular-nums; color: var(--desk-text); }
+
+.d-body  { font-size: var(--text-md); font-weight: var(--weight-regular); color: var(--desk-text-body); line-height: var(--leading-relaxed); }
+.d-meta  { font-size: var(--text-sm); color: var(--desk-text-muted); }
+.d-badge { font-size: var(--text-2xs); font-weight: var(--weight-xbold); text-transform: uppercase; letter-spacing: var(--tracking-badge); }
+
+/* Hex codes, CNAME hosts, booking references. Nothing else. */
+.d-mono { font-family: var(--font-mono); font-size: 12.5px; font-weight: var(--weight-semi); }
+
+/* Every numeric column. */
+.d-num { font-variant-numeric: tabular-nums; }

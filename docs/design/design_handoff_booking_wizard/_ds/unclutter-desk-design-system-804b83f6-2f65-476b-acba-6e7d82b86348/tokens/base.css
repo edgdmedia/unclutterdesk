@@ -1,0 +1,17 @@
+/* Unclutter Desk — base resets. Deliberately minimal. */
+
+*, *::before, *::after { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  font-family: var(--font-primary);
+  background: var(--desk-surface);
+  color: var(--desk-text);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+a { color: var(--desk-pine-600); text-decoration: none; }
+a:hover { color: var(--desk-pine-700); text-decoration: underline; }
+
+button, input, select, textarea { font: inherit; color: inherit; }
