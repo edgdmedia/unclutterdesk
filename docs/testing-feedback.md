@@ -64,6 +64,7 @@ A running log of what shows up in testing, what we decide about it, and when it'
 | BKG-06 | Booking page | Default intake and confidentiality form templates for every practice | Feature | | Ready |
 | BKG-07 | Booking page | Header shows a hard-coded "Lagos, Nigeria · Online & in-person" for every practice | Bug | P1 | Discuss |
 | BKG-08 | Booking page | "Notify me" when a practice has no free times in the next 4 weeks | Feature | P3 | Deferred |
+| BKG-09 | Booking page | An abandoned online payment keeps the time blocked for everyone | Bug | P1 | Discuss |
 | FRM-01 | Forms | Save forms as templates and optionally share them with other practices | Feature | | Open |
 
 ---
@@ -264,6 +265,13 @@ A running log of what shows up in testing, what we decide about it, and when it'
 - **Type:** Feature · **Priority:** P3 · **Status:** Deferred
 - **Observed:** The booking wizard design offers "Notify me" (enter your email) when a practice has no free times in the next 4 weeks.
 - **Feedback / decision:** Later (1 Oct 2026). Until then the wizard shows the practice's email and phone in that state. Needs a waiting list: store the email, and email the client when times open up.
+- **Fix:**
+- **Verified:**
+
+### BKG-09 · An abandoned online payment keeps the time blocked
+- **Type:** Bug · **Priority:** P1 · **Status:** Discuss
+- **Observed:** Found in the booking wizard's final review (1 Oct 2026). A booking waiting for online payment (`PENDING_PAYMENT`) has no hold expiry, unlike bank-transfer holds (48h). If a client closes Paystack and leaves, or picks a different time, the first booking stays pending and its time can't be booked by anyone until staff cancel it. The old one-page booking form had the same gap; the wizard makes it a little more likely.
+- **Feedback / decision:** Needs a decision: (1) how long an unpaid online booking holds its time (e.g. 30 minutes), and (2) what happens if Paystack confirms a payment after that hold has lapsed and the time has gone to someone else (refund, or offer the client another time). Proposed: a 30-minute online hold released by the existing hold-expiry job, with a late payment flagged to the practice to refund or rebook.
 - **Fix:**
 - **Verified:**
 
