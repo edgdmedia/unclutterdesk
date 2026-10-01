@@ -105,6 +105,11 @@ PAYSTACK_PLAN_CLINIC=PLN_leght05vpcu41ad
 # Only needed if an origin outside *.unclutterdesk.com calls the API
 # CORS_ORIGINS=https://example.com
 
+# The API's own public address. Practice logos in emails are served from
+# GET /v1/tenant/:id/logo, and the emails need the absolute URL. Defaults to
+# https://api.unclutterdesk.com in production; set it explicitly if that ever moves.
+API_URL=https://api.unclutterdesk.com
+
 NODE_ENV=production
 ```
 

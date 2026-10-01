@@ -80,6 +80,20 @@ export class TenantController {
     return { name: 'Unclutter Desk', slug: 'default', primaryColor: '#0F3A53', secondaryColor: '#E3B341' };
   }
 
+  @Get(':id/logo')
+  @ApiOperation({ summary: "A practice's logo, for emails and other places outside the app" })
+  async logo(@Param('id') id: string, @Res() res: Response) {
+    if (!/^\d+$/.test(id)) throw new NotFoundException('No logo');
+    const logo = await this.tenantService.getLogo(BigInt(id));
+    if ('redirect' in logo) return res.redirect(302, logo.redirect);
+    res.setHeader('Content-Type', logo.contentType);
+    // The ?v= in the URL changes with the logo, so the old one can be cached for good.
+    res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
+    res.setHeader('X-Content-Type-Options', 'nosniff');
+    if (logo.contentType === 'image/svg+xml') res.setHeader('Content-Security-Policy', "default-src 'none'; style-src 'unsafe-inline'");
+    res.send(logo.body);
+  }
+
   @Permissions('practice.admin')
   @Patch('brand')
   @UseGuards(JwtAuthGuard, RolesGuard)

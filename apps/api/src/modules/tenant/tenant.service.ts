@@ -7,7 +7,7 @@ import { PrismaService } from '../../common/prisma/prisma.service';
 import { NotificationService } from '../notifications/notification.service';
 import { decryptNoteFields } from '../../common/field-encryption';
 import { isPlatformHostname, isReservedSlug, normalizeSlug } from './reserved-slugs';
-import { appOrigin, ROOT_DOMAIN, tenantWebOrigin } from '../../common/origins';
+import { apiOrigin, appOrigin, ROOT_DOMAIN, tenantWebOrigin } from '../../common/origins';
 import { EmergencyContactInput, emergencyContactData, emergencyContactOf, emergencyContactText } from './emergency-contact';
 import { GRANTABLE, PERMISSIONS } from '../../common/permissions';
 
@@ -20,6 +20,20 @@ const RESERVED_SLUG_MESSAGE = 'That booking handle is reserved. Try another one.
  * colleague.
  */
 export const INVITE_ID_PREFIX = 'invite-';
+
+const DATA_IMAGE = /^data:(image\/(?:png|jpeg|gif|webp|svg\+xml));base64,([A-Za-z0-9+/=]+)$/;
+
+export type LogoResult = { contentType: string; body: Buffer } | { redirect: string };
+
+/** Where a practice's logo can be loaded from outside the app, e.g. in an email. */
+export function logoUrlFor(tenant: { id: bigint; logoUrl: string | null }): string | null {
+  const logo = tenant.logoUrl?.trim();
+  if (!logo) return null;
+  if (/^https:\/\//i.test(logo)) return logo;
+  if (!DATA_IMAGE.test(logo)) return null;
+  const version = createHash('sha1').update(logo).digest('hex').slice(0, 8);
+  return `${apiOrigin()}/v1/tenant/${tenant.id}/logo?v=${version}`;
+}
 
 export function parseInviteRef(ref: string): bigint | null {
   const raw = ref.startsWith(INVITE_ID_PREFIX) ? ref.slice(INVITE_ID_PREFIX.length) : ref;
@@ -807,6 +821,16 @@ export class TenantService {
       select: { id: true, permissions: true },
     });
     return { id: updated.id.toString(), permissions: updated.permissions };
+  }
+
+  /** The practice's logo bytes, or a redirect to where it is hosted. */
+  async getLogo(tenantId: bigint): Promise<LogoResult> {
+    const tenant = await this.prisma.tenant.findUnique({ where: { id: tenantId }, select: { id: true, logoUrl: true } });
+    const logo = tenant?.logoUrl?.trim();
+    if (logo && /^https:\/\//i.test(logo)) return { redirect: logo };
+    const match = logo?.match(DATA_IMAGE);
+    if (!match) throw new NotFoundException('No logo');
+    return { contentType: match[1], body: Buffer.from(match[2], 'base64') };
   }
 
   // ── Client (Patient) Management ──────────────────────────────────────────────

@@ -37,6 +37,13 @@ export function appOrigin(isProduction = process.env.NODE_ENV === 'production'):
  * A custom domain is only used at status ACTIVE: a PENDING one does not resolve
  * yet, so sending a paying client there would strand them on a dead host.
  */
+/** The API's own public address, for links to things it serves (e.g. practice logos in emails). */
+export function apiOrigin(isProduction = process.env.NODE_ENV === 'production'): string {
+  const configured = process.env.API_URL?.trim();
+  if (configured) return configured.replace(/\/+$/, '');
+  return isProduction ? `https://api.${ROOT_DOMAIN}` : 'http://localhost:3099';
+}
+
 export function tenantWebOrigin(
   tenant: { slug: string; customDomain?: string | null; customDomainStatus?: string | null },
   isProduction = process.env.NODE_ENV === 'production',
