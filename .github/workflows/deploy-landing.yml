@@ -1,6 +1,9 @@
 name: Deploy Landing
 
 on:
+  # Manual redeploy without a code change, e.g. after a path-filtered push
+  # skipped the deploy or a verify failure blocked it.
+  workflow_dispatch: {}
   push:
     branches:
       - main
