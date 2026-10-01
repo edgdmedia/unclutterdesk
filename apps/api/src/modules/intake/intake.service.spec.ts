@@ -189,6 +189,26 @@ describe('IntakeService PHQ-9 scoring', () => {
     ).rejects.toBeInstanceOf(BadRequestException);
   });
 
+  // BKG-06: the two default forms are ours to deliver but the practice's to
+  // word. The assessments stay locked; these do not.
+  test('lets a practice edit the default intake wording', async () => {
+    const prisma = createPrismaMock();
+    const service = new IntakeService(prisma);
+    prisma.universalForm.findFirst.mockResolvedValue({
+      id: BigInt(12), tenantId: BigInt(1), title: 'Client intake', description: null, targetType: 'INTAKE',
+      schemaJson: [], reviewPublicationMode: 'MANUAL', reviewerDisplayMode: 'FIRST_NAME',
+      isDefault: true, isActive: true, createdAt: new Date(), updatedAt: new Date(), systemKey: 'CLIENT_INTAKE',
+    });
+    prisma.universalForm.update.mockResolvedValue({
+      id: BigInt(12), tenantId: BigInt(1), title: 'New client form', description: null, targetType: 'INTAKE', schemaJson: [],
+      reviewPublicationMode: 'MANUAL', reviewerDisplayMode: 'FIRST_NAME', isDefault: true, isActive: true,
+      systemKey: 'CLIENT_INTAKE', createdAt: new Date(), updatedAt: new Date(),
+    });
+    const result = await service.updateForm(BigInt(1), BigInt(12), { title: 'New client form', schemaJson: [{ id: 'a', label: 'A', type: 'text' }] });
+    expect(prisma.universalForm.update).toHaveBeenCalled();
+    expect(result.title).toBe('New client form');
+  });
+
   test('allows activation changes for system templates', async () => {
     const prisma = createPrismaMock();
     const service = new IntakeService(prisma);

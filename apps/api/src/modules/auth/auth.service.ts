@@ -5,8 +5,7 @@ import {
   UnauthorizedException,
   NotFoundException,
   ForbiddenException,
-  Logger,
-} from '@nestjs/common';
+  Logger, Optional } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcryptjs';
 import { createHash, randomBytes } from 'crypto';
@@ -16,6 +15,7 @@ import { DeviceInfo, SessionService } from './session.service';
 import { JWT_EXPIRES_IN, REFRESH_SECRET, REFRESH_EXPIRES_IN } from '../../common/auth.config';
 import { NotificationService } from '../notifications/notification.service';
 import { InviteService } from '../invites/invite.service';
+import { DefaultFormsService } from '../intake/default-forms.service';
 import { effectivePermissions } from '../../common/permissions';
 import { appOrigin } from '../../common/origins';
 
@@ -67,6 +67,7 @@ export class AuthService {
     private readonly notifications: NotificationService,
     private readonly sessions: SessionService,
     private readonly invites?: InviteService,
+    @Optional() private readonly defaultForms?: DefaultFormsService,
   ) {}
 
   /** `base`, or `base-xxxx` when an account already has that username. */
@@ -146,6 +147,8 @@ export class AuthService {
         },
       });
       targetTenantId = newTenant.id;
+      // BKG-06: a brand-new practice starts with its default forms.
+      await this.defaultForms?.ensureFor(newTenant.id).catch(() => undefined);
     }
 
     // Check if user profile already exists for this tenant

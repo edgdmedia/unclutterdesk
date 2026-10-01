@@ -22,6 +22,9 @@ type DerivedAssessmentPayload = {
   severity: 'Minimal' | 'Mild' | 'Moderate' | 'Severe';
 } | null;
 
+/** System forms the practice may edit; everything else with a systemKey is locked. */
+export const EDITABLE_SYSTEM_KEYS = ['CLIENT_INTAKE', 'CONFIDENTIALITY'];
+
 @Injectable()
 export class IntakeService {
   constructor(
@@ -256,7 +259,10 @@ export class IntakeService {
     const existing = await this.prisma.universalForm.findFirst({ where: { id: formId, tenantId } });
     if (!existing) throw new NotFoundException('Form not found');
 
-    if (existing.systemKey) {
+    // BKG-06: the default forms ship with every practice and the practice owns
+    // their wording. The assessment instruments stay locked — their scoring
+    // depends on the exact questions.
+    if (existing.systemKey && !EDITABLE_SYSTEM_KEYS.includes(existing.systemKey)) {
       const isTryingToEditLockedFields =
         dto.title !== undefined ||
         dto.description !== undefined ||

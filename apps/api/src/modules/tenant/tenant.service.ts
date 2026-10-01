@@ -1,10 +1,11 @@
-import { Injectable, BadRequestException, ConflictException, NotFoundException, ForbiddenException } from '@nestjs/common';
+import { Injectable, BadRequestException, ConflictException, NotFoundException, ForbiddenException, Optional } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { createHash, randomBytes } from 'crypto';
 import { promises as dns } from 'dns';
 import { Logger } from '@nestjs/common';
 import { PrismaService } from '../../common/prisma/prisma.service';
 import { NotificationService } from '../notifications/notification.service';
+import { DefaultFormsService } from '../intake/default-forms.service';
 import { decryptNoteFields } from '../../common/field-encryption';
 import { isPlatformHostname, isReservedSlug, normalizeSlug } from './reserved-slugs';
 import { apiOrigin, appOrigin, ROOT_DOMAIN, tenantWebOrigin } from '../../common/origins';
@@ -128,6 +129,7 @@ export class TenantService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly notifications: NotificationService,
+    @Optional() private readonly defaultForms?: DefaultFormsService,
   ) {}
 
   private normalizeCustomDomain(input?: string | null) {
@@ -178,7 +180,7 @@ export class TenantService {
     const existing = await this.prisma.tenant.findUnique({ where: { slug } });
     if (existing) throw new BadRequestException('This practice slug is already taken');
 
-    return this.prisma.tenant.create({
+    const tenant = await this.prisma.tenant.create({
       data: {
         name: dto.name.trim(),
         slug,
@@ -190,6 +192,9 @@ export class TenantService {
         currency: dto.currency || 'NGN',
       },
     });
+    // BKG-06: a new practice starts with the intake and confidentiality forms.
+    await this.defaultForms?.ensureFor(tenant.id).catch(() => undefined);
+    return tenant;
   }
 
   async checkSlugAvailability(slug: string, tenantId?: bigint) {
