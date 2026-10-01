@@ -46,7 +46,7 @@ A running log of what shows up in testing, what we decide about it, and when it'
 | ONB-02 | Onboarding | Can a practice bring its own Paystack keys? | Question | | Won't fix |
 | ONB-03 | Onboarding | Setup step offers online payment and bank transfer | Feature | P1 | Fixed |
 | ONB-04 | Onboarding | Payout step says payments are processed by Paystack | UX | P2 | Fixed |
-| ONB-05 | Onboarding | No way to set a session as virtual or physical | Bug | | Open |
+| ONB-05 | Onboarding | No way to set a session as virtual or physical | Bug | | Discuss |
 | ONB-06 | Onboarding | No walkthrough after "Go to Dashboard" | Feature | | Ready |
 | ONB-07 | Onboarding | Continue in setup fails with "This endpoint requires a practice profile" | Bug | P0 | Fixed |
 | SET-01 | Settings | Booking link picked during setup isn't saved, and can't be changed | Bug | P1 | Fixed |
@@ -54,12 +54,15 @@ A running log of what shows up in testing, what we decide about it, and when it'
 | SET-03 | Settings | No custom hostname setup (add domain, DNS records, auto-configure) | Feature | | Open |
 | SET-04 | Settings | Link, logo and colours set in setup don't show afterwards | Bug | P0 | Fixed |
 | SET-05 | Settings | After setup there's nowhere to change the logo or booking link | Bug | P1 | Fixed |
+| SET-06 | Settings | No way to say if the practice offers online, in person or both, or to manage several locations | Feature | P1 | Discuss |
+| SET-07 | Settings | Services can't have a different price online and in person | Feature | P1 | Discuss |
 | BKG-01 | Booking page | Layout is incoherent and doesn't work | UX | | Discuss |
 | BKG-02 | Booking page | Practice logo never loads | Bug | | Open |
 | BKG-03 | Booking page | "Book now" should be a step-by-step wizard | UX | | Discuss |
 | BKG-04 | Booking page | Is a client's sign-in tied to one practice or shared across practices? | Question | | Ready |
-| BKG-05 | Booking page | Session format should come from what the practice offers for each slot | Bug | | Open |
+| BKG-05 | Booking page | Session format should come from what the practice offers for each slot | Bug | | Discuss |
 | BKG-06 | Booking page | Default intake and confidentiality form templates for every practice | Feature | | Ready |
+| BKG-07 | Booking page | Header shows a hard-coded "Lagos, Nigeria · Online & in-person" for every practice | Bug | P1 | Discuss |
 | FRM-01 | Forms | Save forms as templates and optionally share them with other practices | Feature | | Open |
 
 ---
@@ -134,9 +137,9 @@ A running log of what shows up in testing, what we decide about it, and when it'
 - **Verified:**
 
 ### ONB-05 · No way to set a session as virtual or physical
-- **Type:** Bug · **Priority:** · **Status:** Open
+- **Type:** Bug · **Priority:** · **Status:** Discuss
 - **Observed:** There's nowhere to set whether a session is virtual or physical.
-- **Feedback / decision:**
+- **Feedback / decision:** Setup will ask "How do you see clients?" (online, in person, both) and add the first location inline (see SET-06). Design in `docs/superpowers/specs/2026-10-01-session-formats-and-locations-design.md`. **Parked.**
 - **Fix:**
 - **Verified:**
 
@@ -191,6 +194,20 @@ A running log of what shows up in testing, what we decide about it, and when it'
 - **Fix:** `45230c9` on `dev`. Settings → Brand & booking page now has logo, colours, name, email, booking link, and custom domain as its own section.
 - **Verified:**
 
+### SET-06 · Online, in person or both, and several locations
+- **Type:** Feature · **Priority:** P1 · **Status:** Discuss
+- **Observed:** There's no point where a practice says whether it offers online sessions, in-person sessions or both, and only one optional address (Practice profile), which the booking form never shows. Every bookable time is created as online.
+- **Feedback / decision:** Decided 1 Oct 2026. (1) A practice can have **several locations**. (2) The format is **dynamic per block of time**: for each block of hours the practice decides online, in person (at a location) or either, and a therapist who only works online only ever has online times, so their clients only see online slots. Design drafted in `docs/superpowers/specs/2026-10-01-session-formats-and-locations-design.md`. **Parked: come back to it before building.**
+- **Fix:**
+- **Verified:**
+
+### SET-07 · Different prices online and in person
+- **Type:** Feature · **Priority:** P1 · **Status:** Discuss
+- **Observed:** Some practices charge differently for online and in-person sessions, but a service has one price.
+- **Feedback / decision:** Decided 1 Oct 2026: price **per service, per format** (for example Individual Therapy online ₦30,000, in person ₦35,000; they can be the same). Part of the same design, `docs/superpowers/specs/2026-10-01-session-formats-and-locations-design.md`. **Parked.**
+- **Fix:**
+- **Verified:**
+
 ## Client booking link / page
 
 ### BKG-01 · Booking page layout is incoherent
@@ -222,9 +239,9 @@ A running log of what shows up in testing, what we decide about it, and when it'
 - **Verified:**
 
 ### BKG-05 · Session format should follow the practice's slot options
-- **Type:** Bug · **Priority:** · **Status:** Open
+- **Type:** Bug · **Priority:** · **Status:** Discuss
 - **Observed:** The session format on the booking form should depend on the options the practice offers for each booking slot.
-- **Feedback / decision:**
+- **Feedback / decision:** The format comes from each time slot, as set per block of hours (see SET-06), and the price from the service's price for that format (SET-07). Design in `docs/superpowers/specs/2026-10-01-session-formats-and-locations-design.md`. **Parked.**
 - **Fix:**
 - **Verified:**
 
@@ -232,6 +249,13 @@ A running log of what shows up in testing, what we decide about it, and when it'
 - **Type:** Feature · **Priority:** · **Status:** Ready
 - **Observed:** Two forms matter: **Client intake** and **Confidentiality**. We still need to decide whether they're filled in at booking or after it. Every new practice should get a default template for both, which the practice can then edit.
 - **Feedback / decision:** Every practice gets both forms by default and can edit the wording. Clients receive them after booking, to complete before the first session (decided 30 Sep 2026). Plan Task 11.
+- **Fix:**
+- **Verified:**
+
+### BKG-07 · Hard-coded location in the booking page header
+- **Type:** Bug · **Priority:** P1 · **Status:** Discuss
+- **Observed:** Found while checking SET-06. The booking page header says "Lagos, Nigeria · Online & in-person" for every practice, whatever it offers or wherever it is.
+- **Feedback / decision:** Replace it with the practice's real cities and formats, as part of SET-06. **Parked with SET-06.**
 - **Fix:**
 - **Verified:**
 

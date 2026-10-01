@@ -598,7 +598,9 @@ git commit -m "The booking page shows the practice logo"
 
 ---
 
-### Task 5: Each slot carries its real session format (BKG-05, API side of ONB-05)
+### Task 5: Each slot carries its real session format (BKG-05, API side of ONB-05). Superseded
+
+> **Superseded 1 Oct 2026:** Tasks 5–6 are replaced by the fuller design in `docs/superpowers/specs/2026-10-01-session-formats-and-locations-design.md` (several locations, price per format, formats per block limited by each therapist). It's parked. Don't build Tasks 5–6 as written.
 
 **Root cause:** `ConsultAvailability.channel` already exists, but every slot is created with `channel: 'VIDEO'` (`consult.service.ts` `replaceTherapistAvailability`, around line 519, and `staff-booking.service.ts:339`). On the booking page, "Online / In-person" is a local toggle that's never sent anywhere.
 
