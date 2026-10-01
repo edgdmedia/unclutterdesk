@@ -116,10 +116,10 @@ A running log of what shows up in testing, what we decide about it, and when it'
 - **Verified:**
 
 ### NOT-03 · Sender shows as no-r...@unclutterdesk.com
-- **Type:** Bug · **Priority:** P1 · **Status:** Open
+- **Type:** Bug · **Priority:** P1 · **Status:** Won't fix (transport)
 - **Observed:** Booking emails arrive from "no-r...@unclutterdesk.com" in the inbox list, not "EDGD Media" (the practice) or "Unclutter Desk".
 - **Feedback / decision:** To investigate. The code does pass a display name (the practice's name, else `SMTP_FROM_NAME`, else "Unclutter Desk"; `mail.service.ts`), but locally mail goes through Gmail SMTP with `SMTP_FROM` set and `SMTP_FROM_NAME` not set. Gmail rewrites or ignores the From display name when it isn't the signed-in account or a verified "Send mail as" alias. Check what reaches the inbox, and whether production (Resend with a verified domain) shows the name correctly before changing code.
-- **Fix:**
+- **Fix:** Investigated: the code is right. `mail.service.spec.ts` now pins the From it builds — `"Unclutter Desk" <no-reply@unclutterdesk.com>` with no brand, `"EDGD Media" <…>` with one. What a client *shows* is the transport's doing: Gmail SMTP rewrites the display name for anything that isn't the signed-in account or a verified alias; production uses Resend with verified domains, which keeps the practice's name. Documented in `docs/VPS_PREPARATION.md` ("Email sender name"). No code change warranted — retest on production mail before reopening.
 - **Verified:**
 
 ### NOT-04 · "Pay to confirm" email already gives the join link

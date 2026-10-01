@@ -35,6 +35,34 @@ describe('MailService', () => {
     vi.restoreAllMocks();
   });
 
+  // NOT-03: the code must build a proper From. What a client app then shows
+  // for it is the transport's business — see docs/VPS_PREPARATION.md.
+  describe('the From line (NOT-03)', () => {
+    it('names the platform when there is no practice and no SMTP_FROM_NAME', async () => {
+      process.env.SMTP_HOST = 'smtp.example.com';
+      process.env.SMTP_USER = 'u';
+      process.env.SMTP_PASS = 'p';
+      process.env.SMTP_FROM = 'no-reply@unclutterdesk.com';
+      const mail = new MailService(prismaWith(null));
+      const smtp: any = { sendMail: vi.fn().mockResolvedValue({ messageId: 'm1' }) };
+      (mail as any).smtp = smtp;
+      await mail.sendMail('c@x.ng', 'Hi', '<p>Hi</p>');
+      expect(smtp.sendMail.mock.calls[0][0].from).toBe('"Unclutter Desk" <no-reply@unclutterdesk.com>');
+    });
+
+    it('names the practice when the email carries its brand', async () => {
+      process.env.SMTP_HOST = 'smtp.example.com';
+      process.env.SMTP_USER = 'u';
+      process.env.SMTP_PASS = 'p';
+      process.env.SMTP_FROM = 'no-reply@unclutterdesk.com';
+      const mail = new MailService(prismaWith(null));
+      const smtp: any = { sendMail: vi.fn().mockResolvedValue({ messageId: 'm1' }) };
+      (mail as any).smtp = smtp;
+      await mail.sendMail('c@x.ng', 'Hi', '<p>Hi</p>', undefined, { fromName: 'EDGD Media' });
+      expect(smtp.sendMail.mock.calls[0][0].from).toBe('"EDGD Media" <no-reply@unclutterdesk.com>');
+    });
+  });
+
   it('previews when nothing is configured', async () => {
     const mail = new MailService(prismaWith(null));
     expect(mail.isConfigured()).toBe(false);
