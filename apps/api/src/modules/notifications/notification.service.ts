@@ -9,6 +9,8 @@ import {
   ChannelPayload,
   ChannelRecipient,
   DeliveryResult,
+  MessageDetail,
+  MessageLink,
   NOTIFICATION_CHANNELS,
   NotificationChannel,
 } from './channels/notification.channel';
@@ -26,6 +28,10 @@ export interface NotifyInput {
   message: string;
   link?: string;
   actionLabel?: string;
+  /** Laid out as labelled rows in email. */
+  details?: MessageDetail[];
+  /** Further links under the main action. */
+  links?: MessageLink[];
   data?: Record<string, unknown>;
   /** Explicit per-channel override (module is trusted). */
   channels?: Partial<Record<ChannelKey, boolean>>;
@@ -52,6 +58,10 @@ export interface SendEmailInput {
   codeLabel?: string;
   link?: string;
   actionLabel?: string;
+  /** Laid out as labelled rows in the email. */
+  details?: MessageDetail[];
+  /** Further links under the main action. */
+  links?: MessageLink[];
   /** Present when a tenant exists — drives branding; absent for pre-tenant sends. */
   tenantId?: bigint | null;
   /** Present when a profile exists — enables emailLog; absent for pre-tenant sends. */
@@ -138,6 +148,8 @@ export class NotificationService implements OnModuleInit, OnModuleDestroy {
             title: input.title,
             message: input.message,
             link: input.link,
+            details: input.details,
+            links: input.links,
             actionLabel: input.actionLabel,
             data: input.data,
             brand,
@@ -181,6 +193,8 @@ export class NotificationService implements OnModuleInit, OnModuleDestroy {
         code: input.code,
         codeLabel: input.codeLabel,
         link: input.link,
+        details: input.details,
+        links: input.links,
         actionLabel: input.actionLabel,
         brand,
       },

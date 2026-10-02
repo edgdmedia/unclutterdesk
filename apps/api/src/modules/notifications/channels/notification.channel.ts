@@ -22,6 +22,18 @@ export interface ChannelRecipient {
   firstName?: string | null;
 }
 
+/** One labelled line in an email's details block, e.g. "When: Tuesday 6 October at 11:30". */
+export interface MessageDetail {
+  label: string;
+  value: string;
+}
+
+/** A secondary link shown under the main button, e.g. a form to fill in. */
+export interface MessageLink {
+  label: string;
+  url: string;
+}
+
 export interface ChannelPayload {
   type: string;
   title: string;
@@ -32,6 +44,10 @@ export interface ChannelPayload {
   codeLabel?: string;
   link?: string;
   actionLabel?: string;
+  /** Structured facts, laid out as rows (email) instead of being run into the message. */
+  details?: MessageDetail[];
+  /** Further links under the main action. */
+  links?: MessageLink[];
   data?: Record<string, unknown>;
   brand?: ChannelBrand;
 }

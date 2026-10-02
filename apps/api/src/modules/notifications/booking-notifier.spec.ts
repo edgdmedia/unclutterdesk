@@ -73,7 +73,7 @@ describe('BookingNotifier.booked', () => {
     await notifier.booked(900n);
     const email = (notifications.sendEmail as any).mock.calls[0][0];
     expect(email.title).toBe('Your session is booked');
-    expect(email.message).toMatch(/meet\.jit\.si\/smith-therapy-900/);
+    expect(email.link).toMatch(/meet\.jit\.si\/smith-therapy-900/);
     expect(email.actionLabel).toBe('Join the session');
   });
 });
@@ -84,9 +84,19 @@ describe('BookingNotifier.confirmed', () => {
     await notifier.confirmed(900n);
     const email = (notifications.sendEmail as any).mock.calls[0][0];
     expect(email.title).toBe('Your session is booked');
-    expect(email.message).toMatch(/meet\.jit\.si\/smith-therapy-900/);
-    expect(email.message).toMatch(/\/portal/);
     expect(email.type).toBe('bookings.confirmed');
+    // Laid out, not one run-on paragraph with raw addresses in it.
+    expect(email.message).toBe('Smith Therapy has confirmed your session.');
+    expect(email.message).not.toMatch(/https?:/);
+    expect(email.details).toEqual([
+      { label: 'Session', value: 'Individual Therapy' },
+      { label: 'With', value: 'Jane Smith' },
+      { label: 'When', value: 'Tuesday 6 October at 11:30' },
+      { label: 'Where', value: 'Online (video)' },
+    ]);
+    expect(email.link).toMatch(/meet\.jit\.si\/smith-therapy-900/);
+    expect(email.actionLabel).toBe('Join the session');
+    expect(email.links).toContainEqual({ label: 'Manage your booking', url: expect.stringMatching(/\/portal$/) });
   });
 
   it('an in-person session gets no join link and points at the portal', async () => {

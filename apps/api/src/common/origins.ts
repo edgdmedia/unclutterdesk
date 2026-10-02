@@ -38,6 +38,14 @@ export function appOrigin(isProduction = process.env.NODE_ENV === 'production'):
  * yet, so sending a paying client there would strand them on a dead host.
  */
 /** The API's own public address, for links to things it serves (e.g. practice logos in emails). */
+/**
+ * A full address for a link that may be an in-app path ("/dashboard/sessions/8").
+ * In-app paths open on the app host, where staff and clients can both sign in.
+ */
+export function absoluteUrl(link: string, isProduction = process.env.NODE_ENV === 'production'): string {
+  return link.startsWith('/') ? `${appOrigin(isProduction)}${link}` : link;
+}
+
 export function apiOrigin(isProduction = process.env.NODE_ENV === 'production'): string {
   const configured = process.env.API_URL?.trim();
   if (configured) return configured.replace(/\/+$/, '');

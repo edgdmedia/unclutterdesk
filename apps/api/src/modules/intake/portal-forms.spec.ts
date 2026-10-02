@@ -133,10 +133,11 @@ describe('BookingNotifier confirmed email mentions the forms', () => {
     const notifier = new BookingNotifier(prisma, notifications as any);
     await notifier.confirmed(900n);
     const email = notifications.sendEmail.mock.calls[0][0];
-    expect(email.message).toMatch(/Before your first session/i);
-    expect(email.message).toMatch(/Client intake/);
-    expect(email.message).toContain('/forms/20?booking=900');
+    const forms = email.links.filter((l: { label: string }) => /Before your first session/.test(l.label));
+    expect(forms).toHaveLength(1);
+    expect(forms[0].label).toMatch(/Client intake/);
+    expect(forms[0].url).toContain('/forms/20?booking=900');
     // Already submitted: not listed again.
-    expect(email.message).not.toMatch(/Confidentiality —/);
+    expect(JSON.stringify(email.links)).not.toMatch(/Confidentiality/);
   });
 });

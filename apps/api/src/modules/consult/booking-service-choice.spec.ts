@@ -138,6 +138,7 @@ describe('the booking confirmation email', () => {
     const email = notifications.sendEmail.mock.calls.find((c: any[]) => c[0].type === 'bookings.confirmed')?.[0];
     expect(email).toBeTruthy();
     expect(email.to).toBe('ada@example.com');
-    expect(email.message).toMatch(/Join link/i);
+    expect(email.actionLabel).toBe('Join the session');
+    expect(email.link).toMatch(/^https?:\/\//);
   });
 });

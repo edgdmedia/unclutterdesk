@@ -74,5 +74,35 @@ describe('EmailChannel', () => {
     await channel.send({ profileId: null, tenantId: null, email: 'a@x.com' }, { type: 't', title: 'Reset your password', message: 'M' });
     expect(mail.deliver.mock.calls[0][0].from).toEqual({ name: 'Unclutter Desk', address: 'notifications@notify.unclutterdesk.com' });
   });
+
+  it('turns an in-app path into a full address, so the email link opens', async () => {
+    process.env.APP_URL = 'https://app.unclutterdesk.com';
+    const { channel, mail } = make();
+    await channel.send({ profileId: 4n, tenantId: 7n, email: 's@x.ng' }, { type: 't', title: 'New booking', message: 'M', link: '/dashboard/sessions/8', actionLabel: 'Open session' });
+    expect(html(mail)).toContain('href="https://app.unclutterdesk.com/dashboard/sessions/8"');
+    expect(html(mail)).not.toContain('href="/dashboard');
+    delete process.env.APP_URL;
+  });
+
+  it('lays out details as labelled rows and extra links as a list, in the HTML and the plain text', async () => {
+    const { channel, mail } = make();
+    await channel.send(
+      { profileId: 4n, tenantId: 7n, email: 'c@x.ng' },
+      {
+        type: 't',
+        title: 'Your session is booked',
+        message: 'Smith Therapy has confirmed your session.',
+        details: [{ label: 'With', value: 'Jane <Smith>' }, { label: 'When', value: 'Tuesday 6 October, 11:30' }],
+        links: [{ label: 'Client intake (5 min)', url: 'https://smith.unclutterdesk.com/forms/3?booking=8' }],
+      },
+    );
+    const out = html(mail);
+    expect(out).toContain('With</td>');
+    expect(out).toContain('Jane &lt;Smith&gt;');
+    expect(out).toContain('href="https://smith.unclutterdesk.com/forms/3?booking=8"');
+    const text = mail.deliver.mock.calls[0][0].text as string;
+    expect(text).toContain('With: Jane <Smith>');
+    expect(text).toContain('Client intake (5 min): https://smith.unclutterdesk.com/forms/3?booking=8');
+  });
 });
 
