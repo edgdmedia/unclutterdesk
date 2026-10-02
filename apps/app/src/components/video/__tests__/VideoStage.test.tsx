@@ -63,6 +63,9 @@ beforeEach(() => {
   apiPost.mockReset();
   participants.remote = ['them'];
   Object.values(daily).forEach((f) => (f as any).mockClear?.());
+  // Daily's join and destroy always return promises.
+  daily.join.mockResolvedValue(undefined);
+  daily.destroy.mockResolvedValue(undefined);
   jitsi.executeCommand.mockClear();
 });
 afterEach(() => {
@@ -132,6 +135,15 @@ describe('VideoStage', () => {
     expect(await screen.findByText('This room opens at 9:45 AM.')).toBeTruthy();
     fireEvent.click(screen.getByRole('button', { name: 'Check again' }));
     await waitFor(() => expect(daily.join).toHaveBeenCalled());
+  });
+
+  it('says so when the call cannot start, and offers to try again', async () => {
+    apiPost.mockResolvedValue(DAILY);
+    daily.join.mockRejectedValueOnce(new Error('meeting token expired'));
+    stage();
+    expect(await screen.findByText('The video call could not start. Check your connection and try again.')).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: 'Check again' }));
+    await waitFor(() => expect(apiPost).toHaveBeenCalledTimes(2));
   });
 
   it('hands the end button to the page', async () => {

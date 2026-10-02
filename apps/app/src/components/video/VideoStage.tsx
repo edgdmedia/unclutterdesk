@@ -77,7 +77,15 @@ export function VideoStage({
   const room = state.room;
   switch (room.provider) {
     case 'DAILY':
-      return <DailyStage roomUrl={room.roomUrl} token={room.token} waitingFor={waitingFor} renderBar={renderBar} />;
+      return (
+        <DailyStage
+          roomUrl={room.roomUrl}
+          token={room.token}
+          waitingFor={waitingFor}
+          renderBar={renderBar}
+          onFailed={() => setState({ kind: 'closed', message: 'The video call could not start. Check your connection and try again.' })}
+        />
+      );
     case 'JAAS':
       return <JaasStage appId={room.appId} roomName={room.roomName} jwt={room.jwt} renderBar={renderBar} />;
     default:

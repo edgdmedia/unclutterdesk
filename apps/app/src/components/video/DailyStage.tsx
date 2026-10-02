@@ -15,14 +15,15 @@ import type { CallControls, RenderBar } from './types';
 import { WaitingPanel } from './WaitingPanel';
 
 /** VID-01: a Daily room, drawn with our own tiles and controls. */
-export function DailyStage({ roomUrl, token, waitingFor, renderBar }: { roomUrl: string; token: string; waitingFor: string; renderBar: RenderBar }) {
+export function DailyStage({ roomUrl, token, waitingFor, renderBar, onFailed }: { roomUrl: string; token: string; waitingFor: string; renderBar: RenderBar; onFailed(): void }) {
   const [call, setCall] = useState<DailyCall | null>(null);
 
   useEffect(() => {
     // React's development double-mount would otherwise trip Daily's one-instance rule.
     const c = Daily.createCallObject({ allowMultipleCallInstances: true });
     setCall(c);
-    void c.join({ url: roomUrl, token });
+    // A refused start (an expired token, a network block) must not leave an empty room.
+    c.join({ url: roomUrl, token }).catch(() => onFailed());
     return () => {
       void c.destroy();
     };
