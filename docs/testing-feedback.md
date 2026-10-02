@@ -99,6 +99,9 @@ A running log of what shows up in testing, what we decide about it, and when it'
 | GEN-01 | Design system | Pages set their own widths and hand-write their grids | UX | P2 | Ready |
 | GEN-02 | Design system | The dashboard keeps showing Profile photo and Practice branding cards | UX | P3 | Ready |
 | GEN-03 | Design system | The menu feels disconnected | UX | P2 | Ready |
+| NOT-12 | Notifications | Practices can't change the wording of their emails | Feature | P2 | Ready |
+| NOT-13 | Notifications | Clients can't choose their reminders | Feature | P1 | Ready |
+| NOT-14 | Notifications | Practices can't see or send a session's reminders | Feature | P2 | Ready |
 
 ---
 
@@ -216,6 +219,27 @@ A running log of what shows up in testing, what we decide about it, and when it'
 - **Feedback / decision:** One function (SenderIdentityService) decides the sender for every provider: the practice's name (Unclutter Desk for platform mail), the platform address from MAIL_FROM (or the practice's verified domain when the provider can sign for it), replies to the practice. Providers only deliver.
 - **Fix:** `c0ee98c` on `dev`.
 - **Verified:** Unit tests; API boots.
+
+### NOT-12 · Practices can't change the wording of their emails
+- **Type:** Feature · **Priority:** P2 · **Status:** Ready
+- **Observed:** Every email's wording is fixed in code.
+- **Feedback / decision:** Decided 2 Oct 2026. Practices can edit the wording of every email they send to clients (subject, opening line, button label), with placeholders such as {{client_first_name}}, {{service}}, {{therapist}}, {{when}}, a preview, and "Reset to default". Platform emails (sign-in codes, password resets) stay fixed.
+- **Fix:** 
+- **Verified:** 
+
+### NOT-13 · Clients can't choose their reminders
+- **Type:** Feature · **Priority:** P1 · **Status:** Ready
+- **Observed:** Clients have no reminder settings, and nothing to set after booking.
+- **Feedback / decision:** Decided 2 Oct 2026. Clients set reminder and notification preferences in the portal (which reminders, how long before, by email or in-app; SMS later). Right after booking, the confirmation offers "Remind me" choices (1 day, 2 hours, 30 minutes before) for that session, with "Use these for all my sessions". A client's choice overrides the practice default.
+- **Fix:** 
+- **Verified:** 
+
+### NOT-14 · Practices can't see or send a session's reminders
+- **Type:** Feature · **Priority:** P2 · **Status:** Ready
+- **Observed:** Nothing shows what a client will be reminded of, and there is no way to send a reminder by hand.
+- **Feedback / decision:** Decided 2 Oct 2026. The session page lists the scheduled reminders (what, when, how) and offers "Send a reminder now".
+- **Fix:** 
+- **Verified:** 
 
 ## Onboarding
 
@@ -356,6 +380,7 @@ A running log of what shows up in testing, what we decide about it, and when it'
 - **Type:** Feature · **Priority:** P2 · **Status:** Ready
 - **Observed:** Availability's length decides each slot; a service longer than the slot is hidden at those times, a shorter one takes the whole slot.
 - **Feedback / decision:** Decided 2 Oct 2026. The availability length is the slot. A service up to one slot takes one; a longer one takes back-to-back slots (80 minutes at 9:00 uses the 9:00 and 10:00 slots, ends 10:20), all free and all allowing the chosen format. Clients see only start times where enough slots are free, shown as "9:00 – 10:20". Do after the formats and locations work lands.
+- **Update:** 2 Oct 2026: approved to build (after the formats and locations work lands).
 - **Fix:** 
 - **Verified:** 
 
@@ -469,6 +494,7 @@ A running log of what shows up in testing, what we decide about it, and when it'
   - **Usage records** (decided 1 Oct 2026): every video session stores practice, therapist, provider, start, end and participant-minutes. The router reads the monthly totals, and the admin console shows minutes by month, practice and provider for planning.
   - To confirm in the JaaS dashboard before building: what the free plan does at the 26th user (blocked or prompted), and the paid per-user price (about $0.35 per user per a third-party summary).
   - Needs a Daily account and API key, and a JaaS app (app ID and signing key), before building. ONB-08 (setup asks for the video platform) follows from this.
+- **Update:** 2 Oct 2026: the Daily and JaaS keys are set in the API .env; ready to build.
 - **Fix:**
 - **Verified:**
 
@@ -538,6 +564,7 @@ A running log of what shows up in testing, what we decide about it, and when it'
 - **Type:** UX · **Priority:** P2 · **Status:** Ready
 - **Observed:** The custom-form "Assessment" category overlaps the scored-assessment library.
 - **Feedback / decision:** Decided 2 Oct 2026. Remove "Assessment" from the Forms page and editor. The five default forms exist for every practice: Intake, Review, Consent, Feedback, Confidentiality. Scored assessments live under Assessments.
+- **Update:** 2 Oct 2026: the five default forms are drafted and seeded (`868cfa3`; local database backfilled). The Forms page tabs and editor types are still to change.
 - **Fix:** 
 - **Verified:** 
 
