@@ -36,6 +36,7 @@ export class SessionDirectoryService {
       client: { select: { id: true, firstName: true, lastName: true, email: true, phone: true } },
       service: { select: { title: true } },
       availability: { include: { therapist: { select: { profile: { select: { firstName: true, lastName: true } } } } } },
+      location: { select: { id: true, name: true, city: true } },
       clinicalNotes: { select: { id: true, isLocked: true }, take: 1, orderBy: { createdAt: 'desc' as const } },
     };
   }
@@ -57,6 +58,9 @@ export class SessionDirectoryService {
         name: name(b.availability.therapist?.profile, 'Practitioner'),
       },
       channel: b.availability.channel as string,
+      // SET-06: rows predating the format column read as online.
+      format: (b.format as string | null) ?? 'ONLINE',
+      location: b.location ? { id: b.location.id.toString(), name: b.location.name, city: b.location.city } : null,
     };
   }
 
@@ -118,7 +122,7 @@ export class SessionDirectoryService {
       ...this.shape(b, await this.bookedBy(tenantId, b.createdByProfileId)),
       clientEmail: b.client.email,
       clientPhone: b.client.phone,
-      videoRoomLink: b.availability.channel === 'VIDEO' ? roomLink(b.videoRoomName) : null,
+      videoRoomLink: b.format === 'IN_PERSON' ? null : b.availability.channel === 'VIDEO' ? roomLink(b.videoRoomName) : null,
       note: note ? { id: note.id.toString(), status: note.isLocked ? 'COMPLETED' : 'DRAFT' } : null,
       internalSummary: b.internalSummary,
       clientRecap: b.clientRecap,
@@ -166,7 +170,7 @@ export class SessionDirectoryService {
     return this.prisma.$transaction(async (tx: any) => {
       const b = await tx.consultBooking.findFirst({
         where: { id: bookingId, tenantId },
-        select: { id: true, status: true, availabilityId: true, serviceId: true },
+        select: { id: true, status: true, availabilityId: true, serviceId: true, format: true },
       });
       if (!b) throw new NotFoundException('Session not found');
       if (b.status === 'CANCELLED' || b.status === 'COMPLETED') {
@@ -185,9 +189,19 @@ export class SessionDirectoryService {
       if (slot.serviceId !== null && slot.serviceId !== b.serviceId) {
         throw new BadRequestException('That time is kept for a different service. Choose another.');
       }
+      // SET-06: a move keeps the bought format; the place comes with the time.
+      if (b.format === 'IN_PERSON' && (!slot.allowsInPerson || !slot.locationId)) {
+        throw new BadRequestException("That time isn't available in person. Choose another.");
+      }
+      if ((b.format ?? 'ONLINE') === 'ONLINE' && slot.allowsOnline === false) {
+        throw new BadRequestException("That time isn't available online. Choose another.");
+      }
       await tx.consultAvailability.updateMany({ where: { id: b.availabilityId, tenantId }, data: { isActive: true } });
       await tx.consultAvailability.update({ where: { id: slot.id }, data: { isActive: false } });
-      await tx.consultBooking.update({ where: { id: b.id }, data: { availabilityId: slot.id } });
+      await tx.consultBooking.update({
+        where: { id: b.id },
+        data: { availabilityId: slot.id, ...(b.format === 'IN_PERSON' ? { locationId: slot.locationId } : {}) },
+      });
       return { id: b.id.toString(), startsAt: slot.startsAt.toISOString() };
     });
   }

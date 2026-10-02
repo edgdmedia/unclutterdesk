@@ -5,6 +5,7 @@ import { CalendarService } from '../calendar/calendar.service';
 import { ConsultService } from './consult.service';
 import { assertWithinMonthlyLimit } from './booking-limits';
 import { paidAmount, parseStaffPayment, paymentsAllowed, payLinkToken, payLinkTokenValid, staffLinkHold } from './staff-booking-rules';
+import { allowedFormats, asFormat, priceFor } from './formats';
 import { chargedKobo } from '../../common/revenue';
 import { tenantWebOrigin } from '../../common/origins';
 import { formatNaira } from '../billing/subscription-plans';
@@ -19,6 +20,8 @@ export interface StaffBookingInput {
   amountKobo?: string;
   note?: string;
   notifyClient?: boolean;
+  format?: string;
+  locationId?: string | null;
 }
 
 export interface StaffBookingResult {
@@ -32,6 +35,8 @@ export interface StaffBookingResult {
   serviceTitle: string;
   practitionerName: string;
   clientName: string;
+  format: string;
+  location: { id: string } | null;
 }
 
 const id = (v: unknown, what: string): bigint => {
@@ -42,7 +47,7 @@ const fullName = (p: { firstName?: string | null; lastName?: string | null } | n
   `${p?.firstName ?? ''} ${p?.lastName ?? ''}`.trim();
 
 type StaffBookingTime =
-  | { kind: 'slot'; slotId: bigint; startsAt: Date; endsAt: Date }
+  | { kind: 'slot'; slotId: bigint; startsAt: Date; endsAt: Date; allowsOnline?: boolean | null; allowsInPerson?: boolean | null; locationId?: bigint | null }
   | { kind: 'custom'; startsAt: Date; endsAt: Date };
 
 /**
@@ -91,11 +96,11 @@ export class StaffBookingService {
 
     const therapist = await this.prisma.consultTherapistProfile.findFirst({
       where: { profileId: providerId, tenantId, profile: { status: 'active' } },
-      include: { profile: true },
+      include: { profile: true, workLocations: { select: { locationId: true } } },
     });
     if (!therapist) throw new BadRequestException('Choose a practitioner in this practice.');
 
-    const service = await this.prisma.consultService.findFirst({ where: { id: serviceId, tenantId, isActive: true } });
+    const service = await this.prisma.consultService.findFirst({ where: { id: serviceId, tenantId, isActive: true }, include: { formats: true } });
     if (!service) throw new BadRequestException('That service is not offered. Choose another service.');
 
     const tenant = await this.prisma.tenant.findUnique({ where: { id: tenantId } });
@@ -103,7 +108,34 @@ export class StaffBookingService {
 
     const time = await this.resolveTime(tenantId, providerId, service, dto);
 
-    const price = BigInt(service.priceKobo ?? 0);
+    // SET-06: the format follows the time and the therapist, decided here.
+    const tf = {
+      offersOnline: (therapist as any).offersOnline ?? true,
+      offersInPerson: (therapist as any).offersInPerson ?? false,
+      locationIds: (((therapist as any).workLocations ?? []) as Array<{ locationId: bigint }>).map((w) => w.locationId),
+    };
+    const legacy = (time as any).allowsOnline == null && (time as any).allowsInPerson == null;
+    const allowedFmts = allowedFormats(
+      {
+        allowsOnline: legacy ? true : (time as any).allowsOnline,
+        allowsInPerson: legacy ? false : (time as any).allowsInPerson,
+        locationId: (time as any).locationId ?? null,
+      },
+      tf,
+    );
+    const possible = [allowedFmts.online && 'ONLINE', allowedFmts.inPerson && 'IN_PERSON'].filter(Boolean) as Array<'ONLINE' | 'IN_PERSON'>;
+    const requested = asFormat(dto?.format);
+    if (!requested) {
+      if (possible.length !== 1) throw new BadRequestException('Choose online or in person.');
+    } else if (!possible.includes(requested)) {
+      throw new BadRequestException('That time does not offer this format. Choose another.');
+    }
+    const format: 'ONLINE' | 'IN_PERSON' = requested ?? possible[0];
+    const locationId = format === 'IN_PERSON' ? (time as any).locationId ?? (dto?.locationId ? BigInt(dto.locationId) : null) : null;
+    if (format === 'IN_PERSON' && !locationId) throw new BadRequestException('Choose where the session happens.');
+
+    const price = priceFor((service as any).formats ?? [], format) ?? (format === 'ONLINE' ? BigInt(service.priceKobo ?? 0) : null);
+    if (price === null) throw new BadRequestException('That service is not offered in person. Choose another.');
     const now = new Date();
     const free = price === 0n || payment === 'NONE';
     let hold: Date | null = null;
@@ -122,7 +154,8 @@ export class StaffBookingService {
 
     const booking = await this.prisma.$transaction(async (tx) => {
       const slotId = await this.claimTime(tx, tenantId, providerId, service.id, time, fullName(therapist.profile), therapist.profile?.timezone || 'Africa/Lagos');
-      const { roomName } = await this.consult.resolveVideoRoomLink(therapist, Date.now());
+      // Rule 6: only online sessions get a video room.
+      const { roomName } = format === 'ONLINE' ? await this.consult.resolveVideoRoomLink(therapist, Date.now()) : { roomName: null };
       return tx.consultBooking.create({
         data: {
           tenantId,
@@ -131,6 +164,8 @@ export class StaffBookingService {
           clientProfileId: client.id,
           createdByProfileId: actorProfileId,
           notes: dto.note ? String(dto.note).trim().slice(0, 1000) || null : null,
+          format,
+          locationId,
           videoRoomName: roomName,
           ...paymentData,
         } as any,
@@ -148,6 +183,8 @@ export class StaffBookingService {
       serviceTitle: service.title,
       practitionerName: fullName(therapist.profile),
       clientName: fullName(client) || client.email,
+      format,
+      location: locationId ? { id: locationId.toString() } : null,
     };
     // After commit, and never failing the booking.
     await this.afterCreate(booking.id, result, dto.notifyClient !== false).catch((err) =>
@@ -279,7 +316,7 @@ export class StaffBookingService {
       if (service.durationMinutes > (slot.endsAt.getTime() - slot.startsAt.getTime()) / 60_000) {
         throw new BadRequestException('That time is too short for this service. Choose another.');
       }
-      return { kind: 'slot', slotId: slot.id, startsAt: slot.startsAt, endsAt: slot.endsAt };
+      return { kind: 'slot', slotId: slot.id, startsAt: slot.startsAt, endsAt: slot.endsAt, allowsOnline: slot.allowsOnline, allowsInPerson: slot.allowsInPerson, locationId: slot.locationId };
     }
     if (dto.startsAt) {
       const startsAt = new Date(String(dto.startsAt));

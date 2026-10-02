@@ -396,3 +396,35 @@ describe('the slots offered for a reschedule', () => {
     await expect(options(service)).rejects.toThrow(BadRequestException);
   });
 });
+
+
+// SET-06: a move keeps the booking's format; it never changes it silently.
+describe('rescheduling by format', () => {
+  it('refuses to move an in-person session onto an online-only time', async () => {
+    const { service } = makeService({
+      booking: {
+        id: BOOKING, tenantId: TENANT, clientProfileId: CLIENT, serviceId: 2n, availabilityId: OLD_SLOT,
+        status: 'CONFIRMED', format: 'IN_PERSON', locationId: 4n,
+        availability: { id: OLD_SLOT, providerProfileId: PROVIDER, startsAt: hoursFromNow(72) },
+        service: { title: 'Therapy' },
+      },
+      target: { id: NEW_SLOT, tenantId: TENANT, providerProfileId: PROVIDER, serviceId: 2n, isActive: true, startsAt: hoursFromNow(96), allowsOnline: true, allowsInPerson: false, locationId: null },
+    });
+    await expect(service.rescheduleBooking(TENANT, CLIENT, BOOKING, NEW_SLOT)).rejects.toThrow("That time isn't available in person. Choose another.");
+  });
+
+  it('moves in person to a time with its own location', async () => {
+    const { service, tx } = makeService({
+      booking: {
+        id: BOOKING, tenantId: TENANT, clientProfileId: CLIENT, serviceId: 2n, availabilityId: OLD_SLOT,
+        status: 'CONFIRMED', format: 'IN_PERSON', locationId: 4n,
+        availability: { id: OLD_SLOT, providerProfileId: PROVIDER, startsAt: hoursFromNow(72) },
+        service: { title: 'Therapy' },
+      },
+      target: { id: NEW_SLOT, tenantId: TENANT, providerProfileId: PROVIDER, serviceId: 2n, isActive: true, startsAt: hoursFromNow(96), allowsOnline: false, allowsInPerson: true, locationId: 6n },
+    });
+    await service.rescheduleBooking(TENANT, CLIENT, BOOKING, NEW_SLOT);
+    const moved = tx.consultBooking.updateMany.mock.calls[0][0].data;
+    expect(moved.locationId).toBe(6n);
+  });
+});

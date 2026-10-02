@@ -103,6 +103,29 @@ describe('StaffBookingDialog', () => {
     }));
   });
 
+  // SET-06: a time that allows both asks staff to choose.
+  it('asks for a format on a both-formats slot and sends the choice', async () => {
+    apiPost.mockResolvedValue({ bookingId: '901', status: 'PENDING_PAYMENT' });
+    apiGet.mockImplementation((path: string) => {
+      if (String(path).startsWith('/v1/consult/public/availability')) {
+        return Promise.resolve([{ id: '300', startsAt: new Date(Date.now() + 86400000).toISOString(), endsAt: '', formats: ['ONLINE', 'IN_PERSON'], location: { name: 'Lekki clinic', city: 'Lagos' } }]);
+      }
+      if (String(path).startsWith('/v1/consult/public/services')) return Promise.resolve([{ id: '20', title: 'Therapy session', durationMinutes: 50, priceKobo: '2500000' }]);
+      if (String(path).startsWith('/v1/tenant/staff')) return Promise.resolve([{ kind: 'member', id: '5', firstName: 'Jane', lastName: 'Smith', status: 'active', isTherapist: true }]);
+      return Promise.resolve([]);
+    });
+    render(<StaffBookingDialog client={{ id: '40', name: 'Ada Ola' }} onClose={() => {}} onBooked={() => {}} />);
+    await waitFor(() => expect(screen.getByRole('radio', { name: /Therapy session/ })).toBeTruthy());
+    fireEvent.click(screen.getByRole('radio', { name: /Therapy session/ }));
+    await waitFor(() => expect(screen.getByTestId('slot-300')).toBeTruthy());
+    fireEvent.click(screen.getByTestId('slot-300'));
+    fireEvent.click(await screen.findByRole('radio', { name: 'In person' }));
+    fireEvent.click(screen.getByRole('radio', { name: /No charge/ }));
+    fireEvent.click(screen.getByRole('button', { name: 'Book session' }));
+    await waitFor(() => expect(apiPost).toHaveBeenCalled());
+    expect(apiPost.mock.calls[0][1]).toMatchObject({ format: 'IN_PERSON' });
+  });
+
   it('does not offer "mark as paid" to a therapist', async () => {
     role = 'THERAPIST';
     render(<StaffBookingDialog client={{ id: '40', name: 'Ada Ola' }} onClose={() => {}} onBooked={() => {}} />);

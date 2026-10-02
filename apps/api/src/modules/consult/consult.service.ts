@@ -1499,6 +1499,17 @@ export class ConsultService {
     if (target.serviceId !== booking.serviceId) {
       throw new BadRequestException('That time is not open for this service');
     }
+    // SET-06: the move keeps the format that was bought; it never changes it
+    // silently. Rows predating the flags read as online, as they were.
+    const boughtFormat = asFormat((booking as { format?: string | null }).format ?? 'ONLINE') ?? 'ONLINE';
+    const targetOnline = (target as any).allowsOnline ?? (target.channel ? asFormat(target.channel) === 'ONLINE' : true);
+    const targetInPerson = (target as any).allowsInPerson ?? false;
+    if (boughtFormat === 'IN_PERSON' && (!targetInPerson || !(target as any).locationId)) {
+      throw new BadRequestException("That time isn't available in person. Choose another.");
+    }
+    if (boughtFormat === 'ONLINE' && !targetOnline) {
+      throw new BadRequestException("That time isn't available online. Choose another.");
+    }
 
     const updated = await this.prisma.$transaction(async (tx) => {
       const claimed = await tx.consultAvailability.updateMany({
@@ -1518,7 +1529,12 @@ export class ConsultService {
 
       const moved = await tx.consultBooking.updateMany({
         where: { id: booking.id, tenantId, clientProfileId },
-        data: { availabilityId: target.id, updatedAt: new Date() },
+        data: {
+          availabilityId: target.id,
+          updatedAt: new Date(),
+          // The place comes from the new time, like it did from the old one.
+          ...(boughtFormat === 'IN_PERSON' ? { locationId: (target as any).locationId } : {}),
+        },
       });
       if (moved.count === 0) {
         throw new BadRequestException('Booking not found');
