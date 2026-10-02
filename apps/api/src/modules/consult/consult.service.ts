@@ -1,4 +1,5 @@
 import { Injectable, BadRequestException, ConflictException, NotFoundException, ForbiddenException, Logger, Optional } from '@nestjs/common';
+import { roomResetOnMove } from '../video/room-links';
 import { joinWindow } from '../video/join-window';
 import { randomBytes } from 'crypto';
 import { PrismaService } from '../../common/prisma/prisma.service';
@@ -1558,6 +1559,8 @@ export class ConsultService {
           updatedAt: new Date(),
           // The place comes from the new time, like it did from the old one.
           ...(boughtFormat === 'IN_PERSON' ? { locationId: (target as any).locationId } : {}),
+          // VID-01: a room made for the old time can't serve the new one.
+          ...roomResetOnMove(booking),
         },
       });
       if (moved.count === 0) {

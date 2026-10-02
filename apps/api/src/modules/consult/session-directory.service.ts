@@ -1,5 +1,5 @@
 import { BadRequestException, ForbiddenException, Injectable, NotFoundException, Optional } from '@nestjs/common';
-import { isMeetLink, staffRoomPath } from '../video/room-links';
+import { isMeetLink, roomResetOnMove, staffRoomPath } from '../video/room-links';
 import { PrismaService } from '../../common/prisma/prisma.service';
 import { NotificationService } from '../notifications/notification.service';
 import { BookingNotifier } from '../notifications/booking-notifier.service';
@@ -170,7 +170,7 @@ export class SessionDirectoryService {
     return this.prisma.$transaction(async (tx: any) => {
       const b = await tx.consultBooking.findFirst({
         where: { id: bookingId, tenantId },
-        select: { id: true, status: true, availabilityId: true, serviceId: true, format: true },
+        select: { id: true, status: true, availabilityId: true, serviceId: true, format: true, videoProvider: true },
       });
       if (!b) throw new NotFoundException('Session not found');
       if (b.status === 'CANCELLED' || b.status === 'COMPLETED') {
@@ -200,7 +200,7 @@ export class SessionDirectoryService {
       await tx.consultAvailability.update({ where: { id: slot.id }, data: { isActive: false } });
       await tx.consultBooking.update({
         where: { id: b.id },
-        data: { availabilityId: slot.id, ...(b.format === 'IN_PERSON' ? { locationId: slot.locationId } : {}) },
+        data: { availabilityId: slot.id, ...(b.format === 'IN_PERSON' ? { locationId: slot.locationId } : {}), ...roomResetOnMove(b) },
       });
       return { id: b.id.toString(), startsAt: slot.startsAt.toISOString() };
     });

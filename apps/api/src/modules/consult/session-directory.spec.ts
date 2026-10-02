@@ -161,6 +161,13 @@ describe('rescheduleByStaff', () => {
     expect(t.consultAvailability.update).toHaveBeenCalledWith({ where: { id: 301n }, data: { isActive: false } });
     expect(t.consultBooking.update).toHaveBeenCalledWith({ where: { id: 900n }, data: { availabilityId: 301n } });
   });
+  it("gives a moved session a fresh video room when one was made for the old time", async () => {
+    const t = tx({ booking: { videoProvider: 'DAILY', videoRoomName: 'ud-900-x' } });
+    const { service, prisma } = make();
+    prisma.$transaction = vi.fn(async (fn: any) => fn(t));
+    await service.rescheduleByStaff(TENANT, DESK, 900n, 301n);
+    expect(t.consultBooking.update).toHaveBeenCalledWith({ where: { id: 900n }, data: { availabilityId: 301n, videoProvider: null, videoRoomName: null } });
+  });
   it('refuses a slot another practitioner owns', async () => {
     const t = tx({ slot: slot({ providerProfileId: 66n }) });
     const { service, prisma } = make();
