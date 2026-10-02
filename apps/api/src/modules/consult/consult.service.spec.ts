@@ -177,6 +177,21 @@ describe('ConsultService.getClientPortal', () => {
     expect(JSON.stringify(portal, (_k, v) => (typeof v === 'bigint' ? v.toString() : v))).not.toMatch(/ud-900-x|meet\.jit\.si/);
   });
 
+  it('lists upcoming sessions soonest first, keeping one in progress until it ends', async () => {
+    prisma.profile.findFirst.mockResolvedValue({ id: 9n });
+    const at = (minutesFromNow: number) => new Date(Date.now() + minutesFromNow * 60_000);
+    const row = (id: bigint, startsIn: number) => ({
+      id, status: 'CONFIRMED', paymentMethod: 'PAYSTACK', amountKobo: 1000n, holdExpiresAt: null, clientReportedPaidAt: null,
+      format: 'ONLINE', location: null, videoRoomName: null, service: { title: 'Therapy', priceKobo: 1000n },
+      availability: { startsAt: at(startsIn), endsAt: at(startsIn + 50), therapist: { profile: { firstName: 'Jane', lastName: 'Smith' } } },
+    });
+    // The query returns newest first.
+    prisma.consultBooking.findMany.mockResolvedValue([row(3n, 24 * 60), row(2n, 10), row(1n, -5), row(0n, -120)]);
+    const portal: any = await service.getClientPortal(1n, 9n);
+    expect(portal.upcoming.map((s: any) => s.id)).toEqual(['1', '2', '3']);
+    expect(portal.past.map((s: any) => s.id)).toEqual(['0']);
+  });
+
   it('scopes the booking query to the tenant and that client', async () => {
     prisma.profile.findFirst.mockResolvedValue({ id: 9n });
     await service.getClientPortal(1n, 9n);

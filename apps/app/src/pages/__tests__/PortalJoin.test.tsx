@@ -45,3 +45,15 @@ describe('the portal Join button', () => {
     expect(screen.queryByRole('link', { name: /join session/i })).toBeNull();
   });
 });
+
+describe('the session list', () => {
+  it('shows each session\'s day number in dark text, readable on the white list', async () => {
+    portalWith({});
+    await screen.findByText('Hello, Ada');
+    const day = String(tomorrow.getDate()).padStart(2, '0');
+    const tiles = screen.getAllByText(new RegExp(`^0?${Number(day)}$`));
+    // The hero tile is white on dark; every list tile must not be white on white.
+    expect(tiles.length).toBeGreaterThanOrEqual(2);
+    expect(tiles.filter((t) => t.className.includes('text-white')).length).toBe(1);
+  });
+});

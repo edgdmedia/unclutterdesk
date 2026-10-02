@@ -1673,8 +1673,12 @@ export class ConsultService {
           : null,
     }));
 
-    const upcoming = mapped.filter((booking) => new Date(booking.startsAt) >= now && booking.status !== 'CANCELLED');
-    const past = mapped.filter((booking) => new Date(booking.startsAt) < now || booking.status === 'COMPLETED');
+    // A session stays upcoming until it ends, so a client who is a few minutes
+    // late can still join it; the soonest comes first (the query is newest first).
+    const upcoming = mapped
+      .filter((booking) => new Date(booking.endsAt) >= now && booking.status !== 'CANCELLED' && booking.status !== 'COMPLETED')
+      .sort((a, b) => new Date(a.startsAt).getTime() - new Date(b.startsAt).getTime());
+    const past = mapped.filter((booking) => new Date(booking.endsAt) < now || booking.status === 'COMPLETED');
 
     return {
       clientName: `${client.firstName || ''} ${client.lastName || ''}`.trim() || client.email,
