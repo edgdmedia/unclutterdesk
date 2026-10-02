@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Video, Calendar, Check, ClipboardList, ChevronRight } from 'lucide-react';
-import { useBrand, useToast } from '@unclutterdesk/ui';
+import { MetricTile, useBrand, useToast } from '@unclutterdesk/ui';
+import { PracticeLogo } from '../../components/public/PracticeLogo';
 import { api, getBookingUrl, TENANT_SLUG, API_BASE } from '../../utils/apiClient';
 import { RescheduleDialog } from '../../components/RescheduleDialog';
 import { initialsOf } from '../../utils/initials';
@@ -122,6 +123,8 @@ export function ClientPortalPage() {
   const [portal, setPortal] = useState<PortalPayload>({ clientName: '', upcoming: [], past: [] });
   const [reschedulingId, setReschedulingId] = useState<string | null>(null);
   const [payments, setPayments] = useState<PaymentsPayload | null>(null);
+  // POR-02: the dashboard header counts the client's outstanding default forms.
+  const [formsTodo, setFormsTodo] = useState<number | null>(null);
   const [paymentsError, setPaymentsError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [assessments, setAssessments] = useState<MyAssessment[]>([]);
@@ -165,6 +168,13 @@ export function ClientPortalPage() {
       setLoading(false);
     }
   }
+
+  useEffect(() => {
+    if (!isAuthenticated) return;
+    api.get<Array<{ id: string }>>('/v1/intake/mine/forms')
+      .then((f) => setFormsTodo(f.length))
+      .catch(() => setFormsTodo(0));
+  }, [isAuthenticated]);
 
   useEffect(() => {
     if (tab !== 'payments' || !isAuthenticated || payments) return;
@@ -224,9 +234,7 @@ export function ClientPortalPage() {
   return (
     <div className="min-h-screen bg-[#F6F8FA] text-[#0F172A] font-outfit flex flex-col">
       <header className="h-[72px] shrink-0 flex items-center px-8 gap-3" style={{ backgroundColor: primary }}>
-        <div className="h-[34px] w-[34px] rounded-[11px] bg-[#E3B341] text-[#0F172A] font-extrabold text-[13px] flex items-center justify-center">
-          {initialsOf(brand.name, 'UD')}
-        </div>
+        <PracticeLogo name={brand.name || 'Unclutter Desk'} logoUrl={brand.logoUrl} size={34} color="#E3B341" />
         <span className="text-[16.5px] font-semibold text-white">{brand.name}</span>
         <div className="ml-auto flex items-center gap-4">
           <div className="h-[34px] w-[34px] rounded-full bg-white/15 text-white text-[12px] font-extrabold flex items-center justify-center">
@@ -241,6 +249,16 @@ export function ClientPortalPage() {
           <div>
             <span className="text-[9px] font-black tracking-[0.22em] uppercase text-[#94A3B8] block">YOUR SESSIONS</span>
             <h1 className="mt-1 text-[28px] font-bold tracking-[-0.03em] text-[#0F172A]">{portal.clientName ? `Hello, ${portal.clientName.split(' ')[0]}` : 'Client portal'}</h1>
+          </div>
+
+          <div className="grid grid-cols-2 min-[900px]:grid-cols-4 gap-3">
+            <MetricTile value={nextSession ? formatDay(nextSession.startsAt) : 'None'} label="Next session" />
+            <MetricTile value={String(portal.upcoming.filter((x) => x.status !== 'CANCELLED').length)} label="Upcoming sessions" />
+            <MetricTile
+              value={`₦${(portal.upcoming.filter((x) => x.status === 'PENDING_PAYMENT').reduce((sum, x) => sum + Number(x.priceKobo || 0), 0) / 100).toLocaleString('en-NG')}`}
+              label="To pay"
+            />
+            <MetricTile value={formsTodo === null ? '—' : String(formsTodo)} label="Forms to do" />
           </div>
 
           {portal.upcoming
