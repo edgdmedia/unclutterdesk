@@ -69,7 +69,7 @@ A running log of what shows up in testing, what we decide about it, and when it'
 | BKG-06 | Booking page | Default intake and confidentiality form templates for every practice | Feature | | Fixed |
 | BKG-07 | Booking page | Header shows a hard-coded "Lagos, Nigeria · Online & in-person" for every practice | Bug | P1 | Ready |
 | BKG-08 | Booking page | "Notify me" when a practice has no free times in the next 4 weeks | Feature | P3 | Deferred |
-| BKG-09 | Booking page | An abandoned online payment keeps the time blocked for everyone | Bug | P1 | Ready |
+| BKG-09 | Booking page | An abandoned online payment keeps the time blocked for everyone | Bug | P1 | Fixed |
 | BKG-10 | Booking page | After booking, clients aren't offered their account to manage the booking | UX | P1 | Fixed |
 | SET-09 | Settings | A practice discount can be turned off, but not back on, edited or deleted | Bug | P1 | Open |
 | BKG-11 | Booking page | The practice's booking link doesn't carry the new wizard design: too wide, no practice logo | Bug | P1 | Open |
@@ -225,7 +225,7 @@ A running log of what shows up in testing, what we decide about it, and when it'
   3. **Automatic set-up with Domain Connect:** the practice clicks "Connect automatically", is taken to their DNS provider (Cloudflare, GoDaddy and others support Domain Connect), approves, and the records are added for them. This needs our Domain Connect template published and approved by each provider. Where a provider doesn't support it, show the exact records with copy buttons and step-by-step guides (Cloudflare, GoDaddy, Namecheap, Whogohost). Either way, check automatically until the domain is live and email the practice when it is. We never ask for a practice's registrar login.
   - **Coming soon (decided 1 Oct 2026):** not built now. Until then, Brand settings shows the Custom domain section as "Coming soon" (no domain field or Verify button), and the booking link stays the practice's address.
   - Also **Remove domain**, which deletes it at Cloudflare. Booking emails, the calendar invite and CORS switch to the domain only once it's active (as today).
-- **Fix:**
+- **Fix:** Not built (coming soon). Until then Brand settings shows the Custom domain section as "Coming soon" and setup no longer offers a custom domain (873fd6f, with BKG-09).
 - **Verified:**
 
 ### SET-04 · Link, logo and colours set in setup don't show afterwards
@@ -329,15 +329,15 @@ A running log of what shows up in testing, what we decide about it, and when it'
 - **Verified:**
 
 ### BKG-09 · An abandoned online payment keeps the time blocked
-- **Type:** Bug · **Priority:** P1 · **Status:** Ready
+- **Type:** Bug · **Priority:** P1 · **Status:** Fixed
 - **Observed:** Found in the booking wizard's final review (1 Oct 2026). A booking waiting for online payment (`PENDING_PAYMENT`) has no hold expiry, unlike bank-transfer holds (48h). If a client closes Paystack and leaves, or picks a different time, the first booking stays pending and its time can't be booked by anyone until staff cancel it. The old one-page booking form had the same gap; the wizard makes it a little more likely.
 - **Feedback / decision:** Decided 1 Oct 2026. Paystack facts checked: Pay-with-Transfer account numbers expire after **30 minutes** (a transfer after that is refunded by Paystack automatically; [docs](https://support.paystack.com/hc/en-us/articles/360018995019-Pay-with-Transfer)), while a card checkout's access code can stay payable for roughly **24 hours** (no published limit). So a late payment can't be prevented, only handled. Design:
   1. **Hold 35 minutes** from Pay (30-minute transfer window plus 5 for a slow webhook), shown as a countdown on the pay step and "held until 3:42 PM" in the pay email.
   2. **Before releasing**, ask Paystack (verify the reference): paid → confirm; not paid → cancel, reopen the time, email the client "your hold ended, book again".
   3. **Late payment** (card paid after release): re-confirm automatically if the time is still free; if it's been taken, **refund automatically** through Paystack, and tell the client and the practice.
   4. **Retry** from the email or pay page: a fresh 35-minute hold if the time is still free; if not, show other times instead of taking payment.
-- **Fix:**
-- **Verified:**
+- **Fix:** branch `fix/bkg-09-online-hold` (see the merge on dev): 35-minute online hold and Paystack refunds; one BookingPaymentSettler for webhook, pop-up and expiry job (confirm once, re-confirm a released hold whose time is free, otherwise a full refund with the reason told to client and practice); retry restarts or re-claims the hold; the expiry job asks Paystack before releasing; pay emails say until when and carry the pay-page token (the link never opened before); countdown on the pay step, "Try again" on the pay page.
+- **Verified:** 2 Oct 2026, live against Paystack test mode on a copy of the local database: booking 27 held exactly 35 minutes with a 34:56 countdown; expired hold → the job asked Paystack, released it, reopened the time and emailed "Your held time was released"; the tokenised pay link offered "Try again", which re-claimed the time with a fresh 35-minute hold; paid with Paystack's test checkout; marked released with the time still free, the signed charge.success event re-confirmed it (one confirmation email, Paystack's paid time). Booking 28: paid, released with its time taken → a real test-mode refund of ₦35,000 was created at Paystack, the client was told why and the practice was notified; replaying both events did nothing more. API 1052, app 389 tests pass.
 
 ### BKG-10 · No offer to the client's account after booking
 - **Type:** UX · **Priority:** P1 · **Status:** Fixed

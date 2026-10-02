@@ -113,6 +113,30 @@ describe('settling a successful booking charge', () => {
     expect(notifier.latePaymentRefunded).toHaveBeenCalledWith(900n, 'duplicate');
   });
 
+  it('does not refund a payment that a concurrent call just used to confirm the booking', async () => {
+    // Webhook and pop-up settle the same late payment at once: the other call
+    // re-claimed the time first, so this one finds it taken.
+    const released = { ...base, status: 'CANCELLED', holdReleasedAt: new Date() };
+    const { settler, prisma, paystack } = make(released, { slotFree: false });
+    prisma.consultBooking.findUnique
+      .mockResolvedValueOnce(released)
+      .mockResolvedValueOnce({ ...released, status: 'CONFIRMED', holdReleasedAt: null, paymentRef: 'booking-900-1' });
+    expect(await settler.settle('booking-900-1', OK)).toBe('already');
+    expect(paystack.refundTransaction).not.toHaveBeenCalled();
+  });
+
+  it('does not refund an older-attempt payment that a concurrent call just confirmed', async () => {
+    const pending = { ...base, status: 'PENDING_PAYMENT', paymentRef: 'booking-900-2' };
+    const { settler, prisma, paystack } = make(pending);
+    // The flip by id loses the race (count 0); the winner set this reference.
+    prisma.consultBooking.updateMany.mockReset().mockResolvedValue({ count: 0 });
+    prisma.consultBooking.findUnique
+      .mockResolvedValueOnce(pending)
+      .mockResolvedValueOnce({ ...pending, status: 'CONFIRMED', paymentRef: 'booking-900-1' });
+    expect(await settler.settle('booking-900-1', OK)).toBe('already');
+    expect(paystack.refundTransaction).not.toHaveBeenCalled();
+  });
+
   it('never refunds the same reference twice', async () => {
     const { settler, paystack } = make({ ...base, status: 'CANCELLED', refundRef: 'booking-900-1' });
     expect(await settler.settle('booking-900-1', OK)).toBe('already');

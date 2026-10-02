@@ -75,6 +75,12 @@ export class BookingPaymentSettler {
       if (reclaimed) return this.confirmed(b.id, 'reconfirmed');
     }
 
+    // Before giving money back, look again: a concurrent call for this same
+    // payment (webhook and pop-up together) may have just confirmed with it.
+    const now = await this.prisma.consultBooking.findUnique({ where: { id: b.id }, select: { status: true, paymentRef: true, refundRef: true } });
+    if (now?.refundRef === reference) return 'already';
+    if ((now?.status === 'CONFIRMED' || now?.status === 'COMPLETED') && now.paymentRef === reference) return 'already';
+
     // The time is gone, the booking was cancelled, or it's a second charge.
     const reason: RefundReason =
       b.status === 'CONFIRMED' || b.status === 'COMPLETED' ? 'duplicate' : b.holdReleasedAt ? 'time_taken' : 'cancelled';
