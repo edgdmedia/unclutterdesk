@@ -1,5 +1,5 @@
 import React, { lazy, Suspense, useState, useCallback, useMemo } from 'react';
-import { CLIENT_PORTAL_ROUTES } from './routes/clientRoutes';
+import { CLIENT_PORTAL_ROUTES, ClientBrandProvider } from './routes/clientRoutes';
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { SWRConfig } from 'swr';
 import useSWR from 'swr';
@@ -566,6 +566,7 @@ export function App() {
               errorRetryCount: 1,
             }}
           >
+            <ClientBrandProvider>
             <Suspense fallback={<PageFallback />}>
               <Routes>
                 <Route path="/" element={<PublicProfilePage />} />
@@ -581,6 +582,7 @@ export function App() {
                 <Route path="*" element={<NotFoundPage />} />
               </Routes>
             </Suspense>
+            </ClientBrandProvider>
           </SWRConfig>
         </AuthProvider>
       </BrowserRouter>

@@ -1,6 +1,8 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { lazy } from 'react';
 import { Route } from 'react-router-dom';
+import { BrandProvider, type TenantBrandConfig } from '@unclutterdesk/ui';
+import { api, getSubdomainTenantSlug } from '../utils/apiClient';
 
 const ClientPortalPage = lazy(() => import('../pages/client/ClientPortalPage').then((m) => ({ default: m.ClientPortalPage })));
 const PortalAssessmentPage = lazy(() => import('../pages/client/PortalAssessmentPage').then((m) => ({ default: m.PortalAssessmentPage })));
@@ -16,6 +18,27 @@ const SetPasswordPage = lazy(() => import('../pages/public/SetPasswordPage').the
  * host (apiClient's TENANT_SLUG), and the session cookie lives on the api
  * domain, so the same pages work anywhere under unclutterdesk.com.
  */
+/**
+ * POR-01: on a practice host there is no staff brand call to read from, so the
+ * client pages brand themselves from the practice's public info.
+ */
+export function ClientBrandProvider({ children }: { children: React.ReactNode }) {
+  const [brand, setBrand] = useState<TenantBrandConfig | null>(null);
+  useEffect(() => {
+    const slug = getSubdomainTenantSlug();
+    api.get<{ name: string; slug: string; logoUrl?: string | null; primaryColor?: string; secondaryColor?: string }>(
+      slug ? `/v1/tenant/public/info/${slug}` : '/v1/tenant/public/info',
+    ).then((t) => setBrand({
+      name: t.name,
+      slug: t.slug,
+      logoUrl: t.logoUrl ?? null,
+      primaryColor: t.primaryColor ?? null,
+      secondaryColor: t.secondaryColor ?? null,
+    } as TenantBrandConfig)).catch(() => undefined);
+  }, []);
+  return <BrandProvider brand={brand}>{children}</BrandProvider>;
+}
+
 export const CLIENT_PORTAL_ROUTES = (
   <>
     <Route path="/portal" element={<ClientPortalPage />} />
