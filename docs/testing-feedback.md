@@ -93,6 +93,7 @@ A running log of what shows up in testing, what we decide about it, and when it'
 | POR-03 | Client portal | The portal should use the same dashboard frame as practice and admin | UX | P2 | Ready |
 | POR-04 | Client portal | Clients can't book a session from the portal | Feature | P1 | Ready |
 | POR-05 | Client portal | No "Add to calendar" for sessions in the portal | UX | P2 | Ready |
+| POR-06 | Client portal | Portal shows your sessions and "Sign in" at the same time after a while away | Bug | P1 | Fixed |
 | ADM-04 | Admin | Gross revenue counts practices' income, not Unclutter Desk's | Bug | P2 | Ready |
 | BKG-13 | Sessions | Past sessions with no outcome stay "Confirmed" forever | Feature | P1 | Ready |
 | VID-02 | Video | "Join session" works any time, even days before | Bug | P1 | Ready |
@@ -533,6 +534,13 @@ A running log of what shows up in testing, what we decide about it, and when it'
 - **Observed:** Only the booking confirmation offers calendar links.
 - **Feedback / decision:** Decided 2 Oct 2026. Each upcoming session in the portal has the same "Add to calendar" dropdown as the confirmation (Google Calendar, Apple/Outlook .ics).
 - **Fix:** 
+- **Verified:** 
+
+### POR-06 · Portal shows your sessions and "Sign in" at the same time after a while away
+- **Type:** Bug · **Priority:** P1 · **Status:** Fixed
+- **Observed:** 2 Oct 2026. After leaving the portal for a while, it showed "Hello, Olalekan", the next session and Join, and also "Sign in to see your sessions".
+- **Feedback / decision:** Either signed in or signed out, never both.
+- **Fix:** Cause: the page-load sign-in check (`/v1/auth/status`) was set never to refresh the session. The access cookie lasts 15 minutes and the refresh cookie is only sent to `/v1/auth/refresh`, so after a quiet spell (or a sleeping tab reloading), the check failed and signed the person out, while the portal's own request refreshed and loaded the sessions. Now the check refreshes and retries like every other request (`apiClient.ts`), and a signed-out portal clears everything private. Also affected staff: the dashboard signed people out the same way. Covered by `apiClient.sessionRefresh.test.ts` and `ClientPortalSignedOut.test.tsx`.
 - **Verified:** 
 
 ## Forms & templates

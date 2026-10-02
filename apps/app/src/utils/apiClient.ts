@@ -105,11 +105,15 @@ export function practiceBookingUrl(
 const CSRF_COOKIE = 'unclutter_csrf';
 
 const SAFE_METHODS = new Set(['GET', 'HEAD', 'OPTIONS']);
+// Requests that never refresh-and-retry on a 401: a wrong password is not an
+// expired session. /v1/auth/status is deliberately absent: the access cookie
+// lasts 15 minutes and the refresh cookie is only sent to /v1/auth/refresh, so
+// the page-load sign-in check must refresh like any other request, or a page
+// opened after a quiet spell signs a signed-in person out.
 const AUTH_PATHS = new Set([
   '/v1/auth/login',
   '/v1/auth/register',
   '/v1/auth/refresh',
-  '/v1/auth/status',
 ]);
 
 const AUTH_PUBLIC_PATHS = new Set([

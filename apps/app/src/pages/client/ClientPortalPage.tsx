@@ -151,7 +151,13 @@ export function ClientPortalPage() {
     if (isAuthenticated && profile?.email) {
       setLookupEmail(profile.email);
       void loadPortal();
+      return;
     }
+    // Signed out (or the session ended): nothing private stays on screen.
+    setPortal({ clientName: '', upcoming: [], past: [] });
+    setPayments(null);
+    setFormsTodo(null);
+    setAssessments([]);
   }, [isAuthenticated, profile?.email]);
 
   // The server identifies the client from the session. It used to accept any
