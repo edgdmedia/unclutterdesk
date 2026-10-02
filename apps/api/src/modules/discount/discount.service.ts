@@ -56,16 +56,37 @@ export class DiscountService {
     return { ...discount, id: discount.id.toString(), discountAmountKobo: discount.discountAmountKobo?.toString() };
   }
 
-  async updateDiscount(tenantId: bigint, id: bigint, dto: { label?: string; expiresAt?: string; maxUses?: number }) {
+  async updateDiscount(tenantId: bigint, id: bigint, dto: {
+    label?: string | null;
+    maxUses?: number | null;
+    expiresAt?: string | null;
+    isActive?: boolean;
+    discountType?: 'PERCENT' | 'FIXED';
+    discountPercent?: number;
+    discountAmountKobo?: string;
+  }) {
+    // SET-09: only the fields the caller sent change. The old version wrote
+    // label/maxUses/expiresAt unconditionally, so editing one blanked the rest.
     const discount = await this.prisma.discountCode.update({
       where: { id, tenantId },
       data: {
-        label: dto.label,
-        maxUses: dto.maxUses,
-        expiresAt: dto.expiresAt ? new Date(dto.expiresAt) : null,
+        ...(dto.label !== undefined ? { label: dto.label } : {}),
+        ...(dto.maxUses !== undefined ? { maxUses: dto.maxUses } : {}),
+        ...(dto.expiresAt !== undefined ? { expiresAt: dto.expiresAt ? new Date(dto.expiresAt) : null } : {}),
+        ...(dto.isActive !== undefined ? { isActive: dto.isActive } : {}),
+        ...(dto.discountType !== undefined ? { discountType: dto.discountType } : {}),
+        ...(dto.discountPercent !== undefined ? { discountPercent: dto.discountPercent } : {}),
+        ...(dto.discountAmountKobo !== undefined ? { discountAmountKobo: BigInt(dto.discountAmountKobo) } : {}),
       },
     });
     return { ...discount, id: discount.id.toString(), discountAmountKobo: discount.discountAmountKobo?.toString() };
+  }
+
+  /** SET-09: remove a code for good. Past bookings keep the code text they used. */
+  async deleteDiscount(tenantId: bigint, id: bigint) {
+    const done = await this.prisma.discountCode.deleteMany({ where: { id, tenantId } });
+    if (done.count === 0) throw new NotFoundException('Discount code not found');
+    return { deleted: true };
   }
 
   async deactivateDiscount(tenantId: bigint, id: bigint) {
