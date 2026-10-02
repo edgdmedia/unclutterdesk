@@ -110,6 +110,20 @@ PAYSTACK_PLAN_CLINIC=PLN_leght05vpcu41ad
 # https://api.unclutterdesk.com in production; set it explicitly if that ever moves.
 API_URL=https://api.unclutterdesk.com
 
+# Session video (VID-01). A provider with missing keys is skipped.
+# Daily: dashboard.daily.co → Developers → API key.
+DAILY_API_KEY=
+# Optional: the HMAC secret Daily shows when the meeting.ended webhook is created.
+DAILY_WEBHOOK_SECRET=
+# JaaS (8x8.vc): the App ID, the full key id (vpaas-magic-cookie-…/abc123) and
+# the RSA private key in PEM, with newlines written as \n on one line.
+JAAS_APP_ID=
+JAAS_KEY_ID=
+JAAS_PRIVATE_KEY=
+# Monthly budgets: Daily participant-minutes, then JaaS distinct users.
+VIDEO_DAILY_MONTHLY_MINUTES=9500
+VIDEO_JAAS_MONTHLY_USERS=23
+
 NODE_ENV=production
 ```
 

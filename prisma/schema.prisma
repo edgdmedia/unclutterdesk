@@ -263,7 +263,7 @@ model ConsultTherapistProfile {
   languages             String[] @default([])
   isPublic              Boolean  @default(true)
   acceptsGeneralBooking Boolean  @default(true)
-  videoProvider         String?  @default("JITSI") // "JITSI", "DAILY", "GOOGLE_MEET", "ZOOM"
+  videoProvider         String?  @default("BUILT_IN") // "BUILT_IN" (Unclutter Desk video) or "GOOGLE_MEET"
   dailyApiKey           String?
   googleRefreshToken    String?
   isVerified            Boolean  @default(true)
@@ -442,6 +442,8 @@ model ConsultBooking {
   locationId                  BigInt?
   notes                       String?
   videoRoomName               String?
+  /// VID-01: which provider hosts this session's room, fixed when the room is first made.
+  videoProvider               String?   @db.VarChar(20)
   /// What happened, for staff. Seen by clinical roles only.
   internalSummary             String?   @db.Text
   /// The recap written for the client; emailed on request, never automatically.
@@ -656,6 +658,25 @@ model Notification {
   @@index([profileId, status])
   @@index([profileId, createdAt])
   @@index([tenantId, createdAt])
+}
+
+/// VID-01: one person's time in one session's room, for budgets and planning.
+model VideoParticipant {
+  id         BigInt   @id @default(autoincrement())
+  tenantId   BigInt
+  bookingId  BigInt
+  profileId  BigInt
+  provider   String   @db.VarChar(20)
+  role       String   @db.VarChar(20)
+  joinedAt   DateTime @default(now())
+  lastSeenAt DateTime @default(now())
+  /// Whole minutes in the room: from heartbeats, replaced by Daily's own figure when it arrives.
+  minutes    Int      @default(0)
+  reconciled Boolean  @default(false)
+
+  @@index([tenantId, joinedAt])
+  @@index([provider, joinedAt])
+  @@index([bookingId])
 }
 
 model NotificationDispatch {
