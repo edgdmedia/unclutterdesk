@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import { BookingNotifier } from './booking-notifier.service';
 import { NotificationService } from './notification.service';
+import { payLinkToken } from '../consult/staff-booking-rules';
 
 /**
  * NOT-04: the join link must not leave before the money has arrived. One
@@ -47,11 +48,18 @@ describe('BookingNotifier.booked', () => {
     await notifier.booked(900n);
     const email = (notifications.sendEmail as any).mock.calls[0][0];
     expect(email.title).toBe('Almost there — pay ₦35,000 to confirm your session');
-    expect(email.link).toMatch(/\/pay\/900$/);
+    // BKG-09: the pay page needs its token, or the link doesn't open.
+    expect(email.link).toMatch(new RegExp(`/pay/900\\?t=${payLinkToken(900n)}$`));
     expect(email.actionLabel).toBe('Pay ₦35,000');
     expect(email.message).not.toMatch(/meet\.jit\.si/);
     expect(email.message).toMatch(/held while you pay/i);
     expect(email.to).toBe('ada@example.com');
+  });
+
+  it('says until when the time is held (BKG-09)', async () => {
+    const { notifier, notifications } = make(booking({ holdExpiresAt: new Date('2026-10-06T08:42:00Z') }));
+    await notifier.booked(900n);
+    expect((notifications.sendEmail as any).mock.calls[0][0].message).toMatch(/Your time is held until 9:42 AM\./);
   });
 
   it('says nothing for a transfer hold — announce already sent the bank details', async () => {
@@ -196,5 +204,18 @@ describe('BookingNotifier.latePaymentRefunded (BKG-09)', () => {
     expect(notice.profileIds).toEqual([7n, 11n, 12n]);
     expect(notice.title).toBe('Payment refunded');
     expect(notice.message).toBe('Ada Okafor’s ₦35,000 for Tue, 6 Oct · 11:30 AM arrived after the time was released and taken, so it is being refunded.');
+  });
+});
+
+describe('BookingNotifier.holdReleased (BKG-09)', () => {
+  it('tells the client the hold ended and links back to pay, if the time is still free', async () => {
+    const { notifier, notifications } = make(booking({ status: 'CANCELLED' }));
+    await notifier.holdReleased(900n);
+    const email = (notifications.sendEmail as any).mock.calls[0][0];
+    expect(email.type).toBe('bookings.hold_released');
+    expect(email.title).toBe('Your held time was released');
+    expect(email.message).toMatch(/If it's still free, you can pay now and keep it\./);
+    expect(email.link).toMatch(new RegExp(`/pay/900\\?t=${payLinkToken(900n)}$`));
+    expect(email.actionLabel).toBe('Try again');
   });
 });

@@ -5,6 +5,7 @@ import { chargedKobo } from '../../common/revenue';
 import { formatNaira } from '../billing/subscription-plans';
 import { NotificationService } from './notification.service';
 import { listPendingForms } from '../intake/default-forms';
+import { payLinkToken } from '../consult/staff-booking-rules';
 
 /** Why a booking payment is being refunded (BKG-09). */
 export type RefundReason = 'time_taken' | 'cancelled' | 'duplicate';
@@ -72,8 +73,10 @@ export class BookingNotifier {
         title: `Almost there — pay ${amount} to confirm your session`,
         message:
           `${b.tenant.name} has you down for ${b.service.title} with ${await this.therapistName(b.availability.providerProfileId)} ` +
-          `on ${this.when(b.availability.startsAt)}. Your time is held while you pay.`,
-        link: `${tenantWebOrigin(b.tenant)}/pay/${b.id}`,
+          `on ${this.when(b.availability.startsAt)}. ` +
+          (b.holdExpiresAt ? `Your time is held until ${this.clock(b.holdExpiresAt)}.` : 'Your time is held while you pay.'),
+        // BKG-09: the pay page opens only with its token.
+        link: this.payLink(b),
         actionLabel: `Pay ${amount}`,
         tenantId: b.tenantId,
         profileId: b.clientProfileId,
@@ -130,6 +133,26 @@ export class BookingNotifier {
    * tenant's active owners and admins (the front desk too for transfers,
    * since they confirm them). Never anyone from another practice.
    */
+  /** BKG-09: an online hold ran out unpaid. The time may still be free, so the email offers to try again. */
+  async holdReleased(bookingId: bigint): Promise<void> {
+    const b = await this.load(bookingId);
+    if (!b) return;
+    await this.notifications
+      .sendEmail({
+        to: b.client.email,
+        type: 'bookings.hold_released',
+        title: 'Your held time was released',
+        message:
+          `We didn't receive payment for your ${b.service.title} on ${this.when(b.availability.startsAt)}, so the time was released. ` +
+          "If it's still free, you can pay now and keep it.",
+        link: this.payLink(b),
+        actionLabel: 'Try again',
+        tenantId: b.tenantId,
+        profileId: b.clientProfileId,
+      })
+      .catch((err) => this.logger.warn(`Could not send the hold-released email for booking ${bookingId}: ${(err as Error).message}`));
+  }
+
   /**
    * BKG-09: a payment can't be used for its booking (it arrived after the time
    * was released and taken, the session was cancelled, or it was a second
@@ -230,6 +253,15 @@ export class BookingNotifier {
         preferenceCategory: 'activity',
       })
       .catch((err) => this.logger.warn(`Could not report form submission: ${(err as Error).message}`));
+  }
+
+  private payLink(b: { id: bigint; tenant: Parameters<typeof tenantWebOrigin>[0] }): string {
+    return `${tenantWebOrigin(b.tenant)}/pay/${b.id}?t=${payLinkToken(b.id)}`;
+  }
+
+  /** "3:42 PM" in Lagos time. */
+  private clock(at: Date): string {
+    return at.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', timeZone: 'Africa/Lagos' });
   }
 
   private shortWhen(startsAt: Date): string {
