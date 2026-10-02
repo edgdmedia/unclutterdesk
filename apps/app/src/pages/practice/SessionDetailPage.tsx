@@ -11,6 +11,8 @@ interface SessionDetail extends SessionRow {
   clientEmail: string;
   clientPhone: string | null;
   videoRoomLink: string | null;
+  format?: string;
+  location?: { id: string; name: string; city: string } | null;
   note: { id: string; status: 'DRAFT' | 'COMPLETED' } | null;
   internalSummary: string | null;
   clientRecap: string | null;
@@ -141,7 +143,8 @@ export function SessionDetailPage() {
           <StatTile variant="inset" size="sm" label="WHEN" value={longWhen(d.startsAt)} />
           <StatTile variant="inset" size="sm" label="SERVICE" value={d.serviceTitle} />
           <StatTile variant="inset" size="sm" label="PRACTITIONER" value={d.provider.name} />
-          <StatTile variant="inset" size="sm" label="PAID" value={`${d.paymentMethod === 'NONE' ? 'No charge' : naira(d.amountKobo)} · ${d.channel === 'VIDEO' ? 'Video' : 'In person'}`} />
+          <StatTile variant="inset" size="sm" label="PAID" value={`${d.paymentMethod === 'NONE' ? 'No charge' : naira(d.amountKobo)}`} />
+          <StatTile variant="inset" size="sm" label="FORMAT" value={d.format === 'IN_PERSON' && d.location ? `In person · ${d.location.name}` : d.format === 'IN_PERSON' ? 'In person' : 'Online'} />
         </div>
         <p className="text-[12.5px] text-[#64748B]">
           {d.clientEmail}{d.clientPhone ? ` · ${d.clientPhone}` : ''}
