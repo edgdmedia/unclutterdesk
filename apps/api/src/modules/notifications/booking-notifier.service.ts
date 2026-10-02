@@ -124,7 +124,7 @@ export class BookingNotifier {
           { label: 'Where', value: inPerson ? `${b.location.name}, ${b.location.address}, ${b.location.city}${b.location.directions ? `. ${b.location.directions}` : ''}` : online ? 'Online (video)' : 'In person' },
         ],
         link: inPerson ? mapsLink(b.location.address, b.location.city) : join ?? portal,
-        actionLabel: inPerson ? 'Open in Google Maps' : join ? 'Join the session' : 'View my bookings',
+        actionLabel: inPerson ? 'Open in Google Maps' : join ? 'Join session (opens 15 minutes before)' : 'View my bookings',
         links: [
           ...pending.map((f) => ({ label: `Before your first session: ${f.title} (${f.minutes} min)`, url: `${origin}/forms/${f.id}?booking=${b.id}` })),
           { label: 'Manage your booking', url: portal },

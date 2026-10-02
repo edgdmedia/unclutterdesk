@@ -2,7 +2,8 @@ import { describe, it, expect, vi } from 'vitest';
 import { ForbiddenException, NotFoundException } from '@nestjs/common';
 import { VideoRoomService } from './video-room.service';
 import { VideoRouter } from './video-router.service';
-import { joinWindow } from './join-window';
+import { joinWindow, JOIN_OPENS_MINUTES_BEFORE, JOIN_CLOSES_MINUTES_AFTER } from './join-window';
+import * as shared from '../../../../../packages/shared/src/joinWindow';
 
 /**
  * VID-01: joining a session's room. Who may join, when, and that a booking
@@ -172,5 +173,12 @@ describe('VideoRoomService.join', () => {
 describe('joinWindow', () => {
   it('opens 15 minutes before the start and closes 60 minutes after the end', () => {
     expect(joinWindow(STARTS, ENDS)).toEqual({ opensAt: new Date('2026-10-06T08:45:00Z'), closesAt: new Date('2026-10-06T10:50:00Z') });
+  });
+});
+
+describe('the join window shared with the app', () => {
+  it('uses the same minutes as the Join buttons (packages/shared)', () => {
+    expect(JOIN_OPENS_MINUTES_BEFORE).toBe(shared.JOIN_OPENS_MINUTES_BEFORE);
+    expect(JOIN_CLOSES_MINUTES_AFTER).toBe(shared.JOIN_CLOSES_MINUTES_AFTER);
   });
 });

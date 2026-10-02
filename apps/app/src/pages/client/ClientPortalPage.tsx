@@ -9,6 +9,7 @@ import { initialsOf } from '../../utils/initials';
 import { useAuth } from '../../context/AuthContext';
 import type { MyAssessment } from '../../utils/assessments';
 import { TransferDetails, type ManualPayment } from '../../components/payments/TransferDetails';
+import { JoinButton } from '../../components/video/JoinButton';
 
 type PortalTab = 'upcoming' | 'past' | 'assessments' | 'payments' | 'settings';
 
@@ -373,16 +374,8 @@ export function ClientPortalPage() {
                   </button>
                 ) : null}
                 {nextSession.status === 'CONFIRMED' && nextSession.format !== 'IN_PERSON' ? (
-                  <button type="button" onClick={() => navigate(`/portal/sessions/${nextSession.id}/room`)} className="h-[48px] px-5 rounded-[16px] bg-[#E3B341] text-[#0F172A] text-[13.5px] font-extrabold flex items-center gap-2 shadow-[0_8px_22px_rgba(227,179,65,0.35)] hover:brightness-105 cursor-pointer">
-                    <Video className="h-4 w-4" />
-                    Join session
-                  </button>
-                ) : (
-                  <button type="button" disabled className="h-[48px] px-5 rounded-[16px] bg-[#E2E8F0] text-[#64748B] text-[13.5px] font-extrabold flex items-center gap-2 cursor-not-allowed">
-                    <Video className="h-4 w-4" />
-                    No room link yet
-                  </button>
-                )}
+                  <JoinButton startsAt={nextSession.startsAt} endsAt={nextSession.endsAt} to={`/portal/sessions/${nextSession.id}/room`} />
+                ) : null}
               </div>
             </div>
           ) : (

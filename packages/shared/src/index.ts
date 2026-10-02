@@ -70,3 +70,5 @@ export interface BookingResult {
   videoRoomLink?: string;
   therapistName: string;
 }
+
+export * from './joinWindow';

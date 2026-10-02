@@ -2,9 +2,10 @@ import React from 'react';
 import { API_BASE } from '../../utils/apiClient';
 import { initialsOf } from '../../utils/initials';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { Check, Video, ArrowLeft, User } from 'lucide-react';
+import { Check, ArrowLeft, User } from 'lucide-react';
 import { useBrand } from '@unclutterdesk/ui';
 import { TransferDetails, type ManualPayment } from '../../components/payments/TransferDetails';
+import { JoinButton } from '../../components/video/JoinButton';
 
 type BookingState = {
   booking?: {
@@ -14,7 +15,8 @@ type BookingState = {
     endsAt: string;
     serviceTitle: string;
     therapistName: string;
-    videoRoomLink: string;
+    /** SET-06 / VID-01: online sessions are joined in the room on the portal. */
+    format?: string;
     status: string;
     manualPayment?: ManualPayment | null;
   };
@@ -55,13 +57,20 @@ export function BookingConfirmedPage() {
             <div className="flex items-center justify-between"><span className="text-[12.5px] font-semibold text-[#94A3B8] w-[100px]">Booking ref</span><span className="font-mono font-bold text-[#0F172A]">{booking.bookingId}</span></div>
             <div className="flex items-center justify-between"><span className="text-[12.5px] font-semibold text-[#94A3B8] w-[100px]">Date</span><span className="font-bold text-[#0F172A]">{new Intl.DateTimeFormat('en-GB', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' }).format(new Date(booking.startsAt))}</span></div>
             <div className="flex items-center justify-between"><span className="text-[12.5px] font-semibold text-[#94A3B8] w-[100px]">Time</span><span className="font-bold text-[#0F172A]">{new Intl.DateTimeFormat('en-GB', { hour: '2-digit', minute: '2-digit' }).format(new Date(booking.startsAt))}</span></div>
-            <div className="flex items-center justify-between"><span className="text-[12.5px] font-semibold text-[#94A3B8] w-[100px]">Video Link</span><a href={booking.videoRoomLink} target="_blank" rel="noreferrer" className="font-mono text-xs font-bold text-blue-600 underline flex items-center gap-1"><Video className="h-3.5 w-3.5" /><span>{booking.videoRoomLink.replace('https://', '')}</span></a></div>
           </div>
           <div className="p-[0_24px_24px] grid grid-cols-1 gap-3 pt-2">
             <button onClick={() => navigate('/client/create-account', { state: { fullName: state.fullName, email: state.email } })} className="os-brand-btn h-[48px] rounded-[16px] font-bold text-sm flex items-center justify-center gap-2 cursor-pointer" style={{ backgroundColor: primaryColor }}><User className="h-4 w-4" /><span>Create client account</span></button>
             <Link to="/login" state={{ email: state.email }} className="h-[48px] rounded-[16px] bg-[#F1F5F9] text-[#475569] font-bold text-sm hover:bg-[#E2E8F0] flex items-center justify-center gap-2 cursor-pointer"><ArrowLeft className="h-4 w-4" /><span>Already have an account? Sign in</span></Link>
             <a href={`${API_BASE}/v1/calendar/bookings/${booking.bookingId}/ical?token=${booking.icalToken ?? ''}`} download className="h-[48px] rounded-[16px] bg-white border border-[#E2E8F0] text-[#334155] font-bold text-sm flex items-center justify-center gap-2 cursor-pointer"><svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg><span>Add to Calendar</span></a>
-            <a href={booking.videoRoomLink} target="_blank" rel="noreferrer" className="h-[48px] rounded-[16px] bg-white border border-[#E2E8F0] text-[#334155] font-bold text-sm flex items-center justify-center gap-2 cursor-pointer"><Video className="h-4 w-4" /><span>Join session</span></a>
+            {booking.status === 'CONFIRMED' && booking.format !== 'IN_PERSON' ? (
+              <JoinButton
+                startsAt={booking.startsAt}
+                endsAt={booking.endsAt}
+                to={`/portal/sessions/${booking.bookingId}/room`}
+                className="h-[48px] rounded-[16px] bg-white border border-[#E2E8F0] text-[#334155] font-bold text-sm flex items-center justify-center gap-2 cursor-pointer"
+                waitingClassName="h-[48px] rounded-[16px] bg-[#F1F5F9] text-[#64748B] font-bold text-sm flex items-center justify-center gap-2 cursor-not-allowed"
+              />
+            ) : null}
           </div>
         </div>
       </div>

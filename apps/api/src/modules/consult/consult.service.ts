@@ -1,4 +1,5 @@
 import { Injectable, BadRequestException, ConflictException, NotFoundException, ForbiddenException, Logger, Optional } from '@nestjs/common';
+import { joinWindow } from '../video/join-window';
 import { randomBytes } from 'crypto';
 import { PrismaService } from '../../common/prisma/prisma.service';
 import { NotificationService } from '../notifications/notification.service';
@@ -350,6 +351,13 @@ export class ConsultService {
         ? { name: b.location.name, address: b.location.address, city: b.location.city, directions: b.location.directions ?? null, mapsUrl: mapsLink(b.location.address, b.location.city) }
         : null;
     return { format, location };
+  }
+
+  /** VID-02: the room's open and close times for an online session; null in person. */
+  private joinWindowFields(b: { format?: string | null; availability: { startsAt: Date; endsAt: Date } }) {
+    if (b.format === 'IN_PERSON') return { joinOpensAt: null, joinClosesAt: null };
+    const w = joinWindow(b.availability.startsAt, b.availability.endsAt);
+    return { joinOpensAt: w.opensAt.toISOString(), joinClosesAt: w.closesAt.toISOString() };
   }
 
   /** Validates the formats a page sends: [{ format, priceKobo, isActive? }]. */
@@ -990,7 +998,7 @@ export class ConsultService {
     // create the booking, and record discount usage.
     const result: {
       bookingId: string; icalToken: string; status: string; serviceTitle: string; startsAt: string; endsAt: string;
-      therapistName: string; videoRoomLink: string | null; paymentUrl: string | null; accessCode: string | null;
+      therapistName: string; paymentUrl: string | null; accessCode: string | null;
       format: string; location: { id: bigint; name: string; address: string; city: string; directions: string | null; mapsUrl: string } | null;
       reference: string | null; holdExpiresAt: string | null; manualPayment: unknown; forms?: unknown[];
     } = await this.prisma.$transaction(async (tx) => {
@@ -1014,7 +1022,6 @@ export class ConsultService {
 
       // VID-01: no video room is made at booking. The first person to join an
       // online session makes it (modules/video), on whichever provider has budget.
-      const videoRoomLink: string | null = null;
 
       // Settle the price before writing the row. The amount charged is not
       // recoverable from the service afterwards: a discount changes it, and the
@@ -1112,7 +1119,6 @@ export class ConsultService {
         location: format === 'IN_PERSON' && slot.location
           ? { ...slot.location, mapsUrl: mapsLink(slot.location.address, slot.location.city) }
           : null,
-        videoRoomLink,
         paymentUrl,
         accessCode,
         reference: paymentRef,
@@ -1631,6 +1637,8 @@ export class ConsultService {
       priceKobo: booking.service.priceKobo.toString(),
       therapistName: `${booking.availability.therapist.profile.firstName || ''} ${booking.availability.therapist.profile.lastName || ''}`.trim() || 'Your therapist',
       ...this.bookingFormatFields(booking),
+      // VID-02: when an online session's room is open. Clients join in the app, never by a provider link.
+      ...this.joinWindowFields(booking),
       paymentMethod: booking.paymentMethod,
       // How to pay a transfer that is still due.
       manualPayment:

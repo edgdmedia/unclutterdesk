@@ -142,6 +142,7 @@ describe('video rooms at booking', () => {
     const result: any = await service.createBooking(TENANT, 5n, dto as any).catch(() => null);
     const data = tx.consultBooking.create.mock.calls[0]?.[0]?.data ?? {};
     expect(data.videoRoomName ?? null).toBeNull();
+    if (result) expect(result).not.toHaveProperty('videoRoomLink');
     expect(JSON.stringify(result ?? {}, (_k, v) => (typeof v === 'bigint' ? v.toString() : v))).not.toMatch(/meet\.jit\.si/);
   });
 });

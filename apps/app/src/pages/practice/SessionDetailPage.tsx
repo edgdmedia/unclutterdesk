@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { JoinButton } from '../../components/video/JoinButton';
 import { Link, useParams } from 'react-router-dom';
 import { CalendarClock, CheckCircle2, Download, FileText, Loader2, Video } from 'lucide-react';
 import { Card, Eyebrow, Page, PageHeader, StatTile, StatusBadge, useToast } from '@unclutterdesk/ui';
@@ -89,10 +90,15 @@ export function SessionDetailPage() {
           title={d.client.name}
           actions={
             <>
-              {d.channel === 'VIDEO' && d.videoRoomLink ? (
-                <Link to={`/session/${d.id}`} className="h-[40px] px-4 rounded-[12px] bg-[#0F3A53] text-white text-[12.5px] font-bold inline-flex items-center gap-2 cursor-pointer">
-                  <Video className="h-4 w-4" /> Start session
-                </Link>
+              {d.videoRoomLink && d.status === 'CONFIRMED' ? (
+                <JoinButton
+                  startsAt={d.startsAt}
+                  endsAt={d.endsAt}
+                  to={`/session/${d.id}`}
+                  label="Start session"
+                  className="h-[40px] px-4 rounded-[12px] bg-[#0F3A53] text-white text-[12.5px] font-bold inline-flex items-center gap-2 cursor-pointer"
+                  waitingClassName="h-[40px] px-4 rounded-[12px] bg-[#E2E8F0] text-[#64748B] text-[12.5px] font-bold inline-flex items-center gap-2 cursor-not-allowed"
+                />
               ) : null}
               <Link to={`/session/${d.id}/prep`} className="h-[40px] px-4 rounded-[12px] bg-white border border-[#CBD5E1] text-[#0F172A] text-[12.5px] font-bold inline-flex items-center gap-2 cursor-pointer">
                 <FileText className="h-4 w-4" /> Session prep

@@ -155,6 +155,28 @@ describe('ConsultService.getClientPortal', () => {
     expect(inPerson).toMatchObject({ id: '901', format: 'IN_PERSON', location: { name: 'Lekki studio', city: 'Lagos' } });
   });
 
+  it('gives online sessions their room window, and never a provider link (VID-02)', async () => {
+    prisma.profile.findFirst.mockResolvedValue({ id: 9n });
+    const startsAt = new Date(Date.now() + 86_400_000);
+    const endsAt = new Date(startsAt.getTime() + 3_000_000);
+    const base = {
+      status: 'CONFIRMED', paymentMethod: 'PAYSTACK', amountKobo: 1000n, holdExpiresAt: null, clientReportedPaidAt: null, location: null,
+      videoRoomName: 'ud-900-x', service: { title: 'Individual Therapy', priceKobo: 1000n },
+      availability: { startsAt, endsAt, therapist: { profile: { firstName: 'Jane', lastName: 'Smith' } } },
+    };
+    prisma.consultBooking.findMany.mockResolvedValue([
+      { ...base, id: 900n, format: 'ONLINE' },
+      { ...base, id: 901n, format: 'IN_PERSON', location: { name: 'Studio', address: '1 Way', city: 'Lagos', directions: null } },
+    ]);
+    const portal: any = await service.getClientPortal(1n, 9n);
+    const [online, inPerson] = portal.upcoming;
+    expect(online.joinOpensAt).toBe(new Date(startsAt.getTime() - 15 * 60_000).toISOString());
+    expect(online.joinClosesAt).toBe(new Date(endsAt.getTime() + 60 * 60_000).toISOString());
+    expect(inPerson.joinOpensAt).toBeNull();
+    expect(online).not.toHaveProperty('videoRoomLink');
+    expect(JSON.stringify(portal, (_k, v) => (typeof v === 'bigint' ? v.toString() : v))).not.toMatch(/ud-900-x|meet\.jit\.si/);
+  });
+
   it('scopes the booking query to the tenant and that client', async () => {
     prisma.profile.findFirst.mockResolvedValue({ id: 9n });
     await service.getClientPortal(1n, 9n);

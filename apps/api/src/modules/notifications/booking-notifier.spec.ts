@@ -75,7 +75,7 @@ describe('BookingNotifier.booked', () => {
     expect(email.title).toBe('Your session is booked');
     // VID-01: the join link opens the session's room in the app, never a provider URL.
     expect(email.link).toMatch(/\/portal\/sessions\/900\/room$/);
-    expect(email.actionLabel).toBe('Join the session');
+    expect(email.actionLabel).toBe('Join session (opens 15 minutes before)');
   });
 });
 
@@ -97,7 +97,7 @@ describe('BookingNotifier.confirmed', () => {
     ]);
     // VID-01: the join link opens the session's room in the app, never a provider URL.
     expect(email.link).toMatch(/\/portal\/sessions\/900\/room$/);
-    expect(email.actionLabel).toBe('Join the session');
+    expect(email.actionLabel).toBe('Join session (opens 15 minutes before)');
     expect(email.links).toContainEqual({ label: 'Manage your booking', url: expect.stringMatching(/\/portal$/) });
   });
 
