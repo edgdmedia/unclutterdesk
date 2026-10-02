@@ -5,7 +5,7 @@
 // Run on the server, from the app folder, AFTER the API with the video code is
 // deployed and restarted with DAILY_WEBHOOK_SECRET set (Daily checks the
 // endpoint answers before it creates the webhook):
-//   node --env-file=.env --env-file=apps/api/.env scripts/create-daily-webhook.mjs
+//   node --env-file=.env scripts/create-daily-webhook.mjs
 //
 // Needs DAILY_API_KEY and DAILY_WEBHOOK_SECRET (a base64 secret you made with
 // `openssl rand -base64 32`). Safe to run again: an existing webhook for the
