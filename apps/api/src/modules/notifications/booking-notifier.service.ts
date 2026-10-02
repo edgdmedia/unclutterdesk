@@ -4,6 +4,7 @@ import { tenantWebOrigin } from '../../common/origins';
 import { chargedKobo } from '../../common/revenue';
 import { formatNaira } from '../billing/subscription-plans';
 import { NotificationService } from './notification.service';
+import { mapsLink } from '../consult/formats';
 import { listPendingForms } from '../intake/default-forms';
 import { payLinkToken } from '../consult/staff-booking-rules';
 
@@ -37,6 +38,7 @@ export class BookingNotifier {
         service: { select: { title: true, priceKobo: true } },
         availability: { select: { startsAt: true, channel: true, providerProfileId: true } },
         client: { select: { firstName: true, lastName: true, email: true } },
+        location: { select: { name: true, address: true, city: true, directions: true } },
       },
     });
   }
@@ -99,7 +101,11 @@ export class BookingNotifier {
   }
 
   private async confirmedEmail(b: Awaited<ReturnType<BookingNotifier['load']>> & object): Promise<void> {
-    const online = b.availability.channel === 'VIDEO';
+    // SET-06: an in-person session carries the address and a maps link where
+    // an online one carries the join link. Rows predating the format column
+    // read as online.
+    const inPerson = b.format === 'IN_PERSON' && b.location;
+    const online = !inPerson;
     const join = online ? roomLink(b.videoRoomName) : null;
     const origin = tenantWebOrigin(b.tenant);
     const portal = `${origin}/portal`;
@@ -115,10 +121,10 @@ export class BookingNotifier {
           { label: 'Session', value: b.service.title },
           { label: 'With', value: await this.therapistName(b.availability.providerProfileId) },
           { label: 'When', value: this.when(b.availability.startsAt) },
-          { label: 'Where', value: online ? 'Online (video)' : 'In person' },
+          { label: 'Where', value: inPerson ? `${b.location.name}, ${b.location.address}, ${b.location.city}${b.location.directions ? `. ${b.location.directions}` : ''}` : online ? 'Online (video)' : 'In person' },
         ],
-        link: join ?? portal,
-        actionLabel: join ? 'Join the session' : 'View my bookings',
+        link: inPerson ? mapsLink(b.location.address, b.location.city) : join ?? portal,
+        actionLabel: inPerson ? 'Open in Google Maps' : join ? 'Join the session' : 'View my bookings',
         links: [
           ...pending.map((f) => ({ label: `Before your first session: ${f.title} (${f.minutes} min)`, url: `${origin}/forms/${f.id}?booking=${b.id}` })),
           { label: 'Manage your booking', url: portal },

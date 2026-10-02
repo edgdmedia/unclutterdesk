@@ -11,7 +11,7 @@ import { tenantWebOrigin } from '../../common/origins';
 import { decryptNoteFields } from '../../common/field-encryption';
 import { cleanImageUrl } from '../tenant/tenant.service';
 import { holdExpiry, ManualPaymentService, transferReference } from './manual-payment.service';
-import { allowedFormats, asFormat, listPrice, priceFor, timeErrors, type Format } from './formats';
+import { allowedFormats, asFormat, listPrice, mapsLink, priceFor, timeErrors, type Format } from './formats';
 import { slotsFromPattern, timesInHours, type WeeklyTime } from './hours';
 import { BookingNotifier } from '../notifications/booking-notifier.service';
 import { BookingPaymentSettler } from '../billing/booking-payment-settler.service';
@@ -499,7 +499,7 @@ export class ConsultService {
     return this.serviceView({ ...updated, formats });
   }
 
-  async getPublicAvailability(tenantId: bigint, providerProfileId?: bigint, serviceId?: bigint) {
+  async getPublicAvailability(tenantId: bigint, providerProfileId?: bigint, serviceId?: bigint, format?: string) {
     const now = new Date();
     const slots = await this.prisma.consultAvailability.findMany({
       where: {
@@ -510,11 +510,13 @@ export class ConsultService {
         ...(serviceId ? { OR: [{ serviceId }, { serviceId: null }] } : {}),
       },
       include: {
+        location: { select: { name: true, city: true } },
         therapist: {
           include: {
             profile: {
               select: { firstName: true, lastName: true, avatarUrl: true },
             },
+            workLocations: { select: { locationId: true } },
           },
         },
       },
@@ -523,22 +525,55 @@ export class ConsultService {
 
     // A time shorter than the chosen service would only be refused at booking.
     const service = serviceId
-      ? await this.prisma.consultService.findFirst({ where: { id: serviceId, tenantId }, select: { durationMinutes: true } })
+      ? await this.prisma.consultService.findFirst({ where: { id: serviceId, tenantId }, select: { durationMinutes: true, formats: { select: { format: true, priceKobo: true, isActive: true } } } })
       : null;
     const longEnough = (s: { startsAt: Date; endsAt: Date }) =>
       !service || (s.endsAt.getTime() - s.startsAt.getTime()) / 60_000 >= service.durationMinutes;
 
-    return slots.filter(longEnough).map((s) => ({
-      id: s.id.toString(),
-      serviceId: s.serviceId?.toString() || null,
-      providerProfileId: s.providerProfileId.toString(),
-      therapistName: `${s.therapist.profile.firstName || ''} ${s.therapist.profile.lastName || ''}`.trim() || 'Therapist',
-      therapistTitle: [s.therapist.credentials, s.therapist.specialty].filter(Boolean).join(' · ') || null,
-      avatarUrl: s.therapist.profile.avatarUrl,
-      startsAt: s.startsAt.toISOString(),
-      endsAt: s.endsAt.toISOString(),
-      channel: s.channel,
-    }));
+    const serviceFormats = (service as { formats?: Array<{ format: string; priceKobo: bigint; isActive: boolean }> } | null)?.formats ?? null;
+    const wants = asFormat(format);
+
+    return slots
+      .filter(longEnough)
+      .map((s) => {
+        // Rule 1 again at read time: a slot only offers what its therapist
+        // offers. Rows predating the flags fall back to the legacy channel.
+        const legacy = s.allowsOnline == null && s.allowsInPerson == null;
+        const allowed = allowedFormats(
+          {
+            // Rows predating the flags: VIDEO (or nothing — every old slot
+            // was online) reads as online.
+            allowsOnline: legacy ? (s.channel ? asFormat(s.channel) === 'ONLINE' : true) : s.allowsOnline,
+            allowsInPerson: legacy ? false : s.allowsInPerson,
+            locationId: s.locationId,
+          },
+          {
+            offersOnline: s.therapist.offersOnline ?? true,
+            offersInPerson: s.therapist.offersInPerson ?? false,
+            locationIds: (s.therapist.workLocations ?? []).map((w) => w.locationId),
+          },
+        );
+        const formats = [allowed.online && 'ONLINE', allowed.inPerson && 'IN_PERSON'].filter(Boolean) as Format[];
+        // Rule 2: the chosen service must actually offer the format.
+        const offered = serviceFormats
+          ? formats.filter((f) => priceFor(serviceFormats, f) !== null)
+          : formats;
+        return { s, formats: offered };
+      })
+      .filter(({ s, formats }) => (!wants || formats.includes(wants)) && (formats.length > 0 || !wants))
+      .map(({ s, formats }) => ({
+        id: s.id.toString(),
+        serviceId: s.serviceId?.toString() || null,
+        providerProfileId: s.providerProfileId.toString(),
+        therapistName: `${s.therapist.profile.firstName || ''} ${s.therapist.profile.lastName || ''}`.trim() || 'Therapist',
+        therapistTitle: [s.therapist.credentials, s.therapist.specialty].filter(Boolean).join(' · ') || null,
+        avatarUrl: s.therapist.profile.avatarUrl,
+        startsAt: s.startsAt.toISOString(),
+        endsAt: s.endsAt.toISOString(),
+        channel: s.channel,
+        formats,
+        location: s.location ? { name: s.location.name, city: s.location.city } : null,
+      }));
   }
 
   async createAvailabilitySlot(tenantId: bigint, providerProfileId: bigint, dto: {
@@ -868,10 +903,11 @@ export class ConsultService {
       where: { id: availabilityId, tenantId, isActive: true },
       include: {
         therapist: {
-          include: { profile: true },
+          include: { profile: true, workLocations: { select: { locationId: true } } },
         },
-        service: true,
+        service: { include: { formats: true } },
         tenant: true,
+        location: { select: { id: true, name: true, address: true, city: true, directions: true } },
       },
     });
 
@@ -884,7 +920,7 @@ export class ConsultService {
     // trusted: its price is what gets charged.
     const service =
       slot.service ??
-      (await this.prisma.consultService.findFirst({ where: { id: serviceId, tenantId, isActive: true } }));
+      (await this.prisma.consultService.findFirst({ where: { id: serviceId, tenantId, isActive: true }, include: { formats: true } }));
     if (!service) {
       throw new BadRequestException('That service is no longer offered. Please choose another.');
     }
@@ -895,10 +931,37 @@ export class ConsultService {
       throw new BadRequestException('That time is too short for this service. Please pick another time.');
     }
 
-    // Validate discount code if provided
+    // SET-06/BKG-05: the format is decided by the server from the time and
+    // the therapist, never trusted from the page.
+    const legacySlotRow = (slot as any).allowsOnline == null && (slot as any).allowsInPerson == null;
+    const allowed = allowedFormats(
+      {
+        allowsOnline: legacySlotRow ? (slot.channel ? asFormat(slot.channel) === 'ONLINE' : true) : (slot as any).allowsOnline,
+        allowsInPerson: legacySlotRow ? false : (slot as any).allowsInPerson,
+        locationId: slot.locationId,
+      },
+      {
+        offersOnline: (slot.therapist as any).offersOnline ?? true,
+        offersInPerson: (slot.therapist as any).offersInPerson ?? false,
+        locationIds: (((slot.therapist as any).workLocations ?? []) as Array<{ locationId: bigint }>).map((w) => w.locationId),
+      },
+    );
+    const possible = [allowed.online && 'ONLINE', allowed.inPerson && 'IN_PERSON'].filter(Boolean) as Format[];
+    const requested = asFormat((dto as { format?: string }).format);
+    if (!requested) {
+      if (possible.length !== 1) throw new BadRequestException('Choose online or in person.');
+    } else if (!possible.includes(requested)) {
+      throw new BadRequestException('That time does not offer this format. Please choose another.');
+    }
+    const format: Format = requested ?? possible[0];
+    const serviceFormats = (service as { formats?: Array<{ format: string; priceKobo: bigint; isActive: boolean }> }).formats ?? [];
+    const price = priceFor(serviceFormats, format) ?? (format === 'ONLINE' ? service.priceKobo : null);
+    if (price === null) throw new BadRequestException('That service is not offered this way. Please choose another.');
+
+    // Validate discount code if provided — against the format's price.
     let discountResult = null;
     if (dto.discountCode) {
-      discountResult = await this.discountService.validateDiscount(tenantId, dto.discountCode, service.priceKobo);
+      discountResult = await this.discountService.validateDiscount(tenantId, dto.discountCode, price);
     }
 
     await assertWithinMonthlyLimit(this.prisma, tenantId, slot.tenant.subscriptionTier);
@@ -915,6 +978,7 @@ export class ConsultService {
     const result: {
       bookingId: string; icalToken: string; status: string; serviceTitle: string; startsAt: string; endsAt: string;
       therapistName: string; videoRoomLink: string | null; paymentUrl: string | null; accessCode: string | null;
+      format: string; location: { id: bigint; name: string; address: string; city: string; directions: string | null; mapsUrl: string } | null;
       reference: string | null; holdExpiresAt: string | null; manualPayment: unknown; forms?: unknown[];
     } = await this.prisma.$transaction(async (tx) => {
       // Claim the slot first, with the condition in the UPDATE itself.
@@ -936,17 +1000,16 @@ export class ConsultService {
       }
 
       const bookingId = Date.now();
-      const { roomName: videoRoomName, roomLink: videoRoomLink } = await this.resolveVideoRoomLink(
-        slot.therapist,
-        bookingId,
-      );
+      // Rule 6: video rooms exist for online sessions only.
+      const { roomName: videoRoomName, roomLink: videoRoomLink } =
+        format === 'ONLINE' ? await this.resolveVideoRoomLink(slot.therapist, bookingId) : { roomName: null, roomLink: null };
 
       // Settle the price before writing the row. The amount charged is not
       // recoverable from the service afterwards: a discount changes it, and the
       // practice may reprice the service at any time.
       const finalPriceKobo = discountResult
         ? BigInt(discountResult.finalKobo)
-        : BigInt(service.priceKobo || 0);
+        : BigInt(price ?? 0);
       const discountCodeUsed = discountResult
         ? dto.discountCode!.toUpperCase().trim()
         : null;
@@ -961,6 +1024,8 @@ export class ConsultService {
           clientProfileId: client.id,
           status: 'PENDING_PAYMENT',
           notes: dto.notes,
+          format,
+          locationId: format === 'IN_PERSON' ? slot.locationId : null,
           videoRoomName,
           amountKobo: finalPriceKobo,
           discountCodeUsed,
@@ -1032,6 +1097,10 @@ export class ConsultService {
         startsAt: slot.startsAt.toISOString(),
         endsAt: slot.endsAt.toISOString(),
         therapistName: `${slot.therapist.profile.firstName || ''} ${slot.therapist.profile.lastName || ''}`.trim(),
+        format,
+        location: format === 'IN_PERSON' && slot.location
+          ? { ...slot.location, mapsUrl: mapsLink(slot.location.address, slot.location.city) }
+          : null,
         videoRoomLink,
         paymentUrl,
         accessCode,
@@ -1205,6 +1274,7 @@ export class ConsultService {
         },
         service: true,
         availability: true,
+        location: true,
       },
       orderBy: { availability: { startsAt: 'desc' } },
     });
@@ -1226,7 +1296,7 @@ export class ConsultService {
       startsAt: b.availability.startsAt.toISOString(),
       endsAt: b.availability.endsAt.toISOString(),
       status: b.status,
-      videoRoomLink: b.videoRoomName ? (b.videoRoomName.startsWith('http') ? b.videoRoomName : `https://meet.jit.si/${b.videoRoomName}`) : null,
+      ...this.formatFields(b),
       notes: b.notes,
       paymentMethod: b.paymentMethod,
       amountKobo: b.amountKobo !== null ? b.amountKobo.toString() : null,
@@ -1504,6 +1574,7 @@ export class ConsultService {
       },
       include: {
         service: true,
+        location: true,
         availability: {
           include: {
             therapist: {
@@ -1532,7 +1603,7 @@ export class ConsultService {
       status: booking.status,
       priceKobo: booking.service.priceKobo.toString(),
       therapistName: `${booking.availability.therapist.profile.firstName || ''} ${booking.availability.therapist.profile.lastName || ''}`.trim() || 'Your therapist',
-      videoRoomLink: booking.videoRoomName ? (booking.videoRoomName.startsWith('http') ? booking.videoRoomName : `https://meet.jit.si/${booking.videoRoomName}`) : null,
+      ...this.formatFields(booking),
       paymentMethod: booking.paymentMethod,
       // How to pay a transfer that is still due.
       manualPayment:
@@ -1631,6 +1702,7 @@ export class ConsultService {
         client: true,
         service: true,
         availability: true,
+        location: true,
       },
     });
 
@@ -1674,8 +1746,8 @@ export class ConsultService {
         endsAt: booking.availability.endsAt.toISOString(),
         serviceTitle: booking.service.title,
         status: booking.status,
-        videoRoomLink: booking.videoRoomName ? (booking.videoRoomName.startsWith('http') ? booking.videoRoomName : `https://meet.jit.si/${booking.videoRoomName}`) : null,
-      },
+        ...this.formatFields(booking),
+        },
       latestNote: latestNote
         ? {
           id: latestNote.id.toString(),

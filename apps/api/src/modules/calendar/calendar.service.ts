@@ -155,6 +155,7 @@ export class CalendarService {
       include: {
         service: true,
         client: true,
+        location: true,
         availability: {
           include: {
             therapist: true,
@@ -174,14 +175,19 @@ export class CalendarService {
       const clientName = `${booking.client.firstName || ''} ${booking.client.lastName || ''}`.trim() || booking.client.email;
 
       const isGoogleMeet = booking.availability.therapist.videoProvider === 'GOOGLE_MEET';
+      const inPerson = booking.format === 'IN_PERSON' && booking.location;
       const videoLink = this.getVideoRoomLink(booking.videoRoomName);
+      // SET-06: an in-person event carries the address, not a room.
+      const where = inPerson ? `${booking.location.name}, ${booking.location.address}, ${booking.location.city}` : videoLink;
+      const whereLine = inPerson ? `Where: ${where}${booking.location.directions ? `\nDirections: ${booking.location.directions}` : ''}` : `Video Room: ${videoLink}`;
 
       const res = await calendar.events.insert({
         calendarId: 'primary',
         conferenceDataVersion: isGoogleMeet ? 1 : 0,
         requestBody: {
           summary: `${booking.service.title} with ${clientName}`,
-          description: `Booking ID: ${booking.id}\nClient: ${clientName}\nEmail: ${booking.client.email}\nPhone: ${booking.client.phone || 'N/A'}\n\nVideo Room: ${videoLink}`,
+          description: `Booking ID: ${booking.id}\nClient: ${clientName}\nEmail: ${booking.client.email}\nPhone: ${booking.client.phone || 'N/A'}\n\n${whereLine}`,
+          ...(inPerson ? { location: where } : {}),
           start: {
             dateTime: booking.availability.startsAt.toISOString(),
           },
@@ -263,6 +269,7 @@ export class CalendarService {
       include: {
         service: true,
         client: true,
+        location: true,
         availability: {
           include: {
             therapist: {
@@ -283,6 +290,12 @@ export class CalendarService {
     const clientName = `${booking.client.firstName || ''} ${booking.client.lastName || ''}`.trim() || booking.client.email;
 
     const videoLink = this.getVideoRoomLink(booking.videoRoomName);
+    // SET-06: in-person invites carry the address and directions.
+    const inPerson = booking.format === 'IN_PERSON' && booking.location;
+    const where = inPerson ? `${booking.location.name}, ${booking.location.address}, ${booking.location.city}` : videoLink;
+    const whereLine = inPerson
+      ? `Where: ${where}${booking.location.directions ? `\\nDirections: ${booking.location.directions}` : ''}`
+      : `Join Video Session: ${videoLink}`;
 
     const icsContent = [
       'BEGIN:VCALENDAR',
@@ -298,8 +311,8 @@ export class CalendarService {
       `DTSTART:${dtStart}`,
       `DTEND:${dtEnd}`,
       `SUMMARY:${booking.service.title} with ${therapistName}`,
-      `DESCRIPTION:Therapy session with ${therapistName}.\\nClient: ${clientName}\\n\\nJoin Video Session: ${videoLink}`,
-      `LOCATION:${videoLink}`,
+      `DESCRIPTION:Therapy session with ${therapistName}.\\nClient: ${clientName}\\n\\n${whereLine}`,
+      `LOCATION:${where}`,
       'STATUS:CONFIRMED',
       'END:VEVENT',
       'END:VCALENDAR'
