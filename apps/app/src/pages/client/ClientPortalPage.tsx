@@ -21,7 +21,8 @@ type PortalSession = {
   status: string;
   priceKobo: string;
   therapistName: string;
-  videoRoomLink: string | null;
+  /** SET-06: online sessions are joined in the room; in person ones have none. */
+  format?: string;
   paymentMethod?: string;
   manualPayment?: ManualPayment | null;
 };
@@ -371,11 +372,11 @@ export function ClientPortalPage() {
                     Reschedule
                   </button>
                 ) : null}
-                {nextSession.videoRoomLink ? (
-                  <a href={nextSession.videoRoomLink} target="_blank" rel="noreferrer" className="h-[48px] px-5 rounded-[16px] bg-[#E3B341] text-[#0F172A] text-[13.5px] font-extrabold flex items-center gap-2 shadow-[0_8px_22px_rgba(227,179,65,0.35)] hover:brightness-105 cursor-pointer">
+                {nextSession.status === 'CONFIRMED' && nextSession.format !== 'IN_PERSON' ? (
+                  <button type="button" onClick={() => navigate(`/portal/sessions/${nextSession.id}/room`)} className="h-[48px] px-5 rounded-[16px] bg-[#E3B341] text-[#0F172A] text-[13.5px] font-extrabold flex items-center gap-2 shadow-[0_8px_22px_rgba(227,179,65,0.35)] hover:brightness-105 cursor-pointer">
                     <Video className="h-4 w-4" />
                     Join session
-                  </a>
+                  </button>
                 ) : (
                   <button type="button" disabled className="h-[48px] px-5 rounded-[16px] bg-[#E2E8F0] text-[#64748B] text-[13.5px] font-extrabold flex items-center gap-2 cursor-not-allowed">
                     <Video className="h-4 w-4" />
