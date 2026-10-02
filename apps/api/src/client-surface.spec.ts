@@ -55,6 +55,11 @@ const CLIENT_SURFACE = [
   'GET /v1/assessments/mine',
   'GET /v1/assessments/mine/:id',
   'POST /v1/assessments/mine/:id',
+  // VID-01: a session's room. The service admits only the booking's own client
+  // (or its therapist and clinical staff), and only while the room is open.
+  'POST /v1/video/bookings/:id/join',
+  // Heartbeats update only the caller's own participant row (profileId match).
+  'POST /v1/video/participants/:id/heartbeat',
 
   // Their own messages
   'GET /v1/notifications',

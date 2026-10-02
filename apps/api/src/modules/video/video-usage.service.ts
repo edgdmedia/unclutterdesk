@@ -18,7 +18,7 @@ export class VideoUsageService {
 
   async recordJoin(input: { tenantId: bigint; bookingId: bigint; profileId: bigint; provider: string; role: string }) {
     const recent = await this.prisma.videoParticipant.findFirst({
-      where: { bookingId: input.bookingId, profileId: input.profileId, lastSeenAt: { gte: new Date(Date.now() - 2 * 60_000) } },
+      where: { tenantId: input.tenantId, bookingId: input.bookingId, profileId: input.profileId, lastSeenAt: { gte: new Date(Date.now() - 2 * 60_000) } },
       orderBy: { joinedAt: 'desc' },
     });
     if (recent) return recent.id;

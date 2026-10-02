@@ -20,6 +20,7 @@ import { CalendarModule } from './modules/calendar/calendar.module';
 import { PrivacyModule } from './modules/privacy/privacy.module';
 import { InviteModule } from './modules/invites/invite.module';
 import { AssessmentModule } from './modules/assessments/assessment.module';
+import { VideoModule } from './modules/video/video.module';
 import { RequestModule } from './modules/requests/request.module';
 
 @Module({
@@ -53,6 +54,7 @@ import { RequestModule } from './modules/requests/request.module';
     PrivacyModule,
     InviteModule,
     AssessmentModule,
+    VideoModule,
     RequestModule,
   ],
   controllers: [HealthController],
