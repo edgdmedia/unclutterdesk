@@ -52,7 +52,7 @@ A running log of what shows up in testing, what we decide about it, and when it'
 | ONB-05 | Onboarding | No way to set a session as virtual or physical | Bug | | Fixed |
 | ONB-06 | Onboarding | No walkthrough after "Go to Dashboard" | Feature | | Fixed |
 | ONB-07 | Onboarding | Continue in setup fails with "This endpoint requires a practice profile" | Bug | P0 | Fixed |
-| ONB-08 | Onboarding | Setup doesn't ask for the practice's preferred video platform | Feature | P2 | Open |
+| ONB-08 | Onboarding | Setup doesn't ask for the practice's preferred video platform | Feature | P2 | Fixed |
 | SET-01 | Settings | Booking link picked during setup isn't saved, and can't be changed | Bug | P1 | Fixed |
 | SET-02 | Settings | Booking subdomain should be a separate setting from the custom hostname | UX | P2 | Fixed |
 | SET-03 | Settings | No custom hostname setup (add domain, DNS records, auto-configure) | Feature | P2 | Deferred |
@@ -74,7 +74,7 @@ A running log of what shows up in testing, what we decide about it, and when it'
 | SET-09 | Settings | A practice discount can be turned off, but not back on, edited or deleted | Bug | P1 | Fixed |
 | BKG-11 | Booking page | The practice's booking link doesn't carry the new wizard design: too wide, no practice logo | Bug | P1 | Fixed |
 | BKG-12 | Booking page | "Go to my bookings" and the calendar buttons should share one row; the two calendar links can be one dropdown | UX | P3 | Fixed |
-| VID-01 | Video | The session room is a mock-up, not a real video call | Feature | P0 | Ready |
+| VID-01 | Video | The session room is a mock-up, not a real video call | Feature | P0 | Fixed |
 | POR-01 | Client portal | /portal only works on app.unclutterdesk.com, not on the practice's own link | Bug | P1 | Fixed |
 | POR-02 | Client portal | The portal should look like a dashboard, not a plain list | UX | P2 | Fixed |
 | FRM-01 | Forms | Save forms as templates and optionally share them with other practices | Feature | | Fixed |
@@ -96,7 +96,7 @@ A running log of what shows up in testing, what we decide about it, and when it'
 | POR-06 | Client portal | Portal shows your sessions and "Sign in" at the same time after a while away | Bug | P1 | Fixed |
 | ADM-04 | Admin | Gross revenue counts practices' income, not Unclutter Desk's | Bug | P2 | Ready |
 | BKG-13 | Sessions | Past sessions with no outcome stay "Confirmed" forever | Feature | P1 | Ready |
-| VID-02 | Video | "Join session" works any time, even days before | Bug | P1 | Ready |
+| VID-02 | Video | "Join session" works any time, even days before | Bug | P1 | Fixed |
 | GEN-01 | Design system | Pages set their own widths and hand-write their grids | UX | P2 | Ready |
 | GEN-02 | Design system | The dashboard keeps showing Profile photo and Practice branding cards | UX | P3 | Ready |
 | GEN-03 | Design system | The menu feels disconnected | UX | P2 | Ready |
@@ -294,11 +294,11 @@ A running log of what shows up in testing, what we decide about it, and when it'
 - **Verified:**
 
 ### ONB-08 · Setup doesn't ask for the video platform
-- **Type:** Feature · **Priority:** P2 · **Status:** Open
+- **Type:** Feature · **Priority:** P2 · **Status:** Fixed
 - **Observed:** Practice setup has no option to choose the default video platform.
 - **Feedback / decision:** It exists per therapist (`ConsultTherapistProfile.videoProvider`: Jitsi, Daily, Google Meet, Zoom; Jitsi by default), set in My profile only. Proposed: ask once in setup ("How do you run online sessions?") as the practice default, still changeable per therapist. Depends on VID-01 for which platforms run inside the app.
-- **Fix:**
-- **Verified:**
+- **Fix:** `41d9608`. Setup's Services step says online sessions run in Unclutter Desk's own video room (no choice needed). My profile → Video sessions offers Unclutter Desk video or Google Meet; Meet needs Google connected, with a **Connect Google Calendar** button.
+- **Verified:** Covered by `OnboardingServicesStep.test.tsx`, `MyProfileVideo.test.tsx` and `therapist-video.spec.ts`. Not yet clicked through in the browser.
 
 ## Settings
 
@@ -483,7 +483,7 @@ A running log of what shows up in testing, what we decide about it, and when it'
 - **Verified:** Browser check 2 Oct: after a real test payment the two actions sit in one flex row and the menu opens with both links.
 
 ### VID-01 · The session room isn't a real video call
-- **Type:** Feature · **Priority:** P0 · **Status:** Ready
+- **Type:** Feature · **Priority:** P0 · **Status:** Fixed
 - **Observed:** The telehealth room (`TelehealthVideoRoomPage.tsx`, the designed video screen) is a mock-up labelled "Room preview" with the client's initials; there's no camera or call in it.
 - **Feedback / decision:** Decided 1 Oct 2026.
   - **Daily is the default for every plan**, running inside our designed room (our own mute, camera and leave buttons; private rooms with short-lived access tokens per session). Pricing checked: 10,000 free participant-minutes a month, then $0.004 per participant-minute, about 100 one-to-one 50-minute sessions free a month, then about $0.40 a session ([Daily pricing](https://www.daily.co/pricing/video-sdk/)).
@@ -496,8 +496,8 @@ A running log of what shows up in testing, what we decide about it, and when it'
   - To confirm in the JaaS dashboard before building: what the free plan does at the 26th user (blocked or prompted), and the paid per-user price (about $0.35 per user per a third-party summary).
   - Needs a Daily account and API key, and a JaaS app (app ID and signing key), before building. ONB-08 (setup asks for the video platform) follows from this.
 - **Update:** 2 Oct 2026: the Daily and JaaS keys are set in the API .env; ready to build.
-- **Fix:**
-- **Verified:**
+- **Fix:** `a58ff01`–`642e638` on `feat/video-rooms`. Online sessions run in the session room for therapist (`/session/:id`) and client (`/portal/sessions/:id/room`): Daily in the page first, JaaS once Daily's monthly minutes are spent, then a meet.jit.si link in a new tab (`VideoRouter`, budgets in `VIDEO_DAILY_MONTHLY_MINUTES` / `VIDEO_JAAS_MONTHLY_USERS`). The room is made on the first join, once per booking, and admits only the booking's client, its therapist and clinical staff, from 15 minutes before to 60 after. Every join and minute is recorded (`VideoParticipant`, heartbeat each minute, Daily's own durations via the `meeting.ended` webhook); Admin → Video usage shows each month by provider and practice. Emails, calendar invites and pages link into the room, never to a provider. Google Meet stays available through the therapist's own Google. Also fixed on the way: the portal, therapist bookings and session prep failed for every booking on `dev` (`e7fa44b`); the portal's next session is now the soonest and stays joinable while in progress.
+- **Verified:** 2 Oct 2026, locally on a database copy (Edge): the link fallback end to end (room made once and kept for the booking, usage rows written), the therapist room with notes beside the video, the client room, and no sideways scroll at 390px. **Still to verify on the server:** a real Daily call and a JaaS call between two browsers, the budget fall-through, and the webhook. The Daily and JaaS keys are not in the local `.env` files.
 
 ## Client portal
 
@@ -586,11 +586,11 @@ A running log of what shows up in testing, what we decide about it, and when it'
 - **Verified:** 
 
 ### VID-02 · "Join session" works any time, even days before
-- **Type:** Bug · **Priority:** P1 · **Status:** Ready
+- **Type:** Bug · **Priority:** P1 · **Status:** Fixed
 - **Observed:** The portal's Join button shows whenever a room link exists and goes straight to meet.jit.si.
 - **Feedback / decision:** Decided 2 Oct 2026. The room opens 15 minutes before the session and closes 60 minutes after it ends (as in the VID-01 plan). Before that the button reads "Opens at 9:45 AM". Comes with VID-01's in-app room.
-- **Fix:** 
-- **Verified:** 
+- **Fix:** `5b3cd06`. One `JoinButton` everywhere (portal, confirmation page, session page, session prep): before the room opens it reads "Opens at 9:45 AM" and does nothing, it becomes Join at that minute without a reload, and disappears after. The window comes from `@unclutterdesk/shared` and matches the server's check (a test fails if they differ). Clients no longer receive a provider link.
+- **Verified:** 2 Oct 2026, locally: a session starting in 10 minutes showed **Join session**; tomorrow's showed "Opens at 3:15 PM", and its room said "This room opens at 3:15 PM." with **Check again**.
 
 ## General / design system
 
