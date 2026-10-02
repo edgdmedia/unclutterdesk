@@ -18,7 +18,7 @@
 - JaaS on 8x8.vc: `@jitsi/react-sdk` `JaaSMeeting`, and an RS256 JWT signed with `jose`.
 - React and vitest.
 
-**Spec:** `docs/testing-feedback.md` → VID-01 (decisions of 1 Oct 2026: Daily for every plan; budget router Daily → JaaS → new tab; Meet opt-in through the therapist's own Google; usage records) and ONB-08.
+**Spec:** `docs/testing-feedback.md` → VID-01, VID-02 (decisions of 1 Oct 2026: Daily for every plan; budget router Daily → JaaS → new tab; Meet opt-in through the therapist's own Google; usage records) and ONB-08.
 
 ## Global Constraints
 
@@ -719,7 +719,34 @@ export class VideoController {
 
 ---
 
-### Task 7: Choosing video in My profile and setup (ONB-08), and the admin usage page
+### Task 7: Join buttons only work when the room is open (VID-02)
+
+The API already refuses early joins (Task 4). This task makes every Join button and join link say so before anyone clicks, using one shared rule.
+
+**Files:**
+- `packages/shared` (or `apps/app/src/lib/joinWindow.ts` if the API can't import from there): `joinWindow(startsAt, endsAt) → { opensAt, closesAt }` and `joinState(now, startsAt, endsAt) → 'early' | 'open' | 'over'`, with the same 15 minutes and 60 minutes as Task 4. Task 4's API check imports the same constants, so the two can't drift.
+- **API:** the portal and session views add `joinOpensAt` and `joinClosesAt` to each online, confirmed booking, and drop `videoRoomLink` from client-facing responses (the in-app room `/room/:bookingId` replaces it).
+- **App:**
+  - `components/video/JoinButton.tsx` (new, the only Join button): with `startsAt`, `endsAt` and the room path, it shows:
+    - early: a disabled "Opens at 9:45 AM", which re-renders each minute and turns into **Join session** at 9:45 without a reload;
+    - open: **Join session**;
+    - over: nothing.
+  - It replaces the raw links in `ClientPortalPage.tsx`, `BookingConfirmedPage.tsx`, `SessionDetailPage.tsx` and `SessionPrepPage.tsx`.
+- **Emails:** the confirmation and reminders keep a "Join session" link to the in-app room, labelled "Join session (opens 15 minutes before)". Opening it early lands on the room page's "This room opens at 9:45 AM" with **Check again** (Task 6).
+- **Tests:** `joinWindow.spec`; `JoinButton.test.tsx` (early/open/over, and the minute tick with fake timers); the portal and confirmation pages render `JoinButton`, not an `<a>` to the provider; `client-surface.spec.ts` asserts no `videoRoomLink` in client responses.
+
+- [ ] **Step 1: Failing tests:**
+  - 9:00 session at 8:44 is early with "Opens at 8:45 AM", at 8:45 open, at 10:50 (50-minute session plus 60) open, at 10:51 over;
+  - the button turns from disabled to enabled when the clock passes `opensAt`;
+  - the portal shows "Opens at …" for a session tomorrow, never a link to meet.jit.si;
+  - in-person sessions show no Join button;
+  - client responses carry `joinOpensAt` but no `videoRoomLink`.
+- [ ] **Step 2:** Run. Expected: FAIL.
+- [ ] **Step 3:** Implement.
+- [ ] **Step 4:** Run both suites.
+- [ ] **Step 5:** Commit `"VID-02: Join buttons wait for the room to open, and say when it will"`.
+
+### Task 8: Choosing video in My profile and setup (ONB-08), and the admin usage page
 
 **Files:**
 - Modify: `apps/app/src/pages/practice/MyProfilePage.tsx` (the `videoProvider` select at line ~130)
@@ -749,7 +776,7 @@ UI:
 
 ---
 
-### Task 8: Live check and the testing sheet
+### Task 9: Live check and the testing sheet
 
 - [ ] **Step 1:** Put real `DAILY_API_KEY` and JaaS keys in `apps/api/.env`. Start the servers.
 - [ ] **Step 2:** Book and confirm a session that starts within 15 minutes (or move a confirmed booking's slot in the database).
@@ -758,4 +785,5 @@ UI:
   - Heartbeat rows grow.
 - [ ] **Step 3:** Set `VIDEO_DAILY_MONTHLY_MINUTES=0` and restart. A new booking's room is created on JaaS and works in the room. Then set `VIDEO_JAAS_MONTHLY_USERS=0`: the next one shows **Open video call** (meet.jit.si).
 - [ ] **Step 4:** End a Daily call. Within a minute of `meeting.ended` (use a tunnel such as `cloudflared` for the webhook, or call `reconcileDaily` by hand), the participants are reconciled. `/admin/video` shows the minutes.
-- [ ] **Step 5:** In `docs/testing-feedback.md`, set VID-01 and ONB-08 to **Fixed**, with the commits and what Steps 2–4 showed. Commit.
+- [ ] **Step 5:** In the portal, a session tomorrow shows "Opens at …"; the one within 15 minutes shows **Join session**.
+- [ ] **Step 6:** In `docs/testing-feedback.md`, set VID-01, VID-02 and ONB-08 to **Fixed**, with the commits and what Steps 2–4 showed. Commit.
