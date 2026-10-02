@@ -28,6 +28,7 @@ const FormsManagerPage = lazy(() => import('./pages/practice/settings/FormsManag
 const FormEditorPage = lazy(() => import('./pages/practice/settings/FormEditorPage').then((m) => ({ default: m.FormEditorPage })));
 const ServicesSettingsPage = lazy(() => import('./pages/practice/settings/ServicesSettingsPage').then((m) => ({ default: m.ServicesSettingsPage })));
 const DiscountSettingsPage = lazy(() => import('./pages/practice/settings/DiscountSettingsPage').then((m) => ({ default: m.DiscountSettingsPage })));
+const LocationsSettingsPage = lazy(() => import('./pages/practice/settings/LocationsSettingsPage').then((m) => ({ default: m.LocationsSettingsPage })));
 const TelehealthVideoRoomPage = lazy(() => import('./pages/practice/TelehealthVideoRoomPage').then((m) => ({ default: m.TelehealthVideoRoomPage })));
 const SessionPrepPage = lazy(() => import('./pages/practice/SessionPrepPage').then((m) => ({ default: m.SessionPrepPage })));
 const OnboardingWizardPage = lazy(() => import('./pages/practice/OnboardingWizardPage').then((m) => ({ default: m.OnboardingWizardPage })));
@@ -450,6 +451,7 @@ function AppLayout() {
               <Route path="/dashboard/settings/account" element={<AccountPreferencesPage />} />
               <Route path="/dashboard/settings/availability" element={<AvailabilitySettingsPage />} />
               <Route path="/dashboard/settings/profile" element={<PracticeProfilePage />} />
+              <Route path="/dashboard/settings/locations" element={<LocationsSettingsPage />} />
               <Route
                 path="/dashboard/settings/brand"
                 element={

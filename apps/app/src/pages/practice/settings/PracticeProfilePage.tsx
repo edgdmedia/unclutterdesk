@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { Save, Info } from 'lucide-react';
 import { Eyebrow, useToast } from '@unclutterdesk/ui';
 import { api } from '../../../utils/apiClient';
@@ -87,8 +88,7 @@ export function PracticeProfilePage() {
                 <div className="grid grid-cols-2 gap-4 mt-4">
                   <div><label className="block text-[11.5px] font-bold text-[#475569] mb-1.5">Public email</label><input className={inputCls} value={profile.publicEmail || ''} onChange={(e) => setProfile((p) => ({ ...p, publicEmail: e.target.value }))} /></div>
                   <div><label className="block text-[11.5px] font-bold text-[#475569] mb-1.5">Phone</label><input className={inputCls} value={profile.publicPhone || ''} onChange={(e) => setProfile((p) => ({ ...p, publicPhone: e.target.value }))} /></div>
-                  <div><label className="block text-[11.5px] font-bold text-[#475569] mb-1.5">City</label><input className={inputCls} value={profile.city || ''} onChange={(e) => setProfile((p) => ({ ...p, city: e.target.value }))} /></div>
-                  <div><label className="block text-[11.5px] font-bold text-[#475569] mb-1.5">Address</label><input className={inputCls} value={profile.address || ''} onChange={(e) => setProfile((p) => ({ ...p, address: e.target.value }))} /></div>
+                  <div className="col-span-2 text-[12.5px] text-[#64748B]">Addresses moved to <Link to="/dashboard/settings/locations" className="font-bold text-[#0F3A53] underline">Locations</Link> — add the places you see clients there.</div>
                   <div className="col-span-2"><label className="block text-[11.5px] font-bold text-[#475569] mb-1.5">Practice category</label><input className={inputCls} value={profile.category || ''} onChange={(e) => setProfile((p) => ({ ...p, category: e.target.value }))} /></div>
                 </div>
               </div>
@@ -102,7 +102,7 @@ export function PracticeProfilePage() {
           <div className="space-y-2 text-sm text-[#475569] font-medium">
             <div><strong className="text-[#0F172A]">Practice:</strong> {profile.name || 'Not set'}</div>
             <div><strong className="text-[#0F172A]">Email:</strong> {profile.publicEmail || 'Not set'}</div>
-            <div><strong className="text-[#0F172A]">City:</strong> {profile.city || 'Not set'}</div>
+            <div><strong className="text-[#0F172A]">Locations:</strong> <Link to="/dashboard/settings/locations" className="text-[#0F3A53] underline">Manage</Link></div>
           </div>
           <div className="mt-5 p-3.5 rounded-[14px] bg-[#FEF3C7] text-[#92400E] text-xs font-medium flex items-start gap-2.5 leading-relaxed">
             <Info className="h-4 w-4 shrink-0 mt-0.5" />

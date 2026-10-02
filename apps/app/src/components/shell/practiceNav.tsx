@@ -1,6 +1,6 @@
 import {
   Activity, BarChart3, Bell, Calendar, CalendarClock, ClipboardCheck, ClipboardList, Clock, CreditCard, FileText,
-  Home, IdCard, LayoutDashboard, Palette, Settings, Tag, Users, type LucideIcon,
+  Home, IdCard, LayoutDashboard, MapPin, Palette, Settings, Tag, Users, type LucideIcon,
 } from 'lucide-react';
 import type { SidebarSection } from '@unclutterdesk/ui';
 
@@ -38,6 +38,7 @@ const OWNER_GROUPS: { label: string; items: NavEntry[] }[] = [
     label: 'Client-facing',
     items: [
       { href: '/dashboard/settings/profile', label: 'Practice profile', icon: IdCard },
+      { href: '/dashboard/settings/locations', label: 'Locations', icon: MapPin },
       { href: '/dashboard/settings/brand', label: 'Brand & booking page', icon: Palette, tier: 'pro' },
     ],
   },
