@@ -43,10 +43,9 @@ function setup({ resend = true }: { resend?: boolean } = {}) {
   };
   const mail: any = {
     resend: () => (resend ? client : null),
-    platformSenderAddress: () => 'notifications@mail.unclutterdesk.com',
   };
   const notifications: any = { notify: vi.fn().mockResolvedValue([]) };
-  return { service: new SendingDomainService(prisma, mail, notifications), prisma, client, notifications };
+  return { service: new SendingDomainService(prisma, mail, notifications, { platformAddress: () => 'notifications@mail.unclutterdesk.com' } as any), prisma, client, notifications };
 }
 
 describe('validateSendingDomain', () => {

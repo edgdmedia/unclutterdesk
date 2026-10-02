@@ -1,12 +1,23 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { MailService, addressOf, formatSender } from './mail.service';
+import { MailService } from './mail.service';
+import { addressOf, formatSender, type OutgoingEmail } from './outgoing-email';
 import { ResendClient } from './resend.client';
 
-const ENV_KEYS = ['RESEND_API_KEY', 'MAIL_FROM', 'SMTP_FROM', 'SMTP_HOST', 'SMTP_USER', 'SMTP_PASS', 'EMAIL_LOG_ONLY', 'SMTP_FROM_NAME'];
+/**
+ * MailService only delivers: the email arrives fully packaged, sender and all,
+ * and goes out through whichever provider is configured. It decides nothing
+ * about who the mail is from.
+ */
+const ENV_KEYS = ['RESEND_API_KEY', 'SMTP_HOST', 'SMTP_USER', 'SMTP_PASS', 'SMTP_PORT', 'MAIL_HOST', 'MAIL_USER', 'MAIL_PASS', 'EMAIL_LOG_ONLY'];
 
-function prismaWith(domain: { domain: string; status: string; fromLocalPart: string } | null) {
-  return { tenantSendingDomain: { findUnique: vi.fn().mockResolvedValue(domain) } } as any;
-}
+const email: OutgoingEmail = {
+  to: 'c@x.ng',
+  subject: 'Your session is booked',
+  html: '<p>Booked</p>',
+  text: 'Booked',
+  from: { name: 'Smith Therapy', address: 'notifications@notify.unclutterdesk.com' },
+  replyTo: 'hello@smith.ng',
+};
 
 describe('formatSender / addressOf', () => {
   it('quotes the display name and escapes quotes in it', () => {
@@ -35,119 +46,66 @@ describe('MailService', () => {
     vi.restoreAllMocks();
   });
 
-  // NOT-03: the code must build a proper From. What a client app then shows
-  // for it is the transport's business — see docs/VPS_PREPARATION.md.
-  describe('the From line (NOT-03)', () => {
-    it('names the platform when there is no practice and no SMTP_FROM_NAME', async () => {
-      process.env.SMTP_HOST = 'smtp.example.com';
-      process.env.SMTP_USER = 'u';
-      process.env.SMTP_PASS = 'p';
-      process.env.SMTP_FROM = 'no-reply@unclutterdesk.com';
-      const mail = new MailService(prismaWith(null));
-      const smtp: any = { sendMail: vi.fn().mockResolvedValue({ messageId: 'm1' }) };
-      (mail as any).smtp = smtp;
-      await mail.sendMail('c@x.ng', 'Hi', '<p>Hi</p>');
-      expect(smtp.sendMail.mock.calls[0][0].from).toBe('"Unclutter Desk" <no-reply@unclutterdesk.com>');
-    });
-
-    it('names the practice when the email carries its brand', async () => {
-      process.env.SMTP_HOST = 'smtp.example.com';
-      process.env.SMTP_USER = 'u';
-      process.env.SMTP_PASS = 'p';
-      process.env.SMTP_FROM = 'no-reply@unclutterdesk.com';
-      const mail = new MailService(prismaWith(null));
-      const smtp: any = { sendMail: vi.fn().mockResolvedValue({ messageId: 'm1' }) };
-      (mail as any).smtp = smtp;
-      await mail.sendMail('c@x.ng', 'Hi', '<p>Hi</p>', undefined, { fromName: 'EDGD Media' });
-      expect(smtp.sendMail.mock.calls[0][0].from).toBe('"EDGD Media" <no-reply@unclutterdesk.com>');
+  it('delivers through Resend exactly as packaged, when a Resend key is set', async () => {
+    process.env.RESEND_API_KEY = 're_test';
+    const send = vi.spyOn(ResendClient.prototype, 'sendEmail').mockResolvedValue({ id: 'em_1' });
+    const mail = new MailService();
+    expect(mail.provider()).toBe('resend');
+    expect(mail.canSignForDomains()).toBe(true);
+    await expect(mail.deliver(email)).resolves.toEqual({ sent: true, messageId: 'em_1' });
+    expect(send).toHaveBeenCalledWith({
+      from: '"Smith Therapy" <notifications@notify.unclutterdesk.com>',
+      to: 'c@x.ng',
+      subject: 'Your session is booked',
+      html: '<p>Booked</p>',
+      text: 'Booked',
+      replyTo: 'hello@smith.ng',
     });
   });
 
-  it('previews when nothing is configured', async () => {
-    const mail = new MailService(prismaWith(null));
+  it('delivers through SMTP with the identical sender, when only SMTP is set', async () => {
+    Object.assign(process.env, { SMTP_HOST: 'smtp.gmail.com', SMTP_USER: 'u', SMTP_PASS: 'p' });
+    const mail = new MailService();
+    expect(mail.provider()).toBe('smtp');
+    expect(mail.canSignForDomains()).toBe(false);
+    const sendMail = vi.fn().mockResolvedValue({ messageId: 'm1' });
+    (mail as any).transport.transporter = { sendMail };
+    await expect(mail.deliver(email)).resolves.toEqual({ sent: true, messageId: 'm1' });
+    expect(sendMail).toHaveBeenCalledWith({
+      from: '"Smith Therapy" <notifications@notify.unclutterdesk.com>',
+      to: 'c@x.ng',
+      subject: 'Your session is booked',
+      html: '<p>Booked</p>',
+      text: 'Booked',
+      replyTo: 'hello@smith.ng',
+    });
+  });
+
+  it('prefers Resend when both are configured', () => {
+    Object.assign(process.env, { RESEND_API_KEY: 're_test', SMTP_HOST: 'smtp.gmail.com', SMTP_USER: 'u', SMTP_PASS: 'p' });
+    expect(new MailService().provider()).toBe('resend');
+  });
+
+  it('previews when nothing is configured, logging the packaged sender', async () => {
+    const mail = new MailService();
+    expect(mail.provider()).toBe('preview');
     expect(mail.isConfigured()).toBe(false);
-    await expect(mail.sendMail('c@x.ng', 'Hi', '<p>Hi</p>')).resolves.toEqual({ sent: false, preview: true });
+    const log = vi.spyOn((mail as any).transport.logger, 'log').mockImplementation(() => undefined);
+    await expect(mail.deliver(email)).resolves.toEqual({ sent: false, preview: true });
+    expect(log.mock.calls[0][0]).toContain('From: "Smith Therapy" <notifications@notify.unclutterdesk.com>');
   });
 
-  describe('on Resend', () => {
-    beforeEach(() => {
-      process.env.RESEND_API_KEY = 're_test';
-      process.env.MAIL_FROM = 'Unclutter Desk <notifications@mail.unclutterdesk.com>';
-    });
-
-    it('sends from a practice’s verified domain, with its name and reply-to', async () => {
-      const send = vi.spyOn(ResendClient.prototype, 'sendEmail').mockResolvedValue({ id: 'em_1' });
-      const mail = new MailService(prismaWith({ domain: 'unclutter.com.ng', status: 'VERIFIED', fromLocalPart: 'hello' }));
-
-      const result = await mail.sendMail('c@x.ng', 'Booked', '<p>b</p>', 'b', {
-        fromName: 'Unclutter Consult',
-        replyTo: 'care@unclutter.com.ng',
-        tenantId: 5n,
-      });
-
-      expect(result).toEqual({ sent: true, messageId: 'em_1' });
-      expect(send).toHaveBeenCalledWith(
-        expect.objectContaining({
-          from: '"Unclutter Consult" <hello@unclutter.com.ng>',
-          to: 'c@x.ng',
-          replyTo: 'care@unclutter.com.ng',
-        }),
-      );
-    });
-
-    it.each(['PENDING', 'FAILED', 'TEMPORARY_FAILURE', 'NOT_STARTED'])(
-      'falls back to the platform address when the domain is %s',
-      async (status) => {
-        const send = vi.spyOn(ResendClient.prototype, 'sendEmail').mockResolvedValue({ id: 'em_2' });
-        const mail = new MailService(prismaWith({ domain: 'drjane.ng', status, fromLocalPart: 'notifications' }));
-        await mail.sendMail('c@x.ng', 'Hi', '<p>Hi</p>', undefined, { fromName: 'Dr Jane', tenantId: 7n });
-        expect(send.mock.calls[0][0].from).toBe('"Dr Jane" <notifications@mail.unclutterdesk.com>');
-      },
-    );
-
-    it('uses the platform address for mail with no practice', async () => {
-      const send = vi.spyOn(ResendClient.prototype, 'sendEmail').mockResolvedValue({ id: 'em_3' });
-      const prisma = prismaWith(null);
-      const mail = new MailService(prisma);
-      await mail.sendMail('c@x.ng', 'Reset', '<p>r</p>');
-      expect(send.mock.calls[0][0].from).toBe('"Unclutter Desk" <notifications@mail.unclutterdesk.com>');
-      expect(prisma.tenantSendingDomain.findUnique).not.toHaveBeenCalled();
-    });
-
-    it('still sends from the platform address if the domain lookup fails', async () => {
-      const send = vi.spyOn(ResendClient.prototype, 'sendEmail').mockResolvedValue({ id: 'em_4' });
-      const prisma = { tenantSendingDomain: { findUnique: vi.fn().mockRejectedValue(new Error('db down')) } } as any;
-      const mail = new MailService(prisma);
-      await mail.sendMail('c@x.ng', 'Hi', '<p>Hi</p>', undefined, { tenantId: 7n });
-      expect(send.mock.calls[0][0].from).toContain('notifications@mail.unclutterdesk.com');
-    });
+  it('sends nothing in log-only mode', async () => {
+    process.env.RESEND_API_KEY = 're_test';
+    process.env.EMAIL_LOG_ONLY = 'true';
+    const send = vi.spyOn(ResendClient.prototype, 'sendEmail');
+    await expect(new MailService().deliver(email)).resolves.toEqual({ sent: false, log_only: true });
+    expect(send).not.toHaveBeenCalled();
   });
 
-  it('never uses a practice domain over SMTP, which cannot sign for it', async () => {
-    process.env.SMTP_HOST = 'smtp.gmail.com';
-    process.env.SMTP_USER = 'u';
-    process.env.SMTP_PASS = 'p';
-    process.env.SMTP_FROM = 'Unclutter Desk <no-reply@unclutterdesk.com>';
-    const prisma = prismaWith({ domain: 'drjane.ng', status: 'VERIFIED', fromLocalPart: 'notifications' });
-    const mail = new MailService(prisma);
-    await expect(mail.senderAddressFor(7n)).resolves.toBe('no-reply@unclutterdesk.com');
-    expect(prisma.tenantSendingDomain.findUnique).not.toHaveBeenCalled();
-  });
-});
-
-describe('MailService sender precedence', () => {
-  const keys = ['RESEND_API_KEY', 'MAIL_FROM', 'SMTP_FROM', 'SMTP_HOST', 'SMTP_USER', 'SMTP_PASS'];
-  const saved: Record<string, string | undefined> = {};
-  beforeEach(() => keys.forEach((k) => { saved[k] = process.env[k]; delete process.env[k]; }));
-  afterEach(() => keys.forEach((k) => (saved[k] === undefined ? delete process.env[k] : (process.env[k] = saved[k]))));
-
-  it('keeps SMTP_FROM first on SMTP, so an existing deployment is unchanged', () => {
-    Object.assign(process.env, { SMTP_HOST: 'h', SMTP_USER: 'u', SMTP_PASS: 'p', SMTP_FROM: 'a@old.ng', MAIL_FROM: 'b@new.ng' });
-    expect(new MailService().platformSenderAddress()).toBe('a@old.ng');
-  });
-
-  it('reads MAIL_FROM first on Resend', () => {
-    Object.assign(process.env, { RESEND_API_KEY: 're_x', SMTP_FROM: 'a@old.ng', MAIL_FROM: 'b@new.ng' });
-    expect(new MailService().platformSenderAddress()).toBe('b@new.ng');
+  it('lets a provider failure reach the caller, so it is recorded', async () => {
+    process.env.RESEND_API_KEY = 're_test';
+    vi.spyOn(ResendClient.prototype, 'sendEmail').mockRejectedValue(new Error('domain not verified'));
+    await expect(new MailService().deliver(email)).rejects.toThrow('domain not verified');
   });
 });

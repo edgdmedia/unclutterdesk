@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { MailService } from '../mail/mail.service';
+import { SenderIdentityService } from '../mail/sender-identity.service';
 import {
   ChannelKey,
   ChannelRecipient,
@@ -8,12 +9,6 @@ import {
   NotificationChannel,
 } from './notification.channel';
 
-/**
- * Email delivery channel. Wired when SMTP credentials exist (Google SMTP via
- * MailService) OR when the app is running in dev/preview mode (emails are then
- * logged instead of sent — see MailService). Renders a tenant-branded HTML
- * message so tenants can plug their own look-and-feel in.
- */
 /**
  * Everything in the message is text: practice names, admins' personal notes
  * and client names end up here, so none of it may be read as markup.
@@ -27,11 +22,20 @@ export function escapeHtml(value: unknown): string {
     .replace(/'/g, '&#39;');
 }
 
+/**
+ * The email channel packages a notification as an email: the tenant-branded
+ * content, and the sender from SenderIdentityService (the one place that
+ * decides it). MailService then only delivers it, through whichever provider
+ * is configured.
+ */
 @Injectable()
 export class EmailChannel implements NotificationChannel {
   readonly key: ChannelKey = 'email';
 
-  constructor(private readonly mail: MailService) {}
+  constructor(
+    private readonly mail: MailService,
+    private readonly identity: SenderIdentityService,
+  ) {}
 
   isWired(): boolean {
     return true;
@@ -40,12 +44,18 @@ export class EmailChannel implements NotificationChannel {
   async send(recipient: ChannelRecipient, payload: ChannelPayload): Promise<DeliveryResult> {
     if (!recipient.email) return { success: false, error: 'Recipient has no email address' };
 
-    const text = payload.message;
-    const html = this.render(payload);
-    const result = await this.mail.sendMail(recipient.email, payload.title, html, text, {
-      fromName: payload.brand?.practiceName || undefined,
-      replyTo: payload.brand?.publicEmail || undefined,
+    const sender = await this.identity.senderFor({
       tenantId: recipient.tenantId,
+      practiceName: payload.brand?.practiceName,
+      replyTo: payload.brand?.publicEmail,
+    });
+    const result = await this.mail.deliver({
+      to: recipient.email,
+      subject: payload.title,
+      html: this.render(payload),
+      text: payload.message,
+      from: { name: sender.name, address: sender.address },
+      ...(sender.replyTo ? { replyTo: sender.replyTo } : {}),
     });
 
     if (result.sent) return { success: true, providerId: result.messageId ?? null };
