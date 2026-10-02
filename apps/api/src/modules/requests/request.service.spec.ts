@@ -25,6 +25,37 @@ describe('requests from practices', () => {
     await expect(service.create(1n, 2n, { type: type.toLowerCase(), subject: 'Something' })).resolves.toMatchObject({ type, status: 'OPEN' });
   });
 
+  it('only takes template shares from the form editor, never as a plain request', async () => {
+    const { service, prisma } = setup();
+    await expect(service.create(1n, 2n, { type: 'template', subject: 'My form' })).rejects.toThrow(/form editor/);
+    expect(prisma.platformRequest.create).not.toHaveBeenCalled();
+  });
+
+  it('says which shared template a request is about', async () => {
+    const { service, prisma } = setup();
+    prisma.platformRequest.findMany.mockResolvedValue([{ ...existing, type: 'TEMPLATE', formTemplateId: 50n, tenant: { name: 'Calm Rooms', slug: 'calm' } }]);
+    const [row] = await service.all({ type: 'TEMPLATE' });
+    expect(prisma.platformRequest.findMany.mock.calls[0][0].where).toMatchObject({ type: 'TEMPLATE' });
+    expect(row.formTemplateId).toBe('50');
+  });
+
+  it("won't change a template request outside its review, so the two can't drift apart", async () => {
+    const { service, prisma } = setup({ ...existing, type: 'TEMPLATE', formTemplateId: 50n });
+    await expect(service.update(4n, { status: 'done' })).rejects.toThrow(/approve or decline/i);
+    expect(prisma.platformRequest.update).not.toHaveBeenCalled();
+    await expect(service.update(4n, { status: 'done' }, { templateReview: true })).resolves.toMatchObject({ status: 'DONE' });
+  });
+
+  it('tells a practice its template was approved or not, in those words', async () => {
+    const template = { ...existing, type: 'TEMPLATE', subject: 'Telehealth Consent', formTemplateId: 50n };
+    const approved = setup(template);
+    await approved.service.update(4n, { status: 'DONE', adminNote: 'Approved.' }, { templateReview: true });
+    expect(approved.notifications.notify.mock.calls[0][0].title).toBe('Form template "Telehealth Consent" is approved');
+    const declined = setup(template);
+    await declined.service.update(4n, { status: 'DECLINED', adminNote: 'Needs consent.' }, { templateReview: true });
+    expect(declined.notifications.notify.mock.calls[0][0].title).toBe('Form template "Telehealth Consent" is not approved');
+  });
+
   it('needs a known type and a title', async () => {
     const { service } = setup();
     await expect(service.create(1n, 2n, { type: 'SHOPPING', subject: 'x y' })).rejects.toThrow(/what kind/);

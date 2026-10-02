@@ -10,9 +10,14 @@ type Summary = {
   startsAt: string;
   amountKobo: string;
   practiceName: string;
+  /** BKG-09: until when the time is held, and whether a hold that ran out can be paid again. */
+  holdExpiresAt?: string | null;
+  canRetry?: boolean;
 };
 
 const naira = (kobo: string) => `₦${(Number(kobo) / 100).toLocaleString('en-NG')}`;
+/** Practices are in Lagos; show their times as they are there. */
+const clock = (iso: string) => new Date(iso).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', timeZone: 'Africa/Lagos' });
 
 export function PayBookingPage() {
   const { bookingId } = useParams();
@@ -36,7 +41,10 @@ export function PayBookingPage() {
       const { paymentUrl } = await api.post<{ paymentUrl: string }>(`/v1/consult/public/bookings/${bookingId}/pay-link`, { t });
       window.location.assign(paymentUrl);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Could not start the payment');
+      const message = err instanceof Error ? err.message : 'Could not start the payment';
+      setError(
+        /no longer available/i.test(message) && summary ? `That time has been booked. Contact ${summary.practiceName} to choose another.` : message,
+      );
       setBusy(false);
     }
   }
@@ -51,16 +59,22 @@ export function PayBookingPage() {
             <h1 className="text-[18px] font-bold text-[#0F172A]">{summary.serviceTitle}</h1>
             <p className="text-[13px] text-[#334155]">
               With {summary.practitionerName} on{' '}
-              {new Intl.DateTimeFormat('en-GB', { weekday: 'long', day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' }).format(new Date(summary.startsAt))}
+              {new Intl.DateTimeFormat('en-GB', { weekday: 'long', day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit', timeZone: 'Africa/Lagos' }).format(new Date(summary.startsAt))}
             </p>
-            {summary.state === 'PAYABLE' && (
+            {summary.state === 'PAYABLE' && summary.holdExpiresAt ? (
+              <p className="text-[13px] font-semibold text-[#475569]">Held until {clock(summary.holdExpiresAt)}</p>
+            ) : null}
+            {summary.state === 'LAPSED' && summary.canRetry ? (
+              <p className="text-[13px] font-semibold text-amber-700">Your hold ended, but the time may still be free.</p>
+            ) : null}
+            {summary.state === 'PAYABLE' || (summary.state === 'LAPSED' && summary.canRetry) ? (
               <button type="button" onClick={pay} disabled={busy} className="w-full h-[44px] rounded-[12px] bg-[#0F3A53] text-white text-[14px] font-bold inline-flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50">
                 {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
-                Pay {naira(summary.amountKobo)}
+                {summary.state === 'LAPSED' ? `Try again (${naira(summary.amountKobo)})` : `Pay ${naira(summary.amountKobo)}`}
               </button>
-            )}
+            ) : null}
             {summary.state === 'PAID' && <p className="text-[13px] font-semibold text-emerald-700">This session is already paid.</p>}
-            {summary.state === 'LAPSED' && (
+            {summary.state === 'LAPSED' && !summary.canRetry && (
               <p className="text-[13px] font-semibold text-amber-700">This booking is no longer held. Contact {summary.practiceName} to book again.</p>
             )}
           </>

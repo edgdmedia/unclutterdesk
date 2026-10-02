@@ -1,8 +1,9 @@
 import React, { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { Plus, FileText, Activity, ShieldCheck, MessageSquare, Edit2 } from 'lucide-react';
 import { Eyebrow, useToast } from '@unclutterdesk/ui';
 import { api } from '../../../utils/apiClient';
+import { FormTemplateLibrary } from './FormTemplateLibrary';
 
 type FormTemplate = {
   id: string;
@@ -30,6 +31,7 @@ const TYPE_META: Record<string, { icon: typeof FileText; sub: string; iconBg: st
 
 export function FormsManagerPage() {
   const toast = useToast();
+  const navigate = useNavigate();
   const [activeCategory, setActiveCategory] = useState<Category>('all');
   const [templates, setTemplates] = useState<FormTemplate[]>([]);
   const [loading, setLoading] = useState(true);
@@ -232,6 +234,8 @@ export function FormsManagerPage() {
             </Link>
           </div>
         )}
+
+        <FormTemplateLibrary onUsed={(formId) => navigate(`/dashboard/settings/forms/${formId}`)} />
       </main>
     </div>
   );

@@ -6,6 +6,7 @@ import { formatOf, whenLabel, type Slot } from './bookingSlots';
 import type { WizardAction, WizardState } from './bookingWizard';
 import type { PublicService } from './useBookingData';
 import { AlertBanner, naira } from './BookingShell';
+import { HoldCountdown } from './HoldCountdown';
 
 const TABULAR: React.CSSProperties = { fontVariantNumeric: 'tabular-nums' };
 const INK = 'var(--brand-ink, var(--brand-primary))';
@@ -144,6 +145,9 @@ export function ReviewPayStep({
           <Plus className="h-4 w-4" aria-hidden="true" /> Have a discount code?
         </button>
       )}
+
+      {/* BKG-09: once the booking exists, the time is held for 35 minutes while they pay. */}
+      {state.holdExpiresAt && state.payMethod === 'online' ? <HoldCountdown expiresAt={state.holdExpiresAt} /> : null}
 
       <div className="flex flex-col gap-2.5" role="radiogroup" aria-label="How you'd like to pay">
         <Eyebrow>How you'd like to pay</Eyebrow>

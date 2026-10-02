@@ -39,6 +39,15 @@ export class DiscountController {
   }
 
   @Permissions('practice.admin')
+  @Delete(':id/remove')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @ApiBearerAuth('access-token')
+  @ApiOperation({ summary: 'Delete a discount code for good' })
+  deleteDiscount(@Req() req: any, @Param('id') id: string) {
+    return this.discountService.deleteDiscount(authenticatedTenantId(req), BigInt(id));
+  }
+
+  @Permissions('practice.admin')
   @Delete(':id')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @ApiBearerAuth('access-token')

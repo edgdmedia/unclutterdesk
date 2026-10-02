@@ -96,6 +96,11 @@ export class PaystackService {
     return this.request('GET', `/transaction/verify/${reference}`);
   }
 
+  /** A full refund of one transaction (BKG-09: a payment that arrived after its time was gone). */
+  async refundTransaction(reference: string) {
+    return this.request('POST', '/refund', { transaction: reference }) as Promise<{ id?: number; status?: string }>;
+  }
+
   async createSubaccount(dto: {
     business_name: string;
     settlement_bank: string; // bank code

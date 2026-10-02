@@ -56,4 +56,14 @@ describe('Brand settings', () => {
       expect(patch).toHaveBeenCalledWith('/v1/tenant/brand', expect.objectContaining({ primaryColor: '#112233', secondaryColor: '#3B82F6', logoUrl: null })),
     );
   });
+
+  it('shows custom domains as coming soon, with no domain field or verify button (SET-03)', async () => {
+    renderWithApp(<BrandSettingsPage />);
+    await screen.findByText(/coming soon/i);
+    expect(screen.getByText(/booking\.yourpractice\.com, on Pro and Clinic/)).toBeTruthy();
+    expect(screen.queryByLabelText('Custom domain')).toBeNull();
+    expect(screen.queryByRole('button', { name: /verify domain/i })).toBeNull();
+    expect(screen.queryByRole('button', { name: /save domain/i })).toBeNull();
+  });
 });
+

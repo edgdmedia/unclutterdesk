@@ -67,6 +67,7 @@ function route(path: string) {
   if (path === '/v1/consult/portal') return Promise.resolve(PORTAL);
   if (path === '/v1/consult/portal/payments') return Promise.resolve(PAYMENTS);
   if (path.startsWith('/v1/intake/public/forms')) return Promise.resolve([]);
+  if (path === '/v1/intake/mine/forms') return Promise.resolve([{ id: '1' }, { id: '2' }]);
   return Promise.reject(new Error(`unexpected ${path}`));
 }
 
@@ -86,6 +87,26 @@ beforeEach(() => {
 });
 
 afterEach(cleanup);
+
+// POR-02: the portal should read like a dashboard at a glance.
+describe('the dashboard tiles', () => {
+  it('leads with next session, upcoming, to pay and forms', async () => {
+    renderPortal();
+    expect(await screen.findByText('Next session')).toBeTruthy();
+    expect(screen.getByText('Upcoming sessions')).toBeTruthy();
+    expect(screen.getByText('To pay')).toBeTruthy();
+    expect(screen.getByText('Forms to do')).toBeTruthy();
+    // Two forms outstanding (the payments tab is not fetched for this).
+    expect(await screen.findByText('2')).toBeTruthy();
+    expect(apiGet).toHaveBeenCalledWith('/v1/intake/mine/forms');
+    expect(apiGet).not.toHaveBeenCalledWith('/v1/consult/portal/payments');
+  });
+
+  it('shows the practice logo in the header when the brand has one', async () => {
+    renderWithApp(<ClientPortalPage />, { brand: { name: 'Smith Therapy', logoUrl: 'https://cdn/x.png' } as never });
+    expect(await screen.findByAltText('Smith Therapy logo')).toBeTruthy();
+  });
+});
 
 describe('the payments tab', () => {
   // Most visits never open it, and it is a second round trip.

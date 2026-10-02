@@ -54,4 +54,29 @@ describe('PayBookingPage', () => {
     renderAt('/pay/900?t=bad');
     await waitFor(() => expect(screen.getByText('This payment link is not valid.')).toBeTruthy());
   });
+
+  it('says until when a payable link holds the time (BKG-09)', async () => {
+    apiGet.mockResolvedValue({ ...summary, holdExpiresAt: '2026-10-04T08:42:00Z', canRetry: false });
+    renderAt('/pay/900?t=tok');
+    await waitFor(() => expect(screen.getByText(/Held until 9:42 AM/)).toBeTruthy());
+  });
+
+  it('offers to try again when a hold simply ran out (BKG-09)', async () => {
+    apiGet.mockResolvedValue({ ...summary, state: 'LAPSED', holdExpiresAt: null, canRetry: true });
+    apiPost.mockResolvedValue({ paymentUrl: 'https://checkout.paystack.com/again' });
+    renderAt('/pay/900?t=tok');
+    await waitFor(() => expect(screen.getByText(/the time may still be free/i)).toBeTruthy());
+    fireEvent.click(screen.getByRole('button', { name: /Try again/ }));
+    await waitFor(() => expect(assign).toHaveBeenCalledWith('https://checkout.paystack.com/again'));
+    expect(apiPost).toHaveBeenCalledWith('/v1/consult/public/bookings/900/pay-link', { t: 'tok' });
+  });
+
+  it('says plainly when the time has been taken on retry (BKG-09)', async () => {
+    apiGet.mockResolvedValue({ ...summary, state: 'LAPSED', holdExpiresAt: null, canRetry: true });
+    apiPost.mockRejectedValue(new Error('The selected time slot is no longer available'));
+    renderAt('/pay/900?t=tok');
+    fireEvent.click(await screen.findByRole('button', { name: /Try again/ }));
+    await waitFor(() => expect(screen.getByText('That time has been booked. Contact Smith Therapy to choose another.')).toBeTruthy());
+  });
 });
+

@@ -2,7 +2,8 @@ import { BadRequestException, Injectable, Logger, NotFoundException } from '@nes
 import { PrismaService } from '../../common/prisma/prisma.service';
 import { NotificationService } from '../notifications/notification.service';
 
-export const REQUEST_TYPES = ['ASSESSMENT', 'FEATURE', 'SERVICE', 'FEEDBACK', 'OTHER'] as const;
+/** TEMPLATE is a shared form template awaiting review (FRM-01). */
+export const REQUEST_TYPES = ['ASSESSMENT', 'FEATURE', 'SERVICE', 'FEEDBACK', 'TEMPLATE', 'OTHER'] as const;
 export const REQUEST_STATUSES = ['OPEN', 'PLANNED', 'DONE', 'DECLINED'] as const;
 type RequestType = (typeof REQUEST_TYPES)[number];
 
@@ -11,10 +12,13 @@ const TYPE_LABEL: Record<RequestType, string> = {
   FEATURE: 'Feature',
   SERVICE: 'Service',
   FEEDBACK: 'Feedback',
+  TEMPLATE: 'Form template',
   OTHER: 'Request',
 };
 
 const STATUS_LABEL: Record<string, string> = { OPEN: 'received', PLANNED: 'planned', DONE: 'done', DECLINED: 'declined' };
+/** A template's review reads as a decision, not as work done. */
+const TEMPLATE_STATUS_LABEL: Record<string, string> = { ...STATUS_LABEL, DONE: 'approved', DECLINED: 'not approved' };
 
 /**
  * Requests from a practice to the platform: an assessment to add, a feature,
@@ -30,7 +34,10 @@ export class RequestService {
     private readonly notifications: NotificationService,
   ) {}
 
-  private shape(r: { id: bigint; type: string; subject: string; details: string | null; status: string; adminNote: string | null; createdAt: Date; updatedAt: Date }) {
+  private shape(r: {
+    id: bigint; type: string; subject: string; details: string | null; status: string; adminNote: string | null;
+    formTemplateId?: bigint | null; createdAt: Date; updatedAt: Date;
+  }) {
     return {
       id: r.id.toString(),
       type: r.type,
@@ -38,6 +45,7 @@ export class RequestService {
       details: r.details,
       status: r.status,
       adminNote: r.adminNote,
+      formTemplateId: r.formTemplateId?.toString() ?? null,
       createdAt: r.createdAt.toISOString(),
       updatedAt: r.updatedAt.toISOString(),
     };
@@ -46,6 +54,8 @@ export class RequestService {
   async create(tenantId: bigint, profileId: bigint, dto: { type?: string; subject?: string; details?: string }) {
     const type = String(dto?.type ?? 'OTHER').toUpperCase() as RequestType;
     if (!REQUEST_TYPES.includes(type)) throw new BadRequestException('Choose what kind of request this is.');
+    // A template request must point at a saved template, which only the form editor makes.
+    if (type === 'TEMPLATE') throw new BadRequestException('Share a template from the form editor.');
     const subject = String(dto?.subject ?? '').trim();
     if (subject.length < 2) throw new BadRequestException('Give your request a short title.');
     const created = await this.prisma.platformRequest.create({
@@ -84,9 +94,13 @@ export class RequestService {
   }
 
   /** Updates the status and note, and tells whoever asked. */
-  async update(id: bigint, dto: { status?: string; adminNote?: string }) {
+  async update(id: bigint, dto: { status?: string; adminNote?: string }, opts: { templateReview?: boolean } = {}) {
     const existing = await this.prisma.platformRequest.findUnique({ where: { id } });
     if (!existing) throw new NotFoundException('Request not found');
+    // A template request's status mirrors the template's; only its review moves it.
+    if (existing.type === 'TEMPLATE' && !opts.templateReview) {
+      throw new BadRequestException('Approve or decline this template from its review.');
+    }
     const status = dto?.status === undefined ? existing.status : String(dto.status).toUpperCase();
     if (!(REQUEST_STATUSES as readonly string[]).includes(status)) throw new BadRequestException('Unknown status.');
     const updated = await this.prisma.platformRequest.update({
@@ -100,7 +114,7 @@ export class RequestService {
           tenantId: existing.tenantId,
           profileIds: [existing.requestedByProfileId],
           type: 'requests.updated',
-          title: `${TYPE_LABEL[existing.type as RequestType] ?? 'Request'} "${existing.subject}" is ${STATUS_LABEL[status]}`,
+          title: `${TYPE_LABEL[existing.type as RequestType] ?? 'Request'} "${existing.subject}" is ${(existing.type === 'TEMPLATE' ? TEMPLATE_STATUS_LABEL : STATUS_LABEL)[status]}`,
           message: updated.adminNote ?? 'Thank you for letting us know.',
           link: '/dashboard/requests',
           actionLabel: 'View requests',

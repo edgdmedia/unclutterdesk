@@ -5,6 +5,10 @@ import { chargedKobo } from '../../common/revenue';
 import { formatNaira } from '../billing/subscription-plans';
 import { NotificationService } from './notification.service';
 import { listPendingForms } from '../intake/default-forms';
+import { payLinkToken } from '../consult/staff-booking-rules';
+
+/** Why a booking payment is being refunded (BKG-09). */
+export type RefundReason = 'time_taken' | 'cancelled' | 'duplicate';
 
 /** A room name may already be a full URL (a scheduled provider room). */
 const roomLink = (roomName: string | null) =>
@@ -69,8 +73,10 @@ export class BookingNotifier {
         title: `Almost there — pay ${amount} to confirm your session`,
         message:
           `${b.tenant.name} has you down for ${b.service.title} with ${await this.therapistName(b.availability.providerProfileId)} ` +
-          `on ${this.when(b.availability.startsAt)}. Your time is held while you pay.`,
-        link: `${tenantWebOrigin(b.tenant)}/pay/${b.id}`,
+          `on ${this.when(b.availability.startsAt)}. ` +
+          (b.holdExpiresAt ? `Your time is held until ${this.clock(b.holdExpiresAt)}.` : 'Your time is held while you pay.'),
+        // BKG-09: the pay page opens only with its token.
+        link: this.payLink(b),
         actionLabel: `Pay ${amount}`,
         tenantId: b.tenantId,
         profileId: b.clientProfileId,
@@ -80,7 +86,7 @@ export class BookingNotifier {
 
   /**
    * The session is paid or waived — the only moment the join link may travel.
-   * Callers must invoke this exactly once (markBookingPaid says whether the
+   * Callers must invoke this exactly once (BookingPaymentSettler says whether the
    * confirmation was new).
    */
   async confirmed(bookingId: bigint): Promise<void> {
@@ -127,7 +133,58 @@ export class BookingNotifier {
    * tenant's active owners and admins (the front desk too for transfers,
    * since they confirm them). Never anyone from another practice.
    */
-  async notifyStaff(bookingId: bigint, event: 'booked' | 'paid' | 'transfer_sent' | 'cancelled'): Promise<void> {
+  /** BKG-09: an online hold ran out unpaid. The time may still be free, so the email offers to try again. */
+  async holdReleased(bookingId: bigint): Promise<void> {
+    const b = await this.load(bookingId);
+    if (!b) return;
+    await this.notifications
+      .sendEmail({
+        to: b.client.email,
+        type: 'bookings.hold_released',
+        title: 'Your held time was released',
+        message:
+          `We didn't receive payment for your ${b.service.title} on ${this.when(b.availability.startsAt)}, so the time was released. ` +
+          "If it's still free, you can pay now and keep it.",
+        link: this.payLink(b),
+        actionLabel: 'Try again',
+        tenantId: b.tenantId,
+        profileId: b.clientProfileId,
+      })
+      .catch((err) => this.logger.warn(`Could not send the hold-released email for booking ${bookingId}: ${(err as Error).message}`));
+  }
+
+  /**
+   * BKG-09: a payment can't be used for its booking (it arrived after the time
+   * was released and taken, the session was cancelled, or it was a second
+   * payment), so Paystack is refunding it. The client and the practice hear why.
+   */
+  async latePaymentRefunded(bookingId: bigint, reason: RefundReason): Promise<void> {
+    const b = await this.load(bookingId);
+    if (!b) return;
+    const amount = formatNaira(Number(chargedKobo(b)));
+    const origin = tenantWebOrigin(b.tenant);
+    const session = `${b.service.title} on ${this.when(b.availability.startsAt)}`;
+    const why = {
+      time_taken: `Your payment for ${session} arrived after the time was released, and someone else has since booked it.`,
+      cancelled: `Your payment for ${session} arrived after the session was cancelled.`,
+      duplicate: `Your session, ${session}, was already paid, so this second payment isn't needed.`,
+    }[reason];
+    await this.notifications
+      .sendEmail({
+        to: b.client.email,
+        type: 'bookings.payment_refunded',
+        title: `We're refunding your ${amount}`,
+        message: `${why} Paystack is refunding ${amount} to you; it usually arrives within a few working days.`,
+        link: reason === 'duplicate' ? `${origin}/portal` : `${origin}/book`,
+        actionLabel: reason === 'duplicate' ? 'View my bookings' : 'Choose another time',
+        tenantId: b.tenantId,
+        profileId: b.clientProfileId,
+      })
+      .catch((err) => this.logger.warn(`Could not send the refund email for booking ${bookingId}: ${(err as Error).message}`));
+    await this.notifyStaff(bookingId, 'refunded', reason).catch(() => undefined);
+  }
+
+  async notifyStaff(bookingId: bigint, event: 'booked' | 'paid' | 'transfer_sent' | 'cancelled' | 'refunded', reason: RefundReason = 'time_taken'): Promise<void> {
     const b = await this.load(bookingId);
     if (!b) return;
     const roles = event === 'transfer_sent' ? ['OWNER', 'ADMIN', 'RECEPTIONIST'] : ['OWNER', 'ADMIN'];
@@ -158,6 +215,15 @@ export class BookingNotifier {
         message: `${name} says they’ve sent ${amount} (ref UD-${b.id}). Check your account and mark it paid.`,
       },
       cancelled: { type: 'consult.booking_cancelled', title: 'Session cancelled', message: `${name}’s session on ${when} was cancelled.` },
+      refunded: {
+        type: 'consult.payment_refunded',
+        title: 'Payment refunded',
+        message: {
+          time_taken: `${name}’s ${amount} for ${when} arrived after the time was released and taken, so it is being refunded.`,
+          cancelled: `${name} paid ${amount} for ${when}, which was cancelled, so it is being refunded.`,
+          duplicate: `${name} paid ${amount} twice for ${when}; the second payment is being refunded.`,
+        }[reason],
+      },
     }[event];
     await this.notifications
       .notify({
@@ -187,6 +253,15 @@ export class BookingNotifier {
         preferenceCategory: 'activity',
       })
       .catch((err) => this.logger.warn(`Could not report form submission: ${(err as Error).message}`));
+  }
+
+  private payLink(b: { id: bigint; tenant: Parameters<typeof tenantWebOrigin>[0] }): string {
+    return `${tenantWebOrigin(b.tenant)}/pay/${b.id}?t=${payLinkToken(b.id)}`;
+  }
+
+  /** "3:42 PM" in Lagos time. */
+  private clock(at: Date): string {
+    return at.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', timeZone: 'Africa/Lagos' });
   }
 
   private shortWhen(startsAt: Date): string {

@@ -69,10 +69,16 @@ A running log of what shows up in testing, what we decide about it, and when it'
 | BKG-06 | Booking page | Default intake and confidentiality form templates for every practice | Feature | | Fixed |
 | BKG-07 | Booking page | Header shows a hard-coded "Lagos, Nigeria · Online & in-person" for every practice | Bug | P1 | Ready |
 | BKG-08 | Booking page | "Notify me" when a practice has no free times in the next 4 weeks | Feature | P3 | Deferred |
-| BKG-09 | Booking page | An abandoned online payment keeps the time blocked for everyone | Bug | P1 | Ready |
+| BKG-09 | Booking page | An abandoned online payment keeps the time blocked for everyone | Bug | P1 | Fixed |
 | BKG-10 | Booking page | After booking, clients aren't offered their account to manage the booking | UX | P1 | Fixed |
+| SET-09 | Settings | A practice discount can be turned off, but not back on, edited or deleted | Bug | P1 | Fixed |
+| BKG-11 | Booking page | The practice's booking link doesn't carry the new wizard design: too wide, no practice logo | Bug | P1 | Fixed |
+| BKG-12 | Booking page | "Go to my bookings" and the calendar buttons should share one row; the two calendar links can be one dropdown | UX | P3 | Fixed |
 | VID-01 | Video | The session room is a mock-up, not a real video call | Feature | P0 | Ready |
-| FRM-01 | Forms | Save forms as templates and optionally share them with other practices | Feature | | Ready |
+| POR-01 | Client portal | /portal only works on app.unclutterdesk.com, not on the practice's own link | Bug | P1 | Fixed |
+| POR-02 | Client portal | The portal should look like a dashboard, not a plain list | UX | P2 | Fixed |
+| FRM-01 | Forms | Save forms as templates and optionally share them with other practices | Feature | | Fixed |
+| FRM-02 | Forms | The Forms page is wider than a phone screen | Bug | P2 | Open |
 
 ---
 
@@ -219,7 +225,7 @@ A running log of what shows up in testing, what we decide about it, and when it'
   3. **Automatic set-up with Domain Connect:** the practice clicks "Connect automatically", is taken to their DNS provider (Cloudflare, GoDaddy and others support Domain Connect), approves, and the records are added for them. This needs our Domain Connect template published and approved by each provider. Where a provider doesn't support it, show the exact records with copy buttons and step-by-step guides (Cloudflare, GoDaddy, Namecheap, Whogohost). Either way, check automatically until the domain is live and email the practice when it is. We never ask for a practice's registrar login.
   - **Coming soon (decided 1 Oct 2026):** not built now. Until then, Brand settings shows the Custom domain section as "Coming soon" (no domain field or Verify button), and the booking link stays the practice's address.
   - Also **Remove domain**, which deletes it at Cloudflare. Booking emails, the calendar invite and CORS switch to the domain only once it's active (as today).
-- **Fix:**
+- **Fix:** Not built (coming soon). Until then Brand settings shows the Custom domain section as "Coming soon" and setup no longer offers a custom domain (873fd6f, with BKG-09).
 - **Verified:**
 
 ### SET-04 · Link, logo and colours set in setup don't show afterwards
@@ -256,6 +262,13 @@ A running log of what shows up in testing, what we decide about it, and when it'
 - **Feedback / decision:** Proposed: one shared image upload control (the logo field from SET-04/05 extended) with a preparing/uploading state, a preview, a clear error when the file is refused, and a confirmation once saved. Use it for both the practice logo and profile photos.
 - **Fix:** `b4cab4e`–`71a7449` on `opencode/walkthrough-uploads`. One `ImageField` (preparing / saving / saved / error, previous image restored on failure) backs both the logo field and the dashboard's profile photo; the photo now posts to `/v1/consult/therapist/profile/avatar`, which validates like the logo (`cleanImageUrl`) and accepts clearing. Covered by `ImageField.test.tsx`, `DashboardProfilePhoto.test.tsx`, `therapist-avatar.spec.ts`.
 - **Verified:** Browser check on the worktree (ports 3299/5273): a chosen photo shows Saving… → Saved and survives a reload; the account-menu avatar refreshes.
+
+### SET-09 · Discounts can be turned off, but not back on, edited or deleted
+- **Type:** Bug · **Priority:** P1 · **Status:** Open
+- **Observed:** In Discounts & promos a practice discount can be deactivated, but once off there is no way to turn it back on, edit it, or delete it.
+- **Feedback / decision:**
+- **Fix:** `90fb3f0`–`b42c8e3` on `dev`. `PATCH /v1/discount/:id` now takes `isActive` (and the amount fields) and only writes the fields sent — the old update blanked label/maxUses/expiresAt when you touched one. A new `DELETE /v1/discount/:id/remove` deletes for good (past bookings keep the code text). The list gains **Turn on / Turn off / Edit / Delete** per row; the create modal doubles as the editor. Covered by `discount-manage.spec.ts` and `DiscountSettingsPage.test.tsx`.
+- **Verified:** Browser check 2 Oct (local): WELCOME20 turned off and back on, label edited and saved, a throwaway code created and deleted after the confirm.
 
 ## Client booking link / page
 
@@ -316,15 +329,15 @@ A running log of what shows up in testing, what we decide about it, and when it'
 - **Verified:**
 
 ### BKG-09 · An abandoned online payment keeps the time blocked
-- **Type:** Bug · **Priority:** P1 · **Status:** Ready
+- **Type:** Bug · **Priority:** P1 · **Status:** Fixed
 - **Observed:** Found in the booking wizard's final review (1 Oct 2026). A booking waiting for online payment (`PENDING_PAYMENT`) has no hold expiry, unlike bank-transfer holds (48h). If a client closes Paystack and leaves, or picks a different time, the first booking stays pending and its time can't be booked by anyone until staff cancel it. The old one-page booking form had the same gap; the wizard makes it a little more likely.
 - **Feedback / decision:** Decided 1 Oct 2026. Paystack facts checked: Pay-with-Transfer account numbers expire after **30 minutes** (a transfer after that is refunded by Paystack automatically; [docs](https://support.paystack.com/hc/en-us/articles/360018995019-Pay-with-Transfer)), while a card checkout's access code can stay payable for roughly **24 hours** (no published limit). So a late payment can't be prevented, only handled. Design:
   1. **Hold 35 minutes** from Pay (30-minute transfer window plus 5 for a slow webhook), shown as a countdown on the pay step and "held until 3:42 PM" in the pay email.
   2. **Before releasing**, ask Paystack (verify the reference): paid → confirm; not paid → cancel, reopen the time, email the client "your hold ended, book again".
   3. **Late payment** (card paid after release): re-confirm automatically if the time is still free; if it's been taken, **refund automatically** through Paystack, and tell the client and the practice.
   4. **Retry** from the email or pay page: a fresh 35-minute hold if the time is still free; if not, show other times instead of taking payment.
-- **Fix:**
-- **Verified:**
+- **Fix:** branch `fix/bkg-09-online-hold` (see the merge on dev): 35-minute online hold and Paystack refunds; one BookingPaymentSettler for webhook, pop-up and expiry job (confirm once, re-confirm a released hold whose time is free, otherwise a full refund with the reason told to client and practice); retry restarts or re-claims the hold; the expiry job asks Paystack before releasing; pay emails say until when and carry the pay-page token (the link never opened before); countdown on the pay step, "Try again" on the pay page.
+- **Verified:** 2 Oct 2026, live against Paystack test mode on a copy of the local database: booking 27 held exactly 35 minutes with a 34:56 countdown; expired hold → the job asked Paystack, released it, reopened the time and emailed "Your held time was released"; the tokenised pay link offered "Try again", which re-claimed the time with a fresh 35-minute hold; paid with Paystack's test checkout; marked released with the time still free, the signed charge.success event re-confirmed it (one confirmation email, Paystack's paid time). Booking 28: paid, released with its time taken → a real test-mode refund of ₦35,000 was created at Paystack, the client was told why and the practice was notified; replaying both events did nothing more. API 1052, app 389 tests pass.
 
 ### BKG-10 · No offer to the client's account after booking
 - **Type:** UX · **Priority:** P1 · **Status:** Fixed
@@ -332,6 +345,20 @@ A running log of what shows up in testing, what we decide about it, and when it'
 - **Feedback / decision:** Proposed: the confirmation screen gets a primary "Go to my bookings" (the client portal, already signed in), and the booking emails link there too.
 - **Fix:** `60ba7a5` on `dev`. The confirmation screen's first action is **Go to my bookings** → `/portal`; the confirmed email carries the portal link too. Covered by `ConfirmationStep.test.tsx`.
 - **Verified:** Browser check 1 Oct: the button is the confirmation screen's first action and points at `/portal`.
+
+### BKG-11 · The booking link doesn't carry the new wizard design
+- **Type:** Bug · **Priority:** P1 · **Status:** Open
+- **Observed:** Opening the practice's booking link shows a page that doesn't match the new booking wizard: the layout is too wide and the practice logo is missing.
+- **Feedback / decision:**
+- **Fix:** `a26fa91` on `dev`. The profile page header now shows the practice's own logo (`PracticeLogo`, initials fallback) and name where the platform mark sat, and the content measure drops from 1320px to the wizard's 960px. Covered by `PublicProfilePage.test.tsx`.
+- **Verified:** Browser check 2 Oct on the practice host at 1280px and 390px: header reads "Dr. Jane Smith Therapy", no horizontal overflow.
+
+### BKG-12 · Confirmation actions should share a row; calendar links can be one dropdown
+- **Type:** UX · **Priority:** P3 · **Status:** Open
+- **Observed:** On the booking confirmation, "Go to my bookings" sits on its own row above the calendar buttons, and "Add to calendar" and "Google Calendar" are two separate buttons.
+- **Feedback / decision:** Put "Go to my bookings" in the same row as the calendar actions, and collapse the two calendar options into one button with a dropdown of the two.
+- **Fix:** `d140a51` on `dev`. **Go to my bookings** and one **Add to calendar ▾** button share a single row; the dropdown holds "Download (.ics)" and "Google Calendar" (Esc/click-away close it). Covered by `ConfirmationStep.test.tsx`.
+- **Verified:** Browser check 2 Oct: after a real test payment the two actions sit in one flex row and the menu opens with both links.
 
 ### VID-01 · The session room isn't a real video call
 - **Type:** Feature · **Priority:** P0 · **Status:** Ready
@@ -349,16 +376,39 @@ A running log of what shows up in testing, what we decide about it, and when it'
 - **Fix:**
 - **Verified:**
 
+## Client portal
+
+### POR-01 · The portal only works on the app host, not on the practice's link
+- **Type:** Bug · **Priority:** P1 · **Status:** Open
+- **Observed:** https://unclutter.unclutterdesk.com/portal does not work; the client portal only loads on app.unclutterdesk.com. Clients who booked from a practice subdomain (and emails/confirmation links that point at /portal on the practice host) don't get their portal.
+- **Feedback / decision:**
+- **Fix:** `e5af52e`–`1570f5b` on `dev`. The client pages (`/portal`, `/portal/assessments/:id`, `/forms/:id`, `/login`, `/set-password`) moved into one shared fragment (`routes/clientRoutes.tsx`) that the app tree and the practice-host tree both render, wrapped in a `ClientBrandProvider` so they carry the practice's name, logo and colours from its public info. The tenant already resolves from the host and the session cookie lives on the api domain, so the signed-in client works anywhere under unclutterdesk.com. Covered by `clientRoutes.test.tsx`; the route-integrity check reads the new file too.
+- **Verified:** Browser check 2 Oct: booked on dr-smith.localhost:5173, "Go to my bookings" landed on dr-smith.localhost:5173/portal — branded header, client signed in, sessions listed.
+
+### POR-02 · The portal should look like a dashboard
+- **Type:** UX · **Priority:** P2 · **Status:** Open
+- **Observed:** The client portal is a plain list; it needs a better design that reads like a dashboard.
+- **Feedback / decision:**
+- **Fix:** `7fed377` on `dev`. The portal now leads with four dashboard tiles — Next session, Upcoming sessions, To pay, Forms to do (from `/v1/intake/mine/forms`, never blocking the page on failure) — and the header carries the practice logo. The payments tab stays lazy (its existing "not fetched until opened" test still passes). Covered by `ClientPortalPayments.test.tsx`.
+- **Verified:** Browser check 2 Oct: tiles read "9 Oct 2026 / 1 / ₦0 / 2" for a fresh client on the practice host; no overflow at 390px.
+
 ## Forms & templates
 
 ### FRM-01 · Save forms as templates, optionally shared
-- **Type:** Feature · **Priority:** · **Status:** Ready
+- **Type:** Feature · **Priority:** · **Status:** Fixed
 - **Observed:** A practice that builds a useful form should be able to save it as a template, and choose whether to share it with other practices.
 - **Feedback / decision:** Decided 1 Oct 2026. **Save as template** in the form editor. Sharing is optional: a shared template is visible to **every practice** in a "Template library" beside their own forms, after **admin approval** through the admin console's Requests queue (clinical forms must not spread unchecked). It's credited "Shared by <practice>" unless the author shares anonymously. **Use template** gives the practice its own copy, so later edits never change the original or anyone else's.
-- **Fix:**
-- **Verified:**
+- **Fix:** branch `feat/frm-01-form-templates`: a648604 (FormTemplate model), e63534f (save, share, library, use), dd633ee (admin preview and review; template requests only move through review), 0ad31cc (Save as template, Template library), e4e0ef7 (admin review UI, shared question preview), 1ae33db (approved/not approved wording), 513a3de (built-in assessments refused).
+- **Verified:** 2 Oct 2026 in the browser on a copy of the local database: Dr Jane saved Telehealth Consent as a shared template ("In review"); the admin previewed it ("Shared by Dr. Jane Smith Therapy", questions listed) and approved it; the demo practice saw it under "From other practices" with credit, pressed Use and landed in its own copy (form 60, its own practice); the template counted 1 use, the request closed as done with the note, and Dr Jane's notification read 'Form template "Telehealth Consent" is approved'. API 1010, app 378 and UI 83 tests pass, with no type errors.
 
 ---
+
+### FRM-02 · The Forms page is wider than a phone screen
+- **Type:** Bug · **Priority:** P2 · **Status:** Open
+- **Observed:** At 390px the Forms page (Settings → Forms) scrolls sideways: the page has a fixed `min-w-[1192px]` and a three-column card grid, so the form cards and the template library run off the right edge. Found during FRM-01's browser check; it predates FRM-01.
+- **Feedback / decision:**
+- **Fix:**
+- **Verified:**
 
 ## Template for new items
 

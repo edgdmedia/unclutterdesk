@@ -169,7 +169,7 @@ describe('booking with a bank transfer', () => {
 });
 
 describe('releasing unpaid holds', () => {
-  it('uses 30 minutes for online payments and the hold time for transfers, and does not undo a payment', async () => {
+  it('uses each booking’s own hold, and does not undo a payment', async () => {
     const tx: any = {
       consultBooking: { updateMany: vi.fn().mockResolvedValue({ count: 0 }) },
       consultAvailability: { updateMany: vi.fn() },
@@ -179,13 +179,11 @@ describe('releasing unpaid holds', () => {
       $transaction: vi.fn(async (cb: any) => cb(tx)),
     };
     const manual: any = { released: vi.fn() };
-    await new ConsultCron(prisma, manual).handleBookingExpiry();
+    await new ConsultCron(prisma, manual, { verifyTransaction: vi.fn() } as any, { settle: vi.fn() } as any, { holdReleased: vi.fn() } as any).handleBookingExpiry();
 
     const where = prisma.consultBooking.findMany.mock.calls[0][0].where;
-    expect(where.OR[0].paymentMethod).toEqual({ not: 'MANUAL' });
-    expect(where.OR[0].holdExpiresAt).toBeNull();
-    expect(where.OR[1].paymentMethod).toEqual({ not: 'MANUAL' });
-    expect(where.OR[2].paymentMethod).toBe('MANUAL');
+    // A transfer, a staff link and (since BKG-09) an online checkout all carry their own hold.
+    expect(where.OR[0]).toEqual({ holdExpiresAt: { lt: expect.any(Date) } });
     // Marked paid in the meantime: nothing released, nobody told.
     expect(tx.consultBooking.updateMany.mock.calls[0][0].where.status).toBe('PENDING_PAYMENT');
     expect(tx.consultAvailability.updateMany).not.toHaveBeenCalled();
@@ -194,14 +192,13 @@ describe('releasing unpaid holds', () => {
 });
 
 describe('staff payment-link bookings', () => {
-  it('the cron uses the booking’s own hold, not the 30-minute online rule', async () => {
+  it('the cron uses the booking’s own hold, and 35 minutes only for online bookings made before holds were recorded', async () => {
     const prisma: any = { consultBooking: { findMany: vi.fn().mockResolvedValue([]) } };
-    await new ConsultCron(prisma, {} as any).handleBookingExpiry();
+    await new ConsultCron(prisma, {} as any, { verifyTransaction: vi.fn() } as any, { settle: vi.fn() } as any, { holdReleased: vi.fn() } as any).handleBookingExpiry();
     const or = prisma.consultBooking.findMany.mock.calls[0][0].where.OR;
     expect(or).toEqual([
+      { holdExpiresAt: { lt: expect.any(Date) } },
       { paymentMethod: { not: 'MANUAL' }, holdExpiresAt: null, createdAt: { lt: expect.any(Date) } },
-      { paymentMethod: { not: 'MANUAL' }, holdExpiresAt: { lt: expect.any(Date) } },
-      { paymentMethod: 'MANUAL', holdExpiresAt: { lt: expect.any(Date) } },
     ]);
   });
 
@@ -214,7 +211,7 @@ describe('staff payment-link bookings', () => {
       consultBooking: { findMany: vi.fn().mockResolvedValue([{ id: 7n, availabilityId: 3n, paymentMethod: 'PAYSTACK' }]) },
       $transaction: vi.fn(async (cb: any) => cb(tx)),
     };
-    await new ConsultCron(prisma, { released: vi.fn() } as any).handleBookingExpiry();
+    await new ConsultCron(prisma, { released: vi.fn() } as any, { verifyTransaction: vi.fn() } as any, { settle: vi.fn() } as any, { holdReleased: vi.fn() } as any).handleBookingExpiry();
     expect(tx.consultAvailability.updateMany).toHaveBeenCalledWith({
       where: { id: 3n, createdForBooking: false },
       data: { isActive: true },

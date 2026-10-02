@@ -11,7 +11,10 @@ function setup(booking: Record<string, any> | null) {
   const prisma: any = {
     consultBooking: { findFirst: vi.fn().mockResolvedValue(booking), update: vi.fn() },
   };
-  const consult: any = { startOnlinePayment: vi.fn().mockResolvedValue({ url: 'https://checkout.paystack.com/abc', accessCode: 'ac_abc' }) };
+  const consult: any = {
+    startOnlinePayment: vi.fn().mockResolvedValue({ url: 'https://checkout.paystack.com/abc', accessCode: 'ac_abc' }),
+    restartOnlinePayment: vi.fn().mockResolvedValue({ paymentUrl: 'https://checkout.paystack.com/abc', accessCode: 'ac_abc', reference: 'booking-900-1', holdExpiresAt: '2026-10-06T09:05:00.000Z' }),
+  };
   const service = new StaffBookingService(prisma, consult, {} as any, {} as any);
   return { service, prisma, consult };
 }
@@ -61,20 +64,46 @@ describe('opening a payment link', () => {
 });
 
 describe('paying through the link', () => {
-  it('starts a fresh checkout for the agreed amount and records its reference', async () => {
-    const { service, consult, prisma } = setup(pending);
+  it('restarts the checkout through the same path as the booking page (BKG-09)', async () => {
+    const { service, consult } = setup(pending);
     const res = await service.payLinkCheckout(TENANT, 900n, payLinkToken(900n));
     expect(res.paymentUrl).toBe('https://checkout.paystack.com/abc');
-    const [tenantId, amount, email, reference, callback] = consult.startOnlinePayment.mock.calls[0];
-    expect([tenantId, amount, email]).toEqual([TENANT, 2500000n, 'ada@example.com']);
-    expect(reference).toMatch(/^booking-900-\d+$/);
-    expect(callback).toBe(`${tenantWebOrigin(pending.tenant)}/booking/confirmed`);
-    expect(prisma.consultBooking.update).toHaveBeenCalledWith({ where: { id: 900n }, data: { paymentRef: reference } });
+    expect(consult.restartOnlinePayment).toHaveBeenCalledWith(TENANT, 900n, {});
   });
 
-  it('refuses a booking that is not waiting for payment', async () => {
+  it('refuses a booking that is already paid', async () => {
     const { service, consult } = setup({ ...pending, status: 'CONFIRMED' });
+    await expect(service.payLinkCheckout(TENANT, 900n, payLinkToken(900n))).rejects.toThrow(/already paid/);
+    expect(consult.restartOnlinePayment).not.toHaveBeenCalled();
+  });
+
+  it('refuses a booking the practice cancelled', async () => {
+    const { service, consult } = setup({ ...pending, status: 'CANCELLED', holdReleasedAt: null });
     await expect(service.payLinkCheckout(TENANT, 900n, payLinkToken(900n))).rejects.toBeInstanceOf(BadRequestException);
-    expect(consult.startOnlinePayment).not.toHaveBeenCalled();
+    expect(consult.restartOnlinePayment).not.toHaveBeenCalled();
+  });
+
+  it('lets a client retry a hold that simply ran out', async () => {
+    const { service, consult } = setup({ ...pending, status: 'CANCELLED', holdReleasedAt: new Date() });
+    await service.payLinkCheckout(TENANT, 900n, payLinkToken(900n));
+    expect(consult.restartOnlinePayment).toHaveBeenCalled();
+  });
+});
+
+describe('a lapsed payment link (BKG-09)', () => {
+  it('can be retried when its hold ran out and the session is still ahead', async () => {
+    const s = await setup({ ...pending, status: 'CANCELLED', holdReleasedAt: new Date() }).service.payLinkSummary(TENANT, 900n, payLinkToken(900n));
+    expect(s).toMatchObject({ state: 'LAPSED', canRetry: true });
+  });
+
+  it('cannot be retried when the practice cancelled it, or the session has passed', async () => {
+    expect((await setup({ ...pending, status: 'CANCELLED', holdReleasedAt: null }).service.payLinkSummary(TENANT, 900n, payLinkToken(900n))).canRetry).toBe(false);
+    const past = { ...pending, status: 'CANCELLED', holdReleasedAt: new Date(), availability: { ...pending.availability, startsAt: inDays(-1) } };
+    expect((await setup(past).service.payLinkSummary(TENANT, 900n, payLinkToken(900n))).canRetry).toBe(false);
+  });
+
+  it('says until when a payable link holds the time', async () => {
+    const s = await setup(pending).service.payLinkSummary(TENANT, 900n, payLinkToken(900n));
+    expect(s.holdExpiresAt).toBe(pending.holdExpiresAt.toISOString());
   });
 });

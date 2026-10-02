@@ -5,6 +5,7 @@ import { Card, Eyebrow, useBrand, useToast } from '@unclutterdesk/ui';
 import { api } from '../../utils/apiClient';
 import {
   REQUEST_STATUS_LABEL,
+  REQUEST_KIND_LABEL,
   REQUEST_TYPE_LABEL,
   type PlatformRequestRow,
   type RequestType,
@@ -134,7 +135,7 @@ export function RequestsPage() {
                     <span className="text-[11px] font-bold text-[#475569] bg-[#F1F5F9] rounded-full px-2 py-0.5 shrink-0">{REQUEST_STATUS_LABEL[r.status]}</span>
                   </div>
                   <p className="text-[11.5px] text-[#94A3B8] font-medium">
-                    {REQUEST_TYPE_LABEL[r.type]} · {new Date(r.createdAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
+                    {REQUEST_KIND_LABEL[r.type]} · {new Date(r.createdAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
                   </p>
                   {r.adminNote ? <p className="mt-1 text-xs text-[#334155]"><strong>Unclutter Desk:</strong> {r.adminNote}</p> : null}
                 </li>

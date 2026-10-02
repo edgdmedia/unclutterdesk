@@ -12,6 +12,8 @@ import { decryptNoteFields } from '../../common/field-encryption';
 import { cleanImageUrl } from '../tenant/tenant.service';
 import { holdExpiry, ManualPaymentService, transferReference } from './manual-payment.service';
 import { BookingNotifier } from '../notifications/booking-notifier.service';
+import { BookingPaymentSettler } from '../billing/booking-payment-settler.service';
+import { onlineHoldExpiry } from './online-hold';
 import { assertWithinMonthlyLimit } from './booking-limits';
 
 /** A Paystack checkout: the page to send the payer to, and the code its pop-up opens with. */
@@ -30,6 +32,7 @@ export class ConsultService {
     private readonly calendar: CalendarService,
     private readonly manualPayments: ManualPaymentService,
     @Optional() private readonly notifier?: BookingNotifier,
+    @Optional() private readonly settler?: BookingPaymentSettler,
   ) { }
 
   async getPublicTherapists(tenantId: bigint) {
@@ -621,7 +624,7 @@ export class ConsultService {
     const result: {
       bookingId: string; icalToken: string; status: string; serviceTitle: string; startsAt: string; endsAt: string;
       therapistName: string; videoRoomLink: string | null; paymentUrl: string | null; accessCode: string | null;
-      reference: string | null; manualPayment: unknown; forms?: unknown[];
+      reference: string | null; holdExpiresAt: string | null; manualPayment: unknown; forms?: unknown[];
     } = await this.prisma.$transaction(async (tx) => {
       // Claim the slot first, with the condition in the UPDATE itself.
       //
@@ -670,7 +673,12 @@ export class ConsultService {
           videoRoomName,
           amountKobo: finalPriceKobo,
           discountCodeUsed,
-          ...(manual ? { paymentMethod: 'MANUAL', holdExpiresAt: holdExpiry(new Date(), slot.startsAt) } : {}),
+          // BKG-09: an online checkout holds the time for 35 minutes; a transfer for longer.
+          ...(manual
+            ? { paymentMethod: 'MANUAL', holdExpiresAt: holdExpiry(new Date(), slot.startsAt) }
+            : finalPriceKobo > 0n
+              ? { holdExpiresAt: onlineHoldExpiry(new Date(), slot.startsAt) }
+              : {}),
         },
       });
 
@@ -737,6 +745,7 @@ export class ConsultService {
         paymentUrl,
         accessCode,
         reference: paymentRef,
+        holdExpiresAt: booking.holdExpiresAt ? booking.holdExpiresAt.toISOString() : null,
         manualPayment,
       };
     });
@@ -803,19 +812,47 @@ export class ConsultService {
   }
 
   async getBookingPaymentUrl(tenantId: bigint, bookingId: bigint, email: string) {
-    const booking = await this.prisma.consultBooking.findFirst({
-      where: { id: bookingId, tenantId, client: { email }, status: 'PENDING_PAYMENT' },
-      include: { service: true, client: true },
-    });
+    return this.restartOnlinePayment(tenantId, bookingId, { clientEmail: email });
+  }
 
-    if (!booking) {
-      throw new NotFoundException('Pending payment booking not found');
+  /**
+   * BKG-09: pay again. A live hold gets a fresh 35 minutes; a hold the expiry
+   * job released is re-claimed if its time is still free. Never shortens a
+   * staff link's longer hold. The amount is the one agreed at booking, not
+   * today's list price (a discounted booking keeps its discount).
+   */
+  async restartOnlinePayment(tenantId: bigint, bookingId: bigint, where: { clientEmail?: string }) {
+    const booking = await this.prisma.consultBooking.findFirst({
+      where: {
+        id: bookingId,
+        tenantId,
+        paymentMethod: { not: 'MANUAL' },
+        ...(where.clientEmail ? { client: { email: where.clientEmail } } : {}),
+        OR: [{ status: 'PENDING_PAYMENT' }, { status: 'CANCELLED', holdReleasedAt: { not: null } }],
+      },
+      include: { service: true, client: true, availability: { select: { startsAt: true, createdForBooking: true } } },
+    });
+    if (!booking) throw new NotFoundException('Pending payment booking not found');
+
+    const fresh = onlineHoldExpiry(new Date(), booking.availability.startsAt);
+    const hold = booking.holdExpiresAt && booking.holdExpiresAt > fresh ? booking.holdExpiresAt : fresh;
+
+    if (booking.status === 'CANCELLED') {
+      const reclaimed = await this.prisma.$transaction(async (tx) => {
+        const free = booking.availability.createdForBooking
+          ? (await tx.consultBooking.count({ where: { availabilityId: booking.availabilityId, status: { not: 'CANCELLED' } } })) === 0
+          : (await tx.consultAvailability.updateMany({ where: { id: booking.availabilityId, isActive: true }, data: { isActive: false } })).count === 1;
+        if (!free) return false;
+        const done = await tx.consultBooking.updateMany({
+          where: { id: booking.id, status: 'CANCELLED' },
+          data: { status: 'PENDING_PAYMENT', holdReleasedAt: null, holdExpiresAt: hold },
+        });
+        return done.count === 1;
+      });
+      // Worded like createBooking's, so the wizard shows its "time was just booked" step.
+      if (!reclaimed) throw new BadRequestException('The selected time slot is no longer available');
     }
 
-    // The amount agreed when the booking was made, not the service's price
-    // today: paying from the portal used to re-price at full list, so anyone who
-    // booked with a discount code and paid later was charged the full amount.
-    const chargeKobo = chargedKobo(booking);
     const reference = `booking-${booking.id}-${Date.now()}`;
     const tenant = await this.prisma.tenant.findUnique({
       where: { id: tenantId },
@@ -823,19 +860,17 @@ export class ConsultService {
     });
     const started = await this.startOnlinePayment(
       tenantId,
-      chargeKobo,
+      chargedKobo(booking),
       booking.client.email,
       reference,
       `${tenantWebOrigin(tenant ?? { slug: '' })}/booking/confirmed`,
     );
-    // Only once Paystack accepted it: a failed attempt must not overwrite
-    // the reference of one that may still complete.
-    await this.prisma.consultBooking.update({
-      where: { id: booking.id },
-      data: { paymentRef: reference },
-    });
-    return { paymentUrl: started.url, accessCode: started.accessCode, reference };
+    // Only once Paystack accepted it: a failed attempt must not overwrite the
+    // reference of one that may still complete, nor extend the hold.
+    await this.prisma.consultBooking.update({ where: { id: booking.id }, data: { paymentRef: reference, holdExpiresAt: hold } });
+    return { paymentUrl: started.url, accessCode: started.accessCode, reference, holdExpiresAt: hold.toISOString() };
   }
+
 
   /**
    * Called when Paystack's pop-up reports success, so the client sees
@@ -853,11 +888,11 @@ export class ConsultService {
     if (!booking.paymentRef) return { status: 'PENDING_PAYMENT' as const, forms: await this.pendingFormLinks(tenantId, clientProfileId, bookingId) };
     const tx = await this.paystack.verifyTransaction(booking.paymentRef);
     if (tx?.status !== 'success') return { status: 'PENDING_PAYMENT' as const, forms: await this.pendingFormLinks(tenantId, clientProfileId, bookingId) };
-    if (await this.billing.markBookingPaid(booking.paymentRef, tx)) {
-      // Only the call that actually flipped the booking sends: the pop-up and
-      // the webhook cannot both email "Your session is booked".
-      await this.notifier?.confirmed(bookingId).catch(() => undefined);
-    }
+    // BKG-09: the same settler as the webhook, so whichever arrives first
+    // confirms (once), a late payment re-claims a still-free time, or it's refunded.
+    if (!this.settler) throw new Error('Booking payments cannot be settled: BookingPaymentSettler is not wired.');
+    const outcome = await this.settler.settle(booking.paymentRef, tx);
+    if (outcome === 'refunded') return { status: 'REFUNDED' as const, forms: [] };
     return { status: 'CONFIRMED' as const, forms: await this.pendingFormLinks(tenantId, clientProfileId, bookingId) };
   }
 

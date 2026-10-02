@@ -91,3 +91,15 @@ Write `docs/FOUNDER_TENANT_AUDIT.md` in the Desk repo:
 - A therapist directory or marketplace
 - Ecosystem integration for any tenant other than the founder's
 - Any change to Desk's pricing, tiers, or design system
+
+certbot certonly --non-interactive \
+  --dns-cloudflare \
+  --dns-cloudflare-credentials /etc/letsencrypt/cloudflare.ini \
+  --dns-cloudflare-propagation-seconds 30 \
+  -d unclutterdesk.com \
+  --cert-name unclutterdesk.com
+
+  echo | openssl s_client -connect 169.58.3.186:443 -servername api.unclutterdesk.com 2>/dev/null | openssl x509 -noout -subject -issuer -dates
+
+  systemctl list-timers | grep -iE 'certbot|acme'
+  certbot renew --dry-run

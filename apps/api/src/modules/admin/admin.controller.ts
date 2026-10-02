@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Patch, Body, Param, Query, Req, Res, UseGuards, NotFoundException } from '@nestjs/common';
+import { Controller, Get, Post, Patch, Body, Param, Query, Req, Res, UseGuards, NotFoundException, BadRequestException } from '@nestjs/common';
 import { Request } from 'express';
 import { ApiTags, ApiOperation } from '@nestjs/swagger';
 import { Response } from 'express';
@@ -8,6 +8,7 @@ import { InviteService } from '../invites/invite.service';
 import { InstrumentService } from '../assessments/instrument.service';
 import { score, validateAnswers, validateDefinition, type InstrumentDefinition } from '../assessments/engine';
 import { RequestService } from '../requests/request.service';
+import { FormTemplateService } from '../intake/form-template.service';
 import { AuthService } from '../auth/auth.service';
 import { PlatformAdminGuard } from './platform-admin.guard';
 import {
@@ -29,6 +30,7 @@ export class AdminController {
     private readonly invites: InviteService,
     private readonly instruments: InstrumentService,
     private readonly requests: RequestService,
+    private readonly templates: FormTemplateService,
   ) {}
 
   @Post('auth/login')
@@ -133,6 +135,23 @@ export class AdminController {
   updateRequest(@Param('id') id: string, @Body() dto: { status?: string; adminNote?: string }) {
     if (!/^\d+$/.test(id)) throw new NotFoundException('Request not found');
     return this.requests.update(BigInt(id), dto ?? {});
+  }
+
+  @Get('templates/:id')
+  @UseGuards(PlatformAdminGuard)
+  @ApiOperation({ summary: 'Preview a shared form template, with the practice that shared it' })
+  templatePreview(@Param('id') id: string) {
+    if (!/^\d+$/.test(id)) throw new NotFoundException('Template not found');
+    return this.templates.adminPreview(BigInt(id));
+  }
+
+  @Post('templates/:id/review')
+  @UseGuards(PlatformAdminGuard)
+  @ApiOperation({ summary: 'Approve or decline a shared form template' })
+  reviewTemplate(@Param('id') id: string, @Body() dto: { decision?: string; note?: string }) {
+    if (!/^\d+$/.test(id)) throw new NotFoundException('Template not found');
+    if (dto?.decision !== 'APPROVED' && dto?.decision !== 'DECLINED') throw new BadRequestException('Approve or decline.');
+    return this.templates.review(BigInt(id), dto.decision, dto.note?.trim() || undefined);
   }
 
   @Get('assessment-instruments')

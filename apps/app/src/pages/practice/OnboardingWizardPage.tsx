@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { initialsOf } from '../../utils/initials';
 import { Navigate, useLocation, useNavigate } from 'react-router-dom';
-import { Check, Copy, ArrowRight, ArrowLeft, Loader2, Sparkles, Building2, Calendar, ShieldCheck, ExternalLink, Palette, Mail, Phone, MapPin, Info, Globe, Settings, CreditCard, Landmark } from 'lucide-react';
+import { Check, Copy, ArrowRight, ArrowLeft, Loader2, Sparkles, Building2, Calendar, ShieldCheck, ExternalLink, Palette, Mail, Phone, MapPin, Globe, Settings, CreditCard, Landmark } from 'lucide-react';
 import { UnclutterLockup, Eyebrow } from '@unclutterdesk/ui';
 import { useAuth } from '../../context/AuthContext';
 import { api, getBookingUrl } from '../../utils/apiClient';
@@ -166,8 +166,6 @@ function OnboardingWizard({ tenantId }: { tenantId: string }) {
   const [slugAvailable, setSlugAvailable] = useState<boolean | null>(saved?.slugAvailable ?? null);
   const [customDomain, setCustomDomain] = useState(saved?.customDomain ?? '');
   const [customDomainStatus, setCustomDomainStatus] = useState(saved?.customDomainStatus ?? 'PENDING');
-  const [customDomainTarget, setCustomDomainTarget] = useState<string | null>(null);
-  const [showAdvancedDomain, setShowAdvancedDomain] = useState(false);
   const [primaryColor, setPrimaryColor] = useState(saved?.primaryColor ?? '#0F3A53');
   const [secondaryColor, setSecondaryColor] = useState(saved?.secondaryColor ?? '#E3B341');
   const [logoUrl, setLogoUrl] = useState(saved?.logoUrl ?? '');
@@ -358,10 +356,8 @@ function OnboardingWizard({ tenantId }: { tenantId: string }) {
         }
         if (brand.customDomain && !inDraft('customDomain')) {
           setCustomDomain(brand.customDomain);
-          setShowAdvancedDomain(true);
         }
         if (brand.customDomainStatus) setCustomDomainStatus(brand.customDomainStatus);
-        setCustomDomainTarget(brand.customDomainTarget ?? null);
         if (brand.primaryColor && !inDraft('primaryColor')) setPrimaryColor(brand.primaryColor);
         if (brand.secondaryColor && !inDraft('secondaryColor')) setSecondaryColor(brand.secondaryColor);
         if (brand.logoUrl && !inDraft('logoUrl')) setLogoUrl(brand.logoUrl);
@@ -755,29 +751,7 @@ function OnboardingWizard({ tenantId }: { tenantId: string }) {
                           </div>
                         </div>
 
-                        {showAdvancedDomain ? (
-                          <div className="pt-2 animate-fade-in">
-                            <div className="flex items-center justify-between">
-                              <label className={labelCls}>Custom Domain (Advanced)</label>
-                              <span className="text-[10.5px] text-[#0F766E] font-semibold flex items-center gap-1 mb-1.5">
-                                <Info className="h-3 w-3" /> Verified later in Brand settings
-                              </span>
-                            </div>
-                            <input type="text" value={customDomain} onChange={(e) => setCustomDomain(e.target.value)} placeholder="e.g. booking.mypractice.com" className={inputCls} />
-                            {customDomain && customDomainTarget ? (
-                              <p className="mt-2 text-[11.5px] text-[#64748B] leading-relaxed">
-                                After setup, add a <span className="font-bold">CNAME</span> record for{' '}
-                                <span className="font-mono font-bold text-[#0F172A]">{customDomain}</span> with the value{' '}
-                                <span className="font-mono font-bold text-[#0F172A]">{customDomainTarget}</span>, then verify it
-                                under Brand settings. Until then clients use your unclutterdesk.com address.
-                              </p>
-                            ) : null}
-                          </div>
-                        ) : customDomainTarget ? (
-                          <button type="button" onClick={() => setShowAdvancedDomain(true)} className="text-[11.5px] font-bold text-[#0F3A53] hover:underline flex items-center gap-1.5">
-                            <Settings className="h-3.5 w-3.5" /> Configure a custom domain instead
-                          </button>
-                        ) : null}
+                        {/* SET-03: custom domains are coming soon; setup doesn't offer one. */}
                       </div>
                     </div>
 
