@@ -5,7 +5,7 @@ import { AdminController } from './admin.controller';
 /** FRM-01: platform admins preview, approve and decline shared templates. */
 function make() {
   const templates: any = { review: vi.fn().mockResolvedValue({ id: '4' }), adminPreview: vi.fn().mockResolvedValue({ id: '4' }) };
-  const controller = new AdminController({} as any, {} as any, {} as any, {} as any, {} as any, templates);
+  const controller = new AdminController({} as any, {} as any, {} as any, {} as any, {} as any, templates, {} as any);
   return { controller, templates };
 }
 

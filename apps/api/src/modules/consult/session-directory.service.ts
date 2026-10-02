@@ -1,4 +1,5 @@
 import { BadRequestException, ForbiddenException, Injectable, NotFoundException, Optional } from '@nestjs/common';
+import { isMeetLink, staffRoomPath } from '../video/room-links';
 import { PrismaService } from '../../common/prisma/prisma.service';
 import { NotificationService } from '../notifications/notification.service';
 import { BookingNotifier } from '../notifications/booking-notifier.service';
@@ -15,8 +16,6 @@ export interface SessionActor {
 const name = (p: { firstName?: string | null; lastName?: string | null } | null | undefined, fallback = 'Client') =>
   `${p?.firstName ?? ''} ${p?.lastName ?? ''}`.trim() || fallback;
 
-const roomLink = (roomName: string | null) =>
-  !roomName ? null : roomName.startsWith('http') ? roomName : `https://meet.jit.si/${roomName}`;
 
 /**
  * The practice's session register and the single-session view: the same rows
@@ -122,7 +121,8 @@ export class SessionDirectoryService {
       ...this.shape(b, await this.bookedBy(tenantId, b.createdByProfileId)),
       clientEmail: b.client.email,
       clientPhone: b.client.phone,
-      videoRoomLink: b.format === 'IN_PERSON' ? null : b.availability.channel === 'VIDEO' ? roomLink(b.videoRoomName) : null,
+      // VID-01: online sessions open their room in the app, or the therapist's Google Meet.
+      videoRoomLink: b.format === 'IN_PERSON' ? null : isMeetLink(b.videoRoomName) ? b.videoRoomName : staffRoomPath(b.id),
       note: note ? { id: note.id.toString(), status: note.isLocked ? 'COMPLETED' : 'DRAFT' } : null,
       internalSummary: b.internalSummary,
       clientRecap: b.clientRecap,

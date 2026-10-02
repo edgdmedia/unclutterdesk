@@ -85,7 +85,6 @@ function setup(over: Record<string, any> = {}) {
     $transaction: vi.fn(async (fn: any) => fn(tx)),
   };
   const consult: any = {
-    resolveVideoRoomLink: vi.fn().mockResolvedValue({ roomName: 'room-1', roomLink: 'https://meet.example/room-1' }),
     startOnlinePayment: vi.fn(),
   };
   const notifications: any = { sendEmail: vi.fn().mockResolvedValue({ success: true }) };
@@ -325,7 +324,7 @@ describe('after the booking — join links', () => {
     const { service, notifications } = setup();
     await service.createForClient(TENANT, OWNER, { ...base, payment: 'NONE' });
     const email = notifications.sendEmail.mock.calls[0][0];
-    expect(email.message).toContain('https://meet.jit.si/room-1');
+    expect(email.message).toMatch(/\/portal\/sessions\/\d+\/room/);
     expect(email.message).toMatch(/Join link/i);
   });
 });

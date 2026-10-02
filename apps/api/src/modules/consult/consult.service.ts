@@ -1012,10 +1012,9 @@ export class ConsultService {
         throw new BadRequestException('The selected time slot is no longer available');
       }
 
-      const bookingId = Date.now();
-      // Rule 6: video rooms exist for online sessions only.
-      const { roomName: videoRoomName, roomLink: videoRoomLink } =
-        format === 'ONLINE' ? await this.resolveVideoRoomLink(slot.therapist, bookingId) : { roomName: null, roomLink: null };
+      // VID-01: no video room is made at booking. The first person to join an
+      // online session makes it (modules/video), on whichever provider has budget.
+      const videoRoomLink: string | null = null;
 
       // Settle the price before writing the row. The amount charged is not
       // recoverable from the service afterwards: a discount changes it, and the
@@ -1039,7 +1038,6 @@ export class ConsultService {
           notes: dto.notes,
           format,
           locationId: format === 'IN_PERSON' ? slot.locationId : null,
-          videoRoomName,
           amountKobo: finalPriceKobo,
           discountCodeUsed,
           // BKG-09: an online checkout holds the time for 35 minutes; a transfer for longer.
@@ -1807,54 +1805,6 @@ export class ConsultService {
           endsAt: nextBooking.availability.endsAt.toISOString(),
         }
         : null,
-    };
-  }
-
-  /**
-   * Builds the video room for a booking.
-   *
-   * The name used to be `unclutterdesk-session-${Date.now()}`. Jitsi rooms are
-   * unauthenticated and spring into existence when someone joins, so a
-   * guessable name means a stranger can sweep a range of timestamps — or simply
-   * learn the scheme from one link — and be waiting inside a therapy session
-   * before the therapist arrives. The name now carries 128 bits of randomness.
-   */
-  async resolveVideoRoomLink(therapist: any, _bookingRef: number): Promise<{ roomName: string; roomLink: string }> {
-    const provider = (therapist.videoProvider || 'JITSI').toUpperCase();
-    const defaultRoomName = `unclutterdesk-session-${randomBytes(16).toString('hex')}`;
-
-    if (provider === 'DAILY') {
-      const apiKey = therapist.dailyApiKey || process.env.DAILY_PLATFORM_API_KEY;
-      if (apiKey) {
-        try {
-          const res = await fetch('https://api.daily.co/v1/rooms', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              Authorization: `Bearer ${apiKey}`,
-            },
-            body: JSON.stringify({
-              name: defaultRoomName,
-              properties: {
-                enable_chat: true,
-                exp: Math.floor(Date.now() / 1000) + 86400, // 24hr expiration
-              },
-            }),
-          });
-          const data = await res.json();
-          if (data?.url) {
-            return { roomName: data.name || defaultRoomName, roomLink: data.url };
-          }
-        } catch {
-          // Fallback to Jitsi if Daily API call fails
-        }
-      }
-    }
-
-    // Default: Free instant Jitsi Meet
-    return {
-      roomName: defaultRoomName,
-      roomLink: `https://meet.jit.si/${defaultRoomName}`,
     };
   }
 

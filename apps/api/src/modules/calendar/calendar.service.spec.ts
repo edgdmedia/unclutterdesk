@@ -19,6 +19,7 @@ const booking = {
   id: 42n,
   videoRoomName: 'unclutterdesk-session-42',
   service: { title: 'Individual Therapy' },
+  tenant: { name: 'Smith Therapy', slug: 'dr-smith', customDomain: null, customDomainStatus: null },
   client: { firstName: 'Ada', lastName: 'Obi', email: 'ada@example.com' },
   availability: {
     startsAt: new Date('2026-10-01T10:00:00Z'),
@@ -40,6 +41,12 @@ describe('CalendarService.generateIcal', () => {
     const ics = await service.generateIcal(42n, CalendarService.icalToken(42n));
     expect(ics).toContain('BEGIN:VCALENDAR');
     expect(ics).toContain('Individual Therapy');
+  });
+
+  it("links an online session to its room in the app, not a provider", async () => {
+    const ics = await service.generateIcal(42n, CalendarService.icalToken(42n));
+    expect(ics).toMatch(/\/portal\/sessions\/42\/room/);
+    expect(ics).not.toMatch(/meet\.jit\.si/);
   });
 
   describe('rejects anything but the right token', () => {

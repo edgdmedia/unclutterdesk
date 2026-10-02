@@ -1,4 +1,5 @@
 import { BadRequestException, ForbiddenException, Injectable, Logger, NotFoundException } from '@nestjs/common';
+import { joinLinkFor } from '../video/room-links';
 import { PrismaService } from '../../common/prisma/prisma.service';
 import { NotificationService } from '../notifications/notification.service';
 import { CalendarService } from '../calendar/calendar.service';
@@ -154,8 +155,6 @@ export class StaffBookingService {
 
     const booking = await this.prisma.$transaction(async (tx) => {
       const slotId = await this.claimTime(tx, tenantId, providerId, service.id, time, fullName(therapist.profile), therapist.profile?.timezone || 'Africa/Lagos');
-      // Rule 6: only online sessions get a video room.
-      const { roomName } = format === 'ONLINE' ? await this.consult.resolveVideoRoomLink(therapist, Date.now()) : { roomName: null };
       return tx.consultBooking.create({
         data: {
           tenantId,
@@ -166,7 +165,6 @@ export class StaffBookingService {
           notes: dto.note ? String(dto.note).trim().slice(0, 1000) || null : null,
           format,
           locationId,
-          videoRoomName: roomName,
           ...paymentData,
         } as any,
       });
@@ -197,13 +195,12 @@ export class StaffBookingService {
   protected async afterCreate(bookingId: bigint, r: StaffBookingResult, notifyClient: boolean): Promise<void> {
     const b = await this.prisma.consultBooking.findFirst({
       where: { id: bookingId },
-      include: { client: true, tenant: true, availability: { select: { channel: true } } },
+      include: { client: true, tenant: true },
     });
     if (!b) return;
-    const videoLine = b.availability?.channel === 'VIDEO' && b.videoRoomName
-      ? ` Join link: ${b.videoRoomName.startsWith('http') ? b.videoRoomName : `https://meet.jit.si/${b.videoRoomName}`}`
-      : '';
     const origin = tenantWebOrigin(b.tenant as any);
+    // VID-01: online sessions are joined in the app; rooms are made on the first join.
+    const videoLine = (b as any).format !== 'IN_PERSON' ? ` Join link: ${joinLinkFor(origin, b)}` : '';
     // The client reads this, so their own time zone, not the server's or the practice's.
     const timeZone = (b.client as { timezone?: string | null }).timezone || 'Africa/Lagos';
     const when = new Intl.DateTimeFormat('en-GB', {

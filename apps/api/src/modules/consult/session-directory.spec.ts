@@ -103,10 +103,10 @@ describe('getSession', () => {
     const d = await service.getSession(TENANT, { profileId: ACTOR, viewAll: false, clinical: true, desk: false }, 900n);
     expect(d.can).toEqual({ edit: false, summary: true, markPaid: false });
   });
-  it('builds the video link from the room name', async () => {
+  it('links an online session to its room in the app', async () => {
     const { service } = make();
     const d = await service.getSession(TENANT, DESK, 900n);
-    expect(d.videoRoomLink).toBe('https://meet.jit.si/room-9');
+    expect(d.videoRoomLink).toBe('/session/900');
   });
 });
 

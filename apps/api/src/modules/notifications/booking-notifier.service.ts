@@ -1,6 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '../../common/prisma/prisma.service';
 import { tenantWebOrigin } from '../../common/origins';
+import { joinLinkFor } from '../video/room-links';
 import { chargedKobo } from '../../common/revenue';
 import { formatNaira } from '../billing/subscription-plans';
 import { NotificationService } from './notification.service';
@@ -11,9 +12,6 @@ import { payLinkToken } from '../consult/staff-booking-rules';
 /** Why a booking payment is being refunded (BKG-09). */
 export type RefundReason = 'time_taken' | 'cancelled' | 'duplicate';
 
-/** A room name may already be a full URL (a scheduled provider room). */
-const roomLink = (roomName: string | null) =>
-  roomName ? (roomName.startsWith('http') ? roomName : `https://meet.jit.si/${roomName}`) : null;
 
 /**
  * Every message about a booking lives here, so the rules cannot drift apart:
@@ -105,9 +103,11 @@ export class BookingNotifier {
     // an online one carries the join link. Rows predating the format column
     // read as online.
     const inPerson = b.format === 'IN_PERSON' && b.location;
-    const online = !inPerson;
-    const join = online ? roomLink(b.videoRoomName) : null;
+    // Without a format, the slot's old channel says whether it was in person.
+    const online = b.format ? b.format !== 'IN_PERSON' : (b.availability as { channel?: string }).channel !== 'OFFICE';
     const origin = tenantWebOrigin(b.tenant);
+    // VID-01: the session's room in the app (or the therapist's Google Meet).
+    const join = online ? joinLinkFor(origin, b) : null;
     const portal = `${origin}/portal`;
     // BKG-06: point the client at the forms they still owe, before the session.
     const pending = await this.pendingFormsFor(b.tenantId, b.clientProfileId).catch(() => []);

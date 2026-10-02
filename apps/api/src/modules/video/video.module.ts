@@ -8,10 +8,11 @@ import { VideoUsageService } from './video-usage.service';
 import { VideoRouter } from './video-router.service';
 import { VideoRoomService } from './video-room.service';
 import { VideoController } from './video.controller';
+import { VideoWebhookController } from './video-webhook.controller';
 
 /** VID-01: session video rooms (Daily, then JaaS, then a link) and their usage. */
 @Module({
-  controllers: [VideoController],
+  controllers: [VideoController, VideoWebhookController],
   providers: [
     PrismaService,
     DailyProvider,

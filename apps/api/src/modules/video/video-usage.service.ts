@@ -46,6 +46,39 @@ export class VideoUsageService {
     return rows.length;
   }
 
+  /**
+   * Daily's own durations for a room replace the heartbeat estimate. Summed
+   * over every meeting in the room, since a dropped call that rejoins starts a
+   * new one. Participants are matched on the user_id we put in their token.
+   */
+  async reconcileDaily(roomName: string): Promise<void> {
+    const booking = await this.prisma.consultBooking.findFirst({
+      where: { videoRoomName: roomName, videoProvider: 'DAILY' },
+      select: { id: true, tenantId: true },
+    });
+    if (!booking) return;
+
+    const res = await fetch(`https://api.daily.co/v1/meetings?room=${encodeURIComponent(roomName)}`, {
+      headers: { Authorization: `Bearer ${process.env.DAILY_API_KEY}` },
+    });
+    if (!res.ok) throw new Error(`Daily /meetings failed: ${res.status}`);
+    const meetings = ((await res.json()) as { data?: Array<{ participants?: Array<{ user_id: string | null; duration: number }> }> }).data ?? [];
+
+    const seconds = new Map<string, number>();
+    for (const m of meetings) {
+      for (const p of m.participants ?? []) {
+        if (!p.user_id || !/^\d+$/.test(p.user_id)) continue;
+        seconds.set(p.user_id, (seconds.get(p.user_id) ?? 0) + (p.duration ?? 0));
+      }
+    }
+    for (const [userId, total] of seconds) {
+      await this.prisma.videoParticipant.updateMany({
+        where: { tenantId: booking.tenantId, bookingId: booking.id, profileId: BigInt(userId), provider: 'DAILY' },
+        data: { minutes: Math.ceil(total / 60), reconciled: true },
+      });
+    }
+  }
+
   /** Usage for one calendar month in WAT ('YYYY-MM'), by provider and by practice. */
   async report(month: string) {
     const m = /^(\d{4})-(0[1-9]|1[0-2])$/.exec(month);

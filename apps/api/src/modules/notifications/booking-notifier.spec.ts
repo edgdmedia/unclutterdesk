@@ -73,7 +73,8 @@ describe('BookingNotifier.booked', () => {
     await notifier.booked(900n);
     const email = (notifications.sendEmail as any).mock.calls[0][0];
     expect(email.title).toBe('Your session is booked');
-    expect(email.link).toMatch(/meet\.jit\.si\/smith-therapy-900/);
+    // VID-01: the join link opens the session's room in the app, never a provider URL.
+    expect(email.link).toMatch(/\/portal\/sessions\/900\/room$/);
     expect(email.actionLabel).toBe('Join the session');
   });
 });
@@ -94,9 +95,16 @@ describe('BookingNotifier.confirmed', () => {
       { label: 'When', value: 'Tuesday 6 October at 11:30' },
       { label: 'Where', value: 'Online (video)' },
     ]);
-    expect(email.link).toMatch(/meet\.jit\.si\/smith-therapy-900/);
+    // VID-01: the join link opens the session's room in the app, never a provider URL.
+    expect(email.link).toMatch(/\/portal\/sessions\/900\/room$/);
     expect(email.actionLabel).toBe('Join the session');
     expect(email.links).toContainEqual({ label: 'Manage your booking', url: expect.stringMatching(/\/portal$/) });
+  });
+
+  it("keeps a Google Meet session's Meet link", async () => {
+    const { notifier, notifications } = make(booking({ status: 'CONFIRMED', videoRoomName: 'https://meet.google.com/abc-defg-hij' }));
+    await notifier.confirmed(900n);
+    expect((notifications.sendEmail as any).mock.calls[0][0].link).toBe('https://meet.google.com/abc-defg-hij');
   });
 
   it('an in-person session gets no join link and points at the portal', async () => {

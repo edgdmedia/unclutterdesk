@@ -3,6 +3,8 @@ import { createHmac, timingSafeEqual, randomBytes, randomUUID, createHash } from
 import { JWT_SECRET } from '../../common/auth.config';
 import { google } from 'googleapis';
 import { PrismaService } from '../../common/prisma/prisma.service';
+import { tenantWebOrigin } from '../../common/origins';
+import { joinLinkFor } from '../video/room-links';
 
 @Injectable()
 export class CalendarService {
@@ -144,9 +146,9 @@ export class CalendarService {
     this.logger.log(`Google Calendar connected for therapist ${profileId}`);
   }
 
-  private getVideoRoomLink(videoRoomName: string | null): string {
-    if (!videoRoomName) return '';
-    return videoRoomName.startsWith('http') ? videoRoomName : `https://meet.jit.si/${videoRoomName}`;
+  /** VID-01: the session's room in the app, or the therapist's Google Meet. */
+  private getVideoRoomLink(booking: { id: bigint; videoRoomName: string | null; tenant: Parameters<typeof tenantWebOrigin>[0] }): string {
+    return joinLinkFor(tenantWebOrigin(booking.tenant), booking);
   }
 
   async pushBookingToGoogle(bookingId: bigint) {
@@ -156,6 +158,7 @@ export class CalendarService {
         service: true,
         client: true,
         location: true,
+        tenant: true,
         availability: {
           include: {
             therapist: true,
@@ -176,7 +179,7 @@ export class CalendarService {
 
       const isGoogleMeet = booking.availability.therapist.videoProvider === 'GOOGLE_MEET';
       const inPerson = booking.format === 'IN_PERSON' && booking.location;
-      const videoLink = this.getVideoRoomLink(booking.videoRoomName);
+      const videoLink = this.getVideoRoomLink(booking);
       // SET-06: an in-person event carries the address, not a room.
       const where = inPerson ? `${booking.location.name}, ${booking.location.address}, ${booking.location.city}` : videoLink;
       const whereLine = inPerson ? `Where: ${where}${booking.location.directions ? `\nDirections: ${booking.location.directions}` : ''}` : `Video Room: ${videoLink}`;
@@ -270,6 +273,7 @@ export class CalendarService {
         service: true,
         client: true,
         location: true,
+        tenant: true,
         availability: {
           include: {
             therapist: {
@@ -289,7 +293,7 @@ export class CalendarService {
     const therapistName = `${booking.availability.therapist.profile.firstName || ''} ${booking.availability.therapist.profile.lastName || ''}`.trim();
     const clientName = `${booking.client.firstName || ''} ${booking.client.lastName || ''}`.trim() || booking.client.email;
 
-    const videoLink = this.getVideoRoomLink(booking.videoRoomName);
+    const videoLink = this.getVideoRoomLink(booking);
     // SET-06: in-person invites carry the address and directions.
     const inPerson = booking.format === 'IN_PERSON' && booking.location;
     const where = inPerson ? `${booking.location.name}, ${booking.location.address}, ${booking.location.city}` : videoLink;
