@@ -83,7 +83,7 @@ export class BookingNotifier {
 
   /**
    * The session is paid or waived — the only moment the join link may travel.
-   * Callers must invoke this exactly once (markBookingPaid says whether the
+   * Callers must invoke this exactly once (BookingPaymentSettler says whether the
    * confirmation was new).
    */
   async confirmed(bookingId: bigint): Promise<void> {

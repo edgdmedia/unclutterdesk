@@ -236,28 +236,30 @@ export class StaffBookingService {
       startsAt: b.availability.startsAt.toISOString(),
       amountKobo: chargedKobo(b).toString(),
       practiceName: b.tenant.name,
+      // BKG-09: how long the time is held, and whether a hold that ran out can be paid again.
+      holdExpiresAt: b.holdExpiresAt ? b.holdExpiresAt.toISOString() : null,
+      canRetry: this.canRetry(b),
     };
   }
 
   async payLinkCheckout(tenantId: bigint, bookingId: bigint, token: string) {
     const b: any = await this.payLinkBooking(tenantId, bookingId, token);
-    if (b.status !== 'PENDING_PAYMENT') {
+    if (b.status !== 'PENDING_PAYMENT' && !this.canRetry(b)) {
       throw new BadRequestException(
         b.status === 'CANCELLED' ? 'This booking is no longer held. Contact the practice to book again.' : 'This session is already paid.',
       );
     }
-    const reference = `booking-${b.id}-${Date.now()}`;
-    const { url: paymentUrl } = await this.consult.startOnlinePayment(
-      tenantId,
-      chargedKobo(b),
-      b.client.email,
-      reference,
-      `${tenantWebOrigin(b.tenant)}/booking/confirmed`,
-    );
-    // Only once Paystack accepted it, as getBookingPaymentUrl does.
-    await this.prisma.consultBooking.update({ where: { id: b.id }, data: { paymentRef: reference } });
+    // BKG-09: the same restart as the booking page: a fresh hold, or the
+    // released time re-claimed if it's still free.
+    const { paymentUrl } = await this.consult.restartOnlinePayment(tenantId, bookingId, {});
     return { paymentUrl };
   }
+
+  /** A hold the expiry job let go (not a cancellation) can be paid again while the session is still ahead. */
+  private canRetry(b: { status: string; holdReleasedAt?: Date | null; availability: { startsAt: Date } }) {
+    return b.status === 'CANCELLED' && !!b.holdReleasedAt && b.availability.startsAt > new Date();
+  }
+
 
   /** Where the session sits: an open slot, or (Task 7) a time staff choose. */
   protected async resolveTime(
