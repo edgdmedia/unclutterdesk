@@ -64,7 +64,7 @@ describe('a subaccount Paystack rejects', () => {
   function consult({ broken = false, rejects = true } = {}) {
     const prisma: any = {
       consultBooking: {
-        findFirst: vi.fn().mockResolvedValue({ id: 7n, amountKobo: 2_500_000n, service: { priceKobo: 2_500_000n }, client: { email: 'c@x.ng' } }),
+        findFirst: vi.fn().mockResolvedValue({ id: 7n, status: 'PENDING_PAYMENT', amountKobo: 2_500_000n, service: { priceKobo: 2_500_000n }, client: { email: 'c@x.ng' }, availability: { startsAt: new Date(Date.now() + 86_400_000), createdForBooking: false } }),
         update: vi.fn(),
       },
       tenant: { findUnique: vi.fn().mockResolvedValue({ slug: 'calm', customDomain: null, customDomainStatus: null }) },

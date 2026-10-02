@@ -126,7 +126,10 @@ describe('the online hold (BKG-09)', () => {
     const { service, prisma } = make({ booking: { id: 900n, tenantId: TENANT, status: 'PENDING_PAYMENT', paymentMethod: 'PAYSTACK', holdExpiresAt: new Date('2026-10-06T08:35:00Z'), availabilityId: 3n, amountKobo: 3500000n, service: { priceKobo: 3500000n }, client: { email: 'ada@example.com' }, availability: { startsAt: new Date('2026-10-06T10:30:00Z'), createdForBooking: false } } });
     const res: any = await service.getBookingPaymentUrl(TENANT, 900n, 'ada@example.com');
     expect(res.holdExpiresAt).toBe('2026-10-06T09:05:00.000Z');
-    expect(prisma.consultBooking.update).toHaveBeenCalledWith({ where: { id: 900n }, data: { holdExpiresAt: new Date('2026-10-06T09:05:00Z') } });
+    // One write, after Paystack accepted: the new reference and the fresh hold together.
+    expect(prisma.consultBooking.update).toHaveBeenCalledTimes(1);
+    expect(prisma.consultBooking.update.mock.calls[0][0]).toMatchObject({ where: { id: 900n }, data: { holdExpiresAt: new Date('2026-10-06T09:05:00Z') } });
+    expect(prisma.consultBooking.update.mock.calls[0][0].data.paymentRef).toMatch(/^booking-900-/);
   });
 
   it("never shortens a staff link's longer hold", async () => {

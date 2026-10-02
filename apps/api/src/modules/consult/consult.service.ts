@@ -851,8 +851,6 @@ export class ConsultService {
       });
       // Worded like createBooking's, so the wizard shows its "time was just booked" step.
       if (!reclaimed) throw new BadRequestException('The selected time slot is no longer available');
-    } else {
-      await this.prisma.consultBooking.update({ where: { id: booking.id }, data: { holdExpiresAt: hold } });
     }
 
     const reference = `booking-${booking.id}-${Date.now()}`;
@@ -867,9 +865,9 @@ export class ConsultService {
       reference,
       `${tenantWebOrigin(tenant ?? { slug: '' })}/booking/confirmed`,
     );
-    // Only once Paystack accepted it: a failed attempt must not overwrite
-    // the reference of one that may still complete.
-    await this.prisma.consultBooking.update({ where: { id: booking.id }, data: { paymentRef: reference } });
+    // Only once Paystack accepted it: a failed attempt must not overwrite the
+    // reference of one that may still complete, nor extend the hold.
+    await this.prisma.consultBooking.update({ where: { id: booking.id }, data: { paymentRef: reference, holdExpiresAt: hold } });
     return { paymentUrl: started.url, accessCode: started.accessCode, reference, holdExpiresAt: hold.toISOString() };
   }
 
