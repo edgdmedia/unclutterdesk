@@ -135,6 +135,26 @@ describe('ConsultService.getClientPortal', () => {
     expect(where).not.toHaveProperty('email');
   });
 
+  it('lists a booking with its format and, in person, where to go', async () => {
+    prisma.profile.findFirst.mockResolvedValue({ id: 9n, firstName: 'Ada', lastName: 'Obi' });
+    const startsAt = new Date(Date.now() + 86_400_000);
+    const row = (over: Record<string, unknown>) => ({
+      id: 900n, status: 'CONFIRMED', paymentMethod: 'PAYSTACK', amountKobo: 1000n, holdExpiresAt: null, clientReportedPaidAt: null,
+      format: 'ONLINE', location: null, videoRoomName: null,
+      service: { title: 'Individual Therapy', priceKobo: 1000n },
+      availability: { startsAt, endsAt: new Date(startsAt.getTime() + 3_000_000), therapist: { profile: { firstName: 'Jane', lastName: 'Smith' } } },
+      ...over,
+    });
+    prisma.consultBooking.findMany.mockResolvedValue([
+      row({}),
+      row({ id: 901n, format: 'IN_PERSON', location: { name: 'Lekki studio', address: '1 Admiralty Way', city: 'Lagos', directions: 'Second floor' } }),
+    ]);
+    const portal: any = await service.getClientPortal(1n, 9n);
+    const [online, inPerson] = portal.upcoming;
+    expect(online).toMatchObject({ id: '900', format: 'ONLINE', location: null });
+    expect(inPerson).toMatchObject({ id: '901', format: 'IN_PERSON', location: { name: 'Lekki studio', city: 'Lagos' } });
+  });
+
   it('scopes the booking query to the tenant and that client', async () => {
     prisma.profile.findFirst.mockResolvedValue({ id: 9n });
     await service.getClientPortal(1n, 9n);

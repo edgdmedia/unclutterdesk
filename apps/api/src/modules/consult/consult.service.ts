@@ -339,6 +339,19 @@ export class ConsultService {
     return { format: f.format, priceKobo: f.priceKobo.toString(), isActive: f.isActive };
   }
 
+  /**
+   * SET-06: what a booking was bought as, and for in person, where to go.
+   * Rows predating the format column read as online.
+   */
+  private bookingFormatFields(b: { format?: string | null; location?: { name: string; address: string; city: string; directions?: string | null } | null }) {
+    const format: Format = b.format === 'IN_PERSON' ? 'IN_PERSON' : 'ONLINE';
+    const location =
+      format === 'IN_PERSON' && b.location
+        ? { name: b.location.name, address: b.location.address, city: b.location.city, directions: b.location.directions ?? null, mapsUrl: mapsLink(b.location.address, b.location.city) }
+        : null;
+    return { format, location };
+  }
+
   /** Validates the formats a page sends: [{ format, priceKobo, isActive? }]. */
   private formatFields(raw: unknown): Array<{ format: Format; priceKobo: bigint; isActive: boolean }> | null {
     if (raw === undefined) return null;
@@ -1296,7 +1309,7 @@ export class ConsultService {
       startsAt: b.availability.startsAt.toISOString(),
       endsAt: b.availability.endsAt.toISOString(),
       status: b.status,
-      ...this.formatFields(b),
+      ...this.bookingFormatFields(b),
       notes: b.notes,
       paymentMethod: b.paymentMethod,
       amountKobo: b.amountKobo !== null ? b.amountKobo.toString() : null,
@@ -1603,7 +1616,7 @@ export class ConsultService {
       status: booking.status,
       priceKobo: booking.service.priceKobo.toString(),
       therapistName: `${booking.availability.therapist.profile.firstName || ''} ${booking.availability.therapist.profile.lastName || ''}`.trim() || 'Your therapist',
-      ...this.formatFields(booking),
+      ...this.bookingFormatFields(booking),
       paymentMethod: booking.paymentMethod,
       // How to pay a transfer that is still due.
       manualPayment:
@@ -1746,7 +1759,7 @@ export class ConsultService {
         endsAt: booking.availability.endsAt.toISOString(),
         serviceTitle: booking.service.title,
         status: booking.status,
-        ...this.formatFields(booking),
+        ...this.bookingFormatFields(booking),
         },
       latestNote: latestNote
         ? {
