@@ -81,6 +81,11 @@ export function TimeStep({
       {state.slotTaken ? (
         <AlertBanner title="That time was just booked">Here are the nearest free times. Nothing has been charged.</AlertBanner>
       ) : null}
+      {state.refunded ? (
+        <AlertBanner title="Your payment is being refunded">
+          It arrived after this time was taken, so Paystack is refunding it. Please choose another time.
+        </AlertBanner>
+      ) : null}
 
       <div className={`rounded-[18px] bg-[#F8FAFC] border border-[#E2E8F0] px-3.5 py-3 flex items-center justify-between gap-3 ${singleService ? '' : 'min-[1024px]:hidden'}`}>
         <div className="min-w-0">

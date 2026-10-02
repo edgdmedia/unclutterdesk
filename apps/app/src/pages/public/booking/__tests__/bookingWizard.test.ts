@@ -73,3 +73,23 @@ describe('booking wizard', () => {
     expect(stepFromUrl('nonsense', withTime)).toBe(withTime.step);
   });
 });
+
+describe('the online hold (BKG-09)', () => {
+  it('remembers until when the booking holds the time, and a retry renews it', () => {
+    const booked = r(withTime, { type: 'booked', bookingId: '900', holdExpiresAt: '2026-10-06T08:35:00Z' });
+    expect(booked.holdExpiresAt).toBe('2026-10-06T08:35:00Z');
+    expect(r(booked, { type: 'holdRenewed', holdExpiresAt: '2026-10-06T09:05:00Z' }).holdExpiresAt).toBe('2026-10-06T09:05:00Z');
+  });
+
+  it('a refunded late payment goes back to the times with a notice, and the next choice clears it', () => {
+    const booked = r({ ...withTime, step: 4 }, { type: 'booked', bookingId: '900', holdExpiresAt: '2026-10-06T08:35:00Z' });
+    const refunded = r(booked, { type: 'refunded' });
+    expect(refunded).toMatchObject({ step: 2, slotId: null, bookingId: null, holdExpiresAt: null, refunded: true });
+    expect(r(refunded, { type: 'chooseSlot', slotId: 't2' }).refunded).toBe(false);
+  });
+
+  it('a taken time clears the hold', () => {
+    const booked = r(withTime, { type: 'booked', bookingId: '900', holdExpiresAt: '2026-10-06T08:35:00Z' });
+    expect(r(booked, { type: 'slotTaken' }).holdExpiresAt).toBeNull();
+  });
+});

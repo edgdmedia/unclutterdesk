@@ -29,6 +29,7 @@ type BookingResponse = ConfirmedBooking & {
   paymentUrl?: string | null;
   accessCode?: string | null;
   reference?: string | null;
+  holdExpiresAt?: string | null;
 };
 
 const TITLES: Record<1 | 2 | 3 | 4, string> = { 1: 'Choose a session', 2: 'Pick a time', 3: 'Your details', 4: 'Review and pay' };
@@ -142,12 +143,14 @@ function Wizard({ data }: { data: ReturnType<typeof useBookingData> }) {
           dispatch({ type: 'paid' });
           return;
         }
-        dispatch({ type: 'booked', bookingId: res.bookingId });
+        dispatch({ type: 'booked', bookingId: res.bookingId, holdExpiresAt: res.holdExpiresAt ?? null });
         accessCode = res.accessCode;
       } else {
         // Same booking as the attempt that didn't go through, not a second hold.
-        const res = await api.post<{ accessCode?: string | null }>(`/v1/consult/public/bookings/${state.bookingId}/pay`, { email: me?.email });
+        const res = await api.post<{ accessCode?: string | null; holdExpiresAt?: string | null }>(`/v1/consult/public/bookings/${state.bookingId}/pay`, { email: me?.email });
         accessCode = res.accessCode;
+        // BKG-09: paying again holds the time for a fresh 35 minutes.
+        dispatch({ type: 'holdRenewed', holdExpiresAt: res.holdExpiresAt ?? null });
       }
       if (!accessCode) throw new Error('Could not start the payment. Try again.');
 
@@ -157,7 +160,12 @@ function Wizard({ data }: { data: ReturnType<typeof useBookingData> }) {
         return;
       }
       const bookingId = state.bookingId ?? lastBooking.current?.bookingId;
-      await api.post(`/v1/consult/public/bookings/${bookingId}/confirm-payment`, {});
+      const settled = await api.post<{ status?: string }>(`/v1/consult/public/bookings/${bookingId}/confirm-payment`, {});
+      // BKG-09: paid after the hold ended and the time was taken: refunded.
+      if (settled?.status === 'REFUNDED') {
+        dispatch({ type: 'refunded' });
+        return;
+      }
       setConfirmed({ booking: lastBooking.current!, mode: 'paid' });
       dispatch({ type: 'paid' });
     } catch (err) {

@@ -181,4 +181,28 @@ describe('BookingWizardPage', () => {
     expect(within(header).getByText('ST')).toBeTruthy();
     expect(within(header).getByRole('link', { name: /4.9 · 32 reviews/ })).toBeTruthy();
   });
+
+  it('shows how long the time is held once the booking exists (BKG-09)', async () => {
+    network();
+    post.mockResolvedValue({ ...booked, holdExpiresAt: '2026-10-01T08:35:00Z' });
+    paystack('onCancel');
+    renderWithApp(<BookingWizardPage />);
+    await reachPay();
+    fireEvent.click(cta('Pay ₦35,000'));
+    expect((await screen.findByRole('timer')).textContent).toBe('35:00');
+  });
+
+  it('a late payment that was refunded returns to the times and says why (BKG-09)', async () => {
+    network();
+    post.mockImplementation(async (url: string) =>
+      url.endsWith('/confirm-payment') ? { status: 'REFUNDED', forms: [] } : { ...booked, holdExpiresAt: '2026-10-01T08:35:00Z' },
+    );
+    paystack('onSuccess');
+    renderWithApp(<BookingWizardPage />);
+    await reachPay();
+    fireEvent.click(cta('Pay ₦35,000'));
+    expect(await screen.findByText(/arrived after this time was taken/i)).toBeTruthy();
+    expect(screen.getByRole('heading', { name: 'Pick a time' })).toBeTruthy();
+  });
 });
+

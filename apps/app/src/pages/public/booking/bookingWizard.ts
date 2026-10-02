@@ -19,6 +19,10 @@ export interface WizardState {
   slotTaken: boolean;
   /** Set once a booking exists, so a retried payment reuses it. */
   bookingId: string | null;
+  /** BKG-09: until when that booking holds its time while the client pays. */
+  holdExpiresAt: string | null;
+  /** BKG-09: a late payment was refunded because the time was taken; step 2 says so. */
+  refunded: boolean;
 }
 
 export type WizardAction =
@@ -34,7 +38,9 @@ export type WizardAction =
   | { type: 'next' }
   | { type: 'back' }
   | { type: 'slotTaken' }
-  | { type: 'booked'; bookingId: string }
+  | { type: 'booked'; bookingId: string; holdExpiresAt?: string | null }
+  | { type: 'holdRenewed'; holdExpiresAt: string | null }
+  | { type: 'refunded' }
   | { type: 'paymentFailed' }
   | { type: 'paid' };
 
@@ -58,6 +64,8 @@ export function initialState({ singleServiceId }: { singleServiceId?: string | n
     paymentStatus: 'idle',
     slotTaken: false,
     bookingId: null,
+    holdExpiresAt: null,
+    refunded: false,
   };
 }
 
@@ -92,7 +100,7 @@ export function wizardReducer(s: WizardState, a: WizardAction): WizardState {
     case 'chooseDate':
       return a.date === s.date ? s : { ...s, date: a.date, slotId: null };
     case 'chooseSlot':
-      return { ...s, slotId: a.slotId, slotTaken: false, bookingId: null };
+      return { ...s, slotId: a.slotId, slotTaken: false, refunded: false, bookingId: null, holdExpiresAt: null };
     case 'setFilter':
       return { ...s, formatFilter: a.filter };
     case 'setNote':
@@ -109,9 +117,13 @@ export function wizardReducer(s: WizardState, a: WizardAction): WizardState {
     case 'back':
       return s.step > s.firstStep && s.step < 5 ? { ...s, step: (s.step - 1) as Step } : s;
     case 'slotTaken':
-      return { ...s, step: 2, slotId: null, slotTaken: true, bookingId: null, paymentStatus: 'idle' };
+      return { ...s, step: 2, slotId: null, slotTaken: true, bookingId: null, holdExpiresAt: null, paymentStatus: 'idle' };
+    case 'refunded':
+      return { ...s, step: 2, slotId: null, refunded: true, bookingId: null, holdExpiresAt: null, paymentStatus: 'idle' };
     case 'booked':
-      return { ...s, bookingId: a.bookingId, paymentStatus: 'pending' };
+      return { ...s, bookingId: a.bookingId, holdExpiresAt: a.holdExpiresAt ?? null, paymentStatus: 'pending' };
+    case 'holdRenewed':
+      return { ...s, holdExpiresAt: a.holdExpiresAt };
     case 'paymentFailed':
       return { ...s, step: 4, paymentStatus: 'failed' };
     case 'paid':
