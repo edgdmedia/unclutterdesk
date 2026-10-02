@@ -6,7 +6,8 @@
 
 1. **A practice can have several locations.** In-person sessions happen at a named location.
 2. **Prices are per service, per format.** For example, Individual Therapy costs ₦30,000 online and ₦35,000 in person. They can be the same.
-3. **Formats are set per block of time, and limited by the therapist.** The practice decides, for each block of working hours, whether it's online, in person (at a location), or either. A therapist who only works online only ever has online times, so their clients only see online slots.
+3. **Formats are set per time slot, and limited by the therapist** (revised 2 Oct 2026; replaces "per block of time"). Each session time has its own format: online, in person (at a location), or either. A therapist can be online at 9:00 and online-or-in-person at 10:00. A therapist who only works online only ever has online times, so their clients only see online slots.
+4. **A weekly pattern, plus one-off changes** (2 Oct 2026). The therapist's week is a pattern of session times, each with its format and location, repeating every week. Any single upcoming time can be changed for that date only ("in Lekki this Thursday"), and that change survives later edits to the pattern.
 
 ## What exists today
 
@@ -24,8 +25,9 @@
 | **Location** | A named place the practice sees clients: name, address, city, and optional directions ("Gate 2, second floor"). |
 | **Service format** | A service offered in one format at one price. A service has one or both. |
 | **Therapist formats** | What each therapist does: online, in person (at chosen locations), or both. |
-| **Block** | A stretch of a therapist's weekly hours with the formats allowed in it and, for in person, the location. |
-| **Slot** | One bookable time, generated from a block. It carries which formats it allows and the location. |
+| **Weekly time** | One session time in the therapist's repeating week (for example Monday 10:00), with the formats it allows and, for in person, the location. Working hours on the settings page are a way to lay these out; what is saved is the list of weekly times. |
+| **One-off change** | An upcoming slot whose formats or location were changed for that date only. Regenerating from the pattern leaves it alone. |
+| **Slot** | One bookable dated time, generated from a weekly time (or changed one-off). It carries which formats it allows and the location. |
 | **Booking** | Records the chosen format, the location (in person) and the price charged. |
 
 ## Data model
@@ -65,6 +67,9 @@ model TherapistLocation {           // where an in-person therapist works
 Changes to existing models:
 - `ConsultTherapistProfile`: add `offersOnline Boolean @default(true)` and `offersInPerson Boolean @default(false)`.
 - `ConsultAvailability` (slot): add `allowsOnline Boolean @default(true)`, `allowsInPerson Boolean @default(false)` and `locationId BigInt?`. `channel` is kept, read-only, for old rows.
+  Also `customised Boolean @default(false)`: set when a time was changed for that date only; regenerating the weekly pattern keeps it.
+- New `TherapistWeeklyTime { id, tenantId, profileId, weekday (0=Mon…6=Sun), start 'HH:MM', allowsOnline, allowsInPerson, locationId? }`: the therapist's repeating week, one row per session time (2 Oct 2026). Weekly hours were never stored before; slots are generated from these rows in Lagos time.
+- `ConsultTherapistProfile`: add `sessionLengthMinutes` and `gapMinutes`, which were not stored either.
 - `ConsultBooking`: add `format String` (`ONLINE` or `IN_PERSON`) and `locationId BigInt?`. `amountKobo` already records what was charged.
 - `ConsultService.priceKobo` stays as the default price shown in lists. It's derived from the cheapest active format, so older screens keep working.
 
@@ -80,9 +85,9 @@ Nothing that works today changes behaviour: everyone stays online until they tur
 ## Rules
 
 1. **A slot allows a format only if:**
-   - its block allows that format;
+   - its weekly time (or one-off change) allows that format;
    - the therapist offers it;
-   - for in person, the block's location is one where the therapist works.
+   - for in person, its location is one where the therapist works.
 
    This is enforced when slots are generated, and again at booking.
 2. **A service can be booked in a format only if** it has an active `ConsultServiceFormat` for that format.
@@ -90,7 +95,7 @@ Nothing that works today changes behaviour: everyone stays online until they tur
 4. **In person needs a location:** a practice can't offer in person until it has at least one active location.
 5. **Price** = the chosen service format's `priceKobo`, minus any discount. `amountKobo` records what was charged.
 6. **Video rooms** are created only for `ONLINE` bookings. In-person bookings get the address and directions instead.
-7. **Changing a block** never changes slots that are already booked. Only open slots are regenerated, which is today's rule.
+7. **Changing the weekly pattern** never changes slots that are already booked, nor one-off changes. Only other open slots are regenerated.
 8. **Turning a format off** for a service, therapist or location hides it for new bookings. Existing bookings are kept and listed for the practice to handle.
 9. **Deactivating a location that has future in-person bookings** is blocked, with a list of those bookings.
 
@@ -111,18 +116,20 @@ Nothing that works today changes behaviour: everyone stays online until they tur
 - New question on the Services step: **"How do you see clients?"** Online, In person, or Both.
 - If in person: add the first location (name, address, city) right there.
 - Prices: one price field per chosen format, with **"Same price for both"** ticked by default when both are chosen.
-- Working hours: the default blocks follow the answer. "Both" gives in-person mornings and online afternoons, and the practice can change this later.
+- Working hours: the default weekly times follow the answer. "Both" makes morning times in person and afternoon times online, and the practice can change any time later.
 
 **Settings:**
 - **Locations** (new, under Practice): list, add, edit and deactivate locations.
 - **Services & pricing:** for each service, an Online row and an In-person row, each with a switch and a price.
-- **Availability:** each block gets a format choice (Online, In person, or Either) and, for in person, a location picker limited to the therapist's locations.
+- **Availability:**
+  - **Weekly pattern:** working hours per day lay out the session times as tiles. Each tile has its own format (Online, In person, Either) and, for in person, a location from the therapist's locations. "Set all Monday times to…" sets a whole day at once.
+  - **Upcoming times:** the next weeks by date. Opening one time changes it for that date only (a one-off), or puts it back to the weekly pattern. A booked time can't be changed here.
 - **Team & staff → therapist:** "Sees clients" (Online and/or In person) and "Works at" (locations).
 - **Practice profile:** address and city move to Locations, with a link.
 
 **Booking page:**
 - **Service cards:** "Online ₦30,000 · In person ₦35,000".
-- **Format choice:** shown only when the service and practice offer both, with the price on each option. Clients never pick a location: it comes from the time they pick (each in-person block of hours names its location).
+- **Format choice:** shown only when the service and practice offer both, with the price on each option. Clients never pick a location: it comes from the time they pick (each in-person time names its location).
 - **Times:** only slots that allow the chosen format (and location). Each time shows its format when the list mixes formats.
 - **Summary and payment:** use the chosen format's price.
 - **Confirmation, email and calendar invite:**
@@ -139,7 +146,8 @@ Nothing that works today changes behaviour: everyone stays online until they tur
 - **API specs:**
   - each rule above;
   - the migration's defaults (an existing practice behaves exactly as before);
-  - an online-only therapist never gets an in-person slot, even in a block that allows it;
+  - an online-only therapist never gets an in-person slot, even at a weekly time that allows it;
+  - a one-off change survives regenerating the weekly pattern; a booked time can't be changed;
   - booking a format the slot or service doesn't allow is refused;
   - price by format, with and without a discount;
   - deactivating a location with future bookings is blocked.
@@ -154,7 +162,7 @@ Nothing that works today changes behaviour: everyone stays online until they tur
 1. **Data model and migration**, with all defaults online. Nothing changes for users.
 2. **Locations:** the API and the Settings → Locations page.
 3. **Service formats and prices:** the API and Services & pricing.
-4. **Therapist formats and locations, and blocks with formats:** generation rules 1, 7 and 8, and the Availability settings.
+4. **Therapist formats and locations, weekly times and one-off changes:** generation rules 1, 7 and 8, and the Availability settings.
 5. **Booking:** the public API, the booking page format choice, pricing, confirmation, email and calendar.
 6. **Setup:** "How do you see clients?", the inline first location, and the per-format prices.
 7. **Staff booking, reschedule and session pages.**
@@ -163,4 +171,4 @@ Nothing that works today changes behaviour: everyone stays online until they tur
 
 - **Session length** is set by the practice per service (a solo therapist is their own practice), and is the same online and in person. Only the price differs by format.
 - **Clients don't find or choose a location.** They receive the full address, directions note and a Google Maps link in the booking confirmation, the confirmation email and the calendar invite.
-- **Locations have no opening hours of their own.** Clients book the therapist; only the therapist's hours matter, and each in-person block of hours names where the therapist is.
+- **Locations have no opening hours of their own.** Clients book the therapist; only the therapist's times matter, and each in-person time names where the therapist is.

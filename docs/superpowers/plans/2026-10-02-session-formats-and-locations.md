@@ -5,13 +5,13 @@
 **Goal:**
 - A practice can see clients online, in person at one or more named locations, or both.
 - Each service has a price per format.
-- Each block of a therapist's weekly hours says which formats it allows and, for in person, where.
+- Each session time says which formats it allows and, for in person, where: a therapist can be online at 9:00 and online-or-in-person at 10:00. The week repeats as a pattern, and any single upcoming time can be changed for that date only.
 - Clients book a therapist's time, and the format and price follow from it.
 - In-person clients receive the full address, directions and a Google Maps link.
 
 **Architecture:**
-- **Weekly hours become stored data:** a new `TherapistHoursBlock` model holds day, start, end, formats and location. Today hours exist only as generated slots, and the settings page rebuilds them from those slots.
-- **Generation:** slots are generated from the stored blocks in Lagos time and carry `allowsOnline`, `allowsInPerson` and `locationId`.
+- **The weekly pattern becomes stored data:** a new `TherapistWeeklyTime` model holds one row per session time in the repeating week (weekday, start, formats, location). Today hours exist only as generated slots, and the settings page rebuilds them from those slots.
+- **Generation:** slots are generated from the weekly times in Lagos time and carry `allowsOnline`, `allowsInPerson` and `locationId`. A slot changed for one date (`customised`) is kept when the pattern is regenerated.
 - **One rules module:** a pure `formats.ts` decides which formats a slot allows and what a booking costs. Slot generation, the public API, booking, staff booking and reschedule all use it.
 - **Bookings record what was bought:** `format` and `locationId`.
 - **Old data keeps working:** existing data migrates to "everything online, current price", so nothing changes for a practice until it turns on in person.
@@ -34,17 +34,18 @@
   - every future slot gets `allowsOnline = true`;
   - every booking gets `format = 'ONLINE'`;
   - a practice with `Tenant.address` gets one location named after the practice;
-  - every therapist with upcoming slots gets blocks rebuilt from them (Task 1).
+  - every therapist with upcoming slots gets a weekly pattern rebuilt from them (Task 1).
 - **Tests:** API specs use Prisma stand-ins. App tests use `renderWithApp` and fake only `utils/apiClient` and `context/AuthContext`. Run with `--maxWorkers=2 --minWorkers=1`. Migrations are generated with `prisma migrate diff`, never `prisma format`.
 - **Every tenant-scoped query filters by `tenantId`** (`tenant-isolation.spec.ts` enforces it). New client-callable routes go into `client-surface.spec.ts`'s reviewed list.
 
 ## Review Focus
 
-1. **A therapist switches to online only while they have future in-person bookings.** Those bookings stay as they are and are listed for the practice to handle; only open slots change.
-2. **A client picks a slot that allows both formats, and the in-person price differs.** The summary, the Paystack charge and `amountKobo` all use the in-person price, with any discount applied to it.
-3. **A practice deactivates the only location an in-person block uses.** Refused while future in-person bookings exist; otherwise the blocks using it become online-only (if the therapist offers online) or are switched off, and the practice is told which.
-4. **Server time zone UTC versus Lagos.** A 09:00 block yields a slot whose `startsAt` is 08:00Z, whatever `TZ` the API runs with.
-5. **An old booking with no `format`** (made before migration on another branch, or a data gap) reads as online everywhere and never offers a "Get directions" link.
+1. **The weekly pattern is edited after a one-off change** ("in Lekki this Thursday 10:00"). The one-off stays exactly as set; the pattern doesn't create a second slot at that time.
+2. **A therapist switches to online only while they have future in-person bookings.** Those bookings stay as they are and are listed for the practice to handle; only open slots change.
+3. **A client picks a slot that allows both formats, and the in-person price differs.** The summary, the Paystack charge and `amountKobo` all use the in-person price, with any discount applied to it.
+4. **A practice deactivates the only location some in-person times use.** Refused while future in-person bookings exist; otherwise those weekly times and one-off slots lose in person (staying online if they allowed it, otherwise removed), and the practice is told how many changed.
+5. **Server time zone UTC versus Lagos.** A 09:00 weekly time yields a slot whose `startsAt` is 08:00Z, whatever `TZ` the API runs with.
+6. **An old booking with no `format`** (made before migration on another branch, or a data gap) reads as online everywhere and never offers a "Get directions" link.
 
 ---
 
@@ -52,13 +53,14 @@
 
 **API:**
 - `prisma/schema.prisma`, plus migrations `20261004090000_formats_and_locations` (schema) and `20261004090100_formats_and_locations_data` (backfill).
-- `apps/api/src/modules/consult/formats.ts` (new, pure): types `Format`, `allowedFormats(...)`, `priceFor(...)`, `mapsLink(...)`, `blockErrors(...)`.
-- `apps/api/src/modules/consult/hours.ts` (new, pure): `slotsFromBlocks(blocks, opts)`, Lagos-time arithmetic.
+- `apps/api/src/modules/consult/formats.ts` (new, pure): types `Format`, `allowedFormats(...)`, `priceFor(...)`, `mapsLink(...)`, `timeErrors(...)`.
+- `apps/api/src/modules/consult/hours.ts` (new, pure): `slotsFromPattern(weeklyTimes, opts)`, `timesInHours(...)`, Lagos-time arithmetic.
 - `apps/api/src/modules/tenant/locations.service.ts` and `locations.controller.ts` (new): `/v1/tenant/locations`.
 - `apps/api/src/modules/consult/consult.service.ts`:
   - services gain `formats`;
-  - `replaceTherapistAvailability` stores blocks and generates from them;
-  - `getTherapistAvailability` returns blocks;
+  - `replaceTherapistAvailability` stores the weekly times and generates from them;
+  - `getTherapistAvailability` returns the weekly times and upcoming slots;
+  - new `updateSlot` for one-off changes;
   - public services and availability include formats and location;
   - `createBooking` takes `format`;
   - `updateTherapistProfile` takes `offersOnline`, `offersInPerson` and `locationIds`.
@@ -68,7 +70,7 @@
 **App:**
 - `pages/practice/settings/LocationsSettingsPage.tsx` (new), route `/dashboard/settings/locations` and a settings nav entry.
 - `pages/practice/settings/ServicesSettingsPage.tsx`: Online and In-person rows, each with a switch and a price.
-- `pages/practice/settings/AvailabilitySettingsPage.tsx`: blocks with format and location, loaded from stored blocks.
+- `pages/practice/settings/AvailabilitySettingsPage.tsx`: the weekly pattern as per-time tiles (format and location each), "Set all … times to", and an Upcoming times list for one-off changes.
 - Team or My profile: "Sees clients" and "Works at".
 - `pages/practice/settings/PracticeProfilePage.tsx`: address and city move to Locations.
 - `pages/public/booking/*`: format-aware service cards, format choice, times, summary and confirmation; the real header.
@@ -82,25 +84,24 @@
 **Files:**
 - Modify: `prisma/schema.prisma`
 - Create: `prisma/migrations/20261004090000_formats_and_locations/migration.sql` (generated) and `prisma/migrations/20261004090100_formats_and_locations_data/migration.sql` (hand-written backfill)
-- Test: `apps/api/src/modules/consult/formats-migration.spec.ts` (runs the backfill SQL's rules as pure functions; see Step 4)
 
 **Interfaces:**
 - Produces these models and fields (exact names):
   - `PracticeLocation { id, tenantId, name, address, city, directions?, isActive, createdAt, updatedAt }`
   - `ConsultServiceFormat { id, serviceId, format, priceKobo, isActive }`, `@@unique([serviceId, format])`
   - `TherapistLocation { profileId, locationId }`, `@@id([profileId, locationId])`
-  - `TherapistHoursBlock { id, tenantId, profileId, weekday (0=Mon…6=Sun), start ('HH:MM'), end ('HH:MM'), allowsOnline, allowsInPerson, locationId? }`
+  - `TherapistWeeklyTime { id, tenantId, profileId, weekday (0=Mon…6=Sun), start ('HH:MM'), allowsOnline, allowsInPerson, locationId? }`, `@@unique([profileId, weekday, start])`: one row per session time in the repeating week
   - `ConsultTherapistProfile.offersOnline Boolean @default(true)`, `offersInPerson Boolean @default(false)`, `sessionLengthMinutes Int @default(50)`, `gapMinutes Int @default(10)`
-  - `ConsultAvailability.allowsOnline Boolean @default(true)`, `allowsInPerson Boolean @default(false)`, `locationId BigInt?`
+  - `ConsultAvailability.allowsOnline Boolean @default(true)`, `allowsInPerson Boolean @default(false)`, `locationId BigInt?`, `customised Boolean @default(false)` (changed for that date only; regeneration keeps it)
   - `ConsultBooking.format String @default("ONLINE") @db.VarChar(20)`, `locationId BigInt?`
 
 - [ ] **Step 1: Edit the schema by hand** (keep column alignment; don't run `prisma format`). Add the four models with relations:
   - `PracticeLocation.tenant` with `onDelete: Cascade`;
   - `ConsultServiceFormat.service` with `onDelete: Cascade`;
   - `TherapistLocation` relations to `ConsultTherapistProfile(profileId)` and `PracticeLocation(id)`, both `onDelete: Cascade`;
-  - `TherapistHoursBlock` relations to tenant (Cascade), therapist (Cascade) and location (`SetNull`).
+  - `TherapistWeeklyTime` relations to tenant (Cascade), therapist (Cascade) and location (`SetNull`).
 
-  Add the back-relations (`Tenant.locations`, `ConsultService.formats`, `ConsultTherapistProfile.locations`, `ConsultTherapistProfile.hoursBlocks`, `PracticeLocation.therapists`, `PracticeLocation.hoursBlocks`) and the optional `location` relations on `ConsultAvailability` and `ConsultBooking` (`onDelete: SetNull`). Indexes: `PracticeLocation @@index([tenantId, isActive])`, `TherapistHoursBlock @@index([tenantId, profileId])`.
+  Add the back-relations (`Tenant.locations`, `ConsultService.formats`, `ConsultTherapistProfile.locations`, `ConsultTherapistProfile.weeklyTimes`, `PracticeLocation.therapists`, `PracticeLocation.weeklyTimes`) and the optional `location` relations on `ConsultAvailability` and `ConsultBooking` (`onDelete: SetNull`). Indexes: `PracticeLocation @@index([tenantId, isActive])`, `TherapistWeeklyTime @@index([tenantId, profileId])`.
 
 - [ ] **Step 2: Generate the schema migration**
 
@@ -129,19 +130,19 @@ INSERT INTO "PracticeLocation" ("tenantId", "name", "address", "city", "isActive
 SELECT "id", "name", "address", COALESCE("city", ''), true, now(), now()
 FROM "Tenant" WHERE "address" IS NOT NULL AND btrim("address") <> '';
 
--- Weekly hours were never stored; rebuild them from each therapist's upcoming
--- open slots (Lagos time): one block per weekday, earliest start to latest end.
-INSERT INTO "TherapistHoursBlock" ("tenantId", "profileId", "weekday", "start", "end", "allowsOnline", "allowsInPerson", "locationId")
-SELECT s."tenantId", s."providerProfileId",
-       (EXTRACT(ISODOW FROM (s."startsAt" + interval '1 hour'))::int - 1) AS weekday,
-       to_char(min((s."startsAt" + interval '1 hour')::time), 'HH24:MI'),
-       to_char(max((s."endsAt" + interval '1 hour')::time), 'HH24:MI'),
-       true, false, NULL
+-- The weekly pattern was never stored; rebuild it from each therapist's
+-- upcoming open slots: every distinct (weekday, start time) in Lagos time,
+-- online, as today.
+INSERT INTO "TherapistWeeklyTime" ("tenantId", "profileId", "weekday", "start", "allowsOnline", "allowsInPerson", "locationId")
+SELECT DISTINCT s."tenantId", s."providerProfileId",
+       (EXTRACT(ISODOW FROM (s."startsAt" + interval '1 hour'))::int - 1),
+       to_char((s."startsAt" + interval '1 hour')::time, 'HH24:MI'),
+       true, false, NULL::bigint
 FROM "ConsultAvailability" s
 WHERE s."startsAt" >= now() AND s."createdForBooking" = false
-GROUP BY s."tenantId", s."providerProfileId", EXTRACT(ISODOW FROM (s."startsAt" + interval '1 hour'));
+ON CONFLICT ("profileId", "weekday", "start") DO NOTHING;
 
--- Session length and gap follow each therapist's first upcoming slot pair.
+-- Session length follows each therapist's first upcoming slot.
 UPDATE "ConsultTherapistProfile" t SET "sessionLengthMinutes" = sub.len
 FROM (SELECT DISTINCT ON ("providerProfileId") "providerProfileId",
              (EXTRACT(EPOCH FROM ("endsAt" - "startsAt")) / 60)::int AS len
@@ -150,20 +151,20 @@ FROM (SELECT DISTINCT ON ("providerProfileId") "providerProfileId",
 WHERE t."profileId" = sub."providerProfileId" AND sub.len BETWEEN 10 AND 240;
 ```
 
-(Stored times are UTC; `+ interval '1 hour'` converts to Lagos time. Lunch gaps inside a day merge into one block; that's accepted, and the Availability page lets the practice split it.)
+(Stored times are UTC; `+ interval '1 hour'` converts to Lagos time.)
 
-- [ ] **Step 4: Prove the backfill rules on a copy**
+- [ ] **Step 4: Prove the backfill on a copy**
 
 ```bash
 createdb unclutter_os_formats && pg_dump --no-owner unclutter_os | psql -q unclutter_os_formats
 DATABASE_URL=<local url with /unclutter_os_formats> npx prisma migrate deploy --schema ../../prisma/schema.prisma
 psql unclutter_os_formats -c 'select count(*) from "ConsultServiceFormat"' -c 'select count(*) from "ConsultService"' \
-  -c 'select "profileId", weekday, start, "end" from "TherapistHoursBlock" order by 1,2 limit 10'
+  -c 'select "profileId", weekday, start from "TherapistWeeklyTime" order by 1,2,3 limit 15'
 ```
 
 Expected:
 - one `ONLINE` format per service (equal counts);
-- each therapist with upcoming slots has blocks whose times match the Availability page today;
+- each therapist with upcoming slots has weekly times matching the session times the Availability page shows today;
 - the locations count equals the number of tenants with an address.
 
 - [ ] **Step 5: Generate the client, typecheck, commit**
@@ -171,7 +172,7 @@ Expected:
 Run: `npx prisma generate --schema ../../prisma/schema.prisma && npx tsc --noEmit -p .`. Expected: 0 errors.
 
 ```bash
-git add prisma && git commit -m "Formats and locations: locations, per-format prices, stored weekly hours; everything starts online"
+git add prisma && git commit -m "Formats and locations: locations, per-format prices, a stored weekly pattern of session times; everything starts online"
 ```
 
 ---
@@ -191,24 +192,26 @@ export type Format = 'ONLINE' | 'IN_PERSON';
 export const FORMATS: Format[] = ['ONLINE', 'IN_PERSON'];
 export function asFormat(raw: unknown): Format | null;                       // 'online'|'ONLINE' → 'ONLINE'; 'VIDEO' → 'ONLINE'; else null
 export interface TherapistFormats { offersOnline: boolean; offersInPerson: boolean; locationIds: bigint[] }
-export interface BlockFormats { allowsOnline: boolean; allowsInPerson: boolean; locationId: bigint | null }
-/** Rule 1: what a block may actually offer for this therapist. */
-export function allowedFormats(block: BlockFormats, therapist: TherapistFormats): { online: boolean; inPerson: boolean; locationId: bigint | null };
+export interface TimeFormats { allowsOnline: boolean; allowsInPerson: boolean; locationId: bigint | null }
+/** Rule 1: what one time may actually offer for this therapist. */
+export function allowedFormats(time: TimeFormats, therapist: TherapistFormats): { online: boolean; inPerson: boolean; locationId: bigint | null };
 /** Rule 2 + 5: the price of a service in a format, or null when not offered. */
 export function priceFor(formats: Array<{ format: string; priceKobo: bigint; isActive: boolean }>, format: Format): bigint | null;
 /** The cheapest active price, for lists and older screens (spec: ConsultService.priceKobo stays derived). */
 export function listPrice(formats: Array<{ format: string; priceKobo: bigint; isActive: boolean }>): bigint | null;
 export function mapsLink(address: string, city: string): string;
-/** Validation for a block from the Availability page, as user-facing messages. */
-export function blockErrors(block: { formats: Format[]; locationId: bigint | null }, therapist: TherapistFormats & { name: string }, activeLocationIds: bigint[]): string[];
+/** Validation for one time (weekly or one-off) from the Availability page, as user-facing messages. */
+export function timeErrors(time: { formats: Format[]; locationId: bigint | null }, therapist: TherapistFormats & { name: string }, activeLocationIds: bigint[]): string[];
 ```
 
 ```ts
 // hours.ts
-export interface StoredBlock { weekday: number; start: string; end: string; allowsOnline: boolean; allowsInPerson: boolean; locationId: bigint | null }
+export interface WeeklyTime { weekday: number; start: string; allowsOnline: boolean; allowsInPerson: boolean; locationId: bigint | null }
 export interface GeneratedSlot { startsAt: Date; endsAt: Date; allowsOnline: boolean; allowsInPerson: boolean; locationId: bigint | null }
-/** Lagos-time generation, independent of the server's TZ. */
-export function slotsFromBlocks(blocks: StoredBlock[], opts: { now: Date; days: number; sessionLengthMinutes: number; gapMinutes: number; isTaken: (s: Date, e: Date) => boolean }): GeneratedSlot[];
+/** The session start times that fit in working hours, for laying out tiles: '09:00'–'12:00', 50 + 10 → ['09:00','10:00','11:00']. */
+export function timesInHours(start: string, end: string, sessionLengthMinutes: number, gapMinutes: number): string[];
+/** Dated slots from the weekly pattern, in Lagos time, independent of the server's TZ. `isTaken` covers booked slots and one-off changes. */
+export function slotsFromPattern(times: WeeklyTime[], opts: { now: Date; days: number; sessionLengthMinutes: number; isTaken: (s: Date, e: Date) => boolean }): GeneratedSlot[];
 ```
 
 - [ ] **Step 1: Write the failing tests**
@@ -216,10 +219,11 @@ export function slotsFromBlocks(blocks: StoredBlock[], opts: { now: Date; days: 
 ```ts
 // formats.spec.ts
 import { describe, it, expect } from 'vitest';
-import { allowedFormats, asFormat, blockErrors, listPrice, mapsLink, priceFor } from './formats';
+import { allowedFormats, asFormat, listPrice, mapsLink, priceFor, timeErrors } from './formats';
 
 const both = { offersOnline: true, offersInPerson: true, locationIds: [1n] };
 const onlineOnly = { offersOnline: true, offersInPerson: false, locationIds: [] };
+const inPersonOnly = { offersOnline: false, offersInPerson: true, locationIds: [1n] };
 
 describe('formats', () => {
   it('reads old VIDEO slots as online', () => {
@@ -228,7 +232,7 @@ describe('formats', () => {
     expect(asFormat('phone')).toBeNull();
   });
 
-  it('an online-only therapist never gets in person, even in a block that allows it (rule 1)', () => {
+  it('an online-only therapist never gets in person, even at a time that allows it (rule 1)', () => {
     expect(allowedFormats({ allowsOnline: true, allowsInPerson: true, locationId: 1n }, onlineOnly)).toEqual({ online: true, inPerson: false, locationId: null });
   });
 
@@ -248,11 +252,12 @@ describe('formats', () => {
     expect(mapsLink('12 Admiralty Way, Lekki', 'Lagos')).toBe('https://www.google.com/maps/search/?api=1&query=12%20Admiralty%20Way%2C%20Lekki%2C%20Lagos');
   });
 
-  it('explains a block the therapist cannot work', () => {
-    expect(blockErrors({ formats: ['IN_PERSON'], locationId: 1n }, { ...onlineOnly, name: 'Ada' }, [1n])).toEqual(['Ada only works online. Turn on in-person for Ada first.']);
-    expect(blockErrors({ formats: ['IN_PERSON'], locationId: null }, { ...both, name: 'Ada' }, [1n])).toEqual(['Choose where in-person sessions happen.']);
-    expect(blockErrors({ formats: ['IN_PERSON'], locationId: 9n }, { ...both, name: 'Ada' }, [1n, 9n])).toEqual(["Ada doesn't work at that location. Add it under Ada's locations first."]);
-    expect(blockErrors({ formats: [], locationId: null }, { ...both, name: 'Ada' }, [1n])).toEqual(['Choose online, in person, or both.']);
+  it('explains a time the therapist cannot work', () => {
+    expect(timeErrors({ formats: ['IN_PERSON'], locationId: 1n }, { ...onlineOnly, name: 'Ada' }, [1n])).toEqual(['Ada only works online. Turn on in-person for Ada first.']);
+    expect(timeErrors({ formats: ['ONLINE'], locationId: null }, { ...inPersonOnly, name: 'Ada' }, [1n])).toEqual(["Ada doesn't see clients online. Turn on online for Ada first."]);
+    expect(timeErrors({ formats: ['IN_PERSON'], locationId: null }, { ...both, name: 'Ada' }, [1n])).toEqual(['Choose where in-person sessions happen.']);
+    expect(timeErrors({ formats: ['IN_PERSON'], locationId: 9n }, { ...both, name: 'Ada' }, [1n, 9n])).toEqual(["Ada doesn't work at that location. Add it under Ada's locations first."]);
+    expect(timeErrors({ formats: [], locationId: null }, { ...both, name: 'Ada' }, [1n])).toEqual(['Choose online, in person, or both.']);
   });
 });
 ```
@@ -260,35 +265,39 @@ describe('formats', () => {
 ```ts
 // hours.spec.ts
 import { describe, it, expect } from 'vitest';
-import { slotsFromBlocks } from './hours';
+import { slotsFromPattern, timesInHours } from './hours';
 
 const never = () => false;
+const time = (weekday: number, start: string, over: Partial<{ allowsOnline: boolean; allowsInPerson: boolean; locationId: bigint | null }> = {}) => ({
+  weekday, start, allowsOnline: true, allowsInPerson: false, locationId: null, ...over,
+});
 
-describe('slots from stored weekly hours', () => {
+describe('the weekly pattern', () => {
+  it('lays out the session times that fit in working hours', () => {
+    expect(timesInHours('09:00', '12:00', 50, 10)).toEqual(['09:00', '10:00', '11:00']);
+    expect(timesInHours('09:00', '09:40', 50, 10)).toEqual([]);
+  });
+
   it('uses Lagos time whatever the server time zone (Mon 09:00 WAT = 08:00Z)', () => {
-    const slots = slotsFromBlocks(
-      [{ weekday: 0, start: '09:00', end: '10:00', allowsOnline: true, allowsInPerson: false, locationId: null }],
-      { now: new Date('2026-10-04T12:00:00Z'), days: 7, sessionLengthMinutes: 50, gapMinutes: 10, isTaken: never },
-    );
+    const slots = slotsFromPattern([time(0, '09:00')], { now: new Date('2026-10-04T12:00:00Z'), days: 7, sessionLengthMinutes: 50, isTaken: never });
     expect(slots.map((s) => s.startsAt.toISOString())).toEqual(['2026-10-05T08:00:00.000Z']);
   });
 
-  it('fills a block with sessions and gaps, carrying its formats and location', () => {
-    const slots = slotsFromBlocks(
-      [{ weekday: 0, start: '09:00', end: '12:00', allowsOnline: false, allowsInPerson: true, locationId: 4n }],
-      { now: new Date('2026-10-04T12:00:00Z'), days: 7, sessionLengthMinutes: 50, gapMinutes: 10, isTaken: never },
+  it('gives each time its own formats: online at 9, either at 10 (in person at Lekki)', () => {
+    const slots = slotsFromPattern(
+      [time(0, '09:00'), time(0, '10:00', { allowsInPerson: true, locationId: 4n })],
+      { now: new Date('2026-10-04T12:00:00Z'), days: 7, sessionLengthMinutes: 50, isTaken: never },
     );
-    expect(slots.map((s) => s.startsAt.toISOString().slice(11, 16))).toEqual(['08:00', '09:00', '10:00']);
-    expect(slots[0]).toMatchObject({ allowsOnline: false, allowsInPerson: true, locationId: 4n });
+    expect(slots.map((s) => [s.startsAt.toISOString().slice(11, 16), s.allowsOnline, s.allowsInPerson, s.locationId])).toEqual([
+      ['08:00', true, false, null],
+      ['09:00', true, true, 4n],
+    ]);
   });
 
-  it('skips times already booked and times in the past', () => {
+  it('skips times already taken (a booking or a one-off change) and times in the past', () => {
     const now = new Date('2026-10-05T08:30:00Z');
     const taken = (s: Date) => s.toISOString() === '2026-10-05T09:00:00.000Z';
-    const slots = slotsFromBlocks(
-      [{ weekday: 0, start: '09:00', end: '12:00', allowsOnline: true, allowsInPerson: false, locationId: null }],
-      { now, days: 1, sessionLengthMinutes: 50, gapMinutes: 10, isTaken: taken },
-    );
+    const slots = slotsFromPattern([time(0, '09:00'), time(0, '10:00'), time(0, '11:00')], { now, days: 1, sessionLengthMinutes: 50, isTaken: taken });
     expect(slots.map((s) => s.startsAt.toISOString().slice(11, 16))).toEqual(['10:00']);
   });
 });
@@ -303,13 +312,20 @@ describe('slots from stored weekly hours', () => {
 const LAGOS_OFFSET_MIN = 60; // Africa/Lagos is UTC+1, no DST
 const DAY_MS = 86_400_000;
 
-export interface StoredBlock { weekday: number; start: string; end: string; allowsOnline: boolean; allowsInPerson: boolean; locationId: bigint | null }
+export interface WeeklyTime { weekday: number; start: string; allowsOnline: boolean; allowsInPerson: boolean; locationId: bigint | null }
 export interface GeneratedSlot { startsAt: Date; endsAt: Date; allowsOnline: boolean; allowsInPerson: boolean; locationId: bigint | null }
 
 const minutes = (hhmm: string) => {
   const [h, m] = hhmm.split(':').map(Number);
   return h * 60 + m;
 };
+const hhmm = (mins: number) => `${String(Math.floor(mins / 60)).padStart(2, '0')}:${String(mins % 60).padStart(2, '0')}`;
+
+export function timesInHours(start: string, end: string, sessionLengthMinutes: number, gapMinutes: number): string[] {
+  const out: string[] = [];
+  for (let t = minutes(start); t + sessionLengthMinutes <= minutes(end); t += sessionLengthMinutes + gapMinutes) out.push(hhmm(t));
+  return out;
+}
 
 /** Midnight in Lagos of the Lagos calendar day containing `at`, as a UTC Date. */
 function lagosMidnight(at: Date): Date {
@@ -317,9 +333,9 @@ function lagosMidnight(at: Date): Date {
   return new Date(Date.UTC(local.getUTCFullYear(), local.getUTCMonth(), local.getUTCDate()) - LAGOS_OFFSET_MIN * 60_000);
 }
 
-export function slotsFromBlocks(
-  blocks: StoredBlock[],
-  opts: { now: Date; days: number; sessionLengthMinutes: number; gapMinutes: number; isTaken: (s: Date, e: Date) => boolean },
+export function slotsFromPattern(
+  times: WeeklyTime[],
+  opts: { now: Date; days: number; sessionLengthMinutes: number; isTaken: (s: Date, e: Date) => boolean },
 ): GeneratedSlot[] {
   const out: GeneratedSlot[] = [];
   const first = lagosMidnight(opts.now);
@@ -327,16 +343,11 @@ export function slotsFromBlocks(
     const dayStart = new Date(first.getTime() + d * DAY_MS);
     const lagosDay = new Date(dayStart.getTime() + LAGOS_OFFSET_MIN * 60_000).getUTCDay(); // 0 = Sunday
     const weekday = lagosDay === 0 ? 6 : lagosDay - 1;
-    for (const b of blocks.filter((x) => x.weekday === weekday)) {
-      const end = dayStart.getTime() + minutes(b.end) * 60_000;
-      for (let t = dayStart.getTime() + minutes(b.start) * 60_000; ; ) {
-        const s = new Date(t);
-        const e = new Date(t + opts.sessionLengthMinutes * 60_000);
-        if (e.getTime() > end) break;
-        if (e > opts.now && !opts.isTaken(s, e)) {
-          out.push({ startsAt: s, endsAt: e, allowsOnline: b.allowsOnline, allowsInPerson: b.allowsInPerson, locationId: b.locationId });
-        }
-        t = e.getTime() + opts.gapMinutes * 60_000;
+    for (const t of times.filter((x) => x.weekday === weekday).sort((a, b) => minutes(a.start) - minutes(b.start))) {
+      const s = new Date(dayStart.getTime() + minutes(t.start) * 60_000);
+      const e = new Date(s.getTime() + opts.sessionLengthMinutes * 60_000);
+      if (e > opts.now && !opts.isTaken(s, e)) {
+        out.push({ startsAt: s, endsAt: e, allowsOnline: t.allowsOnline, allowsInPerson: t.allowsInPerson, locationId: t.locationId });
       }
     }
   }
@@ -345,14 +356,14 @@ export function slotsFromBlocks(
 ```
 
 `formats.ts`: implement exactly to the tests:
-- `allowedFormats`: `online = block.allowsOnline && t.offersOnline`; `inPerson = block.allowsInPerson && t.offersInPerson && block.locationId != null && t.locationIds.includes(block.locationId)`; `locationId = inPerson ? block.locationId : null`.
+- `allowedFormats`: `online = time.allowsOnline && t.offersOnline`; `inPerson = time.allowsInPerson && t.offersInPerson && time.locationId != null && t.locationIds.includes(time.locationId)`; `locationId = inPerson ? time.locationId : null`.
 - `priceFor`: the active row for the format, else null.
 - `listPrice`: the minimum of the active prices, else null.
 - `mapsLink`: `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${address}, ${city}`)}`.
-- `blockErrors`: produces the messages in the test's order (no formats; in person but the therapist doesn't offer it; in person without a location; a location not among the therapist's, or inactive). It also gives "Ada doesn't see clients online. Turn on online for Ada first." for the online mirror case. Add that case to the spec too.
+- `timeErrors`: returns the messages in the order the test shows (no formats; in person but the therapist doesn't offer it; online but the therapist doesn't offer it; in person without a location; a location not among the therapist's, or inactive).
 
-- [ ] **Step 4: Run, to see them pass.** Expected: PASS. Also run with `TZ=UTC npx vitest run src/modules/consult/hours.spec.ts` and `TZ=America/New_York …` to prove time-zone independence (Review Focus 4).
-- [ ] **Step 5: Commit.** `git commit -m "Formats and locations: one rules module for formats, prices and Lagos-time slots"`
+- [ ] **Step 4: Run, to see them pass.** Expected: PASS. Also run `TZ=UTC npx vitest run src/modules/consult/hours.spec.ts` and `TZ=America/New_York …` to prove time-zone independence (Review Focus 5).
+- [ ] **Step 5: Commit.** `git commit -m "Formats and locations: one rules module for formats, prices and Lagos-time slots from the weekly pattern"`
 
 ---
 
@@ -367,19 +378,19 @@ export function slotsFromBlocks(
 **Interfaces:**
 - Produces: `GET/POST /v1/tenant/locations`, `PATCH/DELETE /v1/tenant/locations/:id` (`@Permissions('practice.manage')`; check the permission that owners and admins hold in `common/permissions.ts` and use it).
 - `LocationView = { id: string; name: string; address: string; city: string; directions: string | null; isActive: boolean; mapsUrl: string; upcomingInPerson: number }`.
-- `LocationsService.list(tenantId)`, `create(tenantId, dto)`, `update(tenantId, id, dto)`, `deactivate(tenantId, id): Promise<{ deactivated: true; changedBlocks: number } >` (throws `BadRequestException` listing up to 5 bookings when future in-person bookings use it: rule 9).
+- `LocationsService.list(tenantId)`, `create(tenantId, dto)`, `update(tenantId, id, dto)`, `deactivate(tenantId, id): Promise<{ deactivated: true; changedTimes: number }>` (throws `BadRequestException` listing up to 5 bookings when future in-person bookings use it: rule 9).
 
 Rules:
 - name, address and city are required, trimmed, at most 120/240/80 characters; directions at most 500;
 - names are unique per practice among active locations;
-- deactivating sets `isActive=false`; removes it from `TherapistLocation`; sets `allowsInPerson=false` and `locationId=null` on blocks that used it (Review Focus 3); then regenerates open slots for the affected therapists (call `ConsultService.regenerateFromBlocks(tenantId, profileId)` from Task 5; until Task 5 lands, the method is a no-op stub that Task 5 replaces; note it in the ledger).
+- deactivating sets `isActive=false`; removes it from `TherapistLocation`; on weekly times and on open one-off slots that used it, sets `allowsInPerson=false` and `locationId=null`, deleting any that are then neither online nor in person (Review Focus 4); then regenerates open slots for the affected therapists (call `ConsultService.regenerateFromPattern(tenantId, profileId)` from Task 5; until Task 5 lands, the method is a no-op stub that Task 5 replaces; note it in the ledger).
 
 - [ ] **Step 1: Write the failing API tests:**
   - list returns only this tenant's locations, with a maps link;
   - create rejects a missing address ("Add the street address.");
   - a duplicate active name is refused;
   - deactivate is refused with "3 upcoming in-person sessions use Lekki clinic: …" when bookings exist;
-  - deactivate switches affected blocks off in-person and returns `changedBlocks`;
+  - deactivate switches affected weekly times and one-off slots off in-person and returns `changedTimes`;
   - PATCH on another tenant's location gives 404.
 - [ ] **Step 2: Run, to see them fail.**
 - [ ] **Step 3: Implement** the service and controller. Every query is scoped `{ tenantId }`.
@@ -416,46 +427,72 @@ Rules:
 
 ---
 
-### Task 5: Therapists, stored weekly hours and generation
+### Task 5: Therapists, the weekly pattern and one-off changes
 
 **Files:**
 - Modify: `consult.service.ts`:
   - `updateTherapistProfile` accepts `offersOnline`, `offersInPerson` and `locationIds`, validated against active locations, refused if in person is on with no locations;
-  - `replaceTherapistAvailability` stores blocks, then calls `regenerateFromBlocks`;
-  - new `regenerateFromBlocks(tenantId, profileId)`;
-  - `getTherapistAvailability` returns `{ cancellationHours, sessionLengthMinutes, gapMinutes, blocks, slots }`.
-- Modify: `apps/api/src/modules/consult/consult.controller.ts` (DTO shapes); the team/admin route that edits a team member's profile (find it with `grep -rn "updateTherapistProfile" apps/api/src`).
-- Modify: `apps/app/src/pages/practice/settings/AvailabilitySettingsPage.tsx` (load blocks, not `deriveDays(slots)`; each window gets a format choice of Online, In person or Either, plus a location picker limited to the therapist's locations; length and gap load from the saved values); the team-member editor and My profile: "Sees clients" (Online, In person) and "Works at" (location checkboxes).
-- Test: `apps/api/src/modules/consult/availability-regenerate.spec.ts` (extend), `apps/api/src/modules/consult/therapist-formats.spec.ts` (create), `apps/app/src/pages/__tests__/AvailabilitySettingsPage.test.tsx` (create)
+  - `replaceTherapistAvailability` stores the weekly times (plus length and gap on the therapist), then calls `regenerateFromPattern`;
+  - new `regenerateFromPattern(tenantId, profileId)`;
+  - new `updateSlot(tenantId, profileId, slotId, dto)` for one-off changes;
+  - `getTherapistAvailability` returns `{ cancellationHours, sessionLengthMinutes, gapMinutes, weeklyTimes, slots }`.
+- Modify: `apps/api/src/modules/consult/consult.controller.ts`:
+  - DTO shapes;
+  - `PATCH /v1/consult/therapist/slots/:id` (the therapist, or an admin for a team member) with `{ formats: Format[]; locationId?: string | null } | { reset: true }`;
+  - the team/admin route that edits a team member's profile (find it with `grep -rn "updateTherapistProfile" apps/api/src`).
+- Modify: `apps/app/src/pages/practice/settings/AvailabilitySettingsPage.tsx` (rebuilt; see "The Availability page"); the team-member editor and My profile ("Sees clients": Online, In person; "Works at": location checkboxes).
+- Test: `apps/api/src/modules/consult/availability-regenerate.spec.ts` (extend), `apps/api/src/modules/consult/therapist-formats.spec.ts` and `apps/api/src/modules/consult/one-off-slots.spec.ts` (create), `apps/app/src/pages/__tests__/AvailabilitySettingsPage.test.tsx` (create)
 
 **Interfaces:**
-- Consumes: `slotsFromBlocks`, `allowedFormats`, `blockErrors` (Task 2); `TherapistHoursBlock` (Task 1).
+- Consumes: `slotsFromPattern`, `timesInHours`, `allowedFormats`, `timeErrors` (Task 2); `TherapistWeeklyTime`, `ConsultAvailability.customised` (Task 1).
 - Produces:
-  - `PATCH /v1/consult/therapist/availability` body: `{ days: Array<{ day: number; enabled: boolean; windows: Array<{ start: string; end: string; formats?: Format[]; locationId?: string | null }> }>; sessionLengthMinutes; gapMinutes; cancellationHours? }`. A window without `formats` means `['ONLINE']`, so old clients keep working.
-  - `regenerateFromBlocks(tenantId: bigint, profileId: bigint): Promise<void>`. It deletes future open slots without bookings (as today), builds slots with `slotsFromBlocks`, applies `allowedFormats` per block for this therapist, and creates them with `channel` set to `'VIDEO'` when online-only, else `'IN_PERSON'` (kept for old readers).
+  - `PATCH /v1/consult/therapist/availability` body: `{ weeklyTimes: Array<{ weekday: number; start: 'HH:MM'; formats: Format[]; locationId?: string | null }>; sessionLengthMinutes; gapMinutes; cancellationHours? }`. The old body (`days[].windows`, no formats) is still accepted: each window becomes online weekly times via `timesInHours`, so older clients keep working.
+  - `regenerateFromPattern(tenantId: bigint, profileId: bigint): Promise<void>`:
+    - deletes future open slots that have no bookings **and are not `customised`**;
+    - builds slots with `slotsFromPattern`, where `isTaken` covers booked slots **and** customised slots (Review Focus 1);
+    - applies `allowedFormats` per time for this therapist, dropping times that end up with no format;
+    - creates them with `channel` set to `'VIDEO'` when online-only, else `'IN_PERSON'` (kept for old readers).
+  - `updateSlot(...)`:
+    - a slot with a non-cancelled booking is refused: 409 "This time is booked. Reschedule the session instead.";
+    - `{ formats, locationId }` validates with `timeErrors`, then sets `allowsOnline`, `allowsInPerson`, `locationId` and `customised=true`;
+    - `{ reset: true }` deletes the open slot and regenerates, so the weekly pattern's version comes back.
+  - Slot views in `getTherapistAvailability` include `formats`, `location` (`{ id, name }`), `customised` and `booked`.
 
 Rules:
-- Validation errors from `blockErrors` return 400 with every message joined by a space.
-- Changing a block or the therapist's formats never touches booked slots (rule 7).
-- If a therapist turns off a format while future bookings in that format exist, the change is saved, and the response includes `affectedBookings: [{ id, startsAt, clientName, format }]`. The app shows these as "These sessions keep their format; contact the clients if that needs to change." (rule 8; Review Focus 1)
+- Validation errors from `timeErrors` return 400; for weekly times, the message is prefixed with the time ("Mon 10:00: Ada only works online. Turn on in-person for Ada first.").
+- Changing the pattern or the therapist's formats never touches booked slots or one-off changes (rule 7). If a one-off change is no longer allowed after the therapist's formats change, it's corrected the same way as a weekly time (format removed; the slot is deleted if none remains) and listed in the response.
+- If a therapist turns off a format while future bookings in that format exist, the change is saved, and the response includes `affectedBookings: [{ id, startsAt, clientName, format }]`. The app shows these as "These sessions keep their format; contact the clients if that needs to change." (rule 8; Review Focus 2)
+
+**The Availability page:**
+- **Working hours per day** (as today: on/off and hours, with "Add hours"), plus session length and gap. Changing hours lays out the times with `timesInHours`. A time that already existed keeps its format and location; new times copy the format of the nearest earlier time that day, or Online.
+- **Tiles:** each session time is a tile showing its format: "Online", "In person · Lekki", "Either · Lekki". Tapping a tile opens a small chooser with Online, In person, Either and, when in person is involved, a location select limited to the therapist's locations.
+- **"Set all Monday times to…":** one chooser per day that applies to every tile that day.
+- **Upcoming times:** the next 4 weeks grouped by date, each time a tile like the above. Booked times are shown but locked ("Booked"); one-off changes carry a "This date only" badge and a "Back to weekly" action. Changing a tile here calls `PATCH /v1/consult/therapist/slots/:id`.
+- Saving the weekly pattern sends `weeklyTimes`. The page explains: "Changes apply to open times. Booked sessions and this-date-only changes stay as they are."
 
 - [ ] **Step 1: Write the failing API tests:**
-  - saving blocks stores them and returns them from GET;
-  - a 09:00–12:00 in-person block at location 1 produces slots with `allowsInPerson` and `locationId 1`;
-  - an online-only therapist saving an in-person block gets 400 "Ada only works online. Turn on in-person for Ada first.";
-  - turning in person off regenerates open slots online-only and reports the affected bookings;
-  - an old-shape body (windows without formats) still works and yields online slots;
+  - saving weekly times stores them, saves length and gap, and GET returns them;
+  - Mon 09:00 online and 10:00 either at Lekki produce slots with exactly those formats;
+  - an online-only therapist saving an in-person time gets 400 "Mon 10:00: Ada only works online. Turn on in-person for Ada first.";
+  - a one-off change sets `customised` and survives a later pattern save (no duplicate slot at that time);
+  - "Back to weekly" restores the pattern's formats;
+  - changing a booked slot gets 409;
+  - turning in person off regenerates open slots online-only, corrects one-off changes, and reports affected bookings;
+  - an old-shape body (`days[].windows`) still works and yields online slots;
   - booked slots are untouched.
 - [ ] **Step 2: Run, to see them fail.**
-- [ ] **Step 3: Implement.** Replace Task 3's `regenerateFromBlocks` stub, and ledger that.
+- [ ] **Step 3: Implement.** Replace Task 3's `regenerateFromPattern` stub, and ledger that.
 - [ ] **Step 4: Write the failing app tests:**
-  - Availability loads saved blocks (not slots);
-  - a window's format choice "In person" shows the location picker with only the therapist's locations;
-  - Save sends `formats` and `locationId`;
+  - the page loads saved weekly times (not derived from slots) and shows tiles with their formats;
+  - tapping a tile and choosing "Either" with Lekki updates it, and Save sends it in `weeklyTimes`;
+  - "Set all Monday times to Online" changes every Monday tile;
+  - the location select lists only the therapist's locations;
+  - an upcoming time changed to "In person" calls the slot PATCH and then shows "This date only";
+  - a booked upcoming time can't be changed;
   - the server's 400 text shows in the error banner;
   - affected bookings show after save.
-- [ ] **Step 5: Implement the UI;** check 390px and 1280px.
-- [ ] **Step 6: Run both suites; commit.** `git commit -m "Formats and locations: weekly hours are stored, each block has its formats and location"`
+- [ ] **Step 5: Implement the UI,** reusing `SegmentedControl`, `Card` and `Button` from `@unclutterdesk/ui`. Tiles wrap at 390px; check 1280px.
+- [ ] **Step 6: Run both suites; commit.** `git commit -m "Formats and locations: each session time has its own format, set weekly or for one date"`
 
 ---
 
@@ -533,26 +570,26 @@ Rules:
 - Modify: `apps/app/src/pages/practice/OnboardingWizardPage.tsx`:
   - the Services step (`stepKey === 'availability'`, around line 874) gets the new question and an inline first location;
   - the Practice Details step loses address and city (moved to the inline location);
-  - the save calls send formats, locations, therapist formats and blocks.
+  - the save calls send formats, locations, therapist formats and weekly times.
 - Test: `apps/app/src/pages/__tests__/OnboardingServicesStep.test.tsx` (create)
 
 **Interfaces:**
-- Consumes: `/v1/tenant/locations` (Task 3), service `formats` (Task 4), therapist formats and blocks (Task 5).
+- Consumes: `/v1/tenant/locations` (Task 3), service `formats` (Task 4), therapist formats and weekly times (Task 5).
 
 Behaviour (spec "Setup"):
 - **"How do you see clients?":** Online, In person, or Both. The default is Online.
 - **In person or Both:** an inline "Where do you see clients?" with Name (prefilled with the practice name), Street address, City (prefilled from the draft's city) and an optional directions note.
 - **Prices:** one field per chosen format. With Both, "Same price for both" is ticked by default.
-- **Default blocks:**
-  - Online: the chosen days 09:00–17:00 online;
-  - In person: the same, in person at the new location;
-  - Both: 09:00–13:00 in person and 14:00–17:00 online.
-- **Save order:** create the location, then update the therapist's formats and locations, then set the service formats, then save the availability blocks. Every step is idempotent on retry (find the existing location by name before creating one).
+- **Default weekly times** (laid out with `timesInHours` over 09:00–17:00 on the chosen days):
+  - Online: every time online;
+  - In person: every time in person at the new location;
+  - Both: times before 13:00 in person at the new location, the rest online. The practice can change any time later on the Availability page.
+- **Save order:** create the location, then update the therapist's formats and locations, then set the service formats, then save the weekly times. Every step is idempotent on retry (find the existing location by name before creating one).
 - **Drafts:** an existing draft with `city`/`address` from the old Details step pre-fills the inline location.
 
 - [ ] **Step 1: Write the failing tests:**
-  - Both plus an address saves a location, a service with two formats (same price by default), a therapist with both formats, and the split default blocks;
-  - Online makes no location call and sends online-only blocks;
+  - Both plus an address saves a location, a service with two formats (same price by default), a therapist with both formats, and weekly times split morning in person / afternoon online;
+  - Online makes no location call and sends online-only weekly times;
   - an old draft with an address pre-fills the location fields;
   - a missing street address for In person blocks Continue with "Add the street address clients will come to."
 - [ ] **Step 2: Run, to see them fail.**
@@ -586,13 +623,15 @@ Behaviour (spec "Setup"):
   - add two locations;
   - set Individual Therapy to online ₦30,000 and in person ₦35,000;
   - make Jane both, working at Lekki;
-  - Monday 09:00–13:00 in person at Lekki, 14:00–17:00 online;
+  - Monday 09:00 online, 10:00 and 11:00 either at Lekki, 14:00–17:00 online;
+  - change next Thursday 10:00 to in person only (this date only), then edit the weekly pattern and check the Thursday change is still there;
   - add a second therapist who is online only;
-  - check that the in-person-only therapist cannot get online blocks, and the reverse.
+  - check that the online-only therapist cannot get an in-person time, and the reverse.
 - [ ] **Step 3:** As a client at `/book`:
-  - an in-person morning time charges ₦35,000; the confirmation and the logged email show the Lekki address and a maps link; no join link;
-  - an afternoon time is online at ₦30,000 with the video link after payment.
+  - Monday 9:00 is online only at ₦30,000;
+  - Monday 10:00 asks online or in person; in person charges ₦35,000, and the confirmation and the logged email show the Lekki address and a maps link, with no join link;
+  - next Thursday 10:00 is in person only.
 
   Check both at 390px and 1280px.
-- [ ] **Step 4:** Run setup as a new practice choosing Both, and confirm the location, prices and blocks it created.
+- [ ] **Step 4:** Run setup as a new practice choosing Both, and confirm the location, prices and weekly times it created.
 - [ ] **Step 5:** In `docs/testing-feedback.md`, set SET-06, SET-07, ONB-05, BKG-05 and BKG-07 to **Fixed**, with the commits and what Steps 2–4 showed. Commit.
