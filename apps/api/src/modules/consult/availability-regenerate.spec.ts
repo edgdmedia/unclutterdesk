@@ -6,8 +6,9 @@ import { ConsultService } from './consult.service';
  *
  * It deleted only unbooked slots and then created a slot for every window,
  * so a booked 10:00 session got a fresh, bookable 10:00 slot beside it and a
- * second client could take the same hour. Staff custom times, which can sit
- * anywhere in the day, made that more likely.
+ * second client could book the same hour. Staff custom times, which can sit
+ * anywhere in the day, made that more likely. SET-06 moved the week into
+ * stored weekly times; the generation rules below are unchanged.
  */
 const TENANT = 1n;
 const PROVIDER = 5n;
@@ -18,16 +19,38 @@ const HOURS = {
   gapMinutes: 0,
 };
 
-function makeService(booked: Array<{ startsAt: Date; endsAt: Date }> = []) {
+const slotRow = (startsAt: Date, endsAt: Date, over: Record<string, unknown> = {}) => ({
+  id: 50n, tenantId: TENANT, providerProfileId: PROVIDER, startsAt, endsAt,
+  allowsOnline: true, allowsInPerson: false, locationId: null, customised: false, isActive: true, location: null, ...over,
+});
+
+function makeService(kept: Array<{ startsAt: Date; endsAt: Date }> = []) {
   const prisma: any = {
     consultAvailability: {
       deleteMany: vi.fn().mockResolvedValue({ count: 0 }),
       createMany: vi.fn().mockResolvedValue({ count: 0 }),
-      findMany: vi.fn().mockResolvedValue([]),
+      findMany: vi.fn().mockResolvedValue(kept.map((k) => slotRow(k.startsAt, k.endsAt))),
     },
-    consultBooking: { findMany: vi.fn().mockResolvedValue(booked.map((availability) => ({ availability }))) },
+    consultBooking: {
+      findMany: vi.fn(async ({ where }: any) => (where?.availabilityId ? [] : [])),
+      count: vi.fn().mockResolvedValue(0),
+    },
+    consultTherapistProfile: {
+      findUnique: vi.fn().mockResolvedValue({
+        profileId: PROVIDER, tenantId: TENANT, offersOnline: true, offersInPerson: false,
+        sessionLengthMinutes: 60, gapMinutes: 0, workLocations: [], profile: { firstName: 'Ada', lastName: null },
+      }),
+      update: vi.fn(),
+    },
+    therapistWeeklyTime: {
+      findMany: vi.fn(async () => stored),
+      deleteMany: vi.fn(async () => { stored.length = 0; return { count: 0 }; }),
+      createMany: vi.fn(async ({ data }: any) => { stored.push(...data.map((d: any) => ({ id: BigInt(stored.length + 1), ...d }))); return { count: data.length }; }),
+    },
+    practiceLocation: { findMany: vi.fn().mockResolvedValue([]) },
     tenant: { findUnique: vi.fn().mockResolvedValue({ cancellationHours: 24 }), update: vi.fn() },
   };
+  const stored: any[] = [];
   const service = new ConsultService(prisma, {} as any, {} as any, {} as any, {} as any, {} as any, {} as any);
   return { service, prisma };
 }
@@ -65,14 +88,15 @@ describe('regenerating open slots', () => {
     expect(overlapping).toEqual([]);
   });
 
-  it('looks only at this practitioner’s sessions that are still going ahead', async () => {
+  it('looks only at this practitioner’s times that are still going ahead', async () => {
     const { service, prisma } = makeService();
     await service.replaceTherapistAvailability(TENANT, PROVIDER, HOURS);
-    expect(prisma.consultBooking.findMany.mock.calls[0][0].where).toMatchObject({
+    const keptQuery = prisma.consultAvailability.findMany.mock.calls.find((c: any[]) => c[0]?.where?.OR)?.[0]?.where;
+    expect(keptQuery).toMatchObject({
       tenantId: TENANT,
-      status: { not: 'CANCELLED' },
-      availability: { providerProfileId: PROVIDER },
+      providerProfileId: PROVIDER,
     });
+    expect(JSON.stringify(keptQuery.OR)).toContain('CANCELLED');
   });
 });
 

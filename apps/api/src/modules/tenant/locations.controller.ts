@@ -13,7 +13,8 @@ import { LocationsService, LocationDto } from './locations.service';
 export class LocationsController {
   constructor(private readonly locations: LocationsService) {}
 
-  @Permissions('practice.admin')
+  // Any staff member can see the list — therapists choose where they work.
+  @Permissions('practice.staff')
   @Get()
   @ApiOperation({ summary: 'List the practice locations' })
   list(@Req() req: any) {

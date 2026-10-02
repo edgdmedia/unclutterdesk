@@ -205,6 +205,20 @@ export class ConsultController {
   }
 
   @Permissions('clinical.record')
+  @Patch('therapist/slots/:slotId')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @ApiBearerAuth('access-token')
+  @ApiOperation({ summary: 'Change one upcoming time for that date only, or reset it to the weekly pattern' })
+  updateSlot(@Req() req: any, @Param('slotId') slotId: string, @Body() dto: any) {
+    return this.consultService.updateSlot(
+      authenticatedTenantId(req),
+      authenticatedProfileId(req),
+      BigInt(slotId),
+      dto ?? {},
+    );
+  }
+
+  @Permissions('clinical.record')
   @Patch('therapist/availability')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @ApiBearerAuth('access-token')

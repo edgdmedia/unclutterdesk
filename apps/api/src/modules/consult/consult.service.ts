@@ -1,4 +1,4 @@
-import { Injectable, BadRequestException, NotFoundException, ForbiddenException, Logger, Optional } from '@nestjs/common';
+import { Injectable, BadRequestException, ConflictException, NotFoundException, ForbiddenException, Logger, Optional } from '@nestjs/common';
 import { randomBytes } from 'crypto';
 import { PrismaService } from '../../common/prisma/prisma.service';
 import { NotificationService } from '../notifications/notification.service';
@@ -11,7 +11,8 @@ import { tenantWebOrigin } from '../../common/origins';
 import { decryptNoteFields } from '../../common/field-encryption';
 import { cleanImageUrl } from '../tenant/tenant.service';
 import { holdExpiry, ManualPaymentService, transferReference } from './manual-payment.service';
-import { listPrice, type Format } from './formats';
+import { allowedFormats, asFormat, listPrice, priceFor, timeErrors, type Format } from './formats';
+import { slotsFromPattern, timesInHours, type WeeklyTime } from './hours';
 import { BookingNotifier } from '../notifications/booking-notifier.service';
 import { BookingPaymentSettler } from '../billing/booking-payment-settler.service';
 import { onlineHoldExpiry } from './online-hold';
@@ -19,6 +20,9 @@ import { assertWithinMonthlyLimit } from './booking-limits';
 
 /** A Paystack checkout: the page to send the payer to, and the code its pop-up opens with. */
 type StartedPayment = { url: string; accessCode: string };
+
+/** Monday first, matching TherapistWeeklyTime.weekday. */
+const DAY_NAMES = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 
 @Injectable()
 export class ConsultService {
@@ -78,7 +82,7 @@ export class ConsultService {
   async getTherapistProfile(tenantId: bigint, profileId: bigint) {
     const profile = await this.prisma.consultTherapistProfile.findUnique({
       where: { tenantId_profileId: { tenantId, profileId } },
-      include: { profile: true },
+      include: { profile: true, workLocations: { select: { locationId: true } } },
     });
 
     if (!profile) throw new NotFoundException('Therapist profile not found');
@@ -102,6 +106,9 @@ export class ConsultService {
       isPublic: profile.isPublic,
       acceptsGeneralBooking: profile.acceptsGeneralBooking,
       videoProvider: profile.videoProvider,
+      offersOnline: profile.offersOnline,
+      offersInPerson: profile.offersInPerson,
+      locationIds: profile.workLocations.map((w) => w.locationId.toString()),
       status: profile.profile.status,
     };
   }
@@ -122,6 +129,9 @@ export class ConsultService {
     isPublic?: boolean;
     acceptsGeneralBooking?: boolean;
     videoProvider?: string;
+    offersOnline?: boolean;
+    offersInPerson?: boolean;
+    locationIds?: string[];
   }) {
     if (dto.firstName !== undefined || dto.lastName !== undefined || dto.phone !== undefined) {
       await this.prisma.profile.update({
@@ -134,9 +144,37 @@ export class ConsultService {
       });
     }
 
-    return this.prisma.consultTherapistProfile.update({
+    // SET-06: what this therapist sees clients as, and where.
+    const touchingFormats = dto.offersOnline !== undefined || dto.offersInPerson !== undefined || dto.locationIds !== undefined;
+    let offersOnline = dto.offersOnline;
+    let offersInPerson = dto.offersInPerson;
+    let locationIds: bigint[] | undefined;
+    if (touchingFormats) {
+      const current = await this.prisma.consultTherapistProfile.findUnique({
+        where: { tenantId_profileId: { tenantId, profileId } },
+        include: { workLocations: { select: { locationId: true } } },
+      });
+      if (!current) throw new NotFoundException('Therapist profile not found');
+      offersOnline = dto.offersOnline ?? current.offersOnline;
+      offersInPerson = dto.offersInPerson ?? current.offersInPerson;
+      if (!offersOnline && !offersInPerson) throw new BadRequestException('Choose online, in person, or both.');
+      if (dto.locationIds !== undefined) {
+        locationIds = dto.locationIds.map((id) => BigInt(id));
+        const active = await this.prisma.practiceLocation.findMany({ where: { tenantId, isActive: true }, select: { id: true } });
+        const activeIds = new Set(active.map((a) => a.id.toString()));
+        if (locationIds.some((id) => !activeIds.has(id.toString()))) throw new BadRequestException("Choose only the practice's active locations.");
+      }
+      const effectiveLocations = locationIds ?? current.workLocations.map((w) => w.locationId);
+      if (offersInPerson && effectiveLocations.length === 0) {
+        throw new BadRequestException('In-person sessions need at least one location. Add one under Locations.');
+      }
+    }
+
+    const updated = await this.prisma.consultTherapistProfile.update({
       where: { tenantId_profileId: { tenantId, profileId } },
       data: {
+        ...(offersOnline !== undefined ? { offersOnline } : {}),
+        ...(offersInPerson !== undefined ? { offersInPerson } : {}),
         ...(dto.publicUsername ? { publicUsername: dto.publicUsername.trim() } : {}),
         ...(dto.bookingEmail ? { bookingEmail: dto.bookingEmail.trim() } : {}),
         ...(dto.notificationEmail ? { notificationEmail: dto.notificationEmail.trim() } : {}),
@@ -151,6 +189,63 @@ export class ConsultService {
         ...(dto.videoProvider ? { videoProvider: dto.videoProvider } : {}),
       },
     });
+
+    if (!touchingFormats) return updated;
+
+    if (locationIds) {
+      await this.prisma.therapistLocation.deleteMany({ where: { profileId } });
+      if (locationIds.length) await this.prisma.therapistLocation.createMany({ data: locationIds.map((locationId) => ({ profileId, locationId })) });
+    }
+
+    // Bring the week and the open times in line with what this therapist now
+    // offers. Booked sessions are never touched — they keep their format and
+    // are reported so the practice can contact the clients (rule 8).
+    const tf = {
+      offersOnline: Boolean(offersOnline),
+      offersInPerson: Boolean(offersInPerson),
+      locationIds: (locationIds ?? (await this.prisma.therapistLocation.findMany({ where: { profileId } }))).map((w: any) => w.locationId ?? w),
+    };
+    const weekly = await this.prisma.therapistWeeklyTime.findMany({ where: { tenantId, profileId } });
+    for (const w of weekly) {
+      const allowed = allowedFormats({ allowsOnline: w.allowsOnline, allowsInPerson: w.allowsInPerson, locationId: w.locationId }, tf);
+      if (!allowed.online && !allowed.inPerson) await this.prisma.therapistWeeklyTime.deleteMany({ where: { id: w.id } });
+      else if (allowed.online !== w.allowsOnline || allowed.inPerson !== w.allowsInPerson || String(allowed.locationId) !== String(w.locationId)) {
+        await this.prisma.therapistWeeklyTime.updateMany({
+          where: { id: w.id },
+          data: { allowsOnline: allowed.online, allowsInPerson: allowed.inPerson, locationId: allowed.locationId },
+        });
+      }
+    }
+    await this.prisma.consultAvailability.deleteMany({
+      where: { tenantId, providerProfileId: profileId, startsAt: { gte: new Date() }, customised: false, bookings: { none: {} } },
+    });
+    const customised = await this.prisma.consultAvailability.findMany({
+      where: { tenantId, providerProfileId: profileId, startsAt: { gte: new Date() }, customised: true, bookings: { none: {} } },
+    });
+    for (const slot of customised) {
+      const allowed = allowedFormats({ allowsOnline: slot.allowsOnline, allowsInPerson: slot.allowsInPerson, locationId: slot.locationId }, tf);
+      if (!allowed.online && !allowed.inPerson) await this.prisma.consultAvailability.deleteMany({ where: { id: slot.id } });
+      else await this.prisma.consultAvailability.updateMany({
+        where: { id: slot.id },
+        data: { allowsOnline: allowed.online, allowsInPerson: allowed.inPerson, locationId: allowed.locationId },
+      });
+    }
+    await this.regenerateFromPattern(tenantId, profileId);
+
+    const future = await this.prisma.consultBooking.findMany({
+      where: { tenantId, status: { not: 'CANCELLED' }, availability: { providerProfileId: profileId, startsAt: { gte: new Date() } } },
+      include: { client: { select: { firstName: true, lastName: true } }, availability: { select: { startsAt: true } } },
+    });
+    const affectedBookings = future
+      .filter((b: any) => (b.format === 'IN_PERSON' && !tf.offersInPerson) || (b.format === 'ONLINE' && !tf.offersOnline))
+      .map((b: any) => ({
+        id: b.id.toString(),
+        startsAt: b.availability.startsAt.toISOString(),
+        clientName: [b.client.firstName, b.client.lastName].filter(Boolean).join(' ') || 'Client',
+        format: b.format,
+      }));
+
+    return { ...updated, affectedBookings };
   }
 
   async uploadTherapistAvatar(tenantId: bigint, profileId: bigint, avatarUrl: string) {
@@ -473,24 +568,50 @@ export class ConsultService {
 
   async getTherapistAvailability(tenantId: bigint, providerProfileId: bigint) {
     const now = new Date();
-    const slots = await this.prisma.consultAvailability.findMany({
-      where: {
-        tenantId,
-        providerProfileId,
-        startsAt: { gte: now },
-      },
-      orderBy: { startsAt: 'asc' },
-    });
+    const [slots, tenant, therapist, weekly, locations] = await Promise.all([
+      this.prisma.consultAvailability.findMany({
+        where: { tenantId, providerProfileId, startsAt: { gte: now } },
+        include: { location: { select: { id: true, name: true } } },
+        orderBy: { startsAt: 'asc' },
+      }),
+      this.prisma.tenant.findUnique({ where: { id: tenantId } }),
+      this.prisma.consultTherapistProfile.findUnique({
+        where: { tenantId_profileId: { tenantId, profileId: providerProfileId } },
+        select: { sessionLengthMinutes: true, gapMinutes: true },
+      }),
+      this.prisma.therapistWeeklyTime.findMany({ where: { tenantId, profileId: providerProfileId }, orderBy: [{ weekday: 'asc' }, { start: 'asc' }] }),
+      this.prisma.practiceLocation.findMany({ where: { tenantId }, select: { id: true, name: true, city: true } }),
+    ]);
 
-    const tenant = await this.prisma.tenant.findUnique({ where: { id: tenantId } });
+    const bookedIds = slots.length
+      ? new Set(
+        (await this.prisma.consultBooking.findMany({
+          where: { availabilityId: { in: slots.map((s) => s.id) }, status: { not: 'CANCELLED' } },
+          select: { availabilityId: true },
+        })).map((b) => b.availabilityId.toString()),
+      )
+      : new Set<string>();
 
     return {
       cancellationHours: tenant?.cancellationHours ?? 24,
+      sessionLengthMinutes: therapist?.sessionLengthMinutes ?? 50,
+      gapMinutes: therapist?.gapMinutes ?? 10,
+      locations: locations.map((l) => ({ id: l.id.toString(), name: l.name, city: l.city })),
+      weeklyTimes: weekly.map((w) => ({
+        weekday: w.weekday,
+        start: w.start,
+        formats: [w.allowsOnline && 'ONLINE', w.allowsInPerson && 'IN_PERSON'].filter(Boolean) as Format[],
+        locationId: w.locationId ? w.locationId.toString() : null,
+      })),
       slots: slots.map((slot) => ({
         id: slot.id.toString(),
         startsAt: slot.startsAt.toISOString(),
         endsAt: slot.endsAt.toISOString(),
         isActive: slot.isActive,
+        formats: [slot.allowsOnline && 'ONLINE', slot.allowsInPerson && 'IN_PERSON'].filter(Boolean) as Format[],
+        location: slot.location ? { id: slot.location.id.toString(), name: slot.location.name } : null,
+        customised: slot.customised,
+        booked: bookedIds.has(slot.id.toString()),
       })),
     };
   }
@@ -527,85 +648,196 @@ export class ConsultService {
     return { id: slotId.toString(), deleted: true };
   }
 
+  /**
+   * Saves the repeating week (SET-06) and regenerates open slots from it.
+   * The old body shape (days/windows, no formats) is still accepted and turns
+   * into online weekly times, so older clients keep working.
+   */
   async replaceTherapistAvailability(tenantId: bigint, providerProfileId: bigint, dto: {
-    days: Array<{ day: number; enabled: boolean; windows: Array<{ start: string; end: string }> }>;
+    weeklyTimes?: Array<{ weekday: number; start: string; formats: unknown; locationId?: string | null }>;
+    days?: Array<{ day: number; enabled: boolean; windows: Array<{ start: string; end: string }> }>;
     sessionLengthMinutes: number;
     gapMinutes: number;
     cancellationHours?: number;
   }) {
+    const therapist = await this.prisma.consultTherapistProfile.findUnique({
+      where: { tenantId_profileId: { tenantId, profileId: providerProfileId } },
+      include: { workLocations: { select: { locationId: true } }, profile: { select: { firstName: true, lastName: true } } },
+    });
+    if (!therapist) throw new NotFoundException('Therapist profile not found');
+
+    const length = Number(dto.sessionLengthMinutes ?? therapist.sessionLengthMinutes ?? 50);
+    const gap = Number(dto.gapMinutes ?? therapist.gapMinutes ?? 10);
+    if (!Number.isInteger(length) || length < 10 || length > 480) throw new BadRequestException('Session length must be between 10 and 480 minutes.');
+    if (!Number.isInteger(gap) || gap < 0 || gap > 120) throw new BadRequestException('The gap must be between 0 and 120 minutes.');
+
+    const name = [therapist.profile?.firstName, therapist.profile?.lastName].filter(Boolean).join(' ') || 'This therapist';
+    const tf = {
+      offersOnline: therapist.offersOnline,
+      offersInPerson: therapist.offersInPerson,
+      locationIds: therapist.workLocations.map((w) => w.locationId),
+      name,
+    };
+    const active = await this.prisma.practiceLocation.findMany({ where: { tenantId, isActive: true }, select: { id: true } });
+    const activeIds = active.map((a) => a.id);
+
+    const weekly: Array<{ weekday: number; start: string; formats: Format[]; locationId: bigint | null }> =
+      dto.weeklyTimes?.map((t) => ({
+        weekday: Number(t.weekday),
+        start: String(t.start),
+        formats: (Array.isArray(t.formats) ? t.formats : []).map(asFormat).filter(Boolean) as Format[],
+        locationId: t.locationId ? BigInt(t.locationId) : null,
+      }))
+        ?? (dto.days ?? []).filter((d) => d.enabled).flatMap((d) => d.windows.flatMap((w) =>
+          timesInHours(w.start, w.end, length, gap).map((start) => ({ weekday: d.day, start, formats: ['ONLINE' as Format], locationId: null })),
+        )) ?? [];
+
+    for (const t of weekly) {
+      const errs = timeErrors({ formats: t.formats, locationId: t.locationId }, tf, activeIds);
+      if (errs.length) throw new BadRequestException(`${DAY_NAMES[t.weekday] ?? t.weekday} ${t.start}: ${errs[0]}`);
+    }
+
+    await this.prisma.therapistWeeklyTime.deleteMany({ where: { tenantId, profileId: providerProfileId } });
+    if (weekly.length) {
+      await this.prisma.therapistWeeklyTime.createMany({
+        data: weekly.map((t) => ({
+          tenantId,
+          profileId: providerProfileId,
+          weekday: t.weekday,
+          start: t.start,
+          allowsOnline: t.formats.includes('ONLINE'),
+          allowsInPerson: t.formats.includes('IN_PERSON'),
+          locationId: t.locationId,
+        })),
+      });
+    }
+    await this.prisma.consultTherapistProfile.update({
+      where: { tenantId_profileId: { tenantId, profileId: providerProfileId } },
+      data: { sessionLengthMinutes: length, gapMinutes: gap },
+    });
+    await this.regenerateFromPattern(tenantId, providerProfileId);
+
+    if (dto.cancellationHours !== undefined) {
+      await this.prisma.tenant.update({ where: { id: tenantId }, data: { cancellationHours: Number(dto.cancellationHours) } });
+    }
+
+    return this.getTherapistAvailability(tenantId, providerProfileId);
+  }
+
+  /**
+   * Rebuilds the next 28 days of open slots from the stored weekly pattern.
+   * Booked slots and one-off changes are never deleted, and no generated slot
+   * is placed on top of one (Review Focus 1).
+   */
+  async regenerateFromPattern(tenantId: bigint, providerProfileId: bigint): Promise<void> {
     const now = new Date();
-    const horizon = new Date(now);
-    horizon.setDate(horizon.getDate() + 28);
+    const therapist = await this.prisma.consultTherapistProfile.findUnique({
+      where: { tenantId_profileId: { tenantId, profileId: providerProfileId } },
+      include: { workLocations: { select: { locationId: true } } },
+    });
+    if (!therapist) return;
 
     await this.prisma.consultAvailability.deleteMany({
       where: {
         tenantId,
         providerProfileId,
         startsAt: { gte: now },
+        customised: false,
         bookings: { none: {} },
       },
     });
 
-    // Sessions still going ahead. A regenerated slot must never sit on one:
-    // booked slots survive the delete above, and without this a fresh open
-    // slot at the same time let a second client book the same hour.
-    const taken = (
-      await this.prisma.consultBooking.findMany({
-        where: { tenantId, status: { not: 'CANCELLED' }, availability: { providerProfileId, endsAt: { gt: now } } },
-        select: { availability: { select: { startsAt: true, endsAt: true } } },
-      })
-    ).map((b) => b.availability);
-    const isTaken = (start: Date, end: Date) => taken.some((t) => t.startsAt < end && t.endsAt > start);
+    const weekly = await this.prisma.therapistWeeklyTime.findMany({ where: { tenantId, profileId: providerProfileId } });
+    const kept = await this.prisma.consultAvailability.findMany({
+      where: {
+        tenantId,
+        providerProfileId,
+        startsAt: { gte: now },
+        OR: [{ customised: true }, { bookings: { some: { status: { not: 'CANCELLED' } } } }],
+      },
+      select: { startsAt: true, endsAt: true },
+    });
+    const isTaken = (start: Date, end: Date) => kept.some((k) => k.startsAt < end && k.endsAt > start);
 
-    const slotData: Array<{ tenantId: bigint; providerProfileId: bigint; serviceId: bigint | null; startsAt: Date; endsAt: Date; channel: string; isActive: boolean }> = [];
+    const tf = {
+      offersOnline: therapist.offersOnline,
+      offersInPerson: therapist.offersInPerson,
+      locationIds: therapist.workLocations.map((w) => w.locationId),
+    };
+    const generated = slotsFromPattern(
+      weekly.map((w): WeeklyTime => ({ weekday: w.weekday, start: w.start, allowsOnline: w.allowsOnline, allowsInPerson: w.allowsInPerson, locationId: w.locationId })),
+      { now, days: 28, sessionLengthMinutes: therapist.sessionLengthMinutes, isTaken },
+    );
 
-    for (let cursor = new Date(now); cursor <= horizon; cursor.setDate(cursor.getDate() + 1)) {
-      const jsDay = cursor.getDay();
-      const weekday = jsDay === 0 ? 6 : jsDay - 1;
-      const rule = dto.days.find((day) => day.day === weekday && day.enabled);
-      if (!rule) continue;
+    const data = generated.flatMap((slot) => {
+      const allowed = allowedFormats({ allowsOnline: slot.allowsOnline, allowsInPerson: slot.allowsInPerson, locationId: slot.locationId }, tf);
+      if (!allowed.online && !allowed.inPerson) return [];
+      return [{
+        tenantId,
+        providerProfileId,
+        // Open to any service, as before: pinning every slot to one service
+        // left services added later with no bookable times.
+        serviceId: null,
+        startsAt: slot.startsAt,
+        endsAt: slot.endsAt,
+        allowsOnline: allowed.online,
+        allowsInPerson: allowed.inPerson,
+        locationId: allowed.locationId,
+        // channel stays for older readers: online-only is VIDEO, anything
+        // with in person in it is not.
+        channel: allowed.online && !allowed.inPerson ? 'VIDEO' : 'IN_PERSON',
+        isActive: true,
+        customised: false,
+      }];
+    });
+    if (data.length) await this.prisma.consultAvailability.createMany({ data });
+  }
 
-      for (const window of rule.windows) {
-        const [startHour, startMinute] = window.start.split(':').map(Number);
-        const [endHour, endMinute] = window.end.split(':').map(Number);
-        const windowStart = new Date(cursor);
-        windowStart.setHours(startHour, startMinute, 0, 0);
-        const windowEnd = new Date(cursor);
-        windowEnd.setHours(endHour, endMinute, 0, 0);
+  /**
+   * SET-06: change one upcoming time for that date only, or reset it back to
+   * the weekly pattern. Booked times are locked.
+   */
+  async updateSlot(tenantId: bigint, providerProfileId: bigint, slotId: bigint, dto: {
+    formats?: unknown;
+    locationId?: string | null;
+    reset?: boolean;
+  }) {
+    const slot = await this.prisma.consultAvailability.findFirst({ where: { id: slotId, tenantId, providerProfileId } });
+    if (!slot) throw new NotFoundException('Availability slot not found');
+    const booked = await this.prisma.consultBooking.count({ where: { availabilityId: slotId, status: { not: 'CANCELLED' } } });
+    if (booked > 0) throw new ConflictException('This time is booked. Reschedule the session instead.');
 
-        for (let slotStart = new Date(windowStart); slotStart < windowEnd;) {
-          const slotEnd = new Date(slotStart.getTime() + dto.sessionLengthMinutes * 60_000);
-          if (slotEnd > windowEnd) break;
-          if (slotEnd > now && !isTaken(slotStart, slotEnd)) {
-            slotData.push({
-              tenantId,
-              providerProfileId,
-              // Open to any service. Pinning every slot to the oldest service
-              // left services added later with no bookable times at all.
-              serviceId: null,
-              startsAt: new Date(slotStart),
-              endsAt: slotEnd,
-              channel: 'VIDEO',
-              isActive: true,
-            });
-          }
-          slotStart = new Date(slotEnd.getTime() + dto.gapMinutes * 60_000);
-        }
-      }
+    if (dto?.reset) {
+      await this.prisma.consultAvailability.deleteMany({ where: { id: slotId, tenantId, providerProfileId } });
+      await this.regenerateFromPattern(tenantId, providerProfileId);
+      return { id: slotId.toString(), reset: true };
     }
 
-    if (slotData.length > 0) {
-      await this.prisma.consultAvailability.createMany({ data: slotData });
-    }
+    const formats = (Array.isArray(dto?.formats) ? dto.formats : []).map(asFormat).filter(Boolean) as Format[];
+    const locationId = dto?.locationId ? BigInt(dto.locationId) : null;
+    const therapist = await this.prisma.consultTherapistProfile.findUnique({
+      where: { tenantId_profileId: { tenantId, profileId: providerProfileId } },
+      include: { workLocations: { select: { locationId: true } }, profile: { select: { firstName: true, lastName: true } } },
+    });
+    if (!therapist) throw new NotFoundException('Therapist profile not found');
+    const active = await this.prisma.practiceLocation.findMany({ where: { tenantId, isActive: true }, select: { id: true } });
+    const errs = timeErrors(
+      { formats, locationId },
+      {
+        offersOnline: therapist.offersOnline,
+        offersInPerson: therapist.offersInPerson,
+        locationIds: therapist.workLocations.map((w) => w.locationId),
+        name: [therapist.profile?.firstName, therapist.profile?.lastName].filter(Boolean).join(' ') || 'This therapist',
+      },
+      active.map((a) => a.id),
+    );
+    if (errs.length) throw new BadRequestException(errs[0]);
 
-    if (dto.cancellationHours !== undefined) {
-      await this.prisma.tenant.update({
-        where: { id: tenantId },
-        data: { cancellationHours: dto.cancellationHours },
-      });
-    }
-
-    return this.getTherapistAvailability(tenantId, providerProfileId);
+    await this.prisma.consultAvailability.updateMany({
+      where: { id: slotId, tenantId, providerProfileId },
+      data: { allowsOnline: formats.includes('ONLINE'), allowsInPerson: formats.includes('IN_PERSON'), locationId, customised: true },
+    });
+    return { id: slotId.toString(), customised: true };
   }
 
   async createBooking(tenantId: bigint, clientProfileId: bigint, dto: {

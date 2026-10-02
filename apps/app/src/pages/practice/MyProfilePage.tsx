@@ -17,7 +17,12 @@ type ProfileRecord = {
   bookingEmail?: string;
   notificationEmail?: string;
   videoProvider?: string;
+  offersOnline?: boolean;
+  offersInPerson?: boolean;
+  locationIds?: string[];
 };
+
+type LocationOption = { id: string; name: string; city: string };
 
 const inputCls = 'h-[46px] w-full px-[14px] rounded-[14px] bg-[#F8FAFC] border border-[#E2E8F0] text-sm font-medium text-[#0F172A] outline-none focus:bg-white focus:border-[#94A3B8]';
 
@@ -27,6 +32,11 @@ export function MyProfilePage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [locations, setLocations] = useState<LocationOption[]>([]);
+
+  useEffect(() => {
+    api.get<LocationOption[]>('/v1/tenant/locations').then((l) => setLocations(l)).catch(() => undefined);
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -99,6 +109,40 @@ export function MyProfilePage() {
                   <div><label className="block text-[11.5px] font-bold text-[#475569] mb-1.5">Modalities</label><input className={inputCls} value={(profile.modalities || []).join(', ')} onChange={(e) => setProfile((p) => ({ ...p, modalities: e.target.value.split(',').map((v) => v.trim()).filter(Boolean) }))} /></div>
                   <div><label className="block text-[11.5px] font-bold text-[#475569] mb-1.5">Languages</label><input className={inputCls} value={(profile.languages || []).join(', ')} onChange={(e) => setProfile((p) => ({ ...p, languages: e.target.value.split(',').map((v) => v.trim()).filter(Boolean) }))} /></div>
                 </div>
+              </div>
+
+              <div className="bg-white rounded-[24px] border border-[#E2E8F0] p-[24px_26px]">
+                <Eyebrow className="mb-1">SEES CLIENTS</Eyebrow>
+                <div className="mt-3 flex flex-wrap gap-4">
+                  <label className="flex items-center gap-2 text-[13.5px] font-semibold text-[#0F172A] cursor-pointer">
+                    <input type="checkbox" aria-label="Online" checked={profile.offersOnline !== false} onChange={(e) => setProfile((p) => ({ ...p, offersOnline: e.target.checked }))} />
+                    Online
+                  </label>
+                  <label className="flex items-center gap-2 text-[13.5px] font-semibold text-[#0F172A] cursor-pointer">
+                    <input type="checkbox" aria-label="In person" checked={profile.offersInPerson === true} onChange={(e) => setProfile((p) => ({ ...p, offersInPerson: e.target.checked }))} />
+                    In person
+                  </label>
+                </div>
+                {profile.offersInPerson ? (
+                  <div className="mt-3">
+                    <p className="text-[11.5px] font-bold text-[#475569] mb-1.5">Works at</p>
+                    {locations.length === 0 ? <p className="text-[12.5px] text-[#94A3B8]">No locations yet — ask an admin to add them under Locations.</p> : (
+                      <div className="flex flex-wrap gap-3">
+                        {locations.map((l) => (
+                          <label key={l.id} className="flex items-center gap-2 text-[13px] font-semibold text-[#0F172A] cursor-pointer">
+                            <input
+                              type="checkbox"
+                              aria-label={`Works at ${l.name}`}
+                              checked={(profile.locationIds ?? []).includes(l.id)}
+                              onChange={(e) => setProfile((p) => ({ ...p, locationIds: e.target.checked ? [...(p.locationIds ?? []), l.id] : (p.locationIds ?? []).filter((x) => x !== l.id) }))}
+                            />
+                            {l.name}
+                          </label>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                ) : null}
               </div>
 
               <div className="bg-white rounded-[24px] border border-[#E2E8F0] p-[24px_26px]">
