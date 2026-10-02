@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { renderWithApp, waitFor, cleanup } from '../../test/renderWithApp';
+import { renderWithApp, waitFor, cleanup, screen } from '../../test/renderWithApp';
 import React from 'react';
 
 const apiGet = vi.fn();
@@ -54,5 +54,26 @@ describe('PublicProfilePage', () => {
     renderPage();
 
     await waitFor(() => expect(apiGet).toHaveBeenCalledWith('/v1/tenant/public/info'));
+  });
+
+  // BKG-11: the link clients book from must look like the wizard, not a wide
+  // marketing page with the platform's mark where the practice's should be.
+  it('shows the practice logo in the header and keeps the wizard’s narrow measure', async () => {
+    getSubdomainTenantSlug.mockReturnValue('demo');
+    apiGet.mockImplementation((path: string) => {
+      if (path.startsWith('/v1/tenant/public')) {
+        return Promise.resolve({
+          id: '1', name: 'Demo Practice', slug: 'demo',
+          primaryColor: '#0F3A53', secondaryColor: '#E3B341',
+          logoUrl: 'https://cdn.example.com/logo.png',
+        });
+      }
+      return Promise.resolve([]);
+    });
+    renderPage();
+    const logo = await screen.findByAltText('Demo Practice logo');
+    expect(logo.getAttribute('src')).toBe('https://cdn.example.com/logo.png');
+    expect(document.querySelector('img[src="/unclutterdesk-mark.svg"]')).toBeNull();
+    expect(document.body.innerHTML).not.toContain('max-w-[1320px]');
   });
 });

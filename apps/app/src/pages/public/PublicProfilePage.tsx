@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { PracticeLogo } from '../../components/public/PracticeLogo';
 import { useNavigate } from 'react-router-dom';
 import { MapPin, Star } from 'lucide-react';
 import { useBrand } from '@unclutterdesk/ui';
@@ -18,6 +19,7 @@ type PublicTenantInfo = {
   publicPhone?: string | null;
   primaryColor?: string;
   secondaryColor?: string;
+  logoUrl?: string | null;
 };
 
 type PublicTherapist = {
@@ -114,11 +116,10 @@ export function PublicProfilePage() {
   return (
     <div className="min-h-screen bg-[#F8FAFC] flex flex-col font-sans">
       <header className="sticky top-0 z-50 h-[56px] md:h-[64px] px-4 md:px-10 flex items-center justify-between bg-white/95 backdrop-blur-[18px] border-b border-[#E2E8F0]">
-        <img
-          src="/unclutterdesk-mark.svg"
-          alt="Unclutter Desk"
-          className="h-[28px] md:h-[32px] w-auto"
-        />
+        <div className="flex items-center gap-2.5 min-w-0">
+          <PracticeLogo name={practiceName || 'Unclutter Desk'} logoUrl={tenant?.logoUrl} size={34} color={primaryColor} />
+          <span className="text-[15px] font-bold tracking-[-0.01em] text-[#0F172A] truncate">{practiceName || 'Unclutter Desk'}</span>
+        </div>
         <a
           href={`${APP_BASE_URL}/login`}
           className="h-[36px] md:h-[40px] px-3 md:px-4 rounded-[10px] md:rounded-[12px] bg-white border border-[#CBD5E1] text-[12px] md:text-[13px] font-bold flex items-center"
@@ -140,7 +141,7 @@ export function PublicProfilePage() {
         </div>
       ) : (
         <>
-          <section className="px-4 py-6 md:py-[60px] md:px-10 max-w-[1320px] mx-auto w-full grid grid-cols-1 md:grid-cols-2 gap-5 md:gap-[60px] items-center text-center md:text-left">
+          <section className="px-4 py-6 md:py-[60px] md:px-10 max-w-[960px] mx-auto w-full grid grid-cols-1 md:grid-cols-2 gap-5 md:gap-[60px] items-center text-center md:text-left">
             <div className="md:hidden flex justify-center">
               {therapist?.avatarUrl ? (
                 <img
@@ -214,7 +215,7 @@ export function PublicProfilePage() {
 
           {bio || specialties.length > 0 ? (
             <section className="px-4 py-8 md:py-[80px] md:px-10 bg-white border-t border-[#E2E8F0]">
-              <div className="max-w-[1320px] mx-auto grid grid-cols-1 md:grid-cols-2 gap-5 md:gap-[60px] items-start">
+              <div className="max-w-[960px] mx-auto grid grid-cols-1 md:grid-cols-2 gap-5 md:gap-[60px] items-start">
                 <div className="flex flex-col gap-2 md:gap-5">
                   <div className="text-[11px] md:text-[13px] font-black tracking-[0.12em] md:tracking-[0.22em] text-[#94A3B8] uppercase">
                     About the Practice
@@ -266,7 +267,7 @@ export function PublicProfilePage() {
             </section>
           ) : null}
 
-          <section className="px-4 py-6 md:py-[80px] md:px-10 bg-[#F8FAFC] flex flex-col md:grid md:grid-cols-3 gap-[14px] md:gap-5 max-w-[1320px] mx-auto w-full flex-1">
+          <section className="px-4 py-6 md:py-[80px] md:px-10 bg-[#F8FAFC] flex flex-col md:grid md:grid-cols-3 gap-[14px] md:gap-5 max-w-[960px] mx-auto w-full flex-1">
             <div className="bg-white border border-[#E2E8F0] rounded-[18px] md:rounded-[24px] p-4 md:p-[32px] flex flex-col gap-2.5 md:gap-4">
               <div className="text-[11px] md:text-[12px] font-black tracking-[0.12em] text-[#94A3B8] uppercase">
                 Location & Format
