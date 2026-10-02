@@ -79,6 +79,26 @@ A running log of what shows up in testing, what we decide about it, and when it'
 | POR-02 | Client portal | The portal should look like a dashboard, not a plain list | UX | P2 | Fixed |
 | FRM-01 | Forms | Save forms as templates and optionally share them with other practices | Feature | | Fixed |
 | FRM-02 | Forms | The Forms page is wider than a phone screen | Bug | P2 | Open |
+| NOT-06 | Notifications | The bell should sit in the header with a dropdown | UX | P2 | Ready |
+| NOT-07 | Notifications | Clients get no reminders | Feature | P1 | Ready |
+| NOT-08 | Notifications | Booking emails failed on the live site | Bug | P0 | Fixed |
+| NOT-09 | Notifications | Links in practice emails were broken (http://dashboard/sessions/8) | Bug | P1 | Fixed |
+| NOT-10 | Notifications | The booking confirmation email was one run-on paragraph with raw links | UX | P1 | Fixed |
+| NOT-11 | Notifications | The sender name and address differed by email provider | Bug | P1 | Fixed |
+| SET-10 | Settings | Google Calendar shows "Connect" again after it was connected | Bug | P2 | Ready |
+| SET-11 | Settings | A longer service can't use the normal session times | Feature | P2 | Ready |
+| SET-12 | Settings | "Active sessions" lists the same browser many times | Bug | P2 | Ready |
+| FRM-03 | Forms | Submissions should show everything clients send, assessments included | Feature | P2 | Ready |
+| FRM-04 | Forms | The Forms page still has an "Assessment" type | UX | P2 | Ready |
+| POR-03 | Client portal | The portal should use the same dashboard frame as practice and admin | UX | P2 | Ready |
+| POR-04 | Client portal | Clients can't book a session from the portal | Feature | P1 | Ready |
+| POR-05 | Client portal | No "Add to calendar" for sessions in the portal | UX | P2 | Ready |
+| ADM-04 | Admin | Gross revenue counts practices' income, not Unclutter Desk's | Bug | P2 | Ready |
+| BKG-13 | Sessions | Past sessions with no outcome stay "Confirmed" forever | Feature | P1 | Ready |
+| VID-02 | Video | "Join session" works any time, even days before | Bug | P1 | Ready |
+| GEN-01 | Design system | Pages set their own widths and hand-write their grids | UX | P2 | Ready |
+| GEN-02 | Design system | The dashboard keeps showing Profile photo and Practice branding cards | UX | P3 | Ready |
+| GEN-03 | Design system | The menu feels disconnected | UX | P2 | Ready |
 
 ---
 
@@ -104,6 +124,13 @@ A running log of what shows up in testing, what we decide about it, and when it'
 - **Feedback / decision:** The admin page built its own field boxes. It now uses the shared `AuthField`, so both sign-in pages share one field style.
 - **Fix:** see the commit "Admin sign-in uses the shared auth field" on `dev`. Checked in the browser: both pages have 52px fields, the same fill and 11.5px labels, and signing in still lands on `/admin`.
 - **Verified:**
+
+### ADM-04 · Gross revenue counts practices' income, not Unclutter Desk's
+- **Type:** Bug · **Priority:** P2 · **Status:** Ready
+- **Observed:** Admin "Gross revenue" adds up what clients paid every practice.
+- **Feedback / decision:** Decided 2 Oct 2026. Show Unclutter Desk's own income: subscription payments, plus platform booking fees where they apply (Starter), shown separately. Each practice's earnings move to that practice's admin page.
+- **Fix:** 
+- **Verified:** 
 
 ## Notifications / Email
 
@@ -141,6 +168,54 @@ A running log of what shows up in testing, what we decide about it, and when it'
 - **Feedback / decision:** In-app notifications are only created for rescheduled sessions and session-note reminders (`consult.service.ts` `notify(...)`). New bookings, payments received, bank transfers to confirm, cancellations and form submissions create none. Proposed: notify the session's therapist (and practice owners/admins where relevant) for: new booking, payment received, transfer marked sent / hold about to lapse, cancellation, client form submitted. Each in-app, with email/push following the existing per-type preferences.
 - **Fix:** `4de5bb8` on `dev`. Staff now get in-app notices for new booking, payment received, transfer to confirm (front desk included), cancellation (both staff paths) and form submitted — therapist plus this practice's active owners/admins, tenant-scoped, no duplicates. Covered by `booking-notifier.spec.ts` and `portal-forms.spec.ts`.
 - **Verified:** Browser check 1 Oct: "New booking", "Payment received" and "Form received" all appeared on `/dashboard/notifications` for the practice owner.
+
+### NOT-06 · The bell should sit in the header with a dropdown
+- **Type:** UX · **Priority:** P2 · **Status:** Ready
+- **Observed:** The bell is only in the Dashboard page header; "Notifications" is also a sidebar item and a bottom-bar item.
+- **Feedback / decision:** Decided 2 Oct 2026. The bell is part of the app frame: the last item on the right of the desktop header, the top-right corner on phones. Clicking opens a dropdown of the latest notifications (unread dots, "Mark all read") with **All notifications** at the bottom, leading to the page. Notifications leaves the sidebar and bottom bar; the bottom-bar slot becomes **Sessions**.
+- **Fix:** 
+- **Verified:** 
+
+### NOT-07 · Clients get no reminders
+- **Type:** Feature · **Priority:** P1 · **Status:** Ready
+- **Observed:** The reminder queue exists (scheduled, every 30 seconds, with duplicate protection) but nothing queues a reminder, and reminder emails are off by default.
+- **Feedback / decision:** Decided 2 Oct 2026. Reminders, each switchable and timed by the practice; clients can turn off the optional ones (rebook nudges, reviews), never session reminders. Email and in-app now; SMS/WhatsApp later.
+  - Upcoming session: 24 hours and 1 hour before, with the join link or address.
+  - Forms due before the first session: 48 hours and 24 hours before.
+  - Assessment assigned, not done: 2 days after assigning, and the day before the session.
+  - Unpaid booking or transfer: while the hold runs.
+  - After a no-show: same day, with a rebook link.
+  - After a completed session: review/feedback request; "book your next session" after a set number of days.
+- **Fix:** 
+- **Verified:** 
+
+### NOT-08 · Booking emails failed on the live site
+- **Type:** Bug · **Priority:** P0 · **Status:** Fixed
+- **Observed:** From 1 Oct, every email to clients and practices failed (EmailLog): "The notify.unclutterdesk.com domain is not verified" (Resend). Emails up to 29 Sept had gone out.
+- **Feedback / decision:** The sending domain notify.unclutterdesk.com was verified in Resend (2 Oct, by the product owner). A read-only server check, `scripts/check-email-logs.sh`, shows recent email errors.
+- **Fix:** Resend domain verified (configuration, no code).
+- **Verified:** 
+
+### NOT-09 · Links in practice emails were broken (http://dashboard/sessions/8)
+- **Type:** Bug · **Priority:** P1 · **Status:** Fixed
+- **Observed:** Staff notifications carry in-app paths; the email put them in as-is, so mail clients made them http://dashboard/… .
+- **Feedback / decision:** The email channel turns every in-app path into a full address on the app host, in one place.
+- **Fix:** `014bd3d` on `dev`.
+- **Verified:** Unit tests; email rendered and checked at 390px.
+
+### NOT-10 · The booking confirmation email was one run-on paragraph with raw links
+- **Type:** UX · **Priority:** P1 · **Status:** Fixed
+- **Observed:** Details, the join link, the portal link and forms were all written into one paragraph.
+- **Feedback / decision:** Emails gain a details block (labelled rows) and a list of further links. The confirmation shows Session, With, When, Where; a "Join the session" button; forms due and "Manage your booking" as links. Other booking emails can adopt the same layout.
+- **Fix:** `014bd3d` on `dev`.
+- **Verified:** Rendered preview checked at 390px.
+
+### NOT-11 · The sender name and address differed by email provider
+- **Type:** Bug · **Priority:** P1 · **Status:** Fixed
+- **Observed:** The name was decided in two places, and the address came from MAIL_FROM on Resend but SMTP_FROM on Gmail, so emails showed as "no-reply@unclutterdesk.com".
+- **Feedback / decision:** One function (SenderIdentityService) decides the sender for every provider: the practice's name (Unclutter Desk for platform mail), the platform address from MAIL_FROM (or the practice's verified domain when the provider can sign for it), replies to the practice. Providers only deliver.
+- **Fix:** `c0ee98c` on `dev`.
+- **Verified:** Unit tests; API boots.
 
 ## Onboarding
 
@@ -270,6 +345,27 @@ A running log of what shows up in testing, what we decide about it, and when it'
 - **Fix:** `90fb3f0`–`b42c8e3` on `dev`. `PATCH /v1/discount/:id` now takes `isActive` (and the amount fields) and only writes the fields sent — the old update blanked label/maxUses/expiresAt when you touched one. A new `DELETE /v1/discount/:id/remove` deletes for good (past bookings keep the code text). The list gains **Turn on / Turn off / Edit / Delete** per row; the create modal doubles as the editor. Covered by `discount-manage.spec.ts` and `DiscountSettingsPage.test.tsx`.
 - **Verified:** Browser check 2 Oct (local): WELCOME20 turned off and back on, label edited and saved, a throwaway code created and deleted after the confirm.
 
+### SET-10 · Google Calendar shows "Connect" again after it was connected
+- **Type:** Bug · **Priority:** P2 · **Status:** Ready
+- **Observed:** The Availability page only knows it is connected right after the Google redirect (it reads ?google_connected=true from the address).
+- **Feedback / decision:** Decided 2 Oct 2026. The server reports whether the therapist's Google account is connected; the page shows "Connected to Google Calendar · Disconnect".
+- **Fix:** 
+- **Verified:** 
+
+### SET-11 · A longer service can't use the normal session times
+- **Type:** Feature · **Priority:** P2 · **Status:** Ready
+- **Observed:** Availability's length decides each slot; a service longer than the slot is hidden at those times, a shorter one takes the whole slot.
+- **Feedback / decision:** Decided 2 Oct 2026. The availability length is the slot. A service up to one slot takes one; a longer one takes back-to-back slots (80 minutes at 9:00 uses the 9:00 and 10:00 slots, ends 10:20), all free and all allowing the chosen format. Clients see only start times where enough slots are free, shown as "9:00 – 10:20". Do after the formats and locations work lands.
+- **Fix:** 
+- **Verified:** 
+
+### SET-12 · "Active sessions" lists the same browser many times
+- **Type:** Bug · **Priority:** P2 · **Status:** Ready
+- **Observed:** Every sign-in creates a session that lasts until it expires; re-logins, switching practice/admin and closed tabs pile up.
+- **Feedback / decision:** Decided 2 Oct 2026. A new sign-in from the same browser replaces its old session; sessions unused for 14 days end. The card shows this device and the two most recent, then "Show all (N)", with "Sign out other devices".
+- **Fix:** 
+- **Verified:** 
+
 ## Client booking link / page
 
 ### BKG-01 · Booking page layout is incoherent
@@ -392,6 +488,27 @@ A running log of what shows up in testing, what we decide about it, and when it'
 - **Fix:** `7fed377` on `dev`. The portal now leads with four dashboard tiles — Next session, Upcoming sessions, To pay, Forms to do (from `/v1/intake/mine/forms`, never blocking the page on failure) — and the header carries the practice logo. The payments tab stays lazy (its existing "not fetched until opened" test still passes). Covered by `ClientPortalPayments.test.tsx`.
 - **Verified:** Browser check 2 Oct: tiles read "9 Oct 2026 / 1 / ₦0 / 2" for a fresh client on the practice host; no overflow at 390px.
 
+### POR-03 · The portal should use the same dashboard frame as practice and admin
+- **Type:** UX · **Priority:** P2 · **Status:** Ready
+- **Observed:** The portal has dashboard tiles (POR-02) but not the shared frame.
+- **Feedback / decision:** Decided 2 Oct 2026. Sidebar on desktop, bottom bar on phones, in the practice's colours and logo, with the notification bell. Menu: Home, Sessions, Forms & assessments, Payments, My details.
+- **Fix:** 
+- **Verified:** 
+
+### POR-04 · Clients can't book a session from the portal
+- **Type:** Feature · **Priority:** P1 · **Status:** Ready
+- **Observed:** There is no "Book a session" in the portal.
+- **Feedback / decision:** Decided 2 Oct 2026. "Book a session" on the portal home and Sessions page opens the booking wizard, already signed in, for the same practice.
+- **Fix:** 
+- **Verified:** 
+
+### POR-05 · No "Add to calendar" for sessions in the portal
+- **Type:** UX · **Priority:** P2 · **Status:** Ready
+- **Observed:** Only the booking confirmation offers calendar links.
+- **Feedback / decision:** Decided 2 Oct 2026. Each upcoming session in the portal has the same "Add to calendar" dropdown as the confirmation (Google Calendar, Apple/Outlook .ics).
+- **Fix:** 
+- **Verified:** 
+
 ## Forms & templates
 
 ### FRM-01 · Save forms as templates, optionally shared
@@ -409,6 +526,59 @@ A running log of what shows up in testing, what we decide about it, and when it'
 - **Feedback / decision:**
 - **Fix:**
 - **Verified:**
+
+### FRM-03 · Submissions should show everything clients send, assessments included
+- **Type:** Feature · **Priority:** P2 · **Status:** Ready
+- **Observed:** A client completed a scored assessment, but Submissions only lists forms; assessment results show only in the client's Assessments panel and on the Assessments page.
+- **Feedback / decision:** Decided 2 Oct 2026. A main-menu group **Forms & assessments**: **Submissions** (one inbox for all client submissions, forms and assessment results, filterable by type and client), **Assessments** (library and assignments), **Forms** (your forms and the template library). The client's own panel keeps showing their results.
+- **Fix:** 
+- **Verified:** 
+
+### FRM-04 · The Forms page still has an "Assessment" type
+- **Type:** UX · **Priority:** P2 · **Status:** Ready
+- **Observed:** The custom-form "Assessment" category overlaps the scored-assessment library.
+- **Feedback / decision:** Decided 2 Oct 2026. Remove "Assessment" from the Forms page and editor. The five default forms exist for every practice: Intake, Review, Consent, Feedback, Confidentiality. Scored assessments live under Assessments.
+- **Fix:** 
+- **Verified:** 
+
+## Sessions & video
+
+### BKG-13 · Past sessions with no outcome stay "Confirmed" forever
+- **Type:** Feature · **Priority:** P1 · **Status:** Ready
+- **Observed:** Only Confirmed, Completed and Cancelled exist; nothing happens when a session's time passes.
+- **Feedback / decision:** Decided 2 Oct 2026. After its end time, a session without an outcome shows as **Unrecorded** (not "Pending", which already means unpaid) on the therapist's dashboard and session page, with a reminder. Outcomes: **Completed**, **No-show**, **Late cancel**. Never completed automatically. Completed keeps prompting for the session note.
+- **Fix:** 
+- **Verified:** 
+
+### VID-02 · "Join session" works any time, even days before
+- **Type:** Bug · **Priority:** P1 · **Status:** Ready
+- **Observed:** The portal's Join button shows whenever a room link exists and goes straight to meet.jit.si.
+- **Feedback / decision:** Decided 2 Oct 2026. The room opens 15 minutes before the session and closes 60 minutes after it ends (as in the VID-01 plan). Before that the button reads "Opens at 9:45 AM". Comes with VID-01's in-app room.
+- **Fix:** 
+- **Verified:** 
+
+## General / design system
+
+### GEN-01 · Pages set their own widths and hand-write their grids
+- **Type:** UX · **Priority:** P2 · **Status:** Ready
+- **Observed:** Only 11 pages use the shared Page frame (width cap 1440px / 880px); about 17 practice pages build their own <main>. 43 places use screen-based grid classes (grid-cols-2, md:col-span-2) that ignore the sidebar.
+- **Feedback / decision:** Decided 2 Oct 2026. Every page uses Page. Page gains a main-plus-side-panel layout (a sized template like [1fr_372px] for page structure); content inside uses the shared Grid (equal columns, responsive to the page area). Hand-written grids are replaced.
+- **Fix:** 
+- **Verified:** 
+
+### GEN-02 · The dashboard keeps showing Profile photo and Practice branding cards
+- **Type:** UX · **Priority:** P3 · **Status:** Ready
+- **Observed:** Setup prompts stay on the dashboard after they are done.
+- **Feedback / decision:** Decided 2 Oct 2026. Show each card only until it is done; both stay editable in settings.
+- **Fix:** 
+- **Verified:** 
+
+### GEN-03 · The menu feels disconnected
+- **Type:** UX · **Priority:** P2 · **Status:** Ready
+- **Observed:** Hours log and Notifications are main-menu items; settings groups mix concerns.
+- **Feedback / decision:** Decided 2 Oct 2026. Main: Today, Schedule, Sessions, Clients. Forms & assessments: Submissions, Assessments, Forms. Settings: Booking page (Practice profile, Locations, Brand & booking page); Scheduling & pricing (Availability, Services & pricing, Discounts); Team & staff; Reports; Billing (Payouts, Subscription). Avatar menu: My profile, Hours log, Notification settings, Account & security. The bell is in the header (NOT-06).
+- **Fix:** 
+- **Verified:** 
 
 ## Template for new items
 
