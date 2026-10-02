@@ -38,9 +38,10 @@ function stripComments(source: string): string {
 }
 
 const PAGE_FILES = sourceFiles(PAGES);
-const APP_TSX = readFileSync(resolve(APP, 'App.tsx'), 'utf8');
+const APP_TSX = readFileSync(resolve(APP, 'App.tsx'), 'utf8')
+  + readFileSync(resolve(APP, 'routes/clientRoutes.tsx'), 'utf8');
 
-/** Every path given to a <Route>. */
+/** Every path given to a <Route>, wherever the routes are declared. */
 const ROUTES = [...APP_TSX.matchAll(/<Route\s+path="([^"]+)"/g)].map((m) => m[1]);
 
 function routeExists(target: string): boolean {

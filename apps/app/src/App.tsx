@@ -1,4 +1,5 @@
 import React, { lazy, Suspense, useState, useCallback, useMemo } from 'react';
+import { CLIENT_PORTAL_ROUTES } from './routes/clientRoutes';
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { SWRConfig } from 'swr';
 import useSWR from 'swr';
@@ -29,19 +30,16 @@ const ServicesSettingsPage = lazy(() => import('./pages/practice/settings/Servic
 const DiscountSettingsPage = lazy(() => import('./pages/practice/settings/DiscountSettingsPage').then((m) => ({ default: m.DiscountSettingsPage })));
 const TelehealthVideoRoomPage = lazy(() => import('./pages/practice/TelehealthVideoRoomPage').then((m) => ({ default: m.TelehealthVideoRoomPage })));
 const SessionPrepPage = lazy(() => import('./pages/practice/SessionPrepPage').then((m) => ({ default: m.SessionPrepPage })));
-const ClientPortalPage = lazy(() => import('./pages/client/ClientPortalPage').then((m) => ({ default: m.ClientPortalPage })));
 const OnboardingWizardPage = lazy(() => import('./pages/practice/OnboardingWizardPage').then((m) => ({ default: m.OnboardingWizardPage })));
 const BookingWizardPage = lazy(() => import('./pages/public/booking/BookingWizardPage').then((m) => ({ default: m.BookingWizardPage })));
 const PublicProfilePage = lazy(() => import('./pages/public/PublicProfilePage').then((m) => ({ default: m.PublicProfilePage })));
 const PublicReviewFormPage = lazy(() => import('./pages/public/PublicReviewFormPage').then((m) => ({ default: m.PublicReviewFormPage })));
-const ClientFormPage = lazy(() => import('./pages/client/ClientFormPage').then((m) => ({ default: m.ClientFormPage })));
 // The documents live on the marketing site — see utils/legal.ts. These routes
 // stay because they are linked and bookmarked, but they no longer hold a second
 // copy of the text to drift from.
 const BookingConfirmedPage = lazy(() => import('./pages/public/BookingConfirmedPage').then((m) => ({ default: m.BookingConfirmedPage })));
 const InactivePracticePage = lazy(() => import('./pages/public/InactivePracticePage').then((m) => ({ default: m.InactivePracticePage })));
 const PayBookingPage = lazy(() => import('./pages/public/PayBookingPage').then((m) => ({ default: m.PayBookingPage })));
-const SetPasswordPage = lazy(() => import('./pages/public/SetPasswordPage').then((m) => ({ default: m.SetPasswordPage })));
 const NotificationsPage = lazy(() => import('./pages/practice/NotificationsPage').then((m) => ({ default: m.NotificationsPage })));
 const SubmissionsPage = lazy(() => import('./pages/practice/SubmissionsPage').then((m) => ({ default: m.SubmissionsPage })));
 const AvailabilitySettingsPage = lazy(() => import('./pages/practice/settings/AvailabilitySettingsPage').then((m) => ({ default: m.AvailabilitySettingsPage })));
@@ -65,7 +63,6 @@ const AdminAssessmentsPage = lazy(() => import('./pages/admin/AdminAssessmentsPa
 const RequestsPage = lazy(() => import('./pages/practice/RequestsPage').then((m) => ({ default: m.RequestsPage })));
 const AssessmentsPage = lazy(() => import('./pages/practice/AssessmentsPage').then((m) => ({ default: m.AssessmentsPage })));
 const HoursLogPage = lazy(() => import('./pages/practice/HoursLogPage').then((m) => ({ default: m.HoursLogPage })));
-const PortalAssessmentPage = lazy(() => import('./pages/client/PortalAssessmentPage').then((m) => ({ default: m.PortalAssessmentPage })));
 const AssessmentPage = lazy(() => import('./pages/public/AssessmentPage').then((m) => ({ default: m.AssessmentPage })));
 const AdminTenantDetailPage = lazy(() => import('./pages/admin/AdminTenantDetailPage').then((m) => ({ default: m.AdminTenantDetailPage })));
 
@@ -359,13 +356,10 @@ function AppLayout() {
           <Routes>
             <Route path="/session/:id/prep" element={<SessionPrepPage />} />
             <Route path="/session/:id" element={<TelehealthVideoRoomPage />} />
-            <Route path="/portal" element={<ClientPortalPage />} />
-            <Route path="/portal/assessments/:id" element={<PortalAssessmentPage />} />
-            <Route path="/forms/:id" element={<ClientFormPage />} />
+            {CLIENT_PORTAL_ROUTES}
             <Route path="/onboarding" element={<OnboardingWizardPage />} />
             <Route path="/booking/confirmed" element={<BookingConfirmedPage />} />
             <Route path="/pay/:bookingId" element={<PayBookingPage />} />
-            <Route path="/set-password" element={<SetPasswordPage />} />
             <Route path="/booking/inactive" element={<InactivePracticePage />} />
             <Route path="/assessment/:token" element={<AssessmentPage />} />
 
@@ -374,7 +368,6 @@ function AppLayout() {
 
             {/* Auth Routes */}
             <Route path="/auth/login" element={<LoginPage />} />
-            <Route path="/login" element={<LoginPage />} />
             <Route path="/auth/signup" element={<SignupPage />} />
             <Route path="/register" element={<SignupPage />} />
             <Route path="/auth/forgot-password" element={<ForgotPasswordPage />} />
@@ -403,7 +396,7 @@ function AppLayout() {
     return (
       <Suspense fallback={<PageFallback />}>
         <Routes>
-          <Route path="/login" element={<LoginPage />} />
+          {CLIENT_PORTAL_ROUTES}
           <Route path="/register" element={<SignupPage />} />
           <Route path="/forgot-password" element={<ForgotPasswordPage />} />
           <Route path="/reset-password/:token" element={<ResetPasswordPage />} />
@@ -578,12 +571,11 @@ export function App() {
                 <Route path="/" element={<PublicProfilePage />} />
                 <Route path="/book" element={<BookingWizardPage />} />
                 <Route path="/review" element={<PublicReviewFormPage />} />
-                <Route path="/forms/:id" element={<ClientFormPage />} />
+                {CLIENT_PORTAL_ROUTES}
                 <Route path="/assessment/:token" element={<AssessmentPage />} />
                 <Route path="/booking/confirmed" element={<BookingConfirmedPage />} />
                 <Route path="/pay/:bookingId" element={<PayBookingPage />} />
-                <Route path="/set-password" element={<SetPasswordPage />} />
-                <Route path="/booking/inactive" element={<InactivePracticePage />} />
+                    <Route path="/booking/inactive" element={<InactivePracticePage />} />
                 <Route path="/privacy" element={<ExternalRedirect to={LEGAL_URLS.privacy} />} />
                 <Route path="/terms" element={<ExternalRedirect to={LEGAL_URLS.terms} />} />
                 <Route path="*" element={<NotFoundPage />} />
