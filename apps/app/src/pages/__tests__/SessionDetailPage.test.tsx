@@ -25,6 +25,7 @@ const DETAIL = {
   provider: { id: '6', name: 'Segun Ade' }, channel: 'VIDEO',
   clientEmail: 'ada@example.com', clientPhone: '0801', videoRoomLink: 'https://meet.jit.si/room-9',
   note: null, internalSummary: null, clientRecap: null, clientRecapSentAt: null,
+  format: 'ONLINE', location: null,
   can: { edit: true, summary: true, markPaid: true },
 };
 
@@ -40,6 +41,21 @@ function renderPage(detail = DETAIL, submissions: unknown[] = []) {
     { route: '/dashboard/sessions/900' },
   );
 }
+
+// SET-06: the session page says where the session happens.
+describe('format and place on the session page', () => {
+  it('shows the location for an in-person session and no join button', async () => {
+    renderPage({ ...DETAIL, format: 'IN_PERSON', channel: 'IN_PERSON', videoRoomLink: null, location: { id: '4', name: 'Lekki clinic', city: 'Lagos' } });
+    expect(await screen.findByText(/In person · Lekki clinic/)).toBeTruthy();
+    expect(screen.queryByRole('link', { name: /Start session/ })).toBeNull();
+  });
+
+  it('keeps the join button for an online session', async () => {
+    renderPage({ ...DETAIL, format: 'ONLINE' });
+    expect(await screen.findByRole('link', { name: /Start session/ })).toBeTruthy();
+    expect(screen.getByText('Online')).toBeTruthy();
+  });
+});
 
 describe('SessionDetailPage', () => {
   it('shows who, what, when and who booked it', async () => {
