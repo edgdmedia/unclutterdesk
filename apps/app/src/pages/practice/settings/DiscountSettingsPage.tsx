@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Tag, Plus, X, Power, PowerOff } from 'lucide-react';
+import { Pencil, Tag, Plus, Trash2, X, Power, PowerOff } from 'lucide-react';
 import { Eyebrow, useBrand, useToast, Page, PageHeader, Grid, ResponsiveTable, byDate, byNumber, byText, type Column } from '@unclutterdesk/ui';
 import { api } from '../../../utils/apiClient';
 
@@ -28,6 +28,8 @@ export function DiscountSettingsPage() {
 
   // Modal State
   const [showModal, setShowModal] = useState(false);
+  // SET-09: the same modal edits an existing code when this is set.
+  const [editing, setEditing] = useState<DiscountCode | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Form State
@@ -56,15 +58,38 @@ export function DiscountSettingsPage() {
     return () => { cancelled = true; };
   }, []);
 
-  async function handleToggleStatus(id: string, currentStatus: boolean) {
-    if (!currentStatus) return; // Only allowing deactivation for now based on PRD
+  async function handleSetStatus(d: DiscountCode) {
+    const next = !d.isActive;
     try {
-      await api.delete(`/v1/discount/${id}`);
-      setDiscounts(current => current.map(d => d.id === id ? { ...d, isActive: false } : d));
-      toast.success('Discount code switched off');
+      await api.patch(`/v1/discount/${d.id}`, { isActive: next });
+      setDiscounts((current) => current.map((x) => (x.id === d.id ? { ...x, isActive: next } : x)));
+      toast.success(next ? 'Discount code switched on' : 'Discount code switched off');
     } catch (err: any) {
-      toast.error(err.response?.data?.message || err.message || 'Could not switch the code off');
+      toast.error(err instanceof Error ? err.message : 'Could not change the code');
     }
+  }
+
+  async function handleDelete(d: DiscountCode) {
+    if (!window.confirm(`Delete ${d.code}? Bookings that already used it keep their discount.`)) return;
+    try {
+      await api.delete(`/v1/discount/${d.id}/remove`);
+      setDiscounts((current) => current.filter((x) => x.id !== d.id));
+      toast.success('Discount code deleted');
+    } catch (err: any) {
+      toast.error(err instanceof Error ? err.message : 'Could not delete the code');
+    }
+  }
+
+  function openEdit(d: DiscountCode) {
+    setEditing(d);
+    setFormCode(d.code);
+    setFormLabel(d.label ?? '');
+    setFormType(d.discountType);
+    setFormPercent(d.discountPercent ? String(d.discountPercent) : '');
+    setFormAmount(d.discountAmountKobo ? String(Number(d.discountAmountKobo) / 100) : '');
+    setFormMaxUses(d.maxUses ? String(d.maxUses) : '');
+    setFormExpiresAt(d.expiresAt ? d.expiresAt.slice(0, 10) : '');
+    setShowModal(true);
   }
 
   async function handleCreateDiscount(e: React.FormEvent) {
@@ -84,6 +109,23 @@ export function DiscountSettingsPage() {
 
       if (formMaxUses) payload.maxUses = parseInt(formMaxUses, 10);
       if (formExpiresAt) payload.expiresAt = new Date(formExpiresAt).toISOString();
+
+      if (editing) {
+        const body: Record<string, unknown> = {
+          label: formLabel || null,
+          maxUses: formMaxUses ? parseInt(formMaxUses, 10) : null,
+          expiresAt: formExpiresAt ? new Date(formExpiresAt).toISOString() : null,
+          discountType: formType,
+        };
+        if (formType === 'PERCENT') body.discountPercent = parseInt(formPercent, 10);
+        else body.discountAmountKobo = (parseInt(formAmount, 10) * 100).toString();
+        const updated = await api.patch<DiscountCode>(`/v1/discount/${editing.id}`, body);
+        setDiscounts((current) => current.map((d) => (d.id === editing.id ? { ...d, ...updated } : d)));
+        setShowModal(false);
+        setEditing(null);
+        toast.success('Discount code updated');
+        return;
+      }
 
       const newDiscount = await api.post<DiscountCode>('/v1/discount', payload);
       setDiscounts(current => [newDiscount, ...current]);
@@ -203,18 +245,34 @@ export function DiscountSettingsPage() {
               columns={columns}
               empty="No discount codes."
               filter={{ placeholder: 'Search codes', match: (d, q) => [d.code, d.label ?? ''].some((v) => v.toLowerCase().includes(q)) }}
-              actions={(d) =>
-                d.isActive ? (
+              actions={(d) => (
+                <div className="flex items-center gap-1">
                   <button
-                    onClick={() => handleToggleStatus(d.id, d.isActive)}
-                    className="text-slate-400 hover:text-rose-500 transition-colors cursor-pointer inline-flex p-1.5"
-                    title="Deactivate code"
-                    aria-label={`Deactivate ${d.code}`}
+                    onClick={() => void handleSetStatus(d)}
+                    className={`transition-colors cursor-pointer inline-flex p-1.5 ${d.isActive ? 'text-slate-400 hover:text-rose-500' : 'text-slate-400 hover:text-emerald-600'}`}
+                    title={d.isActive ? 'Deactivate code' : 'Re-activate code'}
+                    aria-label={`${d.isActive ? 'Turn off' : 'Turn on'} ${d.code}`}
                   >
-                    <PowerOff className="h-4 w-4" />
+                    {d.isActive ? <PowerOff className="h-4 w-4" /> : <Power className="h-4 w-4" />}
                   </button>
-                ) : null
-              }
+                  <button
+                    onClick={() => openEdit(d)}
+                    className="text-slate-400 hover:text-[#0F3A53] transition-colors cursor-pointer inline-flex p-1.5"
+                    title="Edit code"
+                    aria-label={`Edit ${d.code}`}
+                  >
+                    <Pencil className="h-4 w-4" />
+                  </button>
+                  <button
+                    onClick={() => void handleDelete(d)}
+                    className="text-slate-400 hover:text-rose-500 transition-colors cursor-pointer inline-flex p-1.5"
+                    title="Delete code"
+                    aria-label={`Delete ${d.code}`}
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </button>
+                </div>
+              )}
             />
           </div>
         )}
@@ -239,8 +297,8 @@ export function DiscountSettingsPage() {
                 <Tag className="h-5 w-5" style={{ color: primaryColor }} />
               </div>
               <div>
-                <h3 className="text-[18px] font-bold text-[#0F172A] leading-tight">Create Discount Code</h3>
-                <p className="text-[12px] text-slate-500 font-medium">Configure a new promotional code.</p>
+                <h3 className="text-[18px] font-bold text-[#0F172A] leading-tight">{editing ? 'Edit Discount Code' : 'Create Discount Code'}</h3>
+                <p className="text-[12px] text-slate-500 font-medium">{editing ? 'Update this code without touching its past uses.' : 'Configure a new promotional code.'}</p>
               </div>
             </div>
 
@@ -253,6 +311,7 @@ export function DiscountSettingsPage() {
                   type="text"
                   required
                   placeholder="e.g. WELCOME20"
+                  disabled={!!editing}
                   value={formCode}
                   onChange={(e) => setFormCode(e.target.value.toUpperCase())}
                   className="w-full h-11 px-3.5 rounded-[12px] bg-[#F8FAFC] border border-[#E2E8F0] text-[13px] font-bold tracking-wide outline-none focus:border-slate-300 transition-colors uppercase"
@@ -338,7 +397,7 @@ export function DiscountSettingsPage() {
                 className="w-full h-11 rounded-[14px] text-white font-bold text-xs hover:brightness-110 transition-all shadow-sm disabled:opacity-50 cursor-pointer"
                 style={{ backgroundColor: primaryColor }}
               >
-                {isSubmitting ? 'Creating...' : 'Create Discount Code'}
+                {isSubmitting ? 'Saving...' : editing ? 'Save changes' : 'Create Discount Code'}
               </button>
             </div>
           </form>
