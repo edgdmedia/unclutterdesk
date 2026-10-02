@@ -3,7 +3,8 @@ import { ForbiddenException, NotFoundException } from '@nestjs/common';
 import { VideoRoomService } from './video-room.service';
 import { VideoRouter } from './video-router.service';
 import { joinWindow, JOIN_OPENS_MINUTES_BEFORE, JOIN_CLOSES_MINUTES_AFTER } from './join-window';
-import * as shared from '../../../../../packages/shared/src/joinWindow';
+import { readFileSync } from 'fs';
+import { resolve } from 'path';
 
 /**
  * VID-01: joining a session's room. Who may join, when, and that a booking
@@ -177,8 +178,12 @@ describe('joinWindow', () => {
 });
 
 describe('the join window shared with the app', () => {
+  // Read as text: importing across packages would move the API's build output (build-layout.spec.ts).
+  const shared = readFileSync(resolve(__dirname, '../../../../../packages/shared/src/joinWindow.ts'), 'utf8');
+  const minutes = (name: string) => Number(new RegExp(`export const ${name} = (\\d+);`).exec(shared)?.[1]);
+
   it('uses the same minutes as the Join buttons (packages/shared)', () => {
-    expect(JOIN_OPENS_MINUTES_BEFORE).toBe(shared.JOIN_OPENS_MINUTES_BEFORE);
-    expect(JOIN_CLOSES_MINUTES_AFTER).toBe(shared.JOIN_CLOSES_MINUTES_AFTER);
+    expect(minutes('JOIN_OPENS_MINUTES_BEFORE')).toBe(JOIN_OPENS_MINUTES_BEFORE);
+    expect(minutes('JOIN_CLOSES_MINUTES_AFTER')).toBe(JOIN_CLOSES_MINUTES_AFTER);
   });
 });
