@@ -11,6 +11,7 @@ import { tenantWebOrigin } from '../../common/origins';
 import { decryptNoteFields } from '../../common/field-encryption';
 import { cleanImageUrl } from '../tenant/tenant.service';
 import { holdExpiry, ManualPaymentService, transferReference } from './manual-payment.service';
+import { listPrice, type Format } from './formats';
 import { BookingNotifier } from '../notifications/booking-notifier.service';
 import { BookingPaymentSettler } from '../billing/booking-payment-settler.service';
 import { onlineHoldExpiry } from './online-hold';
@@ -220,17 +221,50 @@ export class ConsultService {
   async getPublicServices(tenantId: bigint) {
     const services = await this.prisma.consultService.findMany({
       where: { tenantId, isActive: true },
+      include: { formats: true },
       orderBy: { durationMinutes: 'asc' },
     });
 
-    return services.map((s) => ({
-      id: s.id.toString(),
-      title: s.title,
-      description: s.description,
-      durationMinutes: s.durationMinutes,
-      priceKobo: s.priceKobo.toString(),
-      isActive: s.isActive,
-    }));
+    return services
+      .map((s) => ({
+        id: s.id.toString(),
+        title: s.title,
+        description: s.description,
+        durationMinutes: s.durationMinutes,
+        priceKobo: s.priceKobo.toString(),
+        isActive: s.isActive,
+        formats: ((s as any).formats ?? []).filter((f: any) => f.isActive).map((f: any) => this.formatView(f)),
+      }))
+      // A service with no active format is not on offer, whatever its own
+      // isActive says (rule 8).
+      .filter((s) => s.formats.length > 0);
+  }
+
+  private formatView(f: { format: string; priceKobo: bigint; isActive: boolean }) {
+    return { format: f.format, priceKobo: f.priceKobo.toString(), isActive: f.isActive };
+  }
+
+  /** Validates the formats a page sends: [{ format, priceKobo, isActive? }]. */
+  private formatFields(raw: unknown): Array<{ format: Format; priceKobo: bigint; isActive: boolean }> | null {
+    if (raw === undefined) return null;
+    if (!Array.isArray(raw) || raw.length === 0) throw new BadRequestException('Offer this service online, in person, or both.');
+    return raw.map((f: any) => {
+      const format = (['ONLINE', 'IN_PERSON'] as const).find((x) => x === String(f?.format ?? '').toUpperCase());
+      if (!format) throw new BadRequestException('Formats are online or in person.');
+      const priceRaw = String(f?.priceKobo ?? '0').trim();
+      if (!/^\d+$/.test(priceRaw)) throw new BadRequestException('Price must be a whole, non-negative amount.');
+      return { format, priceKobo: BigInt(priceRaw), isActive: f?.isActive !== false };
+    });
+  }
+
+  private async writeFormats(serviceId: bigint, formats: Array<{ format: Format; priceKobo: bigint; isActive: boolean }>) {
+    for (const f of formats) {
+      await this.prisma.consultServiceFormat.upsert({
+        where: { serviceId_format: { serviceId, format: f.format } },
+        update: { priceKobo: f.priceKobo, isActive: f.isActive },
+        create: { serviceId, format: f.format, priceKobo: f.priceKobo, isActive: f.isActive },
+      });
+    }
   }
 
   /**
@@ -284,6 +318,7 @@ export class ConsultService {
     durationMinutes: number;
     priceKobo: bigint;
     isActive: boolean;
+    formats?: Array<{ format: string; priceKobo: bigint; isActive: boolean }>;
   }) {
     return {
       id: s.id.toString(),
@@ -292,6 +327,7 @@ export class ConsultService {
       durationMinutes: s.durationMinutes,
       priceKobo: s.priceKobo.toString(),
       isActive: s.isActive,
+      formats: (s.formats ?? []).map((f) => this.formatView(f)),
     };
   }
 
@@ -300,26 +336,31 @@ export class ConsultService {
     description?: string;
     durationMinutes?: number;
     priceKobo?: number | string;
+    formats?: unknown;
   }) {
     const fields = this.serviceFields({ ...dto, title: dto?.title ?? '' });
+    const formats = this.formatFields(dto.formats) ?? [{ format: 'ONLINE' as Format, priceKobo: fields.priceKobo ?? 0n, isActive: true }];
+    if (!formats.some((f) => f.isActive)) throw new BadRequestException('Offer this service online, in person, or both.');
+    const price = listPrice(formats) ?? 0n;
     const service = await this.prisma.consultService.create({
       data: {
         tenantId,
         title: fields.title!,
         description: fields.description ?? undefined,
         durationMinutes: fields.durationMinutes ?? 50,
-        priceKobo: fields.priceKobo ?? 0n,
+        priceKobo: price,
         isActive: true,
       },
     });
-
-    return this.serviceView(service);
+    await this.writeFormats(service.id, formats);
+    return this.serviceView({ ...service, priceKobo: price, formats });
   }
 
   /** Every service the practice has, retired ones included, for its settings page. */
   async listServices(tenantId: bigint) {
     const services = await this.prisma.consultService.findMany({
       where: { tenantId },
+      include: { formats: true },
       orderBy: [{ isActive: 'desc' }, { createdAt: 'asc' }],
     });
     return services.map((s) => this.serviceView(s));
@@ -338,11 +379,29 @@ export class ConsultService {
     const existing = await this.prisma.consultService.findFirst({ where: { id: serviceId, tenantId } });
     if (!existing) throw new NotFoundException('That service could not be found.');
 
+    const fields = this.serviceFields(dto ?? {});
+    const incoming = this.formatFields((dto as any)?.formats);
+    let rows: Array<{ format: Format; priceKobo: bigint; isActive: boolean }> = incoming ?? [];
+    if (!incoming && fields.priceKobo !== undefined) {
+      // A legacy price-only edit reprices the online row, keeping its state.
+      const current = await this.prisma.consultServiceFormat.findMany({ where: { serviceId: existing.id } });
+      const online = current.find((f: any) => f.format === 'ONLINE');
+      rows = [{ format: 'ONLINE', priceKobo: fields.priceKobo, isActive: online ? (online as any).isActive : true }];
+    }
+    if (rows.length) await this.writeFormats(existing.id, rows);
+    if (rows.length) {
+      const all = await this.prisma.consultServiceFormat.findMany({ where: { serviceId: existing.id } });
+      const price = listPrice(all);
+      if (price === null) throw new BadRequestException('Offer this service online, in person, or both.');
+      fields.priceKobo = price;
+    }
+
     const updated = await this.prisma.consultService.update({
       where: { id: existing.id },
-      data: { ...this.serviceFields(dto ?? {}), updatedAt: new Date() },
+      data: { ...fields, updatedAt: new Date() },
     });
-    return this.serviceView(updated);
+    const formats = await this.prisma.consultServiceFormat.findMany({ where: { serviceId: existing.id } });
+    return this.serviceView({ ...updated, formats });
   }
 
   async getPublicAvailability(tenantId: bigint, providerProfileId?: bigint, serviceId?: bigint) {
