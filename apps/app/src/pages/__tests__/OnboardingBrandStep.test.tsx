@@ -78,4 +78,18 @@ describe('Onboarding: brand step', () => {
     await waitFor(() => expect(screen.getByRole('img', { name: 'Practice logo' })).toBeTruthy());
     expect(input.value).toBe('my-new-link');
   });
+
+  it("doesn't offer a custom domain during setup, even when the server could take one (SET-03)", async () => {
+    get.mockImplementation(async (url: string) => {
+      if (url === '/v1/tenant/brand') return { ...server, customDomainTarget: 'cname.unclutterdesk.com' };
+      if (url.startsWith('/v1/tenant/check-slug')) return { available: true };
+      if (url === '/v1/consult/manual-payments/settings') return { enabled: false, details: null, onPlan: false, holdHours: 48 };
+      return {};
+    });
+    openBrandStep();
+    await waitFor(() => expect((screen.getByLabelText(/booking link/i) as HTMLInputElement).value).toBe('edgdmedia-3663'));
+    expect(screen.queryByRole('button', { name: /custom domain/i })).toBeNull();
+    expect(screen.queryByPlaceholderText(/booking\.mypractice\.com/)).toBeNull();
+  });
 });
+

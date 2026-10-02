@@ -37,13 +37,10 @@ export function BrandSettingsPage() {
   const [secondaryColor, setSecondaryColor] = useState('#E3B341');
   const [customDomain, setCustomDomain] = useState('');
   const [customDomainStatus, setCustomDomainStatus] = useState('PENDING');
-  const [customDomainTarget, setCustomDomainTarget] = useState<string | null>(null);
   const [publicEmail, setPublicEmail] = useState('');
   const [previewTab, setPreviewTab] = useState<'booking' | 'confirmed'>('booking');
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [savingDomain, setSavingDomain] = useState(false);
-  const [verifyingCustomDomain, setVerifyingCustomDomain] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const bookingUrl = practiceBookingUrl(slug, customDomain, customDomainStatus);
@@ -60,7 +57,6 @@ export function BrandSettingsPage() {
         setLogoUrl(brand.logoUrl || '');
         setCustomDomain(brand.customDomain || '');
         setCustomDomainStatus(brand.customDomainStatus || 'PENDING');
-        setCustomDomainTarget(brand.customDomainTarget ?? null);
         setPublicEmail(brand.publicEmail || '');
         if (brand.primaryColor) setPrimaryColor(brand.primaryColor);
         if (brand.secondaryColor) setSecondaryColor(brand.secondaryColor);
@@ -93,40 +89,6 @@ export function BrandSettingsPage() {
       setError(err instanceof Error ? err.message : 'Unable to save brand settings');
     } finally {
       setSaving(false);
-    }
-  }
-
-  async function handleSaveDomain() {
-    setSavingDomain(true);
-    setError(null);
-    try {
-      await api.patch('/v1/tenant/brand', { customDomain: customDomain || null });
-      setCustomDomainStatus('PENDING');
-      toast.success(customDomain ? 'Domain saved. Add the DNS record, then verify.' : 'Custom domain removed');
-      await refresh();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Unable to save the custom domain');
-    } finally {
-      setSavingDomain(false);
-    }
-  }
-
-  async function handleVerifyCustomDomain() {
-    setVerifyingCustomDomain(true);
-    setError(null);
-    try {
-      const verified = await api.post<{ customDomain: string | null; customDomainStatus: string }>('/v1/tenant/brand/custom-domain/verify', {});
-      setCustomDomain(verified.customDomain || '');
-      setCustomDomainStatus(verified.customDomainStatus || 'ACTIVE');
-      toast.success('Domain verified and live');
-      await refresh();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Unable to verify custom domain');
-      // The API records why: FAILED for DNS, PENDING while the certificate issues.
-      const brand = await api.get<BrandRecord>('/v1/tenant/brand').catch(() => null);
-      setCustomDomainStatus(brand?.customDomainStatus || 'FAILED');
-    } finally {
-      setVerifyingCustomDomain(false);
     }
   }
 
@@ -180,40 +142,13 @@ export function BrandSettingsPage() {
                 }}
               />
 
+              {/* SET-03: custom domains come later (Cloudflare for SaaS, Domain Connect); nothing to set until then. */}
               <Card padding="p-[22px]" className="space-y-3">
                 <div className="flex items-center gap-2 border-b border-[#E2E8F0] pb-3"><Globe className="h-4 w-4 text-blue-600" /><Eyebrow>CUSTOM DOMAIN</Eyebrow></div>
-                <p className="text-[11.5px] text-[#64748B] leading-relaxed">Optional. Use your own address, such as booking.yourpractice.com, instead of the booking link above.</p>
-                <div className="space-y-1.5"><label htmlFor="custom-domain" className="text-[11.5px] font-bold text-[#475569]">Custom domain</label><input id="custom-domain" type="text" value={customDomain} onChange={(e) => setCustomDomain(e.target.value)} placeholder="booking.yourpractice.com" className={`${fieldCls} font-mono font-bold`} /></div>
-                {!customDomainTarget ? (
-                  <p className="text-[11.5px] text-[#64748B] leading-relaxed">
-                    Custom domains are not available yet. Clients book you at your booking link above.
-                  </p>
-                ) : customDomain && customDomainStatus !== 'ACTIVE' ? (
-                  <p className="text-[11.5px] text-[#64748B] leading-relaxed">
-                    Save, then at your domain provider add a <span className="font-bold">CNAME</span> record for{' '}
-                    <span className="font-mono font-bold text-[#0F172A]">{customDomain}</span> with the value{' '}
-                    <span className="font-mono font-bold text-[#0F172A]">{customDomainTarget}</span>, and press Verify.
-                  </p>
-                ) : null}
-                {customDomain && customDomainTarget ? (
-                  <div className="flex items-center justify-between gap-3 rounded-[12px] bg-[#F8FAFC] border border-[#E2E8F0] px-3 py-2.5">
-                    <div className="text-[11.5px] font-medium text-[#475569]">
-                      Status:{' '}
-                      <span className={`font-bold ${customDomainStatus === 'ACTIVE' ? 'text-emerald-700' : customDomainStatus === 'FAILED' ? 'text-red-700' : 'text-amber-700'}`}>
-                        {customDomainStatus}
-                      </span>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => void handleVerifyCustomDomain()}
-                      disabled={verifyingCustomDomain}
-                      className="h-[34px] px-3 rounded-[10px] bg-[#0F3A53] text-white text-[11px] font-bold disabled:opacity-60 cursor-pointer"
-                    >
-                      {verifyingCustomDomain ? 'Verifying…' : 'Verify domain'}
-                    </button>
-                  </div>
-                ) : null}
-                <button onClick={() => void handleSaveDomain()} disabled={savingDomain} className="h-[40px] px-[15px] rounded-[12px] border border-[#E2E8F0] bg-white text-[#0F172A] text-[12.5px] font-semibold cursor-pointer disabled:opacity-60">{savingDomain ? 'Saving…' : 'Save domain'}</button>
+                <p className="text-[12.5px] leading-[1.55] text-[#64748B]">
+                  <span className="mr-2 inline-flex items-center rounded-full bg-[#F1F5F9] px-2.5 py-0.5 text-[11px] font-bold uppercase tracking-[0.06em] text-[#475569]">Coming soon</span>
+                  Use your own address, like booking.yourpractice.com, on Pro and Clinic. Until then, clients book at your Unclutter Desk link above.
+                </p>
               </Card>
             </>
           )}
