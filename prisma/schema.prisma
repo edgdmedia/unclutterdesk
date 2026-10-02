@@ -94,6 +94,8 @@ model Tenant {
   availabilities          ConsultAvailability[]
   bookings                ConsultBooking[]
   discountCodes           DiscountCode[]
+  locations               PracticeLocation[]
+  weeklyTimes             TherapistWeeklyTime[]
   pendingInvites          ConsultPendingInvite[]
   universalForms          UniversalForm[]
   formTemplates           FormTemplate[]
@@ -261,16 +263,25 @@ model ConsultTherapistProfile {
   languages             String[] @default([])
   isPublic              Boolean  @default(true)
   acceptsGeneralBooking Boolean  @default(true)
-  videoProvider         String?  @default("JITSI") // "JITSI", "DAILY", "GOOGLE_MEET", "ZOOM"
+  videoProvider         String?  @default("BUILT_IN") // "BUILT_IN" (Unclutter Desk video) or "GOOGLE_MEET"
   dailyApiKey           String?
   googleRefreshToken    String?
   isVerified            Boolean  @default(true)
+  /// SET-06: what this therapist sees clients as. Both false is not allowed.
+  offersOnline         Boolean  @default(true)
+  offersInPerson       Boolean  @default(false)
+  /// The repeating week is stored as TherapistWeeklyTime rows; these two drive
+  /// how session times are laid out inside working hours.
+  sessionLengthMinutes Int      @default(50)
+  gapMinutes           Int      @default(10)
   createdAt             DateTime @default(now())
   updatedAt             DateTime @updatedAt
 
   tenant         Tenant                @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   profile        Profile               @relation(fields: [profileId], references: [id], onDelete: Cascade)
   availabilities ConsultAvailability[]
+  workLocations  TherapistLocation[]
+  weeklyTimes    TherapistWeeklyTime[]
 
   @@unique([tenantId, profileId])
   @@unique([tenantId, publicUsername])
@@ -293,8 +304,76 @@ model ConsultService {
   tenant         Tenant                @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   availabilities ConsultAvailability[]
   bookings       ConsultBooking[]
+  formats        ConsultServiceFormat[]
 
   @@index([tenantId, isActive])
+}
+
+// SET-07: a service offered in one format, at one price. priceKobo on the
+// service itself stays as the cheapest active format, so older screens work.
+model ConsultServiceFormat {
+  id        BigInt  @id @default(autoincrement())
+  serviceId BigInt
+  format    String  @db.VarChar(20) // "ONLINE" | "IN_PERSON"
+  priceKobo BigInt
+  isActive  Boolean @default(true)
+
+  service ConsultService @relation(fields: [serviceId], references: [id], onDelete: Cascade)
+
+  @@unique([serviceId, format])
+}
+
+// SET-06: a named place the practice sees clients. Clients get the address,
+// directions and a maps link after booking; they never choose a location.
+model PracticeLocation {
+  id         BigInt   @id @default(autoincrement())
+  tenantId   BigInt
+  name       String   @db.VarChar(120)
+  address    String   @db.VarChar(240)
+  city       String   @db.VarChar(80)
+  /// "Gate 2, second floor" — shown to clients after booking.
+  directions String?  @db.VarChar(500)
+  isActive   Boolean  @default(true)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  tenant         Tenant                @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  therapists     TherapistLocation[]
+  weeklyTimes    TherapistWeeklyTime[]
+  availabilities ConsultAvailability[]
+  bookings       ConsultBooking[]
+
+  @@index([tenantId, isActive])
+}
+
+model TherapistLocation {
+  profileId  BigInt
+  locationId BigInt
+
+  therapist ConsultTherapistProfile @relation(fields: [profileId], references: [profileId], onDelete: Cascade)
+  location  PracticeLocation        @relation(fields: [locationId], references: [id], onDelete: Cascade)
+
+  @@id([profileId, locationId])
+}
+
+// SET-06: one session time in the repeating week (weekday 0 = Monday), with
+// the formats it allows and, for in person, where.
+model TherapistWeeklyTime {
+  id             BigInt  @id @default(autoincrement())
+  tenantId       BigInt
+  profileId      BigInt
+  weekday        Int // 0 = Monday ... 6 = Sunday
+  start          String  @db.VarChar(5) // 'HH:MM', Lagos time
+  allowsOnline   Boolean @default(true)
+  allowsInPerson Boolean @default(false)
+  locationId     BigInt?
+
+  tenant    Tenant                  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  therapist ConsultTherapistProfile @relation(fields: [profileId], references: [profileId], onDelete: Cascade)
+  location  PracticeLocation?       @relation(fields: [locationId], references: [id], onDelete: SetNull)
+
+  @@unique([profileId, weekday, start])
+  @@index([tenantId, profileId])
 }
 
 model ConsultAvailability {
@@ -304,7 +383,13 @@ model ConsultAvailability {
   serviceId         BigInt?
   startsAt          DateTime
   endsAt            DateTime
+  /// Legacy, read-only: 'VIDEO' means online. New code reads the flags below.
   channel           String   @default("VIDEO")
+  allowsOnline      Boolean  @default(true)
+  allowsInPerson    Boolean  @default(false)
+  locationId        BigInt?
+  /// Changed for this date only; regeneration keeps it (SET-06).
+  customised        Boolean  @default(false)
   isActive          Boolean  @default(true)
   /// Made by staff for one booking at a time they chose. Never reopened to the
   /// public when that booking lapses or moves: it may sit outside working hours.
@@ -315,6 +400,7 @@ model ConsultAvailability {
   tenant    Tenant                  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   therapist ConsultTherapistProfile @relation(fields: [providerProfileId], references: [profileId], onDelete: Cascade)
   service   ConsultService?         @relation(fields: [serviceId], references: [id], onDelete: SetNull)
+  location  PracticeLocation?       @relation(fields: [locationId], references: [id], onDelete: SetNull)
   bookings  ConsultBooking[]
 
   @@index([tenantId, providerProfileId, startsAt, isActive])
@@ -351,8 +437,13 @@ model ConsultBooking {
   // a discounted booking.
   amountKobo                  BigInt?
   discountCodeUsed            String?
+  /// SET-06: what was bought - 'ONLINE' or 'IN_PERSON'. Old rows read as online.
+  format                      String    @default("ONLINE") @db.VarChar(20)
+  locationId                  BigInt?
   notes                       String?
   videoRoomName               String?
+  /// VID-01: which provider hosts this session's room, fixed when the room is first made.
+  videoProvider               String?   @db.VarChar(20)
   /// What happened, for staff. Seen by clinical roles only.
   internalSummary             String?   @db.Text
   /// The recap written for the client; emailed on request, never automatically.
@@ -364,6 +455,7 @@ model ConsultBooking {
   tenant          Tenant                    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   service         ConsultService            @relation(fields: [serviceId], references: [id])
   availability    ConsultAvailability       @relation(fields: [availabilityId], references: [id])
+  location        PracticeLocation?         @relation(fields: [locationId], references: [id], onDelete: SetNull)
   client          Profile                   @relation("ClientBookings", fields: [clientProfileId], references: [id])
   formSubmissions UniversalFormSubmission[]
   clinicalNotes   ClinicalNote[]
@@ -566,6 +658,25 @@ model Notification {
   @@index([profileId, status])
   @@index([profileId, createdAt])
   @@index([tenantId, createdAt])
+}
+
+/// VID-01: one person's time in one session's room, for budgets and planning.
+model VideoParticipant {
+  id         BigInt   @id @default(autoincrement())
+  tenantId   BigInt
+  bookingId  BigInt
+  profileId  BigInt
+  provider   String   @db.VarChar(20)
+  role       String   @db.VarChar(20)
+  joinedAt   DateTime @default(now())
+  lastSeenAt DateTime @default(now())
+  /// Whole minutes in the room: from heartbeats, replaced by Daily's own figure when it arrives.
+  minutes    Int      @default(0)
+  reconciled Boolean  @default(false)
+
+  @@index([tenantId, joinedAt])
+  @@index([provider, joinedAt])
+  @@index([bookingId])
 }
 
 model NotificationDispatch {

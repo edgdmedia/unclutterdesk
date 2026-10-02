@@ -6,7 +6,7 @@ import { useAuth } from '../../context/AuthContext';
 type Service = { id: string; title: string; durationMinutes: number; priceKobo: string };
 type StaffRow = { kind: 'member' | 'invite'; id: string; firstName: string | null; lastName: string | null; status: string; isTherapist: boolean };
 type Staff = { id: string; name: string };
-type Slot = { id: string; startsAt: string; endsAt: string };
+type Slot = { id: string; startsAt: string; endsAt: string; formats?: Array<'ONLINE' | 'IN_PERSON'>; location?: { id?: string; name: string; city: string } | null };
 type Payment = 'LINK' | 'PAID' | 'NONE';
 export type StaffBookingResult = { bookingId: string; status: 'PENDING_PAYMENT' | 'CONFIRMED' };
 
@@ -48,6 +48,10 @@ export function StaffBookingDialog({
   const [mode, setMode] = useState<'slot' | 'custom'>('slot');
   const [slots, setSlots] = useState<Slot[]>([]);
   const [slotId, setSlotId] = useState('');
+  // SET-06: the format for this booking; a slot that allows one fixes it.
+  const [format, setFormat] = useState<'ONLINE' | 'IN_PERSON' | ''>('');
+  const [locationId, setLocationId] = useState('');
+  const [locations, setLocations] = useState<Array<{ id: string; name: string; city: string }>>([]);
   const [customAt, setCustomAt] = useState('');
   const [payment, setPayment] = useState<Payment>('LINK');
   const [amount, setAmount] = useState('');
@@ -89,7 +93,15 @@ export function StaffBookingDialog({
   }, [serviceId, providerId, mode]);
 
   const service = useMemo(() => services.find((s) => s.id === serviceId), [services, serviceId]);
-  const ready = clientId && serviceId && (mode === 'slot' ? slotId : customAt);
+  const chosenSlot = slots.find((x) => x.id === slotId) ?? null;
+  const slotFormats = chosenSlot?.formats?.length ? chosenSlot.formats : ['ONLINE'] as Array<'ONLINE' | 'IN_PERSON'>;
+  useEffect(() => {
+    if (mode !== 'custom') return;
+    api.get<typeof locations>('/v1/tenant/locations', tenantHeaders).then((r) => setLocations(r ?? [])).catch(() => setLocations([]));
+  }, [mode]);
+  const ready = clientId && serviceId && (mode === 'slot' ? slotId : customAt)
+    && (mode === 'custom' ? format !== '' : slotFormats.length === 1 || format !== '')
+    && (format !== 'IN_PERSON' || (mode === 'slot' ? true : locationId !== ''));
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
@@ -101,6 +113,8 @@ export function StaffBookingDialog({
         serviceId,
         providerProfileId: providerId || undefined,
         ...(mode === 'slot' ? { availabilityId: slotId } : { startsAt: new Date(customAt).toISOString() }),
+        format: format || (slotFormats.length === 1 ? slotFormats[0] : undefined),
+        locationId: format === 'IN_PERSON' && mode === 'custom' ? locationId : undefined,
         payment,
         ...(payment === 'PAID' && amount ? { amountKobo: String(Math.round(Number(amount) * 100)) } : {}),
         note: note || undefined,
@@ -169,16 +183,16 @@ export function StaffBookingDialog({
         <fieldset className="space-y-2">
           <legend className="text-[12px] font-semibold text-[#334155] mb-1">Time</legend>
           <div className="flex gap-2">
-            <label className={radio(mode === 'slot')}><input type="radio" name="mode" checked={mode === 'slot'} onChange={() => setMode('slot')} aria-label="Open slots" /><span className="text-[13px]">Open slots</span></label>
-            <label className={radio(mode === 'custom')}><input type="radio" name="mode" checked={mode === 'custom'} onChange={() => setMode('custom')} aria-label="Custom time" /><span className="text-[13px]">Custom time</span></label>
+            <label className={radio(mode === 'slot')}><input type="radio" name="mode" checked={mode === 'slot'} onChange={() => { setMode('slot'); }} aria-label="Open slots" /><span className="text-[13px]">Open slots</span></label>
+            <label className={radio(mode === 'custom')}><input type="radio" name="mode" checked={mode === 'custom'} onChange={() => { setMode('custom'); setFormat((f) => f || 'ONLINE'); }} aria-label="Custom time" /><span className="text-[13px]">Custom time</span></label>
           </div>
           {mode === 'slot' ? (
             serviceId ? (
               slots.length ? (
                 <div className="grid grid-cols-2 gap-2">
                   {slots.map((s) => (
-                    <label key={s.id} data-testid={`slot-${s.id}`} className={radio(slotId === s.id)} onClick={() => setSlotId(s.id)}>
-                      <input type="radio" name="slot" checked={slotId === s.id} onChange={() => setSlotId(s.id)} aria-label={when(s.startsAt)} />
+                    <label key={s.id} data-testid={`slot-${s.id}`} className={radio(slotId === s.id)} onClick={() => { setSlotId(s.id); const fs: Array<'ONLINE' | 'IN_PERSON'> = s.formats?.length ? s.formats : ['ONLINE']; setFormat(fs.length === 1 ? fs[0] : ''); }}>
+                      <input type="radio" name="slot" checked={slotId === s.id} onChange={() => { setSlotId(s.id); const fs: Array<'ONLINE' | 'IN_PERSON'> = s.formats?.length ? s.formats : ['ONLINE']; setFormat(fs.length === 1 ? fs[0] : ''); }} aria-label={when(s.startsAt)} />
                       <span className="text-[12.5px]">{when(s.startsAt)}</span>
                     </label>
                   ))}
@@ -196,6 +210,27 @@ export function StaffBookingDialog({
             </label>
           )}
         </fieldset>
+
+        {(mode === 'custom' || slotFormats.length > 1) ? (
+          <fieldset className="space-y-2">
+            <legend className="text-[12px] font-semibold text-[#334155] mb-1">Format</legend>
+            {(['ONLINE', 'IN_PERSON'] as const).filter((f) => mode === 'custom' || slotFormats.includes(f)).map((f) => (
+              <label key={f} className={radio(format === f)}>
+                <input type="radio" name="format" checked={format === f} onChange={() => setFormat(f)} aria-label={f === 'ONLINE' ? 'Online' : 'In person'} />
+                <span className="text-[13px]">{f === 'ONLINE' ? 'Online' : 'In person'}</span>
+              </label>
+            ))}
+            {format === 'IN_PERSON' && mode === 'custom' ? (
+              <label className="block text-[12px] font-semibold text-[#334155]">
+                Location
+                <select className="mt-1 w-full h-[40px] px-3 rounded-[12px] border border-[#E2E8F0] text-[13px]" value={locationId} onChange={(e) => setLocationId(e.target.value)} aria-label="Location">
+                  <option value="">Choose a location…</option>
+                  {locations.map((l) => <option key={l.id} value={l.id}>{l.name}, {l.city}</option>)}
+                </select>
+              </label>
+            ) : null}
+          </fieldset>
+        ) : null}
 
         <fieldset className="space-y-2">
           <legend className="text-[12px] font-semibold text-[#334155] mb-1">Payment</legend>

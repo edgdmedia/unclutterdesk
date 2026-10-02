@@ -11,6 +11,7 @@ import { RequestService } from '../requests/request.service';
 import { FormTemplateService } from '../intake/form-template.service';
 import { AuthService } from '../auth/auth.service';
 import { PlatformAdminGuard } from './platform-admin.guard';
+import { VideoUsageService, monthStart } from '../video/video-usage.service';
 import {
   ACCESS_COOKIE,
   REFRESH_COOKIE,
@@ -31,6 +32,7 @@ export class AdminController {
     private readonly instruments: InstrumentService,
     private readonly requests: RequestService,
     private readonly templates: FormTemplateService,
+    private readonly video: VideoUsageService,
   ) {}
 
   @Post('auth/login')
@@ -65,6 +67,19 @@ export class AdminController {
   @ApiOperation({ summary: 'Platform-wide aggregate statistics' })
   getStats() {
     return this.adminService.getStats();
+  }
+
+  /** VID-01: one month's video minutes, by provider and by practice. Defaults to this month in WAT. */
+  @Get('video-usage')
+  @UseGuards(PlatformAdminGuard)
+  @ApiOperation({ summary: "A month's video minutes by provider and by practice" })
+  videoUsage(@Query('month') month?: string) {
+    if (!month) {
+      // monthStart is a UTC instant one hour before WAT midnight; an hour later is inside the month.
+      const start = new Date(monthStart(new Date()).getTime() + 60 * 60 * 1000);
+      month = `${start.getUTCFullYear()}-${String(start.getUTCMonth() + 1).padStart(2, '0')}`;
+    }
+    return this.video.report(month);
   }
 
   @Get('tenants')

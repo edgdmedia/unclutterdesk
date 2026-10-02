@@ -30,3 +30,8 @@ update-check/
 
 # Stray vite-plugin-pwa scratch output (hashed dirs at repo root)
 /[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]*/
+
+# Private keys (the JaaS key pair is downloaded as .pk/.pub). Never commit them.
+*.pk
+*.pem
+deploy/*.pub

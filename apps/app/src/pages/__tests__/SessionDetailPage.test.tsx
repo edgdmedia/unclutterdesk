@@ -23,8 +23,9 @@ const DETAIL = {
   status: 'CONFIRMED', paymentMethod: 'PAYSTACK', amountKobo: '3500000', holdExpiresAt: null, bookedBy: 'Frank Desk',
   client: { id: '40', name: 'Ada Ola' }, serviceTitle: 'Individual Therapy',
   provider: { id: '6', name: 'Segun Ade' }, channel: 'VIDEO',
-  clientEmail: 'ada@example.com', clientPhone: '0801', videoRoomLink: 'https://meet.jit.si/room-9',
+  clientEmail: 'ada@example.com', clientPhone: '0801', videoRoomLink: '/session/900',
   note: null, internalSummary: null, clientRecap: null, clientRecapSentAt: null,
+  format: 'ONLINE', location: null,
   can: { edit: true, summary: true, markPaid: true },
 };
 
@@ -41,6 +42,24 @@ function renderPage(detail = DETAIL, submissions: unknown[] = []) {
   );
 }
 
+// SET-06: the session page says where the session happens.
+describe('format and place on the session page', () => {
+  it('shows the location for an in-person session and no join button', async () => {
+    renderPage({ ...DETAIL, format: 'IN_PERSON', channel: 'IN_PERSON', videoRoomLink: null, location: { id: '4', name: 'Lekki clinic', city: 'Lagos' } });
+    expect(await screen.findByText(/In person · Lekki clinic/)).toBeTruthy();
+    expect(screen.queryByRole('link', { name: /Start session/ })).toBeNull();
+  });
+
+  it('keeps the join button for an online session', async () => {
+    // VID-02: Start shows while the room is open, so pin the clock inside the session.
+    vi.useFakeTimers({ shouldAdvanceTime: true, now: new Date('2026-10-01T09:05:00Z') });
+    renderPage({ ...DETAIL, format: 'ONLINE' });
+    expect(await screen.findByRole('link', { name: /Start session/ })).toBeTruthy();
+    expect(screen.getByText('Online')).toBeTruthy();
+    vi.useRealTimers();
+  });
+});
+
 describe('SessionDetailPage', () => {
   it('shows who, what, when and who booked it', async () => {
     renderPage();
@@ -50,10 +69,20 @@ describe('SessionDetailPage', () => {
     expect(screen.getByText(/Booked by Frank Desk/)).toBeTruthy();
   });
   it('start and prep point at the existing flows', async () => {
+    // VID-02: Start only works while the room is open, so pin the clock inside the session.
+    vi.useFakeTimers({ shouldAdvanceTime: true, now: new Date('2026-10-01T09:05:00Z') });
     renderPage();
     await waitFor(() => screen.getByRole('heading', { name: 'Ada Ola' }));
     expect(screen.getByRole('link', { name: /Start session/ }).getAttribute('href')).toBe('/session/900');
     expect(screen.getByRole('link', { name: /Session prep/ }).getAttribute('href')).toBe('/session/900/prep');
+    vi.useRealTimers();
+  });
+  it('offers no Start once the session is over', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true, now: new Date('2026-10-01T12:00:00Z') });
+    renderPage();
+    await waitFor(() => screen.getByRole('heading', { name: 'Ada Ola' }));
+    expect(screen.queryByRole('link', { name: /Start session/ })).toBeNull();
+    vi.useRealTimers();
   });
   it('saves the summary and sends the recap', async () => {
     apiPatch.mockResolvedValue({ id: '900' });

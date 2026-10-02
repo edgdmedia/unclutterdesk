@@ -20,6 +20,8 @@ type PublicTenantInfo = {
   primaryColor?: string;
   secondaryColor?: string;
   logoUrl?: string | null;
+  locations?: Array<{ name: string; city: string }>;
+  formats?: Array<'ONLINE' | 'IN_PERSON'>;
 };
 
 type PublicTherapist = {
@@ -110,7 +112,13 @@ export function PublicProfilePage() {
   const experience = therapist?.yearsExperience
     ? `${therapist.yearsExperience}+ years of clinical practice`
     : null;
-  const locations = [tenant?.address || tenant?.city, 'Online via secure video'].filter(Boolean) as string[];
+  // BKG-07/SET-06: the practice's real cities and formats, not a stock line.
+  const cities = [...new Set((tenant?.locations ?? []).map((l) => l.city).filter(Boolean))] as string[];
+  const fmts = (tenant?.formats ?? []).map((f) => (f === 'IN_PERSON' ? 'in person' : 'online'));
+  const locations = [
+    cities.length ? `In person in ${cities.join(', ')}` : tenant?.address || tenant?.city || null,
+    fmts.length ? `Sessions: ${fmts.join(' & ')}` : 'Online via secure video',
+  ].filter(Boolean) as string[];
   const languages = therapist?.languages ?? [];
 
   return (

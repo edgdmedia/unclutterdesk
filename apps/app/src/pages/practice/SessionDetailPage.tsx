@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { JoinButton } from '../../components/video/JoinButton';
 import { Link, useParams } from 'react-router-dom';
 import { CalendarClock, CheckCircle2, Download, FileText, Loader2, Video } from 'lucide-react';
 import { Card, Eyebrow, Page, PageHeader, StatTile, StatusBadge, useToast } from '@unclutterdesk/ui';
@@ -10,6 +11,8 @@ interface SessionDetail extends SessionRow {
   clientEmail: string;
   clientPhone: string | null;
   videoRoomLink: string | null;
+  format?: string;
+  location?: { id: string; name: string; city: string } | null;
   note: { id: string; status: 'DRAFT' | 'COMPLETED' } | null;
   internalSummary: string | null;
   clientRecap: string | null;
@@ -89,10 +92,15 @@ export function SessionDetailPage() {
           title={d.client.name}
           actions={
             <>
-              {d.channel === 'VIDEO' && d.videoRoomLink ? (
-                <Link to={`/session/${d.id}`} className="h-[40px] px-4 rounded-[12px] bg-[#0F3A53] text-white text-[12.5px] font-bold inline-flex items-center gap-2 cursor-pointer">
-                  <Video className="h-4 w-4" /> Start session
-                </Link>
+              {d.videoRoomLink && d.status === 'CONFIRMED' ? (
+                <JoinButton
+                  startsAt={d.startsAt}
+                  endsAt={d.endsAt}
+                  to={`/session/${d.id}`}
+                  label="Start session"
+                  className="h-[40px] px-4 rounded-[12px] bg-[#0F3A53] text-white text-[12.5px] font-bold inline-flex items-center gap-2 cursor-pointer"
+                  waitingClassName="h-[40px] px-4 rounded-[12px] bg-[#E2E8F0] text-[#64748B] text-[12.5px] font-bold inline-flex items-center gap-2 cursor-not-allowed"
+                />
               ) : null}
               <Link to={`/session/${d.id}/prep`} className="h-[40px] px-4 rounded-[12px] bg-white border border-[#CBD5E1] text-[#0F172A] text-[12.5px] font-bold inline-flex items-center gap-2 cursor-pointer">
                 <FileText className="h-4 w-4" /> Session prep
@@ -135,7 +143,8 @@ export function SessionDetailPage() {
           <StatTile variant="inset" size="sm" label="WHEN" value={longWhen(d.startsAt)} />
           <StatTile variant="inset" size="sm" label="SERVICE" value={d.serviceTitle} />
           <StatTile variant="inset" size="sm" label="PRACTITIONER" value={d.provider.name} />
-          <StatTile variant="inset" size="sm" label="PAID" value={`${d.paymentMethod === 'NONE' ? 'No charge' : naira(d.amountKobo)} · ${d.channel === 'VIDEO' ? 'Video' : 'In person'}`} />
+          <StatTile variant="inset" size="sm" label="PAID" value={`${d.paymentMethod === 'NONE' ? 'No charge' : naira(d.amountKobo)}`} />
+          <StatTile variant="inset" size="sm" label="FORMAT" value={d.format === 'IN_PERSON' && d.location ? `In person · ${d.location.name}` : d.format === 'IN_PERSON' ? 'In person' : 'Online'} />
         </div>
         <p className="text-[12.5px] text-[#64748B]">
           {d.clientEmail}{d.clientPhone ? ` · ${d.clientPhone}` : ''}

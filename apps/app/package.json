@@ -14,8 +14,12 @@
     "check:layout": "node scripts/check-layout.mjs"
   },
   "dependencies": {
+    "@daily-co/daily-js": "^0.92.2",
+    "@daily-co/daily-react": "^0.26.0",
+    "@jitsi/react-sdk": "^1.4.4",
     "@unclutterdesk/shared": "workspace:*",
     "@unclutterdesk/ui": "workspace:*",
+    "jotai": "^2.20.3",
     "lucide-react": "^0.428.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",

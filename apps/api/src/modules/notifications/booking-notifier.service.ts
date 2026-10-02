@@ -1,18 +1,17 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '../../common/prisma/prisma.service';
 import { tenantWebOrigin } from '../../common/origins';
+import { joinLinkFor } from '../video/room-links';
 import { chargedKobo } from '../../common/revenue';
 import { formatNaira } from '../billing/subscription-plans';
 import { NotificationService } from './notification.service';
+import { mapsLink } from '../consult/formats';
 import { listPendingForms } from '../intake/default-forms';
 import { payLinkToken } from '../consult/staff-booking-rules';
 
 /** Why a booking payment is being refunded (BKG-09). */
 export type RefundReason = 'time_taken' | 'cancelled' | 'duplicate';
 
-/** A room name may already be a full URL (a scheduled provider room). */
-const roomLink = (roomName: string | null) =>
-  roomName ? (roomName.startsWith('http') ? roomName : `https://meet.jit.si/${roomName}`) : null;
 
 /**
  * Every message about a booking lives here, so the rules cannot drift apart:
@@ -37,6 +36,7 @@ export class BookingNotifier {
         service: { select: { title: true, priceKobo: true } },
         availability: { select: { startsAt: true, channel: true, providerProfileId: true } },
         client: { select: { firstName: true, lastName: true, email: true } },
+        location: { select: { name: true, address: true, city: true, directions: true } },
       },
     });
   }
@@ -99,30 +99,42 @@ export class BookingNotifier {
   }
 
   private async confirmedEmail(b: Awaited<ReturnType<BookingNotifier['load']>> & object): Promise<void> {
-    const join = b.availability.channel === 'VIDEO' ? roomLink(b.videoRoomName) : null;
-    const portal = `${tenantWebOrigin(b.tenant)}/portal`;
+    // SET-06: an in-person session carries the address and a maps link where
+    // an online one carries the join link. Rows predating the format column
+    // read as online.
+    const inPerson = b.format === 'IN_PERSON' && b.location;
+    // Without a format, the slot's old channel says whether it was in person.
+    const online = b.format ? b.format !== 'IN_PERSON' : (b.availability as { channel?: string }).channel !== 'OFFICE';
+    const origin = tenantWebOrigin(b.tenant);
+    // VID-01: the session's room in the app (or the therapist's Google Meet).
+    const join = online ? joinLinkFor(origin, b) : null;
+    const portal = `${origin}/portal`;
     // BKG-06: point the client at the forms they still owe, before the session.
     const pending = await this.pendingFormsFor(b.tenantId, b.clientProfileId).catch(() => []);
-    const formsLine = pending.length
-      ? `\n\nBefore your first session:\n${pending.map((f) => `${f.title} — ${tenantWebOrigin(b.tenant)}/forms/${f.id}?booking=${b.id} (${f.minutes} min)`).join('\n')}`
-      : '';
     await this.notifications
       .sendEmail({
         to: b.client.email,
         type: 'bookings.confirmed',
         title: 'Your session is booked',
-        message:
-          `${b.tenant.name} has confirmed your ${b.service.title} with ${await this.therapistName(b.availability.providerProfileId)} ` +
-          `on ${this.when(b.availability.startsAt)}.` +
-          (join ? ` Join link: ${join}` : '') +
-          ` Manage your booking any time — reschedule, cancel, pay or fill in your forms — at ${portal}.` + formsLine,
-        link: join ?? portal,
-        actionLabel: join ? 'Join the session' : 'View my bookings',
+        message: `${b.tenant.name} has confirmed your session.`,
+        details: [
+          { label: 'Session', value: b.service.title },
+          { label: 'With', value: await this.therapistName(b.availability.providerProfileId) },
+          { label: 'When', value: this.when(b.availability.startsAt) },
+          { label: 'Where', value: inPerson ? `${b.location.name}, ${b.location.address}, ${b.location.city}${b.location.directions ? `. ${b.location.directions}` : ''}` : online ? 'Online (video)' : 'In person' },
+        ],
+        link: inPerson ? mapsLink(b.location.address, b.location.city) : join ?? portal,
+        actionLabel: inPerson ? 'Open in Google Maps' : join ? 'Join session (opens 15 minutes before)' : 'View my bookings',
+        links: [
+          ...pending.map((f) => ({ label: `Before your first session: ${f.title} (${f.minutes} min)`, url: `${origin}/forms/${f.id}?booking=${b.id}` })),
+          { label: 'Manage your booking', url: portal },
+        ],
         tenantId: b.tenantId,
         profileId: b.clientProfileId,
       })
       .catch((err) => this.logger.warn(`Could not send the confirmation email for booking ${b.id}: ${(err as Error).message}`));
   }
+
   /** BKG-06: the default forms this client still needs, for the app's response. */
   pendingFormsFor(tenantId: bigint, clientProfileId: bigint) {
     return listPendingForms(this.prisma as any, tenantId, clientProfileId);

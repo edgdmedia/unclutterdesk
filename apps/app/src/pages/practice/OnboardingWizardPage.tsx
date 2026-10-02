@@ -178,6 +178,14 @@ function OnboardingWizard({ tenantId }: { tenantId: string }) {
 
   const [daysOn, setDaysOn] = useState<boolean[]>(saved?.daysOn ?? [true, true, true, true, true, false, false]);
   const [rate, setRate] = useState(saved?.rate ?? '35,000');
+  // SET-06/ONB-05: how the practice sees clients, its first location, and per-format rates.
+  const [seesClients, setSeesClients] = useState<'ONLINE' | 'IN_PERSON' | 'BOTH'>(saved?.seesClients ?? 'ONLINE');
+  const [locName, setLocName] = useState<string>(saved?.locName ?? '');
+  const [locAddress, setLocAddress] = useState<string>(saved?.locAddress ?? saved?.address ?? '');
+  const [locCity, setLocCity] = useState<string>(saved?.locCity ?? saved?.city ?? '');
+  const [locDirections, setLocDirections] = useState<string>(saved?.locDirections ?? '');
+  const [rateInPerson, setRateInPerson] = useState<string>(saved?.rateInPerson ?? '');
+  const [samePrice, setSamePrice] = useState(true);
   const [cancellationHours, setCancellationHours] = useState(saved?.cancellationHours ?? 24);
   const [copied, setCopied] = useState(false);
 
@@ -435,38 +443,72 @@ function OnboardingWizard({ tenantId }: { tenantId: string }) {
   }
 
   async function saveAvailability(): Promise<boolean> {
+    const inPerson = seesClients !== 'ONLINE';
+    if (inPerson && !locAddress.trim()) {
+      setError('Add the street address clients will come to.');
+      return false;
+    }
     setSaving(true);
     setError(null);
     try {
-      const enabledCount = daysOn.filter(Boolean).length;
-      await api.patch('/v1/consult/therapist/availability', {
-        days: daysOn.map((enabled, index) => ({
-          day: index,
-          enabled,
-          windows: enabled ? [{ start: '09:00', end: '17:00' }] : [],
-        })),
-        sessionLengthMinutes: 50,
-        gapMinutes: 10,
-        cancellationHours,
+      // Save order (spec): location -> therapist formats -> service formats -> weekly times.
+      let locationId: string | null = null;
+      if (inPerson) {
+        const name = locName.trim() || practiceName;
+        const existingLocations = await api.get<Array<{ id: string; name: string }>>('/v1/tenant/locations').catch(() => []);
+        const found = existingLocations.find((l) => l.name === name);
+        locationId = found?.id ?? (await api.post<{ id: string }>('/v1/tenant/locations', {
+          name, address: locAddress.trim(), city: locCity.trim(), directions: locDirections.trim() || null,
+        })).id;
+      }
+      await api.patch('/v1/consult/therapist/profile', {
+        offersOnline: seesClients !== 'IN_PERSON',
+        offersInPerson: inPerson,
+        locationIds: locationId ? [locationId] : [],
       });
+
+      const enabledCount = daysOn.filter(Boolean).length;
+      const formats = seesClients === 'ONLINE'
+        ? [{ format: 'ONLINE', priceKobo: nairaToKobo(rate), isActive: true }]
+        : seesClients === 'IN_PERSON'
+          ? [{ format: 'IN_PERSON', priceKobo: nairaToKobo(rate), isActive: true }]
+          : [
+            { format: 'ONLINE', priceKobo: nairaToKobo(rate), isActive: true },
+            { format: 'IN_PERSON', priceKobo: nairaToKobo(samePrice ? rate : rateInPerson || rate), isActive: true },
+          ];
       if (enabledCount > 0) {
         // The wizard can be re-run from the dashboard. Reprice the service it
-        // made last time; posting again left a second "Individual Therapy" at
-        // the old price on the booking page.
+        // made last time; posting again left a second "Individual Therapy".
         const existing = await api.get<Array<{ id: string; title: string; isActive: boolean }>>('/v1/consult/services');
         const current =
-          existing.find((s) => s.isActive && s.title === 'Individual Therapy') ?? existing.find((s) => s.isActive);
+          existing.find((x) => x.isActive && x.title === 'Individual Therapy') ?? existing.find((x) => x.isActive);
         if (current) {
-          await api.patch(`/v1/consult/services/${current.id}`, { priceKobo: nairaToKobo(rate) });
+          await api.patch(`/v1/consult/services/${current.id}`, { formats });
         } else {
           await api.post('/v1/consult/services', {
             title: 'Individual Therapy',
             description: 'One-on-one session with your therapist.',
             durationMinutes: 50,
-            priceKobo: nairaToKobo(rate),
+            formats,
           });
         }
       }
+
+      // Default week (spec): 09:00–17:00 hourly on the chosen days; "Both"
+      // gives mornings in person and afternoons online. Editable later.
+      const times: string[] = [];
+      for (let t = 9 * 60; t + 50 <= 17 * 60; t += 60) times.push(`${String(Math.floor(t / 60)).padStart(2, '0')}:${String(t % 60).padStart(2, '0')}`);
+      const weeklyTimes = daysOn.flatMap((on, weekday) =>
+        on
+          ? times.map((start) => ({
+            weekday,
+            start,
+            formats: seesClients === 'BOTH' ? (Number(start.slice(0, 2)) < 13 ? ['IN_PERSON'] : ['ONLINE']) : seesClients === 'IN_PERSON' ? ['IN_PERSON'] : ['ONLINE'],
+            locationId: seesClients === 'ONLINE' ? null : locationId,
+          }))
+          : [],
+      );
+      await api.patch('/v1/consult/therapist/availability', { weeklyTimes, sessionLengthMinutes: 50, gapMinutes: 10, cancellationHours });
       return true;
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Unable to save your availability and rates.');
@@ -685,16 +727,7 @@ function OnboardingWizard({ tenantId }: { tenantId: string }) {
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div>
-                      <label className={labelCls}>City</label>
-                      <input type="text" value={city} onChange={(e) => setCity(e.target.value)} placeholder="e.g. Lagos" className={inputCls} />
-                    </div>
-                    <div>
-                      <label className={labelCls}>Street Address <span className="text-[#94A3B8] font-normal">(optional)</span></label>
-                      <input type="text" value={address} onChange={(e) => setAddress(e.target.value)} placeholder="e.g. 12 Admiralty Way" className={inputCls} />
-                    </div>
-                  </div>
+                  <p className="text-[12px] text-[#64748B] font-medium">Addresses now live in <strong className="text-[#0F172A]">Locations</strong> — you will add your first one on the Services step.</p>
                 </div>
 
                 {error && <p className="text-xs font-semibold text-red-600 bg-red-50 border border-red-200 rounded-[14px] px-4 py-3">{error}</p>}
@@ -907,6 +940,42 @@ function OnboardingWizard({ tenantId }: { tenantId: string }) {
                     </div>
 
                     <div>
+                      <label className={labelCls}>How do you see clients?</label>
+                      <div className="grid grid-cols-3 gap-2 mt-2">
+                        {([['ONLINE', 'Online'], ['IN_PERSON', 'In person'], ['BOTH', 'Both']] as const).map(([v, nm]) => (
+                          <label key={v} className={`h-[48px] rounded-[14px] border flex items-center justify-center gap-2 text-xs font-bold cursor-pointer ${seesClients === v ? 'text-white border-transparent' : 'bg-[#F8FAFC] text-[#64748B] border-[#E2E8F0]'}`} style={{ backgroundColor: seesClients === v ? primaryColor : undefined }}>
+                            <input type="radio" name="sees-clients" value={v} aria-label={nm} checked={seesClients === v} onChange={() => setSeesClients(v)} className="sr-only" />
+                            {nm}
+                          </label>
+                        ))}
+                      </div>
+                      {/* ONB-08: video needs no decision during setup. */}
+                      {seesClients !== 'IN_PERSON' ? (
+                        <p className="text-[11px] text-[#64748B] mt-2">Online sessions run in Unclutter Desk's own video room. You can switch to Google Meet later in My profile.</p>
+                      ) : null}
+                    </div>
+                    {seesClients !== 'ONLINE' && (
+                      <div className="space-y-3 p-4 rounded-[16px] bg-[#F8FAFC] border border-[#E2E8F0]">
+                        <p className="text-[11px] font-black tracking-widest uppercase text-[#0F3A53]">Where do you see clients?</p>
+                        <div>
+                          <label className={labelCls}>Name</label>
+                          <input type="text" value={locName} onChange={(e) => setLocName(e.target.value)} placeholder={practiceName || 'Lekki clinic'} className={inputCls} />
+                        </div>
+                        <div>
+                          <label className={labelCls}>Street address</label>
+                          <input type="text" value={locAddress} onChange={(e) => setLocAddress(e.target.value)} placeholder="e.g. 12 Admiralty Way" className={inputCls} />
+                        </div>
+                        <div>
+                          <label className={labelCls}>City</label>
+                          <input type="text" value={locCity} onChange={(e) => setLocCity(e.target.value)} placeholder="e.g. Lagos" className={inputCls} />
+                        </div>
+                        <div>
+                          <label className={labelCls}>Directions for clients <span className="text-[#94A3B8] font-normal">(optional)</span></label>
+                          <input type="text" value={locDirections} onChange={(e) => setLocDirections(e.target.value)} placeholder="e.g. Gate 2, second floor" className={inputCls} />
+                        </div>
+                      </div>
+                    )}
+                    <div>
                       <label className={labelCls}>Default Rate per 50-min session</label>
                       <div className="h-[50px] bg-[#F8FAFC] border border-[#E2E8F0] rounded-[14px] px-4 flex items-center gap-2 focus-within:bg-white focus-within:border-[#0F3A53] transition-all mt-1.5">
                         <span className="text-sm font-bold text-[#0F172A]">₦</span>
@@ -921,6 +990,20 @@ function OnboardingWizard({ tenantId }: { tenantId: string }) {
                       </div>
                       <p className="text-[11px] text-[#94A3B8] mt-2">This creates your first "Individual Therapy" service automatically.</p>
                     </div>
+                    {seesClients === 'BOTH' && (
+                      <div className="space-y-3">
+                        <label className="flex items-center gap-2 text-[13px] font-bold text-[#0F172A] cursor-pointer">
+                          <input type="checkbox" aria-label="Same price for both" checked={samePrice} onChange={(e) => setSamePrice(e.target.checked)} />
+                          Same price for both
+                        </label>
+                        {!samePrice && (
+                          <div>
+                            <label className={labelCls}>Price in person (₦)</label>
+                            <input type="text" inputMode="numeric" value={rateInPerson} onChange={(e) => setRateInPerson(e.target.value)} placeholder={rate} className={inputCls} />
+                          </div>
+                        )}
+                      </div>
+                    )}
                   </div>
 
                   <div className="space-y-6">

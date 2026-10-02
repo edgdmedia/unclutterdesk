@@ -131,29 +131,18 @@ describe('booking a slot', () => {
   });
 });
 
-describe('video room names', () => {
+describe('video rooms at booking', () => {
   /**
-   * Jitsi rooms are unauthenticated and are created when someone joins, so a
-   * predictable name lets a stranger wait inside the session. The name was
-   * `unclutterdesk-session-${Date.now()}`.
+   * VID-01: rooms are made on the first join, by the video router, so booking
+   * stores no room and returns no provider link. The room names themselves
+   * are random (providers.spec.ts).
    */
-  async function roomNameFrom(service: ConsultService, tx: any) {
-    await service.createBooking(TENANT, 5n, dto as any).catch(() => undefined);
-    return tx.consultBooking.create.mock.calls[0][0].data.videoRoomName as string;
-  }
-
-  it('is not derived from the clock', async () => {
+  it('makes no room and returns no meet.jit.si link', async () => {
     const { service, tx } = makeService();
-    const name = await roomNameFrom(service, tx);
-
-    expect(name).toMatch(/^unclutterdesk-session-[0-9a-f]{32}$/);
-    // A millisecond timestamp is 13 digits; the old scheme would match this.
-    expect(name).not.toMatch(/^unclutterdesk-session-\d{13}$/);
-  });
-
-  it('differs between two bookings made in the same millisecond', async () => {
-    const a = makeService();
-    const b = makeService();
-    expect(await roomNameFrom(a.service, a.tx)).not.toBe(await roomNameFrom(b.service, b.tx));
+    const result: any = await service.createBooking(TENANT, 5n, dto as any).catch(() => null);
+    const data = tx.consultBooking.create.mock.calls[0]?.[0]?.data ?? {};
+    expect(data.videoRoomName ?? null).toBeNull();
+    if (result) expect(result).not.toHaveProperty('videoRoomLink');
+    expect(JSON.stringify(result ?? {}, (_k, v) => (typeof v === 'bigint' ? v.toString() : v))).not.toMatch(/meet\.jit\.si/);
   });
 });

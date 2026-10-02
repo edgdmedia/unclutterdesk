@@ -33,6 +33,12 @@ describe('client routes on the practice host', () => {
     expect(await screen.findByText(/sign in to see your sessions/i)).toBeTruthy();
   });
 
+  it("serves a session's room, asking a signed-out visitor to sign in", async () => {
+    get.mockResolvedValue({ upcoming: [], past: [] });
+    at('/portal/sessions/900/room');
+    expect(await screen.findByText(/sign in to join your session/i)).toBeTruthy();
+  });
+
   it('serves the client login', async () => {
     get.mockResolvedValue({});
     at('/login');

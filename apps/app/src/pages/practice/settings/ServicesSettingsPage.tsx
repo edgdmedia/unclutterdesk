@@ -3,6 +3,8 @@ import { Plus, Pencil, Power, PowerOff, Clock } from 'lucide-react';
 import { Card, Eyebrow, useBrand, useToast } from '@unclutterdesk/ui';
 import { api } from '../../../utils/apiClient';
 
+type ServiceFormat = { format: 'ONLINE' | 'IN_PERSON'; priceKobo: string; isActive: boolean };
+
 interface Service {
   id: string;
   title: string;
@@ -10,6 +12,7 @@ interface Service {
   durationMinutes: number;
   priceKobo: string;
   isActive: boolean;
+  formats?: ServiceFormat[];
 }
 
 interface Draft {
@@ -17,10 +20,14 @@ interface Draft {
   title: string;
   description: string;
   durationMinutes: string;
-  priceNaira: string;
+  onlineOn: boolean;
+  onlineNaira: string;
+  inPersonOn: boolean;
+  inPersonNaira: string;
+  samePrice: boolean;
 }
 
-const EMPTY_DRAFT: Draft = { title: '', description: '', durationMinutes: '50', priceNaira: '' };
+const EMPTY_DRAFT: Draft = { title: '', description: '', durationMinutes: '50', onlineOn: true, onlineNaira: '', inPersonOn: false, inPersonNaira: '', samePrice: false };
 
 function formatNaira(kobo: string): string {
   return `₦${(Number(kobo) / 100).toLocaleString('en-NG', { maximumFractionDigits: 2 })}`;
@@ -69,12 +76,18 @@ export function ServicesSettingsPage() {
 
   function edit(service: Service) {
     setError(null);
+    const online = service.formats?.find((f) => f.format === 'ONLINE');
+    const face = service.formats?.find((f) => f.format === 'IN_PERSON');
     setDraft({
       id: service.id,
       title: service.title,
       description: service.description ?? '',
       durationMinutes: String(service.durationMinutes),
-      priceNaira: String(Number(service.priceKobo) / 100),
+      onlineOn: online ? online.isActive : true,
+      onlineNaira: String(Number(online?.priceKobo ?? service.priceKobo) / 100),
+      inPersonOn: face ? face.isActive : false,
+      inPersonNaira: String(Number(face?.priceKobo ?? service.priceKobo) / 100),
+      samePrice: false,
     });
   }
 
@@ -87,7 +100,10 @@ export function ServicesSettingsPage() {
       title: draft.title,
       description: draft.description || null,
       durationMinutes: Number(draft.durationMinutes),
-      priceKobo: nairaToKobo(draft.priceNaira),
+      formats: [
+        { format: 'ONLINE', priceKobo: nairaToKobo(draft.onlineNaira), isActive: draft.onlineOn },
+        { format: 'IN_PERSON', priceKobo: nairaToKobo(draft.samePrice ? draft.onlineNaira : draft.inPersonNaira), isActive: draft.inPersonOn },
+      ],
     };
     try {
       if (draft.id) {
@@ -176,7 +192,13 @@ export function ServicesSettingsPage() {
                     ) : null}
                     <div className="mt-2 flex items-center gap-3 text-xs font-semibold text-[#475569]">
                       <span className="inline-flex items-center gap-1"><Clock className="h-3.5 w-3.5" />{service.durationMinutes} min</span>
-                      <span>{Number(service.priceKobo) === 0 ? 'Free' : formatNaira(service.priceKobo)}</span>
+                      {service.formats?.filter((f) => f.isActive).length
+                        ? service.formats.filter((f) => f.isActive).map((f) => (
+                            <span key={f.format}>
+                              {f.format === 'ONLINE' ? 'Online' : 'In person'} {Number(f.priceKobo) === 0 ? 'Free' : formatNaira(f.priceKobo)}
+                            </span>
+                          ))
+                        : <span>{Number(service.priceKobo) === 0 ? 'Free' : formatNaira(service.priceKobo)}</span>}
                     </div>
                   </div>
                   <div className="flex items-center gap-1.5 shrink-0">
@@ -223,13 +245,36 @@ export function ServicesSettingsPage() {
                     <input id="service-duration" type="number" min={10} max={480} required value={draft.durationMinutes} onChange={(e) => setDraft({ ...draft, durationMinutes: e.target.value })} className={inputCls} />
                   </div>
                   <div className="space-y-1.5">
-                    <label htmlFor="service-price" className={labelCls}>Price (₦)</label>
-                    <input id="service-price" inputMode="decimal" value={draft.priceNaira} onChange={(e) => setDraft({ ...draft, priceNaira: e.target.value })} placeholder="0 for free" className={inputCls} />
+                    <span className={labelCls}>Format</span>
+                    <label className="flex items-center gap-2 text-[13px] font-semibold text-[#0F172A] cursor-pointer">
+                      <input type="checkbox" checked={draft.onlineOn} onChange={(e) => setDraft({ ...draft, onlineOn: e.target.checked })} aria-label="Online" />
+                      Online
+                    </label>
+                    <label className="flex items-center gap-2 text-[13px] font-semibold text-[#0F172A] cursor-pointer">
+                      <input type="checkbox" checked={draft.inPersonOn} onChange={(e) => setDraft({ ...draft, inPersonOn: e.target.checked })} aria-label="In person" />
+                      In person
+                    </label>
                   </div>
                 </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1.5">
+                    <label htmlFor="service-price-online" className={labelCls}>Price (₦) Online</label>
+                    <input id="service-price-online" inputMode="decimal" value={draft.onlineNaira} onChange={(e) => setDraft({ ...draft, onlineNaira: e.target.value })} placeholder="0 for free" className={inputCls} />
+                  </div>
+                  <div className="space-y-1.5">
+                    <label htmlFor="service-price-inperson" className={labelCls}>Price (₦) In person</label>
+                    <input id="service-price-inperson" inputMode="decimal" value={draft.samePrice ? draft.onlineNaira : draft.inPersonNaira} disabled={draft.samePrice} onChange={(e) => setDraft({ ...draft, inPersonNaira: e.target.value })} placeholder="0 for free" className={inputCls + (draft.samePrice ? ' opacity-60' : '')} />
+                  </div>
+                </div>
+                {draft.inPersonOn ? (
+                  <label className="flex items-center gap-2 text-[12.5px] font-semibold text-[#475569] cursor-pointer">
+                    <input type="checkbox" checked={draft.samePrice} onChange={(e) => setDraft({ ...draft, samePrice: e.target.checked })} aria-label="Same price for both" />
+                    Same price for both
+                  </label>
+                ) : null}
                 <div className="flex items-center gap-2 pt-1">
                   <button type="submit" disabled={saving} className="h-[42px] px-[15px] rounded-[13px] text-white text-[13px] font-semibold cursor-pointer disabled:opacity-60" style={{ backgroundColor: primaryColor }}>
-                    {saving ? 'Saving…' : draft.id ? 'Save changes' : 'Add service'}
+                    {saving ? 'Saving…' : draft.id ? 'Save changes' : 'Create service'}
                   </button>
                   <button type="button" onClick={() => setDraft(null)} className="h-[42px] px-[15px] rounded-[13px] border border-[#E2E8F0] bg-white text-[13px] font-semibold text-[#475569] cursor-pointer">
                     Cancel

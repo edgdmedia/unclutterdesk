@@ -28,6 +28,7 @@ const FormsManagerPage = lazy(() => import('./pages/practice/settings/FormsManag
 const FormEditorPage = lazy(() => import('./pages/practice/settings/FormEditorPage').then((m) => ({ default: m.FormEditorPage })));
 const ServicesSettingsPage = lazy(() => import('./pages/practice/settings/ServicesSettingsPage').then((m) => ({ default: m.ServicesSettingsPage })));
 const DiscountSettingsPage = lazy(() => import('./pages/practice/settings/DiscountSettingsPage').then((m) => ({ default: m.DiscountSettingsPage })));
+const LocationsSettingsPage = lazy(() => import('./pages/practice/settings/LocationsSettingsPage').then((m) => ({ default: m.LocationsSettingsPage })));
 const TelehealthVideoRoomPage = lazy(() => import('./pages/practice/TelehealthVideoRoomPage').then((m) => ({ default: m.TelehealthVideoRoomPage })));
 const SessionPrepPage = lazy(() => import('./pages/practice/SessionPrepPage').then((m) => ({ default: m.SessionPrepPage })));
 const OnboardingWizardPage = lazy(() => import('./pages/practice/OnboardingWizardPage').then((m) => ({ default: m.OnboardingWizardPage })));
@@ -59,6 +60,7 @@ const AdminOverviewPage = lazy(() => import('./pages/admin/AdminOverviewPage').t
 const AdminTenantsPage = lazy(() => import('./pages/admin/AdminTenantsPage').then((m) => ({ default: m.AdminTenantsPage })));
 const AdminInvitesPage = lazy(() => import('./pages/admin/AdminInvitesPage').then((m) => ({ default: m.AdminInvitesPage })));
 const AdminRequestsPage = lazy(() => import('./pages/admin/AdminRequestsPage').then((m) => ({ default: m.AdminRequestsPage })));
+const AdminVideoUsagePage = lazy(() => import('./pages/admin/AdminVideoUsagePage').then((m) => ({ default: m.AdminVideoUsagePage })));
 const AdminAssessmentsPage = lazy(() => import('./pages/admin/AdminAssessmentsPage').then((m) => ({ default: m.AdminAssessmentsPage })));
 const RequestsPage = lazy(() => import('./pages/practice/RequestsPage').then((m) => ({ default: m.RequestsPage })));
 const AssessmentsPage = lazy(() => import('./pages/practice/AssessmentsPage').then((m) => ({ default: m.AssessmentsPage })));
@@ -450,6 +452,7 @@ function AppLayout() {
               <Route path="/dashboard/settings/account" element={<AccountPreferencesPage />} />
               <Route path="/dashboard/settings/availability" element={<AvailabilitySettingsPage />} />
               <Route path="/dashboard/settings/profile" element={<PracticeProfilePage />} />
+              <Route path="/dashboard/settings/locations" element={<LocationsSettingsPage />} />
               <Route
                 path="/dashboard/settings/brand"
                 element={
@@ -508,6 +511,7 @@ function AdminShell() {
           <Route path="/admin/invites" element={<AdminInvitesPage />} />
           <Route path="/admin/requests" element={<AdminRequestsPage />} />
           <Route path="/admin/assessments" element={<AdminAssessmentsPage />} />
+          <Route path="/admin/video" element={<AdminVideoUsagePage />} />
           <Route path="*" element={<NotFoundPage homeHref="/admin" />} />
         </Route>
       </Routes>

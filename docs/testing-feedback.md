@@ -49,36 +49,60 @@ A running log of what shows up in testing, what we decide about it, and when it'
 | ONB-02 | Onboarding | Can a practice bring its own Paystack keys? | Question | | Won't fix |
 | ONB-03 | Onboarding | Setup step offers online payment and bank transfer | Feature | P1 | Fixed |
 | ONB-04 | Onboarding | Payout step says payments are processed by Paystack | UX | P2 | Fixed |
-| ONB-05 | Onboarding | No way to set a session as virtual or physical | Bug | | Ready |
+| ONB-05 | Onboarding | No way to set a session as virtual or physical | Bug | | Fixed |
 | ONB-06 | Onboarding | No walkthrough after "Go to Dashboard" | Feature | | Fixed |
 | ONB-07 | Onboarding | Continue in setup fails with "This endpoint requires a practice profile" | Bug | P0 | Fixed |
-| ONB-08 | Onboarding | Setup doesn't ask for the practice's preferred video platform | Feature | P2 | Open |
+| ONB-08 | Onboarding | Setup doesn't ask for the practice's preferred video platform | Feature | P2 | Fixed |
 | SET-01 | Settings | Booking link picked during setup isn't saved, and can't be changed | Bug | P1 | Fixed |
 | SET-02 | Settings | Booking subdomain should be a separate setting from the custom hostname | UX | P2 | Fixed |
 | SET-03 | Settings | No custom hostname setup (add domain, DNS records, auto-configure) | Feature | P2 | Deferred |
 | SET-04 | Settings | Link, logo and colours set in setup don't show afterwards | Bug | P0 | Fixed |
 | SET-05 | Settings | After setup there's nowhere to change the logo or booking link | Bug | P1 | Fixed |
-| SET-06 | Settings | No way to say if the practice offers online, in person or both, or to manage several locations | Feature | P1 | Ready |
-| SET-07 | Settings | Services can't have a different price online and in person | Feature | P1 | Ready |
+| SET-06 | Settings | No way to say if the practice offers online, in person or both, or to manage several locations | Feature | P1 | Fixed |
+| SET-07 | Settings | Services can't have a different price online and in person | Feature | P1 | Fixed |
 | SET-08 | Settings | Uploading a profile photo or practice logo shows no progress or result | UX | P2 | Fixed |
 | BKG-01 | Booking page | Layout is incoherent and doesn't work | UX | | Fixed |
 | BKG-02 | Booking page | Practice logo never loads | Bug | P1 | Fixed |
 | BKG-03 | Booking page | "Book now" should be a step-by-step wizard | UX | | Fixed |
 | BKG-04 | Booking page | Is a client's sign-in tied to one practice or shared across practices? | Question | P2 | Fixed |
-| BKG-05 | Booking page | Session format should come from what the practice offers for each slot | Bug | | Ready |
+| BKG-05 | Booking page | Session format should come from what the practice offers for each slot | Bug | | Fixed |
 | BKG-06 | Booking page | Default intake and confidentiality form templates for every practice | Feature | | Fixed |
-| BKG-07 | Booking page | Header shows a hard-coded "Lagos, Nigeria · Online & in-person" for every practice | Bug | P1 | Ready |
+| BKG-07 | Booking page | Header shows a hard-coded "Lagos, Nigeria · Online & in-person" for every practice | Bug | P1 | Fixed |
 | BKG-08 | Booking page | "Notify me" when a practice has no free times in the next 4 weeks | Feature | P3 | Deferred |
 | BKG-09 | Booking page | An abandoned online payment keeps the time blocked for everyone | Bug | P1 | Fixed |
 | BKG-10 | Booking page | After booking, clients aren't offered their account to manage the booking | UX | P1 | Fixed |
 | SET-09 | Settings | A practice discount can be turned off, but not back on, edited or deleted | Bug | P1 | Fixed |
 | BKG-11 | Booking page | The practice's booking link doesn't carry the new wizard design: too wide, no practice logo | Bug | P1 | Fixed |
 | BKG-12 | Booking page | "Go to my bookings" and the calendar buttons should share one row; the two calendar links can be one dropdown | UX | P3 | Fixed |
-| VID-01 | Video | The session room is a mock-up, not a real video call | Feature | P0 | Ready |
+| VID-01 | Video | The session room is a mock-up, not a real video call | Feature | P0 | Fixed |
 | POR-01 | Client portal | /portal only works on app.unclutterdesk.com, not on the practice's own link | Bug | P1 | Fixed |
 | POR-02 | Client portal | The portal should look like a dashboard, not a plain list | UX | P2 | Fixed |
 | FRM-01 | Forms | Save forms as templates and optionally share them with other practices | Feature | | Fixed |
 | FRM-02 | Forms | The Forms page is wider than a phone screen | Bug | P2 | Open |
+| NOT-06 | Notifications | The bell should sit in the header with a dropdown | UX | P2 | Ready |
+| NOT-07 | Notifications | Clients get no reminders | Feature | P1 | Ready |
+| NOT-08 | Notifications | Booking emails failed on the live site | Bug | P0 | Fixed |
+| NOT-09 | Notifications | Links in practice emails were broken (http://dashboard/sessions/8) | Bug | P1 | Fixed |
+| NOT-10 | Notifications | The booking confirmation email was one run-on paragraph with raw links | UX | P1 | Fixed |
+| NOT-11 | Notifications | The sender name and address differed by email provider | Bug | P1 | Fixed |
+| SET-10 | Settings | Google Calendar shows "Connect" again after it was connected | Bug | P2 | Ready |
+| SET-11 | Settings | A longer service can't use the normal session times | Feature | P2 | Ready |
+| SET-12 | Settings | "Active sessions" lists the same browser many times | Bug | P2 | Ready |
+| FRM-03 | Forms | Submissions should show everything clients send, assessments included | Feature | P2 | Ready |
+| FRM-04 | Forms | The Forms page still has an "Assessment" type | UX | P2 | Ready |
+| POR-03 | Client portal | The portal should use the same dashboard frame as practice and admin | UX | P2 | Ready |
+| POR-04 | Client portal | Clients can't book a session from the portal | Feature | P1 | Ready |
+| POR-05 | Client portal | No "Add to calendar" for sessions in the portal | UX | P2 | Ready |
+| POR-06 | Client portal | Portal shows your sessions and "Sign in" at the same time after a while away | Bug | P1 | Fixed |
+| ADM-04 | Admin | Gross revenue counts practices' income, not Unclutter Desk's | Bug | P2 | Ready |
+| BKG-13 | Sessions | Past sessions with no outcome stay "Confirmed" forever | Feature | P1 | Ready |
+| VID-02 | Video | "Join session" works any time, even days before | Bug | P1 | Fixed |
+| GEN-01 | Design system | Pages set their own widths and hand-write their grids | UX | P2 | Ready |
+| GEN-02 | Design system | The dashboard keeps showing Profile photo and Practice branding cards | UX | P3 | Ready |
+| GEN-03 | Design system | The menu feels disconnected | UX | P2 | Ready |
+| NOT-12 | Notifications | Practices can't change the wording of their emails | Feature | P2 | Ready |
+| NOT-13 | Notifications | Clients can't choose their reminders | Feature | P1 | Ready |
+| NOT-14 | Notifications | Practices can't see or send a session's reminders | Feature | P2 | Ready |
 
 ---
 
@@ -104,6 +128,13 @@ A running log of what shows up in testing, what we decide about it, and when it'
 - **Feedback / decision:** The admin page built its own field boxes. It now uses the shared `AuthField`, so both sign-in pages share one field style.
 - **Fix:** see the commit "Admin sign-in uses the shared auth field" on `dev`. Checked in the browser: both pages have 52px fields, the same fill and 11.5px labels, and signing in still lands on `/admin`.
 - **Verified:**
+
+### ADM-04 · Gross revenue counts practices' income, not Unclutter Desk's
+- **Type:** Bug · **Priority:** P2 · **Status:** Ready
+- **Observed:** Admin "Gross revenue" adds up what clients paid every practice.
+- **Feedback / decision:** Decided 2 Oct 2026. Show Unclutter Desk's own income: subscription payments, plus platform booking fees where they apply (Starter), shown separately. Each practice's earnings move to that practice's admin page.
+- **Fix:** 
+- **Verified:** 
 
 ## Notifications / Email
 
@@ -142,6 +173,75 @@ A running log of what shows up in testing, what we decide about it, and when it'
 - **Fix:** `4de5bb8` on `dev`. Staff now get in-app notices for new booking, payment received, transfer to confirm (front desk included), cancellation (both staff paths) and form submitted — therapist plus this practice's active owners/admins, tenant-scoped, no duplicates. Covered by `booking-notifier.spec.ts` and `portal-forms.spec.ts`.
 - **Verified:** Browser check 1 Oct: "New booking", "Payment received" and "Form received" all appeared on `/dashboard/notifications` for the practice owner.
 
+### NOT-06 · The bell should sit in the header with a dropdown
+- **Type:** UX · **Priority:** P2 · **Status:** Ready
+- **Observed:** The bell is only in the Dashboard page header; "Notifications" is also a sidebar item and a bottom-bar item.
+- **Feedback / decision:** Decided 2 Oct 2026. The bell is part of the app frame: the last item on the right of the desktop header, the top-right corner on phones. Clicking opens a dropdown of the latest notifications (unread dots, "Mark all read") with **All notifications** at the bottom, leading to the page. Notifications leaves the sidebar and bottom bar; the bottom-bar slot becomes **Sessions**.
+- **Fix:** 
+- **Verified:** 
+
+### NOT-07 · Clients get no reminders
+- **Type:** Feature · **Priority:** P1 · **Status:** Ready
+- **Observed:** The reminder queue exists (scheduled, every 30 seconds, with duplicate protection) but nothing queues a reminder, and reminder emails are off by default.
+- **Feedback / decision:** Decided 2 Oct 2026. Reminders, each switchable and timed by the practice; clients can turn off the optional ones (rebook nudges, reviews), never session reminders. Email and in-app now; SMS/WhatsApp later.
+  - Upcoming session: 24 hours and 1 hour before, with the join link or address.
+  - Forms due before the first session: 48 hours and 24 hours before.
+  - Assessment assigned, not done: 2 days after assigning, and the day before the session.
+  - Unpaid booking or transfer: while the hold runs.
+  - After a no-show: same day, with a rebook link.
+  - After a completed session: review/feedback request; "book your next session" after a set number of days.
+- **Fix:** 
+- **Verified:** 
+
+### NOT-08 · Booking emails failed on the live site
+- **Type:** Bug · **Priority:** P0 · **Status:** Fixed
+- **Observed:** From 1 Oct, every email to clients and practices failed (EmailLog): "The notify.unclutterdesk.com domain is not verified" (Resend). Emails up to 29 Sept had gone out.
+- **Feedback / decision:** The sending domain notify.unclutterdesk.com was verified in Resend (2 Oct, by the product owner). A read-only server check, `scripts/check-email-logs.sh`, shows recent email errors.
+- **Fix:** Resend domain verified (configuration, no code).
+- **Verified:** 
+
+### NOT-09 · Links in practice emails were broken (http://dashboard/sessions/8)
+- **Type:** Bug · **Priority:** P1 · **Status:** Fixed
+- **Observed:** Staff notifications carry in-app paths; the email put them in as-is, so mail clients made them http://dashboard/… .
+- **Feedback / decision:** The email channel turns every in-app path into a full address on the app host, in one place.
+- **Fix:** `014bd3d` on `dev`.
+- **Verified:** Unit tests; email rendered and checked at 390px.
+
+### NOT-10 · The booking confirmation email was one run-on paragraph with raw links
+- **Type:** UX · **Priority:** P1 · **Status:** Fixed
+- **Observed:** Details, the join link, the portal link and forms were all written into one paragraph.
+- **Feedback / decision:** Emails gain a details block (labelled rows) and a list of further links. The confirmation shows Session, With, When, Where; a "Join the session" button; forms due and "Manage your booking" as links. Other booking emails can adopt the same layout.
+- **Fix:** `014bd3d` on `dev`.
+- **Verified:** Rendered preview checked at 390px.
+
+### NOT-11 · The sender name and address differed by email provider
+- **Type:** Bug · **Priority:** P1 · **Status:** Fixed
+- **Observed:** The name was decided in two places, and the address came from MAIL_FROM on Resend but SMTP_FROM on Gmail, so emails showed as "no-reply@unclutterdesk.com".
+- **Feedback / decision:** One function (SenderIdentityService) decides the sender for every provider: the practice's name (Unclutter Desk for platform mail), the platform address from MAIL_FROM (or the practice's verified domain when the provider can sign for it), replies to the practice. Providers only deliver.
+- **Fix:** `c0ee98c` on `dev`.
+- **Verified:** Unit tests; API boots.
+
+### NOT-12 · Practices can't change the wording of their emails
+- **Type:** Feature · **Priority:** P2 · **Status:** Ready
+- **Observed:** Every email's wording is fixed in code.
+- **Feedback / decision:** Decided 2 Oct 2026. Practices can edit the wording of every email they send to clients (subject, opening line, button label), with placeholders such as {{client_first_name}}, {{service}}, {{therapist}}, {{when}}, a preview, and "Reset to default". Platform emails (sign-in codes, password resets) stay fixed.
+- **Fix:** 
+- **Verified:** 
+
+### NOT-13 · Clients can't choose their reminders
+- **Type:** Feature · **Priority:** P1 · **Status:** Ready
+- **Observed:** Clients have no reminder settings, and nothing to set after booking.
+- **Feedback / decision:** Decided 2 Oct 2026. Clients set reminder and notification preferences in the portal (which reminders, how long before, by email or in-app; SMS later). Right after booking, the confirmation offers "Remind me" choices (1 day, 2 hours, 30 minutes before) for that session, with "Use these for all my sessions". A client's choice overrides the practice default.
+- **Fix:** 
+- **Verified:** 
+
+### NOT-14 · Practices can't see or send a session's reminders
+- **Type:** Feature · **Priority:** P2 · **Status:** Ready
+- **Observed:** Nothing shows what a client will be reminded of, and there is no way to send a reminder by hand.
+- **Feedback / decision:** Decided 2 Oct 2026. The session page lists the scheduled reminders (what, when, how) and offers "Send a reminder now".
+- **Fix:** 
+- **Verified:** 
+
 ## Onboarding
 
 ### ONB-01 · Does Direct Payout create a subaccount automatically?
@@ -176,8 +276,8 @@ A running log of what shows up in testing, what we decide about it, and when it'
 - **Type:** Bug · **Priority:** · **Status:** Ready
 - **Observed:** There's nowhere to set whether a session is virtual or physical.
 - **Feedback / decision:** Setup will ask "How do you see clients?" (online, in person, both) and add the first location inline (see SET-06). Design in `docs/superpowers/specs/2026-10-01-session-formats-and-locations-design.md`. **Design complete (see SET-06); ready to plan.**
-- **Fix:**
-- **Verified:**
+- **Fix:** `c7a47d0` on `dev`. Setup now asks **"How do you see clients?"** (Online / In person / Both, default Online); In person or Both adds the first location inline (name prefilled with the practice name, address, city, optional directions — old drafts pre-fill from their address); prices are per format with "Same price for both" ticked; the default week follows the answer (Both = mornings in person, afternoons online). The Details step lost its address fields to Locations.
+- **Verified:** Covered by `OnboardingServicesStep.test.tsx` (4 cases incl. the missing-address block).
 
 ### ONB-06 · No walkthrough after "Go to Dashboard"
 - **Type:** Feature · **Priority:** · **Status:** Ready
@@ -194,11 +294,11 @@ A running log of what shows up in testing, what we decide about it, and when it'
 - **Verified:**
 
 ### ONB-08 · Setup doesn't ask for the video platform
-- **Type:** Feature · **Priority:** P2 · **Status:** Open
+- **Type:** Feature · **Priority:** P2 · **Status:** Fixed
 - **Observed:** Practice setup has no option to choose the default video platform.
 - **Feedback / decision:** It exists per therapist (`ConsultTherapistProfile.videoProvider`: Jitsi, Daily, Google Meet, Zoom; Jitsi by default), set in My profile only. Proposed: ask once in setup ("How do you run online sessions?") as the practice default, still changeable per therapist. Depends on VID-01 for which platforms run inside the app.
-- **Fix:**
-- **Verified:**
+- **Fix:** `41d9608`. Setup's Services step says online sessions run in Unclutter Desk's own video room (no choice needed). My profile → Video sessions offers Unclutter Desk video or Google Meet; Meet needs Google connected, with a **Connect Google Calendar** button.
+- **Verified:** Covered by `OnboardingServicesStep.test.tsx`, `MyProfileVideo.test.tsx` and `therapist-video.spec.ts`. Not yet clicked through in the browser.
 
 ## Settings
 
@@ -246,15 +346,15 @@ A running log of what shows up in testing, what we decide about it, and when it'
 - **Type:** Feature · **Priority:** P1 · **Status:** Ready
 - **Observed:** There's no point where a practice says whether it offers online sessions, in-person sessions or both, and only one optional address (Practice profile), which the booking form never shows. Every bookable time is created as online.
 - **Feedback / decision:** Decided 1 Oct 2026. (1) A practice can have **several locations**. (2) The format is **dynamic per block of time**: for each block of hours the practice decides online, in person (at a location) or either, and a therapist who only works online only ever has online times, so their clients only see online slots. Design drafted in `docs/superpowers/specs/2026-10-01-session-formats-and-locations-design.md`. The three open questions were settled on 1 Oct 2026: length per service, set by the practice; the address, directions and a Google Maps link arrive in the booking details, with no location picker; no location hours, only therapist hours. **Design complete; ready to plan.**
-- **Fix:**
-- **Verified:**
+- **Fix:** `32a1e79`–`9b3d375` on `dev` (the formats-and-locations plan). Practices manage named **Locations** (Settings → Locations, `4e8c242`); each therapist says what they see clients as ("Sees clients" + "Works at" on My profile); the repeating week is stored data (`TherapistWeeklyTime`) and **every session time carries its own formats and location** — the Availability page lays times out as tiles with an Online / In person / Either chooser, a per-day "Set all … times to", and an Upcoming list where one date can be changed for that day only (booked times locked, "Back to weekly" restores). Everything migrates to online, so nothing changes until a practice turns in person on.
+- **Verified:** Browser check 2 Oct (local): added a second location, set Jane to both formats at Lekki, switched a weekly time to "Either · Lekki clinic" (a location she does not work at was refused with the exact message), and a client saw "Online or In person · Lekki clinic" on that time.
 
 ### SET-07 · Different prices online and in person
 - **Type:** Feature · **Priority:** P1 · **Status:** Ready
 - **Observed:** Some practices charge differently for online and in-person sessions, but a service has one price.
 - **Feedback / decision:** Decided 1 Oct 2026: price **per service, per format** (for example Individual Therapy online ₦30,000, in person ₦35,000; they can be the same). Part of the same design, `docs/superpowers/specs/2026-10-01-session-formats-and-locations-design.md`. **Design complete (see SET-06); ready to plan.**
-- **Fix:**
-- **Verified:**
+- **Fix:** `9b61799` on `dev`. Services have one price per format (`ConsultServiceFormat`); the settings page shows an Online row and an In-person row, each with a switch, a price and "Same price for both". `ConsultService.priceKobo` stays as the cheapest active price so older screens keep working; a legacy price-only edit reprices the online row.
+- **Verified:** Browser check 2 Oct: Individual Therapy set to online ₦30,000 / in person ₦35,000; the service card and the booking summary show both.
 
 ### SET-08 · Photo and logo uploads show no progress or result
 - **Type:** UX · **Priority:** P2 · **Status:** Open
@@ -269,6 +369,28 @@ A running log of what shows up in testing, what we decide about it, and when it'
 - **Feedback / decision:**
 - **Fix:** `90fb3f0`–`b42c8e3` on `dev`. `PATCH /v1/discount/:id` now takes `isActive` (and the amount fields) and only writes the fields sent — the old update blanked label/maxUses/expiresAt when you touched one. A new `DELETE /v1/discount/:id/remove` deletes for good (past bookings keep the code text). The list gains **Turn on / Turn off / Edit / Delete** per row; the create modal doubles as the editor. Covered by `discount-manage.spec.ts` and `DiscountSettingsPage.test.tsx`.
 - **Verified:** Browser check 2 Oct (local): WELCOME20 turned off and back on, label edited and saved, a throwaway code created and deleted after the confirm.
+
+### SET-10 · Google Calendar shows "Connect" again after it was connected
+- **Type:** Bug · **Priority:** P2 · **Status:** Ready
+- **Observed:** The Availability page only knows it is connected right after the Google redirect (it reads ?google_connected=true from the address).
+- **Feedback / decision:** Decided 2 Oct 2026. The server reports whether the therapist's Google account is connected; the page shows "Connected to Google Calendar · Disconnect".
+- **Fix:** 
+- **Verified:** 
+
+### SET-11 · A longer service can't use the normal session times
+- **Type:** Feature · **Priority:** P2 · **Status:** Ready
+- **Observed:** Availability's length decides each slot; a service longer than the slot is hidden at those times, a shorter one takes the whole slot.
+- **Feedback / decision:** Decided 2 Oct 2026. The availability length is the slot. A service up to one slot takes one; a longer one takes back-to-back slots (80 minutes at 9:00 uses the 9:00 and 10:00 slots, ends 10:20), all free and all allowing the chosen format. Clients see only start times where enough slots are free, shown as "9:00 – 10:20". Do after the formats and locations work lands.
+- **Update:** 2 Oct 2026: approved to build (after the formats and locations work lands).
+- **Fix:** 
+- **Verified:** 
+
+### SET-12 · "Active sessions" lists the same browser many times
+- **Type:** Bug · **Priority:** P2 · **Status:** Ready
+- **Observed:** Every sign-in creates a session that lasts until it expires; re-logins, switching practice/admin and closed tabs pile up.
+- **Feedback / decision:** Decided 2 Oct 2026. A new sign-in from the same browser replaces its old session; sessions unused for 14 days end. The card shows this device and the two most recent, then "Show all (N)", with "Sign out other devices".
+- **Fix:** 
+- **Verified:** 
 
 ## Client booking link / page
 
@@ -304,8 +426,8 @@ A running log of what shows up in testing, what we decide about it, and when it'
 - **Type:** Bug · **Priority:** · **Status:** Ready
 - **Observed:** The session format on the booking form should depend on the options the practice offers for each booking slot.
 - **Feedback / decision:** The format comes from each time slot, as set per block of hours (see SET-06), and the price from the service's price for that format (SET-07). Design in `docs/superpowers/specs/2026-10-01-session-formats-and-locations-design.md`. **Design complete (see SET-06); ready to plan.**
-- **Fix:**
-- **Verified:**
+- **Fix:** `105c882`/`fc588ff` on `dev`. Slot rows carry `formats` and their location; the wizard shows each time's format, and a time that allows both asks **"How would you like to meet?"** on the pay step with both prices — Pay is disabled until a choice. The server re-checks the rules and charges the chosen format's price (discount applied to it).
+- **Verified:** Browser check 2 Oct: the Either time asked the client online-or-in-person; choosing in person moved the total to ₦35,000 and the booking stored `IN_PERSON` + the Lekki location with no video room.
 
 ### BKG-06 · Default intake and confidentiality forms
 - **Type:** Feature · **Priority:** · **Status:** Ready
@@ -318,8 +440,8 @@ A running log of what shows up in testing, what we decide about it, and when it'
 - **Type:** Bug · **Priority:** P1 · **Status:** Ready
 - **Observed:** Found while checking SET-06. The booking page header says "Lagos, Nigeria · Online & in-person" for every practice, whatever it offers or wherever it is.
 - **Feedback / decision:** Replace it with the practice's real cities and formats, as part of SET-06. **Parked with SET-06.**
-- **Fix:**
-- **Verified:**
+- **Fix:** `fc588ff` on `dev`. The booking header subtitle is built from the practice's public info — its real cities and formats (`GET /v1/tenant/public/info` now returns `locations` and `formats`); the profile page's location line likewise.
+- **Verified:** Browser check 2 Oct: the in-person confirmation and email carry "Lekki clinic, 20 Ozumba Mbadiwe Ave, Lagos" with an Open-in-Google-Maps link and no join link; the email log confirms it.
 
 ### BKG-08 · "Notify me" when there are no free times
 - **Type:** Feature · **Priority:** P3 · **Status:** Deferred
@@ -361,7 +483,7 @@ A running log of what shows up in testing, what we decide about it, and when it'
 - **Verified:** Browser check 2 Oct: after a real test payment the two actions sit in one flex row and the menu opens with both links.
 
 ### VID-01 · The session room isn't a real video call
-- **Type:** Feature · **Priority:** P0 · **Status:** Ready
+- **Type:** Feature · **Priority:** P0 · **Status:** Fixed
 - **Observed:** The telehealth room (`TelehealthVideoRoomPage.tsx`, the designed video screen) is a mock-up labelled "Room preview" with the client's initials; there's no camera or call in it.
 - **Feedback / decision:** Decided 1 Oct 2026.
   - **Daily is the default for every plan**, running inside our designed room (our own mute, camera and leave buttons; private rooms with short-lived access tokens per session). Pricing checked: 10,000 free participant-minutes a month, then $0.004 per participant-minute, about 100 one-to-one 50-minute sessions free a month, then about $0.40 a session ([Daily pricing](https://www.daily.co/pricing/video-sdk/)).
@@ -373,8 +495,9 @@ A running log of what shows up in testing, what we decide about it, and when it'
   - **Usage records** (decided 1 Oct 2026): every video session stores practice, therapist, provider, start, end and participant-minutes. The router reads the monthly totals, and the admin console shows minutes by month, practice and provider for planning.
   - To confirm in the JaaS dashboard before building: what the free plan does at the 26th user (blocked or prompted), and the paid per-user price (about $0.35 per user per a third-party summary).
   - Needs a Daily account and API key, and a JaaS app (app ID and signing key), before building. ONB-08 (setup asks for the video platform) follows from this.
-- **Fix:**
-- **Verified:**
+- **Update:** 2 Oct 2026: the Daily and JaaS keys are set in the API .env; ready to build.
+- **Fix:** `a58ff01`–`642e638` on `feat/video-rooms`. Online sessions run in the session room for therapist (`/session/:id`) and client (`/portal/sessions/:id/room`): Daily in the page first, JaaS once Daily's monthly minutes are spent, then a meet.jit.si link in a new tab (`VideoRouter`, budgets in `VIDEO_DAILY_MONTHLY_MINUTES` / `VIDEO_JAAS_MONTHLY_USERS`). The room is made on the first join, once per booking, and admits only the booking's client, its therapist and clinical staff, from 15 minutes before to 60 after. Every join and minute is recorded (`VideoParticipant`, heartbeat each minute, Daily's own durations via the `meeting.ended` webhook); Admin → Video usage shows each month by provider and practice. Emails, calendar invites and pages link into the room, never to a provider. Google Meet stays available through the therapist's own Google. Also fixed on the way: the portal, therapist bookings and session prep failed for every booking on `dev` (`e7fa44b`); the portal's next session is now the soonest and stays joinable while in progress.
+- **Verified:** 2 Oct 2026, locally on a database copy (Edge): the link fallback end to end (room made once and kept for the booking, usage rows written), the therapist room with notes beside the video, the client room, and no sideways scroll at 390px. **Still to verify on the server:** a real Daily call and a JaaS call between two browsers, the budget fall-through, and the webhook. The Daily and JaaS keys are not in the local `.env` files.
 
 ## Client portal
 
@@ -391,6 +514,34 @@ A running log of what shows up in testing, what we decide about it, and when it'
 - **Feedback / decision:**
 - **Fix:** `7fed377` on `dev`. The portal now leads with four dashboard tiles — Next session, Upcoming sessions, To pay, Forms to do (from `/v1/intake/mine/forms`, never blocking the page on failure) — and the header carries the practice logo. The payments tab stays lazy (its existing "not fetched until opened" test still passes). Covered by `ClientPortalPayments.test.tsx`.
 - **Verified:** Browser check 2 Oct: tiles read "9 Oct 2026 / 1 / ₦0 / 2" for a fresh client on the practice host; no overflow at 390px.
+
+### POR-03 · The portal should use the same dashboard frame as practice and admin
+- **Type:** UX · **Priority:** P2 · **Status:** Ready
+- **Observed:** The portal has dashboard tiles (POR-02) but not the shared frame.
+- **Feedback / decision:** Decided 2 Oct 2026. Sidebar on desktop, bottom bar on phones, in the practice's colours and logo, with the notification bell. Menu: Home, Sessions, Forms & assessments, Payments, My details.
+- **Fix:** 
+- **Verified:** 
+
+### POR-04 · Clients can't book a session from the portal
+- **Type:** Feature · **Priority:** P1 · **Status:** Ready
+- **Observed:** There is no "Book a session" in the portal.
+- **Feedback / decision:** Decided 2 Oct 2026. "Book a session" on the portal home and Sessions page opens the booking wizard, already signed in, for the same practice.
+- **Fix:** 
+- **Verified:** 
+
+### POR-05 · No "Add to calendar" for sessions in the portal
+- **Type:** UX · **Priority:** P2 · **Status:** Ready
+- **Observed:** Only the booking confirmation offers calendar links.
+- **Feedback / decision:** Decided 2 Oct 2026. Each upcoming session in the portal has the same "Add to calendar" dropdown as the confirmation (Google Calendar, Apple/Outlook .ics).
+- **Fix:** 
+- **Verified:** 
+
+### POR-06 · Portal shows your sessions and "Sign in" at the same time after a while away
+- **Type:** Bug · **Priority:** P1 · **Status:** Fixed
+- **Observed:** 2 Oct 2026. After leaving the portal for a while, it showed "Hello, Olalekan", the next session and Join, and also "Sign in to see your sessions".
+- **Feedback / decision:** Either signed in or signed out, never both.
+- **Fix:** Cause: the page-load sign-in check (`/v1/auth/status`) was set never to refresh the session. The access cookie lasts 15 minutes and the refresh cookie is only sent to `/v1/auth/refresh`, so after a quiet spell (or a sleeping tab reloading), the check failed and signed the person out, while the portal's own request refreshed and loaded the sessions. Now the check refreshes and retries like every other request (`apiClient.ts`), and a signed-out portal clears everything private. Also affected staff: the dashboard signed people out the same way. Covered by `apiClient.sessionRefresh.test.ts` and `ClientPortalSignedOut.test.tsx`.
+- **Verified:** 
 
 ## Forms & templates
 
@@ -409,6 +560,60 @@ A running log of what shows up in testing, what we decide about it, and when it'
 - **Feedback / decision:**
 - **Fix:**
 - **Verified:**
+
+### FRM-03 · Submissions should show everything clients send, assessments included
+- **Type:** Feature · **Priority:** P2 · **Status:** Ready
+- **Observed:** A client completed a scored assessment, but Submissions only lists forms; assessment results show only in the client's Assessments panel and on the Assessments page.
+- **Feedback / decision:** Decided 2 Oct 2026. A main-menu group **Forms & assessments**: **Submissions** (one inbox for all client submissions, forms and assessment results, filterable by type and client), **Assessments** (library and assignments), **Forms** (your forms and the template library). The client's own panel keeps showing their results.
+- **Fix:** 
+- **Verified:** 
+
+### FRM-04 · The Forms page still has an "Assessment" type
+- **Type:** UX · **Priority:** P2 · **Status:** Ready
+- **Observed:** The custom-form "Assessment" category overlaps the scored-assessment library.
+- **Feedback / decision:** Decided 2 Oct 2026. Remove "Assessment" from the Forms page and editor. The five default forms exist for every practice: Intake, Review, Consent, Feedback, Confidentiality. Scored assessments live under Assessments.
+- **Update:** 2 Oct 2026: the five default forms are drafted and seeded (`868cfa3`; local database backfilled). The Forms page tabs and editor types are still to change.
+- **Fix:** 
+- **Verified:** 
+
+## Sessions & video
+
+### BKG-13 · Past sessions with no outcome stay "Confirmed" forever
+- **Type:** Feature · **Priority:** P1 · **Status:** Ready
+- **Observed:** Only Confirmed, Completed and Cancelled exist; nothing happens when a session's time passes.
+- **Feedback / decision:** Decided 2 Oct 2026. After its end time, a session without an outcome shows as **Unrecorded** (not "Pending", which already means unpaid) on the therapist's dashboard and session page, with a reminder. Outcomes: **Completed**, **No-show**, **Late cancel**. Never completed automatically. Completed keeps prompting for the session note.
+- **Fix:** 
+- **Verified:** 
+
+### VID-02 · "Join session" works any time, even days before
+- **Type:** Bug · **Priority:** P1 · **Status:** Fixed
+- **Observed:** The portal's Join button shows whenever a room link exists and goes straight to meet.jit.si.
+- **Feedback / decision:** Decided 2 Oct 2026. The room opens 15 minutes before the session and closes 60 minutes after it ends (as in the VID-01 plan). Before that the button reads "Opens at 9:45 AM". Comes with VID-01's in-app room.
+- **Fix:** `5b3cd06`. One `JoinButton` everywhere (portal, confirmation page, session page, session prep): before the room opens it reads "Opens at 9:45 AM" and does nothing, it becomes Join at that minute without a reload, and disappears after. The window comes from `@unclutterdesk/shared` and matches the server's check (a test fails if they differ). Clients no longer receive a provider link.
+- **Verified:** 2 Oct 2026, locally: a session starting in 10 minutes showed **Join session**; tomorrow's showed "Opens at 3:15 PM", and its room said "This room opens at 3:15 PM." with **Check again**.
+
+## General / design system
+
+### GEN-01 · Pages set their own widths and hand-write their grids
+- **Type:** UX · **Priority:** P2 · **Status:** Ready
+- **Observed:** Only 11 pages use the shared Page frame (width cap 1440px / 880px); about 17 practice pages build their own <main>. 43 places use screen-based grid classes (grid-cols-2, md:col-span-2) that ignore the sidebar.
+- **Feedback / decision:** Decided 2 Oct 2026. Every page uses Page. Page gains a main-plus-side-panel layout (a sized template like [1fr_372px] for page structure); content inside uses the shared Grid (equal columns, responsive to the page area). Hand-written grids are replaced.
+- **Fix:** 
+- **Verified:** 
+
+### GEN-02 · The dashboard keeps showing Profile photo and Practice branding cards
+- **Type:** UX · **Priority:** P3 · **Status:** Ready
+- **Observed:** Setup prompts stay on the dashboard after they are done.
+- **Feedback / decision:** Decided 2 Oct 2026. Show each card only until it is done; both stay editable in settings.
+- **Fix:** 
+- **Verified:** 
+
+### GEN-03 · The menu feels disconnected
+- **Type:** UX · **Priority:** P2 · **Status:** Ready
+- **Observed:** Hours log and Notifications are main-menu items; settings groups mix concerns.
+- **Feedback / decision:** Decided 2 Oct 2026. Main: Today, Schedule, Sessions, Clients. Forms & assessments: Submissions, Assessments, Forms. Settings: Booking page (Practice profile, Locations, Brand & booking page); Scheduling & pricing (Availability, Services & pricing, Discounts); Team & staff; Reports; Billing (Payouts, Subscription). Avatar menu: My profile, Hours log, Notification settings, Account & security. The bell is in the header (NOT-06).
+- **Fix:** 
+- **Verified:** 
 
 ## Template for new items
 

@@ -257,7 +257,19 @@ export class TenantService {
     return {
       ...tenant,
       id: tenant.id.toString(),
+      ...(await this.publicExtras(tenant.id)),
     };
+  }
+
+  /** BKG-07: what the booking page header can honestly say about this practice. */
+  async publicExtras(tenantId: bigint) {
+    if (!this.prisma.practiceLocation) return { locations: [], formats: [] };
+    const [locations, services] = await Promise.all([
+      this.prisma.practiceLocation.findMany({ where: { tenantId }, select: { name: true, city: true }, orderBy: { createdAt: 'asc' } }),
+      this.prisma.consultService.findMany({ where: { tenantId, isActive: true }, select: { formats: { where: { isActive: true }, select: { format: true } } } }),
+    ]);
+    const formats = [...new Set(services.flatMap((sv: { formats: Array<{ format: string }> }) => sv.formats.map((f) => f.format)))];
+    return { locations, formats };
   }
 
   async updateTenantBrand(tenantId: bigint, dto: {

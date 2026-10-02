@@ -29,6 +29,9 @@ function setup(over: Record<string, any> = {}) {
     startsAt,
     endsAt: new Date(startsAt.getTime() + 60 * 60 * 1000),
     isActive: true,
+    allowsOnline: true,
+    allowsInPerson: false,
+    locationId: null,
   };
   const actors: Record<string, any> = {
     [String(OWNER)]: { id: OWNER, role: 'OWNER', firstName: 'Jane', lastName: 'Smith' },
@@ -53,13 +56,16 @@ function setup(over: Record<string, any> = {}) {
     consultTherapistProfile: {
       findFirst: vi.fn(async ({ where }: any) =>
         [OWNER, THERAPIST, OTHER_THERAPIST].includes(where.profileId)
-          ? { profileId: where.profileId, videoProvider: 'JITSI', profile: { firstName: 'Jane', lastName: 'Smith' } }
+          ? { profileId: where.profileId, videoProvider: 'JITSI', offersOnline: true, offersInPerson: true, workLocations: [{ locationId: 4n }], profile: { firstName: 'Jane', lastName: 'Smith' } }
           : null,
       ),
     },
     consultService: {
       findFirst: vi.fn().mockResolvedValue(
-        over.service === undefined ? { id: 20n, title: 'Therapy session', durationMinutes: 50, priceKobo: 2500000n } : over.service,
+        over.service === undefined ? { id: 20n, title: 'Therapy session', durationMinutes: 50, priceKobo: 2500000n, formats: [
+          { format: 'ONLINE', priceKobo: 2500000n, isActive: true },
+          { format: 'IN_PERSON', priceKobo: 3000000n, isActive: true },
+        ] } : over.service,
       ),
     },
     consultAvailability: { findFirst: vi.fn().mockResolvedValue(over.slot === undefined ? slot : over.slot) },
@@ -79,7 +85,6 @@ function setup(over: Record<string, any> = {}) {
     $transaction: vi.fn(async (fn: any) => fn(tx)),
   };
   const consult: any = {
-    resolveVideoRoomLink: vi.fn().mockResolvedValue({ roomName: 'room-1', roomLink: 'https://meet.example/room-1' }),
     startOnlinePayment: vi.fn(),
   };
   const notifications: any = { sendEmail: vi.fn().mockResolvedValue({ success: true }) };
@@ -319,7 +324,42 @@ describe('after the booking — join links', () => {
     const { service, notifications } = setup();
     await service.createForClient(TENANT, OWNER, { ...base, payment: 'NONE' });
     const email = notifications.sendEmail.mock.calls[0][0];
-    expect(email.message).toContain('https://meet.jit.si/room-1');
+    expect(email.message).toMatch(/\/portal\/sessions\/\d+\/room/);
     expect(email.message).toMatch(/Join link/i);
+  });
+});
+
+
+// SET-06/BKG-05: staff bookings carry the format and the place.
+describe('staff booking a format', () => {
+  it('an online-only time books online with no format asked; its room is made on the first join (VID-01)', async () => {
+    const { service, tx } = setup();
+    await service.createForClient(TENANT, OWNER, { ...base, payment: 'NONE' });
+    const created = tx.consultBooking.create.mock.calls[0][0].data;
+    expect(created.format).toBe('ONLINE');
+    expect(created.videoRoomName ?? null).toBeNull();
+  });
+
+  it('an in-person booking stores the location and makes no video room', async () => {
+    const bothSlot = { ...setup().slot };
+    const made = setup({ slot: { id: 300n, providerProfileId: OWNER, serviceId: null, startsAt: new Date(Date.now() + 86_400_000), endsAt: new Date(Date.now() + 3 * 86_400_000), isActive: true, allowsOnline: true, allowsInPerson: true, locationId: 4n } });
+    const res: any = await made.service.createForClient(TENANT, OWNER, { ...base, payment: 'NONE', format: 'IN_PERSON' });
+    const created = made.tx.consultBooking.create.mock.calls[0][0].data;
+    expect(created.format).toBe('IN_PERSON');
+    expect(created.locationId).toBe(4n);
+    expect(created.videoRoomName).toBeFalsy();
+    expect(res.location).toMatchObject({ id: '4' });
+    expect(res.format).toBe('IN_PERSON');
+  });
+
+  it('a both-format time asks staff to choose', async () => {
+    const { service } = setup({ slot: { id: 300n, providerProfileId: OWNER, serviceId: null, startsAt: new Date(Date.now() + 86_400_000), endsAt: new Date(Date.now() + 3 * 86_400_000), isActive: true, allowsOnline: true, allowsInPerson: true, locationId: 4n } });
+    await expect(service.createForClient(TENANT, OWNER, { ...base, payment: 'NONE' })).rejects.toThrow('Choose online or in person.');
+  });
+
+  it('prices by the chosen format', async () => {
+    const { service, tx } = setup({ slot: { id: 300n, providerProfileId: OWNER, serviceId: null, startsAt: new Date(Date.now() + 86_400_000), endsAt: new Date(Date.now() + 3 * 86_400_000), isActive: true, allowsOnline: true, allowsInPerson: true, locationId: 4n } });
+    await service.createForClient(TENANT, OWNER, { ...base, payment: 'PAID', format: 'IN_PERSON' });
+    expect(tx.consultBooking.create.mock.calls[0][0].data.amountKobo).toBe(3000000n);
   });
 });

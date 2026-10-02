@@ -11,7 +11,9 @@ const patchMock = vi.fn();
 vi.mock('../../utils/apiClient', () => ({
   api: {
     get: (...args: unknown[]) => getMock(...args),
-    post: (...args: unknown[]) => postMock(...args),
+    // The room's join is refused (too early); postMock sees only note saves.
+    post: (path: string, ...args: unknown[]) =>
+      path.endsWith('/join') ? Promise.reject(new Error('This room opens at 9:45 AM.')) : postMock(path, ...args),
     patch: (...args: unknown[]) => patchMock(...args),
   },
 }));

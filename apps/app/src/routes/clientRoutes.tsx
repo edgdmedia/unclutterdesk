@@ -5,6 +5,7 @@ import { BrandProvider, type TenantBrandConfig } from '@unclutterdesk/ui';
 import { api, getSubdomainTenantSlug } from '../utils/apiClient';
 
 const ClientPortalPage = lazy(() => import('../pages/client/ClientPortalPage').then((m) => ({ default: m.ClientPortalPage })));
+const ClientSessionRoomPage = lazy(() => import('../pages/client/ClientSessionRoomPage').then((m) => ({ default: m.ClientSessionRoomPage })));
 const PortalAssessmentPage = lazy(() => import('../pages/client/PortalAssessmentPage').then((m) => ({ default: m.PortalAssessmentPage })));
 const ClientFormPage = lazy(() => import('../pages/client/ClientFormPage').then((m) => ({ default: m.ClientFormPage })));
 const LoginPage = lazy(() => import('../pages/auth/LoginPage').then((m) => ({ default: m.LoginPage })));
@@ -43,6 +44,7 @@ export const CLIENT_PORTAL_ROUTES = (
   <>
     <Route path="/portal" element={<ClientPortalPage />} />
     <Route path="/portal/assessments/:id" element={<PortalAssessmentPage />} />
+    <Route path="/portal/sessions/:id/room" element={<ClientSessionRoomPage />} />
     <Route path="/forms/:id" element={<ClientFormPage />} />
     <Route path="/login" element={<LoginPage />} />
     <Route path="/set-password" element={<SetPasswordPage />} />

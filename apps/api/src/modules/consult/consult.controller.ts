@@ -155,6 +155,7 @@ export class ConsultController {
     @Req() req: TenantRequest,
     @Query('providerProfileId') providerProfileId?: string,
     @Query('serviceId') serviceId?: string,
+    @Query('format') format?: string,
   ) {
     if (!req.tenantId) throw new NotFoundException(
         'This practice could not be found. Check the web address, or ask the practice for their booking link.',
@@ -163,6 +164,7 @@ export class ConsultController {
       req.tenantId,
       providerProfileId && /^\d+$/.test(providerProfileId) ? BigInt(providerProfileId) : undefined,
       serviceId && /^\d+$/.test(serviceId) ? BigInt(serviceId) : undefined,
+      format,
     );
   }
 
@@ -201,6 +203,20 @@ export class ConsultController {
       authenticatedTenantId(req),
       authenticatedProfileId(req),
       BigInt(slotId),
+    );
+  }
+
+  @Permissions('clinical.record')
+  @Patch('therapist/slots/:slotId')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @ApiBearerAuth('access-token')
+  @ApiOperation({ summary: 'Change one upcoming time for that date only, or reset it to the weekly pattern' })
+  updateSlot(@Req() req: any, @Param('slotId') slotId: string, @Body() dto: any) {
+    return this.consultService.updateSlot(
+      authenticatedTenantId(req),
+      authenticatedProfileId(req),
+      BigInt(slotId),
+      dto ?? {},
     );
   }
 

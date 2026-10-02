@@ -9,6 +9,7 @@ import { initialsOf } from '../../utils/initials';
 import { useAuth } from '../../context/AuthContext';
 import type { MyAssessment } from '../../utils/assessments';
 import { TransferDetails, type ManualPayment } from '../../components/payments/TransferDetails';
+import { JoinButton } from '../../components/video/JoinButton';
 
 type PortalTab = 'upcoming' | 'past' | 'assessments' | 'payments' | 'settings';
 
@@ -21,7 +22,8 @@ type PortalSession = {
   status: string;
   priceKobo: string;
   therapistName: string;
-  videoRoomLink: string | null;
+  /** SET-06: online sessions are joined in the room; in person ones have none. */
+  format?: string;
   paymentMethod?: string;
   manualPayment?: ManualPayment | null;
 };
@@ -100,10 +102,11 @@ function DateTile({ startsAt, size = 'md' }: { startsAt: string; size?: 'md' | '
   const parts = formatDateParts(startsAt);
   const cls = size === 'lg' ? 'w-[86px] rounded-[20px] py-[14px]' : 'w-[54px] rounded-[16px] py-[9px]';
   return (
-    <div className={`${cls} flex-none text-center bg-[rgba(255,255,255,0.1)] shadow-[inset_0_0_0_1px_rgba(255,255,255,0.18)]`}>
-      <div className="text-[9.5px] font-black tracking-[0.1em] uppercase text-[#E3B341]">{parts.day}</div>
-      <div className={`${size === 'lg' ? 'text-[30px]' : 'text-[19px]'} font-extrabold leading-none text-white`}>{parts.date}</div>
-      <div className="mt-0.5 text-[10.5px] font-black tracking-[0.08em] uppercase text-[#E3B341]">{parts.month}</div>
+    // The large tile sits on the dark "next session" card; the small one on the white list.
+    <div className={`${cls} flex-none text-center ${size === 'lg' ? 'bg-[rgba(255,255,255,0.1)] shadow-[inset_0_0_0_1px_rgba(255,255,255,0.18)]' : 'bg-[#F8FAFC] shadow-[inset_0_0_0_1px_#E2E8F0]'}`}>
+      <div className={`text-[9.5px] font-black tracking-[0.1em] uppercase ${size === 'lg' ? 'text-[#E3B341]' : 'text-[#B45309]'}`}>{parts.day}</div>
+      <div className={`${size === 'lg' ? 'text-[30px] text-white' : 'text-[19px] text-[#0F172A]'} font-extrabold leading-none`}>{parts.date}</div>
+      <div className={`mt-0.5 text-[10.5px] font-black tracking-[0.08em] uppercase ${size === 'lg' ? 'text-[#E3B341]' : 'text-[#B45309]'}`}>{parts.month}</div>
     </div>
   );
 }
@@ -151,7 +154,13 @@ export function ClientPortalPage() {
     if (isAuthenticated && profile?.email) {
       setLookupEmail(profile.email);
       void loadPortal();
+      return;
     }
+    // Signed out (or the session ended): nothing private stays on screen.
+    setPortal({ clientName: '', upcoming: [], past: [] });
+    setPayments(null);
+    setFormsTodo(null);
+    setAssessments([]);
   }, [isAuthenticated, profile?.email]);
 
   // The server identifies the client from the session. It used to accept any
@@ -365,17 +374,9 @@ export function ClientPortalPage() {
                     Reschedule
                   </button>
                 ) : null}
-                {nextSession.videoRoomLink ? (
-                  <a href={nextSession.videoRoomLink} target="_blank" rel="noreferrer" className="h-[48px] px-5 rounded-[16px] bg-[#E3B341] text-[#0F172A] text-[13.5px] font-extrabold flex items-center gap-2 shadow-[0_8px_22px_rgba(227,179,65,0.35)] hover:brightness-105 cursor-pointer">
-                    <Video className="h-4 w-4" />
-                    Join session
-                  </a>
-                ) : (
-                  <button type="button" disabled className="h-[48px] px-5 rounded-[16px] bg-[#E2E8F0] text-[#64748B] text-[13.5px] font-extrabold flex items-center gap-2 cursor-not-allowed">
-                    <Video className="h-4 w-4" />
-                    No room link yet
-                  </button>
-                )}
+                {nextSession.status === 'CONFIRMED' && nextSession.format !== 'IN_PERSON' ? (
+                  <JoinButton startsAt={nextSession.startsAt} endsAt={nextSession.endsAt} to={`/portal/sessions/${nextSession.id}/room`} />
+                ) : null}
               </div>
             </div>
           ) : (

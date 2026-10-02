@@ -4,6 +4,7 @@ import { PrismaService } from '../../../common/prisma/prisma.service';
 import { PRACTICE_ADMIN } from '../../../common/roles';
 import { isPlatformHostname } from '../../tenant/reserved-slugs';
 import { MailService } from '../mail/mail.service';
+import { SenderIdentityService } from '../mail/sender-identity.service';
 import { ResendDnsRecord, ResendDomain, ResendError } from '../mail/resend.client';
 import { NotificationService } from '../notification.service';
 
@@ -73,6 +74,7 @@ export class SendingDomainService {
     private readonly prisma: PrismaService,
     private readonly mail: MailService,
     private readonly notifications: NotificationService,
+    private readonly identity: SenderIdentityService,
   ) {}
 
   async get(tenantId: bigint) {
@@ -251,7 +253,7 @@ export class SendingDomainService {
     } | null,
   ) {
     const available = this.mail.resend() !== null;
-    const platformSender = this.mail.platformSenderAddress();
+    const platformSender = this.identity.platformAddress();
     if (!row) return { available, platformSender, domain: null, sendingFrom: platformSender };
     const verified = row.status === 'VERIFIED';
     return {

@@ -9,9 +9,20 @@ export type Slot = {
   startsAt: string;
   endsAt: string;
   channel: string;
+  /** SET-06: what this time offers. Rows predating it fall back to channel. */
+  formats?: Array<'ONLINE' | 'IN_PERSON'>;
+  location?: { name: string; city: string } | null;
 };
 
 export type Format = 'Online' | 'In person';
+
+/** The formats one time offers, reading the new fields with the old fallback. */
+export function slotFormats(slot: Pick<Slot, 'formats' | 'channel'>): Format[] {
+  if (slot.formats?.length) {
+    return slot.formats.map((f) => (f === 'IN_PERSON' ? 'In person' : 'Online')) as Format[];
+  }
+  return [formatOf(slot.channel)];
+}
 
 /** Practices are in Nigeria; clients book in the practice's time, wherever their browser is. */
 const ZONE = 'Africa/Lagos';
@@ -63,11 +74,11 @@ export function slotsForService(slots: Slot[], serviceId: string | null): Slot[]
 }
 
 export function slotsOnDay(slots: Slot[], day: string, filter: 'All' | Format): Slot[] {
-  return slots.filter((s) => dayKeyWAT(s.startsAt) === day && (filter === 'All' || formatOf(s.channel) === filter));
+  return slots.filter((s) => dayKeyWAT(s.startsAt) === day && (filter === 'All' || slotFormats(s).includes(filter)));
 }
 
 export function formatsOffered(slots: Slot[]): Format[] {
-  const seen = new Set(slots.map((s) => formatOf(s.channel)));
+  const seen = new Set(slots.flatMap((s) => slotFormats(s)));
   return (['Online', 'In person'] as Format[]).filter((f) => seen.has(f));
 }
 

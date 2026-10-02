@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { JoinButton } from '../../components/video/JoinButton';
 import { useNavigate, useParams } from 'react-router-dom';
 import { ArrowLeft, Video } from 'lucide-react';
 import { Eyebrow } from '@unclutterdesk/ui';
@@ -13,7 +14,7 @@ type PrepPayload = {
     endsAt: string;
     serviceTitle: string;
     status: string;
-    videoRoomLink: string | null;
+    format?: string;
   };
   latestNote: {
     subjective?: string | null;
@@ -94,15 +95,16 @@ export function SessionPrepPage() {
                     <h2 className="mt-1 text-[24px] font-bold tracking-[-0.02em] text-[#0F172A]">{prep.booking.clientName}</h2>
                     <p className="text-[13px] text-[#64748B] font-medium">{prep.booking.clientEmail}</p>
                   </div>
-                  {prep.booking.videoRoomLink ? (
-                    <a href={prep.booking.videoRoomLink} target="_blank" rel="noreferrer" className="h-[52px] px-6 rounded-[16px] bg-[#0F3A53] text-white font-bold text-[14px] flex items-center gap-2 shadow-[0_8px_22px_rgba(15,58,83,0.24)] hover:bg-[#0C2E42] cursor-pointer">
-                      <Video className="h-4 w-4" /> Join secure video room
-                    </a>
-                  ) : (
-                    <button disabled className="h-[52px] px-6 rounded-[16px] bg-[#E2E8F0] text-[#94A3B8] font-bold text-[14px] flex items-center gap-2 cursor-not-allowed">
-                      <Video className="h-4 w-4" /> No video link yet
-                    </button>
-                  )}
+                  {prep.booking.format !== 'IN_PERSON' ? (
+                    <JoinButton
+                      startsAt={prep.booking.startsAt}
+                      endsAt={prep.booking.endsAt}
+                      to={`/session/${prep.booking.id}`}
+                      label="Join secure video room"
+                      className="h-[52px] px-6 rounded-[16px] bg-[#0F3A53] text-white font-bold text-[14px] inline-flex items-center gap-2 shadow-[0_8px_22px_rgba(15,58,83,0.24)] hover:bg-[#0C2E42] cursor-pointer"
+                      waitingClassName="h-[52px] px-6 rounded-[16px] bg-[#E2E8F0] text-[#64748B] font-bold text-[14px] inline-flex items-center gap-2 cursor-not-allowed"
+                    />
+                  ) : null}
                 </div>
 
                 <div className="bg-white rounded-[24px] border border-[#E2E8F0] p-[24px_26px]">
@@ -141,13 +143,20 @@ export function SessionPrepPage() {
               <div className="flex flex-col gap-4">
                 <div className="bg-[#0F172A] rounded-[24px] p-[22px_24px] shadow-[0_14px_40px_rgba(15,23,42,0.22)]">
                   <span className="text-[9px] font-black tracking-[0.22em] uppercase text-[#E3B341] block">SECURE VIDEO ROOM</span>
-                  <p className="mt-2 text-[12.5px] text-slate-300 font-medium leading-relaxed">This session runs on your practice's secure video provider. Open the room link to start — it opens in a new tab.</p>
-                  {prep.booking.videoRoomLink ? (
-                    <a href={prep.booking.videoRoomLink} target="_blank" rel="noreferrer" className="mt-4 w-full h-[44px] rounded-[13px] bg-[#E3B341] text-[#0F172A] text-[13px] font-extrabold flex items-center justify-center gap-2 hover:brightness-105 cursor-pointer">
-                      <Video className="h-4 w-4" /> Open video room
-                    </a>
+                  <p className="mt-2 text-[12.5px] text-slate-300 font-medium leading-relaxed">This session runs in your practice's private video room. It opens 15 minutes before the start.</p>
+                  {prep.booking.format !== 'IN_PERSON' ? (
+                    <div className="mt-4">
+                      <JoinButton
+                        startsAt={prep.booking.startsAt}
+                        endsAt={prep.booking.endsAt}
+                        to={`/session/${prep.booking.id}`}
+                        label="Open video room"
+                        className="w-full h-[44px] rounded-[13px] bg-[#E3B341] text-[#0F172A] text-[13px] font-extrabold flex items-center justify-center gap-2 hover:brightness-105 cursor-pointer"
+                        waitingClassName="w-full h-[44px] rounded-[13px] bg-white/10 text-slate-300 text-[13px] font-bold flex items-center justify-center gap-2 cursor-not-allowed"
+                      />
+                    </div>
                   ) : (
-                    <div className="mt-4 w-full h-[44px] rounded-[13px] bg-white/10 text-slate-400 text-[13px] font-bold flex items-center justify-center gap-2">No video link available yet</div>
+                    <div className="mt-4 w-full h-[44px] rounded-[13px] bg-white/10 text-slate-400 text-[13px] font-bold flex items-center justify-center gap-2">In person: no video room</div>
                   )}
                 </div>
 

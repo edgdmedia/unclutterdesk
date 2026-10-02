@@ -103,10 +103,10 @@ describe('getSession', () => {
     const d = await service.getSession(TENANT, { profileId: ACTOR, viewAll: false, clinical: true, desk: false }, 900n);
     expect(d.can).toEqual({ edit: false, summary: true, markPaid: false });
   });
-  it('builds the video link from the room name', async () => {
+  it('links an online session to its room in the app', async () => {
     const { service } = make();
     const d = await service.getSession(TENANT, DESK, 900n);
-    expect(d.videoRoomLink).toBe('https://meet.jit.si/room-9');
+    expect(d.videoRoomLink).toBe('/session/900');
   });
 });
 
@@ -160,6 +160,13 @@ describe('rescheduleByStaff', () => {
     expect(t.consultAvailability.updateMany).toHaveBeenCalledWith({ where: { id: 300n, tenantId: TENANT }, data: { isActive: true } });
     expect(t.consultAvailability.update).toHaveBeenCalledWith({ where: { id: 301n }, data: { isActive: false } });
     expect(t.consultBooking.update).toHaveBeenCalledWith({ where: { id: 900n }, data: { availabilityId: 301n } });
+  });
+  it("gives a moved session a fresh video room when one was made for the old time", async () => {
+    const t = tx({ booking: { videoProvider: 'DAILY', videoRoomName: 'ud-900-x' } });
+    const { service, prisma } = make();
+    prisma.$transaction = vi.fn(async (fn: any) => fn(t));
+    await service.rescheduleByStaff(TENANT, DESK, 900n, 301n);
+    expect(t.consultBooking.update).toHaveBeenCalledWith({ where: { id: 900n }, data: { availabilityId: 301n, videoProvider: null, videoRoomName: null } });
   });
   it('refuses a slot another practitioner owns', async () => {
     const t = tx({ slot: slot({ providerProfileId: 66n }) });

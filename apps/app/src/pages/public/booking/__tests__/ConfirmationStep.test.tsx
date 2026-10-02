@@ -56,6 +56,23 @@ describe('ConfirmationStep', () => {
     expect(menu.textContent).toContain('Google Calendar');
   });
 
+  // SET-06: an in-person confirmation shows where, not a join link.
+  it('shows the address, directions and a maps link for an in-person session', () => {
+    renderWithApp(
+      <ConfirmationStep
+        booking={{ ...booking, format: 'IN_PERSON', location: { name: 'Lekki clinic', address: '12 Admiralty Way', city: 'Lagos', directions: 'Gate 2, second floor', mapsUrl: 'https://maps.test/x' } }}
+        channel="IN_PERSON"
+        mode="paid"
+        apiBase="https://api.x"
+      />,
+    );
+    expect(screen.getByText('Lekki clinic')).toBeTruthy();
+    expect(screen.getByText('12 Admiralty Way, Lagos')).toBeTruthy();
+    expect(screen.getByText('Gate 2, second floor')).toBeTruthy();
+    expect(screen.getByRole('link', { name: /Open in Google Maps/ }).getAttribute('href')).toBe('https://maps.test/x');
+    expect(screen.queryByText(/video link will be emailed/)).toBeNull();
+  });
+
   it('holds a transfer booking with a countdown and copyable details', async () => {
     vi.useFakeTimers({ toFake: ['setInterval', 'clearInterval', 'setTimeout', 'clearTimeout', 'Date'] });
     vi.setSystemTime(new Date('2026-10-01T10:00:00Z'));

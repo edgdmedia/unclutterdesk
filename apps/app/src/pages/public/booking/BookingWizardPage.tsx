@@ -4,7 +4,7 @@ import { Button, tenantBrandStyle } from '@unclutterdesk/ui';
 import { API_BASE, api, getSubdomainTenantSlug } from '../../../utils/apiClient';
 import { useAuth } from '../../../context/AuthContext';
 import { STEP_PARAM, canContinue, initialState, stepFromUrl, wizardReducer, type Step } from './bookingWizard';
-import { formatOf, whenLabel } from './bookingSlots';
+import { slotFormats, formatOf, whenLabel } from './bookingSlots';
 import { useBookingData } from './useBookingData';
 import { payInPopup } from './paystackPopup';
 import {
@@ -39,6 +39,15 @@ const TITLES: Record<1 | 2 | 3 | 4, string> = { 1: 'Choose a session', 2: 'Pick 
  * details, pay, then the confirmation. Replaces the old one-page form.
  * `previewSlug` renders a practice from outside its own host (Brand settings).
  */
+/** BKG-07: the practice's real cities and formats, from its public info. */
+export function practiceHeaderLine(practice: { locations?: Array<{ city: string }>; formats?: Array<'ONLINE' | 'IN_PERSON'> } | null | undefined): string | null {
+  if (!practice) return null;
+  const cities = [...new Set((practice.locations ?? []).map((l) => l.city).filter(Boolean))];
+  const fmts = (practice.formats ?? []).map((f) => (f === 'IN_PERSON' ? 'in person' : 'online'));
+  if (!cities.length && !fmts.length) return null;
+  return [fmts.length ? fmts.join(' & ') : null, cities.length ? `in ${cities.join(', ')}` : null].filter(Boolean).join(' · ');
+}
+
 export function BookingWizardPage({ previewSlug }: { previewSlug?: string } = {}) {
   const slug = previewSlug || getSubdomainTenantSlug() || '';
   const data = useBookingData(slug, previewSlug);
@@ -55,6 +64,7 @@ export function BookingWizardPage({ previewSlug }: { previewSlug?: string } = {}
         logoUrl={practice?.logoUrl}
         rating={{ average: data.reviews.averageRating ?? 0, count: data.reviews.count }}
         profileHref="/"
+        subtitle={practiceHeaderLine(data.practice)}
       />
       {data.status === 'ready' && practice ? (
         <Wizard data={data} />
@@ -108,7 +118,8 @@ function Wizard({ data }: { data: ReturnType<typeof useBookingData> }) {
       : null;
   const service = data.services.find((s) => s.id === state.serviceId) ?? null;
   const slot = data.slots.find((s) => s.id === state.slotId) ?? null;
-  const total = service ? totalKobo(service, state) : null;
+  const total = service ? totalKobo(service, state, slot) : null;
+  const needsFormat = Boolean(slot && slotFormats(slot).length > 1);
 
   function bookingBody(extra: Record<string, unknown> = {}) {
     return {
@@ -116,6 +127,7 @@ function Wizard({ data }: { data: ReturnType<typeof useBookingData> }) {
       availabilityId: state.slotId,
       phone: me?.phone ?? undefined,
       notes: state.note.trim() || undefined,
+      format: state.format ?? undefined,
       discountCode: state.discount.status === 'applied' ? state.discount.code : undefined,
       ...extra,
     };
@@ -223,7 +235,7 @@ function Wizard({ data }: { data: ReturnType<typeof useBookingData> }) {
             ? `Try again · ${naira(total ?? '0')}`
             : `Pay ${naira(total ?? '0')}`
         : 'Continue';
-  const ctaDisabled = !canContinue(state, Boolean(me)) || (step === 1 && data.services.length === 0);
+  const ctaDisabled = !canContinue(state, Boolean(me), needsFormat) || (step === 1 && data.services.length === 0);
   // Signed out on step 3, the account form's own button is how the client moves on.
   const showCta = !(step === 1 && data.services.length === 0) && !(step === 3 && !me);
   const onBack = state.step > state.firstStep ? () => dispatch({ type: 'back' }) : undefined;
@@ -305,7 +317,7 @@ function Wizard({ data }: { data: ReturnType<typeof useBookingData> }) {
               practiceName={practice.name}
               serviceLabel={service ? `${service.title} · ${service.durationMinutes} min` : null}
               whenLabel={slot ? whenLabel(slot.startsAt) : null}
-              formatLabel={slot ? formatOf(slot.channel) : null}
+              formatLabel={slot ? (state.format ? (state.format === 'IN_PERSON' ? 'In person' : 'Online') : slotFormats(slot).join(' or ')) : null}
               discount={state.discount.status === 'applied' ? { code: state.discount.code, savingKobo: state.discount.savingKobo } : null}
               totalKobo={total}
               cancellationHours={practice.cancellationHours}

@@ -1,244 +1,400 @@
-import React, { useEffect, useState } from 'react';
-import { Save, Plus, Info } from 'lucide-react';
-import { Eyebrow, useToast } from '@unclutterdesk/ui';
+import React, { useEffect, useMemo, useState } from 'react';
+import { Info, Plus, Save } from 'lucide-react';
+import { Button, Card, Eyebrow, Page, PageHeader, useToast } from '@unclutterdesk/ui';
 import { api } from '../../../utils/apiClient';
 
-type DayKey = 'mon' | 'tue' | 'wed' | 'thu' | 'fri' | 'sat' | 'sun';
+type Format = 'ONLINE' | 'IN_PERSON';
 type Window = { start: string; end: string };
-type DayState = { on: boolean; windows: Window[] };
-type AvailabilityPayload = { cancellationHours: number; slots: Array<{ id: string; startsAt: string; endsAt: string; isActive: boolean }> };
-
-const DAYS: Array<{ key: DayKey; label: string; index: number }> = [
-  { key: 'mon', label: 'Monday', index: 0 },
-  { key: 'tue', label: 'Tuesday', index: 1 },
-  { key: 'wed', label: 'Wednesday', index: 2 },
-  { key: 'thu', label: 'Thursday', index: 3 },
-  { key: 'fri', label: 'Friday', index: 4 },
-  { key: 'sat', label: 'Saturday', index: 5 },
-  { key: 'sun', label: 'Sunday', index: 6 },
-];
-
-const EMPTY_DAYS: Record<DayKey, DayState> = {
-  mon: { on: false, windows: [] },
-  tue: { on: false, windows: [] },
-  wed: { on: false, windows: [] },
-  thu: { on: false, windows: [] },
-  fri: { on: false, windows: [] },
-  sat: { on: false, windows: [] },
-  sun: { on: false, windows: [] },
+type WeeklyTime = { weekday: number; start: string; formats: Format[]; locationId: string | null };
+type SlotView = {
+  id: string; startsAt: string; endsAt: string; isActive: boolean;
+  formats: Format[]; location: { id: string; name: string } | null; customised: boolean; booked: boolean;
+};
+type Payload = {
+  cancellationHours: number;
+  sessionLengthMinutes: number;
+  gapMinutes: number;
+  locations: Array<{ id: string; name: string; city: string }>;
+  weeklyTimes: WeeklyTime[];
+  slots: SlotView[];
 };
 
-function toTime(date: Date) {
-  return `${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`;
+const DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+const DAY_KEYS = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'] as const;
+type DayKey = (typeof DAY_KEYS)[number];
+
+const minutes = (hhmm: string) => {
+  const [h, m] = hhmm.split(':').map(Number);
+  return h * 60 + m;
+};
+const hhmm = (mins: number) => `${String(Math.floor(mins / 60)).padStart(2, '0')}:${String(mins % 60).padStart(2, '0')}`;
+
+/** The session times that fit in a day's windows — the same layout rule the server uses. */
+function timesInHours(windows: Window[], length: number, gap: number): string[] {
+  const out: string[] = [];
+  for (const w of windows) {
+    for (let t = minutes(w.start); t + length <= minutes(w.end); t += length + gap) out.push(hhmm(t));
+  }
+  return [...new Set(out)].sort((a, b) => minutes(a) - minutes(b));
 }
 
-function deriveDays(slots: AvailabilityPayload['slots']): Record<DayKey, DayState> {
-  const next = structuredClone(EMPTY_DAYS);
-  const grouped = new Map<DayKey, Array<{ start: string; end: string }>>();
-
-  for (const slot of slots) {
-    const start = new Date(slot.startsAt);
-    const end = new Date(slot.endsAt);
-    const weekday = DAYS[(start.getDay() + 6) % 7].key;
-    const values = grouped.get(weekday) || [];
-    values.push({ start: toTime(start), end: toTime(end) });
-    grouped.set(weekday, values);
-  }
-
-  for (const day of DAYS) {
-    const values = grouped.get(day.key) || [];
-    if (values.length === 0) continue;
-    const sorted = values.sort((a, b) => a.start.localeCompare(b.start));
-    const first = sorted[0];
-    const last = sorted[sorted.length - 1];
-    next[day.key] = { on: true, windows: [{ start: first.start, end: last.end }] };
-  }
-
-  return next;
+function formatLabel(t: WeeklyTime, locations: Payload['locations']): string {
+  const where = t.locationId ? locations.find((l) => l.id === t.locationId)?.name : null;
+  if (t.formats.includes('ONLINE') && t.formats.includes('IN_PERSON')) return `Either${where ? ` · ${where}` : ''}`;
+  if (t.formats.includes('IN_PERSON')) return `In person${where ? ` · ${where}` : ''}`;
+  return 'Online';
 }
 
-function Switch({ on, onChange }: { on: boolean; onChange: () => void }) {
+function Switch({ on, onChange, label }: { on: boolean; onChange: () => void; label?: string }) {
   return (
-    <button type="button" role="switch" aria-checked={on} onClick={onChange} className="w-[40px] h-[22px] rounded-full relative transition-colors cursor-pointer shrink-0" style={{ backgroundColor: on ? '#15803D' : '#E2E8F0' }}>
+    <button type="button" role="switch" aria-checked={on} aria-label={label} onClick={onChange} className="w-[40px] h-[22px] rounded-full relative transition-colors cursor-pointer shrink-0" style={{ backgroundColor: on ? '#15803D' : '#E2E8F0' }}>
       <span className="absolute top-[3px] h-[16px] w-[16px] rounded-full bg-white shadow-[0_2px_5px_rgba(15,23,42,0.2)] transition-[left] duration-150" style={{ left: on ? '21px' : '3px' }} />
     </button>
   );
 }
 
+/** SET-06: the repeating week, each time with its own format and location. */
+/**
+ * One session-time tile. A module-level component (not defined inside the
+ * page) so a parent re-render never remounts it out from under an open menu.
+ */
+function Tile(props: {
+  id: string;
+  formats: Format[];
+  locationId: string | null;
+  onPick: (f: Format[], l: string | null) => void;
+  locked?: boolean;
+  badge?: string;
+  open: boolean;
+  onToggle: () => void;
+  locations: Array<{ id: string; name: string; city: string }>;
+}) {
+  const { id, formats, locationId, onPick, locked, badge, open, onToggle, locations } = props;
+  const label = formatLabel({ weekday: 0, start: '', formats, locationId } as WeeklyTime, locations);
+  return (
+    <div className="relative">
+      <button
+        type="button"
+        disabled={locked}
+        aria-label={`${locked ? 'Booked time' : 'Format'} ${label}${badge ? ` (${badge})` : ''}`}
+        onClick={onToggle}
+        className={`h-[34px] px-3 rounded-[10px] border text-[12.5px] font-bold ${locked ? 'border-[#E2E8F0] bg-[#F1F5F9] text-[#94A3B8] cursor-not-allowed' : 'border-[#E2E8F0] bg-white text-[#0F172A] cursor-pointer hover:border-[#0F3A53]'}`}
+      >
+        {label}{badge ? <span className="ml-1.5 text-[10px] font-black uppercase text-[#B45309]">{badge}</span> : null}
+      </button>
+      {open && !locked ? (
+        <div role="menu" className="absolute left-0 top-full mt-1 z-20 w-[230px] rounded-[14px] border border-[#E2E8F0] bg-white shadow-xl p-2 space-y-1.5">
+          {([['Online', ['ONLINE'] as Format[]], ['In person', ['IN_PERSON'] as Format[]], ['Either', ['ONLINE', 'IN_PERSON'] as Format[]]] as const).map(([name, fs]) => (
+            <button
+              key={name}
+              type="button"
+              role="menuitem"
+              onClick={() => onPick(fs, fs.includes('IN_PERSON') ? (locationId ?? locations[0]?.id ?? null) : null)}
+              className="w-full text-left px-2.5 h-[32px] rounded-[9px] text-[13px] font-semibold hover:bg-[#F1F5F9] cursor-pointer"
+            >
+              {name}
+            </button>
+          ))}
+          {locations.length ? (
+            <label className="block text-[11px] font-bold text-[#475569]">
+              Location
+              <select
+                className="mt-1 w-full h-[34px] rounded-[9px] border border-[#E2E8F0] bg-[#F8FAFC] px-2 text-[12.5px] font-semibold"
+                value={locationId ?? ''}
+                onChange={(e) => {
+                  const loc = e.target.value || null;
+                  const fs: Format[] = loc ? (formats.includes('ONLINE') ? ['ONLINE', 'IN_PERSON'] : ['IN_PERSON']) : ['ONLINE'];
+                  onPick(fs, loc);
+                }}
+              >
+                <option value="">None (online only)</option>
+                {locations.map((l) => <option key={l.id} value={l.id}>{l.name}</option>)}
+              </select>
+            </label>
+          ) : null}
+          <button type="button" onClick={onToggle} className="w-full text-left px-2.5 h-[30px] rounded-[9px] text-[12.5px] font-semibold text-[#64748B] hover:bg-[#F1F5F9] cursor-pointer">Close</button>
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
 export function AvailabilitySettingsPage() {
   const toast = useToast();
-  const [days, setDays] = useState<Record<DayKey, DayState>>(EMPTY_DAYS);
-  const [sessionLengthMinutes, setSessionLengthMinutes] = useState(50);
-  const [gapMinutes, setGapMinutes] = useState(10);
-  const [cancellationHours, setCancellationHours] = useState(24);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [locations, setLocations] = useState<Payload['locations']>([]);
+  const [slots, setSlots] = useState<SlotView[]>([]);
+  const [days, setDays] = useState<Record<DayKey, { on: boolean; windows: Window[] }>>(
+    Object.fromEntries(DAY_KEYS.map((k) => [k, { on: false, windows: [] }])) as never,
+  );
+  const [times, setTimes] = useState<Record<string, { formats: Format[]; locationId: string | null }>>({});
+  const [sessionLengthMinutes, setSessionLengthMinutes] = useState(50);
+  const [gapMinutes, setGapMinutes] = useState(10);
+  const [cancellationHours, setCancellationHours] = useState(24);
+  const [openChooser, setOpenChooser] = useState<string | null>(null);
+
+  function apply(payload: Payload) {
+    setLocations(payload.locations ?? []);
+    setSlots(payload.slots ?? []);
+    setSessionLengthMinutes(payload.sessionLengthMinutes ?? 50);
+    setGapMinutes(payload.gapMinutes ?? 10);
+    setCancellationHours(payload.cancellationHours ?? 24);
+    const length = payload.sessionLengthMinutes ?? 50;
+    const nextDays = Object.fromEntries(DAY_KEYS.map((k) => [k, { on: false, windows: [] as Window[] }])) as Record<DayKey, { on: boolean; windows: Window[] }>;
+    const nextTimes: Record<string, { formats: Format[]; locationId: string | null }> = {};
+    for (const t of payload.weeklyTimes ?? []) {
+      nextTimes[`${t.weekday}|${t.start}`] = { formats: t.formats, locationId: t.locationId };
+      const day = nextDays[DAY_KEYS[t.weekday]];
+      day.on = true;
+      const start = minutes(t.start);
+      const end = start + length;
+      const w = day.windows[0];
+      day.windows = w ? [{ start: hhmm(Math.min(minutes(w.start), start)), end: hhmm(Math.max(minutes(w.end), end)) }] : [{ start: hhmm(start), end: hhmm(end) }];
+    }
+    setDays(nextDays);
+    setTimes(nextTimes);
+  }
 
   useEffect(() => {
     let cancelled = false;
-    async function loadAvailability() {
-      setLoading(true);
-      setError(null);
-      try {
-        const payload = await api.get<AvailabilityPayload>('/v1/consult/therapist/availability');
-        if (cancelled) return;
-        setDays(deriveDays(payload.slots));
-        setCancellationHours(payload.cancellationHours);
-        if (payload.slots[0]) {
-          const start = new Date(payload.slots[0].startsAt);
-          const end = new Date(payload.slots[0].endsAt);
-          setSessionLengthMinutes(Math.round((end.getTime() - start.getTime()) / 60_000));
-        }
-      } catch (err) {
-        if (!cancelled) setError(err instanceof Error ? err.message : 'Unable to load availability');
-      } finally {
-        if (!cancelled) setLoading(false);
-      }
-    }
-    void loadAvailability();
+    api.get<Payload>('/v1/consult/therapist/availability')
+      .then((payload) => { if (!cancelled) apply(payload); })
+      .catch((err) => !cancelled && setError(err instanceof Error ? err.message : 'Unable to load availability'))
+      .finally(() => !cancelled && setLoading(false));
     return () => { cancelled = true; };
   }, []);
 
+  const dayTimes = useMemo(() => {
+    const out: Array<{ weekday: number; start: string }> = [];
+    DAY_KEYS.forEach((key, weekday) => {
+      const day = days[key];
+      if (!day.on) return;
+      for (const start of timesInHours(day.windows, sessionLengthMinutes, gapMinutes)) out.push({ weekday, start });
+    });
+    return out;
+  }, [days, sessionLengthMinutes, gapMinutes]);
+
+  // New times copy the nearest earlier time's format, or Online.
+  useEffect(() => {
+    setTimes((prev) => {
+      const next = { ...prev };
+      for (const { weekday, start } of dayTimes) {
+        const id = `${weekday}|${start}`;
+        if (next[id]) continue;
+        const earlier = dayTimes.filter((t) => t.weekday === weekday && minutes(t.start) < minutes(start)).sort((a, b) => minutes(b.start) - minutes(a.start))[0];
+        const source = earlier ? next[`${earlier.weekday}|${earlier.start}`] : null;
+        next[id] = source ? { ...source } : { formats: ['ONLINE'], locationId: null };
+      }
+      for (const k of Object.keys(next)) {
+        if (!dayTimes.some((t) => `${t.weekday}|${t.start}` === k)) delete next[k];
+      }
+      return next;
+    });
+  }, [dayTimes]);
+
   const toggleDay = (key: DayKey) => setDays((prev) => ({ ...prev, [key]: { ...prev[key], on: !prev[key].on, windows: prev[key].windows.length ? prev[key].windows : [{ start: '09:00', end: '17:00' }] } }));
   const addWindow = (key: DayKey) => setDays((prev) => ({ ...prev, [key]: { ...prev[key], windows: [...prev[key].windows, { start: '09:00', end: '12:00' }] } }));
-  const setWindow = (key: DayKey, index: number, field: 'start' | 'end', value: string) => setDays((prev) => ({ ...prev, [key]: { ...prev[key], windows: prev[key].windows.map((window, current) => current === index ? { ...window, [field]: value } : window) } }));
-  const removeWindow = (key: DayKey, index: number) => setDays((prev) => ({ ...prev, [key]: { ...prev[key], windows: prev[key].windows.filter((_, current) => current !== index) } }));
+  const setWindow = (key: DayKey, index: number, field: 'start' | 'end', value: string) => setDays((prev) => ({ ...prev, [key]: { ...prev[key], windows: prev[key].windows.map((w, i) => (i === index ? { ...w, [field]: value } : w)) } }));
+  const removeWindow = (key: DayKey, index: number) => setDays((prev) => ({ ...prev, [key]: { ...prev[key], windows: prev[key].windows.filter((_, i) => i !== index) } }));
 
-  const workingDays = DAYS.filter((day) => days[day.key].on).length;
+  function setTime(id: string, formats: Format[], locationId: string | null) {
+    setTimes((prev) => ({ ...prev, [id]: { formats, locationId } }));
+    setOpenChooser(null);
+  }
 
-  async function handleSave() {
+  function setAllDay(weekday: number, formats: Format[], locationId: string | null) {
+    setTimes((prev) => {
+      const next = { ...prev };
+      for (const t of dayTimes.filter((x) => x.weekday === weekday)) next[`${t.weekday}|${t.start}`] = { formats, locationId };
+      return next;
+    });
+  }
+
+  async function save() {
     setSaving(true);
     setError(null);
     try {
-      await api.patch('/v1/consult/therapist/availability', {
-        days: DAYS.map((day) => ({ day: day.index, enabled: days[day.key].on, windows: days[day.key].windows })),
-        sessionLengthMinutes,
-        gapMinutes,
-        cancellationHours,
-      });
-      toast.success('Availability saved');
+      const weeklyTimes = dayTimes.map((t) => ({
+        weekday: t.weekday,
+        start: t.start,
+        formats: times[`${t.weekday}|${t.start}`]?.formats ?? ['ONLINE'],
+        locationId: times[`${t.weekday}|${t.start}`]?.locationId ?? null,
+      }));
+      const payload = await api.patch<Payload>('/v1/consult/therapist/availability', { weeklyTimes, sessionLengthMinutes, gapMinutes, cancellationHours });
+      apply(payload);
+      toast.success('Availability saved. Open times updated; booked sessions and this-date-only changes stay as they are.');
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Could not save availability');
-      setError(err instanceof Error ? err.message : 'Unable to save availability');
+      const message = err instanceof Error ? err.message : 'Could not save availability';
+      toast.error(message);
+      setError(message);
     } finally {
       setSaving(false);
     }
   }
 
-  const searchParams = new URLSearchParams(window.location.search);
-  const isGoogleConnected = searchParams.get('google_connected') === 'true';
-
-  async function handleGoogleConnect() {
+  async function changeSlot(slot: SlotView, formats: Format[], locationId: string | null) {
+    setError(null);
     try {
-      const { url } = await api.get<{ url: string }>('/v1/calendar/google/auth');
-      window.location.href = url;
+      await api.patch(`/v1/consult/therapist/slots/${slot.id}`, { formats, locationId });
+      const payload = await api.get<Payload>('/v1/consult/therapist/availability');
+      apply(payload);
+      toast.success('That time updated for this date only.');
     } catch (err) {
-      setError('Unable to initiate Google Calendar connection');
+      const message = err instanceof Error ? err.message : 'That time could not be changed';
+      toast.error(message);
+      setError(message);
     }
   }
 
+  async function resetSlot(slot: SlotView) {
+    try {
+      await api.patch(`/v1/consult/therapist/slots/${slot.id}`, { reset: true });
+      const payload = await api.get<Payload>('/v1/consult/therapist/availability');
+      apply(payload);
+      toast.success('Back to the weekly pattern.');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'That time could not be reset');
+    }
+  }
+
+  const upcoming = useMemo(() => {
+    const byDate = new Map<string, SlotView[]>();
+    for (const slot of slots) {
+      const day = new Date(slot.startsAt).toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', timeZone: 'Africa/Lagos' });
+      byDate.set(day, [...(byDate.get(day) ?? []), slot]);
+    }
+    return [...byDate.entries()].slice(0, 28);
+  }, [slots]);
+
   return (
-    <div className="flex-1 min-w-[1192px] flex flex-col bg-[#F8FAFC]">
-      <header className="h-[88px] bg-white border-b border-[#E2E8F0] px-[26px] flex items-center gap-5 shrink-0">
-        <div>
-          <Eyebrow>SETTINGS</Eyebrow>
-          <h1 className="text-[20px] font-bold tracking-[-0.02em] text-[#0F172A]">Availability & blocked time</h1>
-          <p className="text-xs text-[#64748B] font-medium">{workingDays} working day{workingDays === 1 ? '' : 's'} generated into real future booking slots</p>
-        </div>
-        
-        <div className="ml-auto flex items-center gap-3">
-          {isGoogleConnected ? (
-            <div className="h-[44px] px-5 rounded-[14px] font-bold text-sm flex items-center gap-2 bg-[#ECFDF5] text-[#065F46] border border-[#A7F3D0]">
-              <div className="w-2 h-2 rounded-full bg-[#10B981]" />
-              Google Calendar Connected
-            </div>
-          ) : (
-            <button onClick={handleGoogleConnect} className="h-[44px] px-5 rounded-[14px] font-bold text-sm flex items-center gap-2 bg-white text-[#0F172A] border border-[#E2E8F0] shadow-sm hover:bg-slate-50 transition-colors">
-              <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
-                <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
-                <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/>
-                <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/>
-              </svg>
-              Connect Google Calendar
-            </button>
-          )}
-
-          <button onClick={() => void handleSave()} className="os-brand-btn h-[44px] px-5 rounded-[14px] font-bold text-sm flex items-center gap-2 text-white cursor-pointer disabled:opacity-60" style={{ backgroundColor: '#0F3A53' }} disabled={saving || loading}>
-            <Save className="h-4 w-4" />
-            {saving ? 'Saving...' : 'Save availability'}
-          </button>
-        </div>
-      </header>
-
-      <main className="flex-1 min-h-0 overflow-auto p-[24px_26px_32px] grid grid-cols-[minmax(0,1fr)_340px] gap-[20px] items-start">
-        <div className="flex flex-col gap-5">
-          {error ? <div className="rounded-[18px] border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-medium text-rose-700">{error}</div> : null}
-          <div className="bg-white rounded-[24px] border border-[#E2E8F0] p-[22px_24px]">
-            <Eyebrow className="mb-1">WEEKLY HOURS</Eyebrow>
-            <h3 className="text-[17px] font-bold tracking-[-0.01em] text-[#0F172A]">When clients can book you</h3>
-            {loading ? <div className="mt-6 text-sm font-medium text-[#64748B]">Loading availability...</div> : (
-              <div className="mt-4 flex flex-col">
-                {DAYS.map((day, dayIndex) => (
-                  <div key={day.key} className={`flex items-center gap-4 py-[14px] px-[16px] ${dayIndex > 0 ? 'border-t border-[#F1F5F9]' : ''}`}>
-                    <div className="w-[150px] flex items-center gap-3 shrink-0">
-                      <Switch on={days[day.key].on} onChange={() => toggleDay(day.key)} />
-                      <span className={`text-[14px] font-bold ${days[day.key].on ? 'text-[#0F172A]' : 'text-[#94A3B8]'}`}>{day.label}</span>
-                    </div>
-                    {days[day.key].on ? (
-                      <div className="flex-1 flex items-center gap-2.5 flex-wrap">
-                        {days[day.key].windows.map((window, index) => (
-                          <div key={`${day.key}_${index}`} className="flex items-center gap-2.5">
-                            <input type="time" value={window.start} onChange={(event) => setWindow(day.key, index, 'start', event.target.value)} className="w-[110px] h-[42px] px-3 rounded-[13px] bg-[#F8FAFC] border border-[#E2E8F0] text-[13.5px] font-bold text-[#0F172A] outline-none" />
-                            <span className="text-[12px] text-[#94A3B8] font-medium">to</span>
-                            <input type="time" value={window.end} onChange={(event) => setWindow(day.key, index, 'end', event.target.value)} className="w-[110px] h-[42px] px-3 rounded-[13px] bg-[#F8FAFC] border border-[#E2E8F0] text-[13.5px] font-bold text-[#0F172A] outline-none" />
-                            {days[day.key].windows.length > 1 ? <button onClick={() => removeWindow(day.key, index)} className="text-[#94A3B8] hover:text-[#DC2626] cursor-pointer">×</button> : null}
-                          </div>
+    <Page header={<PageHeader eyebrow="PRACTICE" title="Availability" actions={<Button onClick={() => void save()} disabled={saving || loading}><Save className="h-4 w-4" />{saving ? 'Saving…' : 'Save availability'}</Button>} />}>
+      {error ? <div role="alert" className="rounded-[14px] border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-medium text-rose-700">{error}</div> : null}
+      {loading ? <p className="text-sm text-[#64748B]">Loading…</p> : (
+        <div className="grid grid-cols-1 min-[1100px]:grid-cols-[minmax(0,1fr)_320px] gap-5 items-start">
+          <div className="space-y-4">
+            <Card padding="p-5" className="space-y-1">
+              <Eyebrow>WEEKLY HOURS</Eyebrow>
+              <p className="text-[13px] text-[#64748B] mb-2">Each session time gets its own format. Changes apply to open times; booked sessions and this-date-only changes stay as they are.</p>
+              {DAY_KEYS.map((key, weekday) => (
+                <div key={key} className="py-3 border-t border-[#F1F5F9] first:border-t-0">
+                  <div className="flex items-center gap-3 flex-wrap">
+                    <Switch on={days[key].on} onChange={() => toggleDay(key)} label={DAYS[weekday]} />
+                    <span className={`text-[14px] font-bold w-[92px] ${days[key].on ? 'text-[#0F172A]' : 'text-[#94A3B8]'}`}>{DAYS[weekday]}</span>
+                    {days[key].on ? (
+                      <>
+                        {days[key].windows.map((w, i) => (
+                          <span key={i} className="inline-flex items-center gap-1.5">
+                            <input type="time" aria-label={`${DAYS[weekday]} from`} value={w.start} onChange={(e) => setWindow(key, i, 'start', e.target.value)} className="h-[36px] px-2 rounded-[10px] border border-[#E2E8F0] bg-[#F8FAFC] text-[13px] font-bold" />
+                            <span className="text-[11px] text-[#94A3B8]">to</span>
+                            <input type="time" aria-label={`${DAYS[weekday]} until`} value={w.end} onChange={(e) => setWindow(key, i, 'end', e.target.value)} className="h-[36px] px-2 rounded-[10px] border border-[#E2E8F0] bg-[#F8FAFC] text-[13px] font-bold" />
+                            {days[key].windows.length > 1 ? <button type="button" onClick={() => removeWindow(key, i)} className="text-[#94A3B8] hover:text-[#DC2626] cursor-pointer" aria-label={`Remove ${DAYS[weekday]} hours`}>×</button> : null}
+                          </span>
                         ))}
-                        <button onClick={() => addWindow(day.key)} className="w-[22px] h-[22px] rounded-full bg-[#F1F5F9] text-[#0F3A53] flex items-center justify-center hover:bg-[#E2E8F0] cursor-pointer shrink-0"><Plus className="h-3 w-3" /></button>
-                      </div>
-                    ) : <span className="text-[13px] font-medium text-[#94A3B8]">Unavailable</span>}
+                        <button type="button" onClick={() => addWindow(key)} aria-label={`Add hours on ${DAYS[weekday]}`} className="w-[22px] h-[22px] rounded-full bg-[#F1F5F9] text-[#0F3A53] flex items-center justify-center cursor-pointer"><Plus className="h-3 w-3" /></button>
+                        {locations.length ? (
+                          <label className="ml-auto text-[11.5px] font-bold text-[#475569] inline-flex items-center gap-1.5">
+                            Set all {DAYS[weekday].toLowerCase()} times to
+                            <select
+                              className="h-[32px] rounded-[9px] border border-[#E2E8F0] bg-[#F8FAFC] px-2 text-[12px] font-semibold"
+                              value=""
+                              onChange={(e) => {
+                                if (e.target.value === 'ONLINE') setAllDay(weekday, ['ONLINE'], null);
+                                else if (e.target.value === 'IN_PERSON' && locations[0]) setAllDay(weekday, ['IN_PERSON'], locations[0].id);
+                                else if (e.target.value === 'BOTH' && locations[0]) setAllDay(weekday, ['ONLINE', 'IN_PERSON'], locations[0].id);
+                              }}
+                            >
+                              <option value="">Choose…</option>
+                              <option value="ONLINE">Online</option>
+                              {locations.map((l) => <option key={l.id} value="IN_PERSON">In person · {l.name}</option>)}
+                              {locations.map((l) => <option key={`b-${l.id}`} value="BOTH">Either · {l.name}</option>)}
+                            </select>
+                          </label>
+                        ) : null}
+                      </>
+                    ) : <span className="text-[13px] text-[#94A3B8] font-medium">Unavailable</span>}
                   </div>
-                ))}
-              </div>
-            )}
-          </div>
-        </div>
+                  {days[key].on && dayTimes.some((t) => t.weekday === weekday) ? (
+                    <div className="mt-2.5 flex flex-wrap gap-2 pl-[127px]">
+                      {dayTimes.filter((t) => t.weekday === weekday).map((t) => (
+                        <div key={t.start} className="flex items-center gap-1.5">
+                          <span className="text-[12px] font-bold text-[#475569]">{t.start}</span>
+                          <Tile
+                            id={`${weekday}|${t.start}`}
+                            formats={times[`${weekday}|${t.start}`]?.formats ?? ['ONLINE']}
+                            locationId={times[`${weekday}|${t.start}`]?.locationId ?? null}
+                            onPick={(fs, loc) => setTime(`${weekday}|${t.start}`, fs, loc)}
+                            open={openChooser === `${weekday}|${t.start}`}
+                            onToggle={() => setOpenChooser(openChooser === `${weekday}|${t.start}` ? null : `${weekday}|${t.start}`)}
+                            locations={locations}
+                          />
+                        </div>
+                      ))}
+                    </div>
+                  ) : null}
+                </div>
+              ))}
+            </Card>
 
-        <div className="flex flex-col gap-4">
-          <div className="bg-white rounded-[24px] border border-[#E2E8F0] p-[22px_24px]">
-            <Eyebrow className="mb-1">BOOKING RULES</Eyebrow>
-            <div className="space-y-4 mt-4">
+            <Card padding="p-5" className="space-y-2">
+              <Eyebrow>UPCOMING TIMES</Eyebrow>
+              <p className="text-[12.5px] text-[#64748B]">Change a single date for that day only. Booked times are locked.</p>
+              {upcoming.map(([day, daySlots]) => (
+                <div key={day} className="flex items-start gap-3 py-2 border-t border-[#F1F5F9]">
+                  <span className="w-[92px] shrink-0 text-[12.5px] font-bold text-[#0F172A] pt-1">{day}</span>
+                  <div className="flex flex-wrap gap-2">
+                    {daySlots.map((slot) => (
+                      <div key={slot.id} className="flex items-center gap-1">
+                        <span className="text-[12px] font-bold text-[#475569]">{new Date(slot.startsAt).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', timeZone: 'Africa/Lagos' })}</span>
+                        <Tile
+                          id={`slot-${slot.id}`}
+                          formats={slot.formats}
+                          locationId={slot.location?.id ?? null}
+                          locked={slot.booked}
+                          badge={slot.customised ? 'This date only' : undefined}
+                          onPick={(fs, loc) => void changeSlot(slot, fs, loc)}
+                          open={openChooser === `slot-${slot.id}`}
+                          onToggle={() => setOpenChooser(openChooser === `slot-${slot.id}` ? null : `slot-${slot.id}`)}
+                          locations={locations}
+                        />
+                        {slot.customised && !slot.booked ? (
+                          <button type="button" onClick={() => void resetSlot(slot)} className="text-[11.5px] font-bold text-[#0F3A53] underline cursor-pointer">Back to weekly</button>
+                        ) : null}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </Card>
+          </div>
+
+          <div className="space-y-4">
+            <Card padding="p-5" className="space-y-4">
+              <Eyebrow>BOOKING RULES</Eyebrow>
               <label className="block text-[11.5px] font-bold text-[#475569]">Session length
-                <select className="mt-1 h-[42px] w-full rounded-[13px] border border-[#E2E8F0] bg-[#F8FAFC] px-3 text-[13.5px] font-semibold" value={sessionLengthMinutes} onChange={(event) => setSessionLengthMinutes(Number(event.target.value))}>
-                  <option value={50}>50 min</option>
-                  <option value={60}>60 min</option>
-                  <option value={80}>80 min</option>
+                <select className="mt-1 h-[42px] w-full rounded-[13px] border border-[#E2E8F0] bg-[#F8FAFC] px-3 text-[13.5px] font-semibold" value={sessionLengthMinutes} onChange={(e) => setSessionLengthMinutes(Number(e.target.value))}>
+                  {[30, 50, 60, 80, 90].map((m) => <option key={m} value={m}>{m} min</option>)}
                 </select>
               </label>
               <label className="block text-[11.5px] font-bold text-[#475569]">Gap between sessions
-                <select className="mt-1 h-[42px] w-full rounded-[13px] border border-[#E2E8F0] bg-[#F8FAFC] px-3 text-[13.5px] font-semibold" value={gapMinutes} onChange={(event) => setGapMinutes(Number(event.target.value))}>
-                  <option value={0}>No gap</option>
-                  <option value={10}>10 min</option>
-                  <option value={15}>15 min</option>
+                <select className="mt-1 h-[42px] w-full rounded-[13px] border border-[#E2E8F0] bg-[#F8FAFC] px-3 text-[13.5px] font-semibold" value={gapMinutes} onChange={(e) => setGapMinutes(Number(e.target.value))}>
+                  {[0, 10, 15, 30].map((m) => <option key={m} value={m}>{m === 0 ? 'No gap' : `${m} min`}</option>)}
                 </select>
               </label>
               <label className="block text-[11.5px] font-bold text-[#475569]">Minimum notice
-                <select className="mt-1 h-[42px] w-full rounded-[13px] border border-[#E2E8F0] bg-[#F8FAFC] px-3 text-[13.5px] font-semibold" value={cancellationHours} onChange={(event) => setCancellationHours(Number(event.target.value))}>
-                  <option value={12}>12 hours</option>
-                  <option value={24}>24 hours</option>
-                  <option value={48}>48 hours</option>
+                <select className="mt-1 h-[42px] w-full rounded-[13px] border border-[#E2E8F0] bg-[#F8FAFC] px-3 text-[13.5px] font-semibold" value={cancellationHours} onChange={(e) => setCancellationHours(Number(e.target.value))}>
+                  {[12, 24, 48].map((h) => <option key={h} value={h}>{h} hours</option>)}
                 </select>
               </label>
-            </div>
-            <div className="mt-5 p-3.5 rounded-[14px] bg-[#EFF6FB] text-[#0F3A53] text-xs font-medium flex items-start gap-2.5 leading-relaxed">
-              <Info className="h-4 w-4 shrink-0 mt-0.5" />
-              <span>Saving regenerates the next 28 days of bookable slots from these weekly windows.</span>
-            </div>
+              <div className="p-3.5 rounded-[14px] bg-[#EFF6FB] text-[#0F3A53] text-xs font-medium flex items-start gap-2.5 leading-relaxed">
+                <Info className="h-4 w-4 shrink-0 mt-0.5" />
+                <span>Saving regenerates the next 28 days of open times from this week.</span>
+              </div>
+            </Card>
           </div>
         </div>
-      </main>
-    </div>
+      )}
+    </Page>
   );
 }
