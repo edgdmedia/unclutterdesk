@@ -116,6 +116,11 @@ export class VideoUsageService {
 
     return {
       month,
+      // The budgets the router works to, so the report can show how much is used.
+      limits: {
+        dailyMinutes: Number(process.env.VIDEO_DAILY_MONTHLY_MINUTES ?? 9500),
+        jaasUsers: Number(process.env.VIDEO_JAAS_MONTHLY_USERS ?? 23),
+      },
       totals: byProvider.map((r: any) => ({ provider: r.provider, minutes: r._sum.minutes ?? 0, participants: r._count.profileId })),
       practices: byPractice.map((r: any) => ({
         tenantId: r.tenantId.toString(),

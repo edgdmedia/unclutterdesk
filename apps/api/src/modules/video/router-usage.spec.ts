@@ -73,6 +73,7 @@ describe('usage', () => {
     const r = await new VideoUsageService(prisma).report('2026-10');
     expect(prisma.videoParticipant.groupBy.mock.calls[0][0].where.joinedAt).toEqual({ gte: new Date('2026-09-30T23:00:00Z'), lt: new Date('2026-10-31T23:00:00Z') });
     expect(r.month).toBe('2026-10');
+    expect(r.limits).toEqual({ dailyMinutes: 9500, jaasUsers: 23 });
     expect(r.totals).toEqual([
       { provider: 'DAILY', minutes: 300, participants: 6 },
       { provider: 'JAAS', minutes: 50, participants: 2 },

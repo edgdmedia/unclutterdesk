@@ -44,6 +44,12 @@ beforeEach(() => { get.mockReset(); post.mockReset(); patch.mockReset(); localSt
 afterEach(cleanup);
 
 describe('setup: how do you see clients', () => {
+  it('says online sessions run in our own video room (ONB-08)', async () => {
+    mockServer();
+    openServicesStep();
+    expect(await screen.findByText(/Online sessions run in Unclutter Desk's own video room/)).toBeTruthy();
+  });
+
   it('Both saves a location, both formats, the therapist flags and a split week', async () => {
     mockServer();
     openServicesStep();

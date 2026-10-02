@@ -106,7 +106,9 @@ export class ConsultService {
       languages: profile.languages,
       isPublic: profile.isPublic,
       acceptsGeneralBooking: profile.acceptsGeneralBooking,
-      videoProvider: profile.videoProvider,
+      videoProvider: profile.videoProvider === 'GOOGLE_MEET' ? 'GOOGLE_MEET' : 'BUILT_IN',
+      // VID-01: whether Google Meet can be chosen. The token itself never leaves the server.
+      googleConnected: !!profile.googleRefreshToken,
       offersOnline: profile.offersOnline,
       offersInPerson: profile.offersInPerson,
       locationIds: profile.workLocations.map((w) => w.locationId.toString()),
@@ -143,6 +145,24 @@ export class ConsultService {
           ...(dto.phone !== undefined ? { phone: dto.phone?.trim() || null } : {}),
         },
       });
+    }
+
+    // VID-01: built-in video, or Google Meet through the therapist's own Google
+    // account. Checked only when the choice changes, so a therapist whose Google
+    // later disconnected can still save the rest of their profile.
+    let videoProvider: 'BUILT_IN' | 'GOOGLE_MEET' | undefined;
+    if (dto.videoProvider !== undefined) {
+      const wanted = ['JITSI', 'DAILY'].includes(String(dto.videoProvider)) ? 'BUILT_IN' : String(dto.videoProvider);
+      if (wanted !== 'BUILT_IN' && wanted !== 'GOOGLE_MEET') throw new BadRequestException('Choose Unclutter Desk video or Google Meet.');
+      const current = await this.prisma.consultTherapistProfile.findUnique({
+        where: { tenantId_profileId: { tenantId, profileId } },
+        select: { videoProvider: true, googleRefreshToken: true },
+      });
+      if (!current) throw new NotFoundException('Therapist profile not found');
+      if (wanted === 'GOOGLE_MEET' && current.videoProvider !== 'GOOGLE_MEET' && !current.googleRefreshToken) {
+        throw new BadRequestException('Connect Google Calendar first to use Google Meet.');
+      }
+      videoProvider = wanted;
     }
 
     // SET-06: what this therapist sees clients as, and where.
@@ -187,7 +207,7 @@ export class ConsultService {
         ...(dto.languages ? { languages: dto.languages } : {}),
         ...(dto.isPublic !== undefined ? { isPublic: dto.isPublic } : {}),
         ...(dto.acceptsGeneralBooking !== undefined ? { acceptsGeneralBooking: dto.acceptsGeneralBooking } : {}),
-        ...(dto.videoProvider ? { videoProvider: dto.videoProvider } : {}),
+        ...(videoProvider ? { videoProvider } : {}),
       },
     });
 

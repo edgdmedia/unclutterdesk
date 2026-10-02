@@ -949,6 +949,10 @@ function OnboardingWizard({ tenantId }: { tenantId: string }) {
                           </label>
                         ))}
                       </div>
+                      {/* ONB-08: video needs no decision during setup. */}
+                      {seesClients !== 'IN_PERSON' ? (
+                        <p className="text-[11px] text-[#64748B] mt-2">Online sessions run in Unclutter Desk's own video room. You can switch to Google Meet later in My profile.</p>
+                      ) : null}
                     </div>
                     {seesClients !== 'ONLINE' && (
                       <div className="space-y-3 p-4 rounded-[16px] bg-[#F8FAFC] border border-[#E2E8F0]">

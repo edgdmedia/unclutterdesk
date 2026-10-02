@@ -17,6 +17,8 @@ type ProfileRecord = {
   bookingEmail?: string;
   notificationEmail?: string;
   videoProvider?: string;
+  /** VID-01: Google Meet can be chosen only with Google connected. */
+  googleConnected?: boolean;
   offersOnline?: boolean;
   offersInPerson?: boolean;
   locationIds?: string[];
@@ -54,6 +56,16 @@ export function MyProfilePage() {
     void loadProfile();
     return () => { cancelled = true; };
   }, []);
+
+  /** VID-01: Google Meet needs the therapist's Google account; this starts Google's sign-in. */
+  async function connectGoogle() {
+    try {
+      const { url } = await api.get<{ url: string }>('/v1/calendar/google/auth');
+      window.location.assign(url);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Could not reach Google');
+    }
+  }
 
   async function handleSave() {
     setSaving(true);
@@ -169,14 +181,45 @@ export function MyProfilePage() {
                     </select>
                     <p className="text-[10.5px] text-[#94A3B8] mt-1.5 font-medium">More languages coming soon.</p>
                   </div>
-                  <div>
-                    <label className="block text-[11.5px] font-bold text-[#475569] mb-1.5">Default Video Provider</label>
-                    <select className={inputCls} value={profile.videoProvider || 'JITSI'} onChange={(e) => setProfile((p) => ({ ...p, videoProvider: e.target.value }))}>
-                      <option value="JITSI">Jitsi (Built-in)</option>
-                      <option value="GOOGLE_MEET">Google Meet</option>
-                    </select>
-                    <p className="text-[10.5px] text-[#94A3B8] mt-1.5 font-medium">Automatically generate links for your sessions.</p>
-                  </div>
+                  <fieldset className="sm:col-span-2">
+                    <legend className="block text-[11.5px] font-bold text-[#475569] mb-1.5">Video sessions</legend>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      {[
+                        { value: 'BUILT_IN', title: 'Unclutter Desk video (recommended)', text: 'Sessions run inside Unclutter Desk. Nothing to install.', disabled: false },
+                        { value: 'GOOGLE_MEET', title: 'Google Meet', text: 'Uses your connected Google account. Opens in a new tab.', disabled: !profile.googleConnected },
+                      ].map((o) => {
+                        const checked = (profile.videoProvider === 'GOOGLE_MEET' ? 'GOOGLE_MEET' : 'BUILT_IN') === o.value;
+                        return (
+                          <label
+                            key={o.value}
+                            className={`flex gap-3 rounded-[14px] border p-3.5 ${checked ? 'border-[#0F3A53] bg-[#EFF6FB]' : 'border-[#E2E8F0] bg-white'} ${o.disabled ? 'opacity-70 cursor-not-allowed' : 'cursor-pointer'}`}
+                          >
+                            <input
+                              type="radio"
+                              name="videoProvider"
+                              value={o.value}
+                              checked={checked}
+                              disabled={o.disabled}
+                              onChange={() => setProfile((p) => ({ ...p, videoProvider: o.value }))}
+                              className="mt-1"
+                            />
+                            <span>
+                              <span className="block text-[13px] font-bold text-[#0F172A]">{o.title}</span>
+                              <span className="block text-[12px] text-[#64748B] mt-0.5">{o.text}</span>
+                            </span>
+                          </label>
+                        );
+                      })}
+                    </div>
+                    {!profile.googleConnected ? (
+                      <p className="text-[11.5px] text-[#64748B] mt-2 font-medium">
+                        Connect Google Calendar first to use Google Meet.{' '}
+                        <button type="button" onClick={() => void connectGoogle()} className="font-bold text-[#0F3A53] underline cursor-pointer">
+                          Connect Google Calendar
+                        </button>
+                      </p>
+                    ) : null}
+                  </fieldset>
                 </div>
               </div>
             </>
