@@ -24,10 +24,11 @@ describe('ConfirmationStep', () => {
     const portal = screen.getByRole('link', { name: /Go to my bookings/ });
     expect(portal.getAttribute('href')).toBe('/portal');
     expect(portal.textContent).toBeTruthy();
+    // BKG-12: the portal link and the calendar menu share one row.
+    const menuButton = screen.getByRole('button', { name: /Add to calendar/ });
+    // The button lives in the dropdown wrapper; its parent is the shared row.
+    expect(portal.parentElement).toBe(menuButton.parentElement?.parentElement);
     expect(screen.getByText(/reschedule, cancel, pay or fill in your forms/i)).toBeTruthy();
-    // The portal call comes first: it is before "Add to calendar" in the document.
-    const cal = screen.getByRole('link', { name: /Add to calendar/ });
-    expect(portal.compareDocumentPosition(cal) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
 
   it('confirms a paid online session, with calendar links and the video note', () => {
@@ -37,11 +38,22 @@ describe('ConfirmationStep', () => {
     expect(screen.getByText('Online')).toBeTruthy();
     expect(screen.getByText('Sarah Smith')).toBeTruthy();
     expect(screen.getByText(/Your video link will be emailed/)).toBeTruthy();
-    expect(screen.getByRole('link', { name: /Add to calendar/ }).getAttribute('href')).toBe('https://api.x/v1/calendar/bookings/900/ical?token=tok');
-    const google = screen.getByRole('link', { name: /Google Calendar/ }).getAttribute('href')!;
+    fireEvent.click(screen.getByRole('button', { name: /Add to calendar/ }));
+    expect(screen.getByRole('menuitem', { name: /Download \(.ics\)/ }).getAttribute('href')).toBe('https://api.x/v1/calendar/bookings/900/ical?token=tok');
+    const google = screen.getByRole('menuitem', { name: /Google Calendar/ }).getAttribute('href')!;
     expect(google).toContain('calendar.google.com');
     expect(google).toContain('dates=20261006T103000Z%2F20261006T112000Z');
     expect(screen.queryByText("What's next")).toBeNull();
+  });
+
+  // BKG-12: two calendar links became one button with a menu.
+  it('the calendar button opens the two calendar options', () => {
+    renderWithApp(<ConfirmationStep booking={booking} channel="VIDEO" mode="paid" apiBase="https://api.x" />);
+    expect(screen.queryByRole('menuitem', { name: /Google Calendar/ })).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: /Add to calendar/ }));
+    const menu = screen.getByRole('menu');
+    expect(menu.textContent).toContain('Download (.ics)');
+    expect(menu.textContent).toContain('Google Calendar');
   });
 
   it('holds a transfer booking with a countdown and copyable details', async () => {
