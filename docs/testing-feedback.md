@@ -71,12 +71,12 @@ A running log of what shows up in testing, what we decide about it, and when it'
 | BKG-08 | Booking page | "Notify me" when a practice has no free times in the next 4 weeks | Feature | P3 | Deferred |
 | BKG-09 | Booking page | An abandoned online payment keeps the time blocked for everyone | Bug | P1 | Fixed |
 | BKG-10 | Booking page | After booking, clients aren't offered their account to manage the booking | UX | P1 | Fixed |
-| SET-09 | Settings | A practice discount can be turned off, but not back on, edited or deleted | Bug | P1 | Open |
-| BKG-11 | Booking page | The practice's booking link doesn't carry the new wizard design: too wide, no practice logo | Bug | P1 | Open |
-| BKG-12 | Booking page | "Go to my bookings" and the calendar buttons should share one row; the two calendar links can be one dropdown | UX | P3 | Open |
+| SET-09 | Settings | A practice discount can be turned off, but not back on, edited or deleted | Bug | P1 | Fixed |
+| BKG-11 | Booking page | The practice's booking link doesn't carry the new wizard design: too wide, no practice logo | Bug | P1 | Fixed |
+| BKG-12 | Booking page | "Go to my bookings" and the calendar buttons should share one row; the two calendar links can be one dropdown | UX | P3 | Fixed |
 | VID-01 | Video | The session room is a mock-up, not a real video call | Feature | P0 | Ready |
-| POR-01 | Client portal | /portal only works on app.unclutterdesk.com, not on the practice's own link | Bug | P1 | Open |
-| POR-02 | Client portal | The portal should look like a dashboard, not a plain list | UX | P2 | Open |
+| POR-01 | Client portal | /portal only works on app.unclutterdesk.com, not on the practice's own link | Bug | P1 | Fixed |
+| POR-02 | Client portal | The portal should look like a dashboard, not a plain list | UX | P2 | Fixed |
 | FRM-01 | Forms | Save forms as templates and optionally share them with other practices | Feature | | Fixed |
 | FRM-02 | Forms | The Forms page is wider than a phone screen | Bug | P2 | Open |
 
@@ -267,8 +267,8 @@ A running log of what shows up in testing, what we decide about it, and when it'
 - **Type:** Bug · **Priority:** P1 · **Status:** Open
 - **Observed:** In Discounts & promos a practice discount can be deactivated, but once off there is no way to turn it back on, edit it, or delete it.
 - **Feedback / decision:**
-- **Fix:**
-- **Verified:**
+- **Fix:** `90fb3f0`–`b42c8e3` on `dev`. `PATCH /v1/discount/:id` now takes `isActive` (and the amount fields) and only writes the fields sent — the old update blanked label/maxUses/expiresAt when you touched one. A new `DELETE /v1/discount/:id/remove` deletes for good (past bookings keep the code text). The list gains **Turn on / Turn off / Edit / Delete** per row; the create modal doubles as the editor. Covered by `discount-manage.spec.ts` and `DiscountSettingsPage.test.tsx`.
+- **Verified:** Browser check 2 Oct (local): WELCOME20 turned off and back on, label edited and saved, a throwaway code created and deleted after the confirm.
 
 ## Client booking link / page
 
@@ -350,15 +350,15 @@ A running log of what shows up in testing, what we decide about it, and when it'
 - **Type:** Bug · **Priority:** P1 · **Status:** Open
 - **Observed:** Opening the practice's booking link shows a page that doesn't match the new booking wizard: the layout is too wide and the practice logo is missing.
 - **Feedback / decision:**
-- **Fix:**
-- **Verified:**
+- **Fix:** `a26fa91` on `dev`. The profile page header now shows the practice's own logo (`PracticeLogo`, initials fallback) and name where the platform mark sat, and the content measure drops from 1320px to the wizard's 960px. Covered by `PublicProfilePage.test.tsx`.
+- **Verified:** Browser check 2 Oct on the practice host at 1280px and 390px: header reads "Dr. Jane Smith Therapy", no horizontal overflow.
 
 ### BKG-12 · Confirmation actions should share a row; calendar links can be one dropdown
 - **Type:** UX · **Priority:** P3 · **Status:** Open
 - **Observed:** On the booking confirmation, "Go to my bookings" sits on its own row above the calendar buttons, and "Add to calendar" and "Google Calendar" are two separate buttons.
 - **Feedback / decision:** Put "Go to my bookings" in the same row as the calendar actions, and collapse the two calendar options into one button with a dropdown of the two.
-- **Fix:**
-- **Verified:**
+- **Fix:** `d140a51` on `dev`. **Go to my bookings** and one **Add to calendar ▾** button share a single row; the dropdown holds "Download (.ics)" and "Google Calendar" (Esc/click-away close it). Covered by `ConfirmationStep.test.tsx`.
+- **Verified:** Browser check 2 Oct: after a real test payment the two actions sit in one flex row and the menu opens with both links.
 
 ### VID-01 · The session room isn't a real video call
 - **Type:** Feature · **Priority:** P0 · **Status:** Ready
@@ -382,15 +382,15 @@ A running log of what shows up in testing, what we decide about it, and when it'
 - **Type:** Bug · **Priority:** P1 · **Status:** Open
 - **Observed:** https://unclutter.unclutterdesk.com/portal does not work; the client portal only loads on app.unclutterdesk.com. Clients who booked from a practice subdomain (and emails/confirmation links that point at /portal on the practice host) don't get their portal.
 - **Feedback / decision:**
-- **Fix:**
-- **Verified:**
+- **Fix:** `e5af52e`–`1570f5b` on `dev`. The client pages (`/portal`, `/portal/assessments/:id`, `/forms/:id`, `/login`, `/set-password`) moved into one shared fragment (`routes/clientRoutes.tsx`) that the app tree and the practice-host tree both render, wrapped in a `ClientBrandProvider` so they carry the practice's name, logo and colours from its public info. The tenant already resolves from the host and the session cookie lives on the api domain, so the signed-in client works anywhere under unclutterdesk.com. Covered by `clientRoutes.test.tsx`; the route-integrity check reads the new file too.
+- **Verified:** Browser check 2 Oct: booked on dr-smith.localhost:5173, "Go to my bookings" landed on dr-smith.localhost:5173/portal — branded header, client signed in, sessions listed.
 
 ### POR-02 · The portal should look like a dashboard
 - **Type:** UX · **Priority:** P2 · **Status:** Open
 - **Observed:** The client portal is a plain list; it needs a better design that reads like a dashboard.
 - **Feedback / decision:**
-- **Fix:**
-- **Verified:**
+- **Fix:** `7fed377` on `dev`. The portal now leads with four dashboard tiles — Next session, Upcoming sessions, To pay, Forms to do (from `/v1/intake/mine/forms`, never blocking the page on failure) — and the header carries the practice logo. The payments tab stays lazy (its existing "not fetched until opened" test still passes). Covered by `ClientPortalPayments.test.tsx`.
+- **Verified:** Browser check 2 Oct: tiles read "9 Oct 2026 / 1 / ₦0 / 2" for a fresh client on the practice host; no overflow at 390px.
 
 ## Forms & templates
 
