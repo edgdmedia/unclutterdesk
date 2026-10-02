@@ -13,10 +13,10 @@
   Referrer-Policy: strict-origin-when-cross-origin
   Strict-Transport-Security: max-age=63072000; includeSubDomains; preload
   Cross-Origin-Opener-Policy: same-origin
-  # Telehealth opens the provider room (Jitsi/Daily) in a NEW TAB, so this origin
-  # itself never needs camera or microphone. If the in-app telehealth shell at
-  # /session/:id is ever wired to real media, change these to (self).
-  Permissions-Policy: accelerometer=(), autoplay=(), camera=(), display-capture=(), encrypted-media=(), fullscreen=(self), geolocation=(), gyroscope=(), magnetometer=(), microphone=(), payment=(), usb=()
+  # VID-01: session rooms run in the app. Daily uses the camera, microphone,
+  # screen and sound in this page; JaaS runs them inside its 8x8.vc frame, which
+  # needs them delegated. Everything else stays off.
+  Permissions-Policy: accelerometer=(), autoplay=(self "https://8x8.vc"), camera=(self "https://8x8.vc"), display-capture=(self "https://8x8.vc"), encrypted-media=(), fullscreen=(self "https://8x8.vc"), geolocation=(), gyroscope=(), magnetometer=(), microphone=(self "https://8x8.vc"), payment=(), usb=()
 
   # Report-Only first — ON PURPOSE. A CSP that is wrong breaks Paystack
   # checkout redirects silently and at the worst possible moment. Deploy this,
@@ -26,7 +26,7 @@
   # 'unsafe-inline' is present for style-src only: the built index.html has no
   # inline <style>, but component libraries commonly inject one at runtime.
   # script-src has no 'unsafe-inline' — the build emits only external modules.
-  Content-Security-Policy-Report-Only: default-src 'self'; script-src 'self' https://js.paystack.co; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; font-src 'self'; connect-src 'self' https://api.unclutterdesk.com https://api.paystack.co; frame-src https://checkout.paystack.com; worker-src 'self'; manifest-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'; object-src 'none'; upgrade-insecure-requests
+  Content-Security-Policy-Report-Only: default-src 'self'; script-src 'self' https://js.paystack.co https://c.daily.co https://8x8.vc; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; font-src 'self'; connect-src 'self' https://api.unclutterdesk.com https://api.paystack.co https://*.daily.co wss://*.daily.co; frame-src https://checkout.paystack.com https://8x8.vc; media-src 'self' blob:; worker-src 'self'; manifest-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'; object-src 'none'; upgrade-insecure-requests
 
 # The service worker must not be cached, or clients pin an old bundle.
 /sw.js
