@@ -113,10 +113,15 @@ API_URL=https://api.unclutterdesk.com
 # Session video (VID-01). A provider with missing keys is skipped.
 # Daily: dashboard.daily.co → Developers → API key.
 DAILY_API_KEY=
-# Optional: the HMAC secret Daily shows when the meeting.ended webhook is created.
+# Your own base64 secret for Daily's meeting.ended webhook: openssl rand -base64 32
+# Daily has no webhook screen; after deploying and restarting with this set, run
+#   node --env-file=.env --env-file=apps/api/.env scripts/create-daily-webhook.mjs
 DAILY_WEBHOOK_SECRET=
-# JaaS (8x8.vc): the App ID, the full key id (vpaas-magic-cookie-…/abc123) and
-# the RSA private key in PEM, with newlines written as \n on one line.
+# JaaS (8x8.vc → API keys): the App ID (vpaas-magic-cookie-…), the full key id
+# shown beside the key (vpaas-magic-cookie-…/abc123), and the downloaded private
+# key (.pk) on ONE line with \n for newlines. Make that line on the server with:
+#   awk 'NF {sub(/\r/, ""); printf "%s\\n", $0}' key.pk
+# Keep the .pk file out of the repository folder.
 JAAS_APP_ID=
 JAAS_KEY_ID=
 JAAS_PRIVATE_KEY=

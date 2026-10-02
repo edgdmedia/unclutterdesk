@@ -332,12 +332,12 @@ describe('after the booking — join links', () => {
 
 // SET-06/BKG-05: staff bookings carry the format and the place.
 describe('staff booking a format', () => {
-  it('an online-only time books online with no format asked and makes a room', async () => {
+  it('an online-only time books online with no format asked; its room is made on the first join (VID-01)', async () => {
     const { service, tx } = setup();
     await service.createForClient(TENANT, OWNER, { ...base, payment: 'NONE' });
     const created = tx.consultBooking.create.mock.calls[0][0].data;
     expect(created.format).toBe('ONLINE');
-    expect(created.videoRoomName).toBe('room-1');
+    expect(created.videoRoomName ?? null).toBeNull();
   });
 
   it('an in-person booking stores the location and makes no video room', async () => {
@@ -348,7 +348,6 @@ describe('staff booking a format', () => {
     expect(created.format).toBe('IN_PERSON');
     expect(created.locationId).toBe(4n);
     expect(created.videoRoomName).toBeFalsy();
-    expect(made.consult.resolveVideoRoomLink).not.toHaveBeenCalled();
     expect(res.location).toMatchObject({ id: '4' });
     expect(res.format).toBe('IN_PERSON');
   });

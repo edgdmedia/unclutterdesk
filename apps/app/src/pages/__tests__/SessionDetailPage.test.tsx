@@ -51,9 +51,12 @@ describe('format and place on the session page', () => {
   });
 
   it('keeps the join button for an online session', async () => {
+    // VID-02: Start shows while the room is open, so pin the clock inside the session.
+    vi.useFakeTimers({ shouldAdvanceTime: true, now: new Date('2026-10-01T09:05:00Z') });
     renderPage({ ...DETAIL, format: 'ONLINE' });
     expect(await screen.findByRole('link', { name: /Start session/ })).toBeTruthy();
     expect(screen.getByText('Online')).toBeTruthy();
+    vi.useRealTimers();
   });
 });
 
