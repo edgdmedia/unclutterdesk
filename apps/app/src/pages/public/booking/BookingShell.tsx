@@ -60,11 +60,13 @@ export function BookingHeader({
   logoUrl,
   rating,
   profileHref,
+  subtitle,
 }: {
   name: string;
   logoUrl?: string | null;
   rating: { average: number; count: number } | null;
   profileHref: string;
+  subtitle?: string | null;
 }) {
   return (
     <header
@@ -80,7 +82,7 @@ export function BookingHeader({
               <Star className="h-3 w-3" fill="#24614F" stroke="#24614F" aria-hidden="true" />
               {`${rating.average.toFixed(1)} · ${rating.count} reviews`}
             </a>
-          ) : null}
+          ) : subtitle ? <div className="text-[12.5px] text-[#64748B] truncate">{subtitle}</div> : null}
         </div>
         <span className="h-[30px] px-3 rounded-full bg-white border border-[#E2E8F0] text-[12px] font-semibold text-[#475569] inline-flex items-center gap-1.5 shrink-0">
           <Lock className="h-[13px] w-[13px] text-[#16A34A]" aria-hidden="true" />

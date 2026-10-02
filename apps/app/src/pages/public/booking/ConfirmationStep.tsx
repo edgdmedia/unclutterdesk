@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { CalendarPlus, Check, ChevronDown, Clock, FileText } from 'lucide-react';
+import { CalendarPlus, Check, ChevronDown, Clock, FileText, MapPin } from 'lucide-react';
 import { Eyebrow } from '@unclutterdesk/ui';
 import { formatOf, whenLabel } from './bookingSlots';
 import { naira } from './BookingShell';
@@ -21,6 +21,9 @@ export type ConfirmedBooking = {
   } | null;
   /** Forms to fill in before the first session (BKG-06); absent until that ships. */
   forms?: Array<{ title: string; kind: string; minutes: number; href: string }>;
+  /** SET-06: what was bought and, in person, where. */
+  format?: 'ONLINE' | 'IN_PERSON';
+  location?: { name: string; address: string; city: string; directions: string | null; mapsUrl: string } | null;
 };
 
 const HOLD_MS = 48 * 60 * 60 * 1000;
@@ -134,7 +137,8 @@ export function ConfirmationStep({
     return () => window.clearInterval(t);
   }, [payment]);
   const remaining = payment ? new Date(payment.holdExpiresAt).getTime() - now : 0;
-  const online = formatOf(channel) === 'Online';
+  const online = booking.format === 'IN_PERSON' ? false : formatOf(channel) === 'Online';
+  const at = booking.format === 'IN_PERSON' ? booking.location : null;
 
   return (
     <section className="bg-white border border-[#E2E8F0] rounded-[24px] p-5 min-[601px]:p-8 flex flex-col gap-6" style={{ boxShadow: 'var(--desk-shadow-sm)' }}>
@@ -192,6 +196,16 @@ export function ConfirmationStep({
           </div>
           <p className="text-[13px] text-[#64748B]">Manage your booking any time: reschedule, cancel, pay or fill in your forms.</p>
           {online ? <p className="text-[13px] text-[#64748B]">Your video link will be emailed and shown in your account.</p> : null}
+          {at ? (
+            <div className="rounded-[16px] bg-white border border-[#E2E8F0] px-4 py-3.5 space-y-1">
+              <p className="text-[13.5px] font-bold text-[#0F172A]">{at.name}</p>
+              <p className="text-[13px] text-[#475569]">{at.address}, {at.city}</p>
+              {at.directions ? <p className="text-[12.5px] text-[#64748B] italic">{at.directions}</p> : null}
+              <a href={at.mapsUrl} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1.5 mt-1 text-[13px] font-bold" style={{ color: 'var(--brand-primary)' }}>
+                <MapPin className="h-4 w-4" aria-hidden="true" /> Open in Google Maps
+              </a>
+            </div>
+          ) : null}
         </div>
       </div>
 

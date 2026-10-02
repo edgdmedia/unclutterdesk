@@ -4,6 +4,7 @@ import { Button, SegmentedControl } from '@unclutterdesk/ui';
 import {
   dayKeyWAT,
   formatOf,
+  slotFormats,
   formatsOffered,
   nextDayWithSlots,
   slotsForService,
@@ -192,7 +193,7 @@ export function TimeStep({
                       key={slot.id}
                       type="button"
                       aria-pressed={selected}
-                      onClick={() => dispatch({ type: 'chooseSlot', slotId: slot.id })}
+                      onClick={() => dispatch({ type: 'chooseSlot', slotId: slot.id, format: slotFormats(slot).length === 1 ? (slotFormats(slot)[0] === 'In person' ? 'IN_PERSON' : 'ONLINE') : null })}
                       className="h-[52px] rounded-full border flex flex-col items-center justify-center cursor-pointer transition-colors duration-150"
                       style={{
                         background: selected ? 'var(--brand-primary)' : '#FFFFFF',
@@ -201,7 +202,7 @@ export function TimeStep({
                       }}
                     >
                       <span className="text-[14px] font-bold" style={{ fontVariantNumeric: 'tabular-nums' }}>{timeLabelWAT(slot.startsAt)}</span>
-                      <span className="text-[11px] font-semibold" style={{ opacity: 0.78 }}>{formatOf(slot.channel)}</span>
+                      <span className="text-[11px] font-semibold" style={{ opacity: 0.78 }}>{slotFormats(slot).join(' or ')}{slotFormats(slot).includes('In person') && slot.location ? ` · ${slot.location.name}` : ''}</span>
                     </button>
                   );
                 })}
@@ -209,12 +210,12 @@ export function TimeStep({
             </div>
           ) : null}
 
-          {chosen && formatOf(chosen.channel) === 'In person' && practiceAddress ? (
+          {chosen && slotFormats(chosen).includes('In person') && (chosen.location || practiceAddress) ? (
             <div className="rounded-[18px] px-4 py-3.5 flex gap-3" style={{ background: 'var(--brand-fill)' }}>
               <MapPin className="h-[18px] w-[18px] shrink-0 mt-0.5" style={{ color: BRAND_INK }} aria-hidden="true" />
               <div>
-                <div className="text-[14px] font-bold text-[#0F172A]">In person at the practice</div>
-                <div className="text-[13px] text-[#475569]">{practiceAddress}</div>
+                <div className="text-[14px] font-bold text-[#0F172A]">{chosen.location ? `In person at ${chosen.location.name}` : 'In person at the practice'}</div>
+                <div className="text-[13px] text-[#475569]">{chosen.location ? `${chosen.location.name}, ${chosen.location.city}` : practiceAddress}</div>
               </div>
             </div>
           ) : null}

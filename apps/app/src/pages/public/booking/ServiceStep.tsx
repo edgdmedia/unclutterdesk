@@ -72,7 +72,13 @@ export function ServiceStep({
                 {service.description ? <span className="block mt-1 text-[13.5px] leading-[1.5] text-[#64748B]">{service.description}</span> : null}
               </span>
               <span className="text-right shrink-0">
-                <span className="block text-[16px] font-bold text-[#0F172A]" style={{ fontVariantNumeric: 'tabular-nums' }}>{naira(service.priceKobo)}</span>
+                {service.formats?.filter((f) => f.isActive).length ? (
+                  <span className="block text-[14px] font-bold text-[#0F172A]" style={{ fontVariantNumeric: 'tabular-nums' }}>
+                    {service.formats.filter((f) => f.isActive).map((f) => `${f.format === 'ONLINE' ? 'Online' : 'In person'} ${naira(f.priceKobo)}`).join(' · ')}
+                  </span>
+                ) : (
+                  <span className="block text-[16px] font-bold text-[#0F172A]" style={{ fontVariantNumeric: 'tabular-nums' }}>{naira(service.priceKobo)}</span>
+                )}
                 <span className="block text-[12.5px] text-[#64748B]">{service.durationMinutes} min</span>
               </span>
             </span>

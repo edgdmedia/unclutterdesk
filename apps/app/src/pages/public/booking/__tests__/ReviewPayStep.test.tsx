@@ -18,7 +18,36 @@ function Harness({ bankTransfer = true, start = {}, showSummary = true }: { bank
 beforeEach(() => post.mockReset());
 afterEach(cleanup);
 
+function BothHarness({ start = {} }: { start?: Record<string, unknown> }) {
+  const svc = { ...service, formats: [
+    { format: 'ONLINE' as const, priceKobo: '3000000', isActive: true },
+    { format: 'IN_PERSON' as const, priceKobo: '3500000', isActive: true },
+  ] };
+  const bothSlot = { ...slot, formats: ['ONLINE', 'IN_PERSON'] as const, location: { name: 'Lekki clinic', city: 'Lagos' } };
+  function Inner() {
+    const [state, dispatch] = useReducer(wizardReducer, { ...initialState({}), serviceId: '2', slotId: 't1', step: 4, ...start } as any);
+    return <ReviewPayStep service={svc} slot={bothSlot as any} state={state} dispatch={dispatch} bankTransfer={false} tenantId="27" cancellationHours={24} />;
+  }
+  return <Inner />;
+}
+
 describe('ReviewPayStep', () => {
+  // SET-06/BKG-05: a time that allows both formats asks for the choice.
+  it('asks how the client wants to meet and prices by the choice', () => {
+    renderWithApp(<BothHarness />);
+    expect(screen.getByRole('radiogroup', { name: /how would you like to meet/i })).toBeTruthy();
+    fireEvent.click(screen.getByRole('radio', { name: /In person — ₦35,000/i }));
+    expect(screen.getByText('Price')).toBeTruthy();
+    expect(screen.getAllByText('₦35,000').length).toBeGreaterThan(0);
+    fireEvent.click(screen.getByRole('radio', { name: /Online — ₦30,000/i }));
+    expect(screen.getByText(/At Lekki clinic, Lagos/)).toBeTruthy();
+  });
+
+  it('shows the chosen format on the summary line', () => {
+    renderWithApp(<BothHarness start={{ format: 'IN_PERSON' }} />);
+    expect(screen.getByText('In person')).toBeTruthy();
+  });
+
   it('summarises the session and the total', () => {
     renderWithApp(<Harness />);
     expect(screen.getByText('Individual therapy · 50 min')).toBeTruthy();

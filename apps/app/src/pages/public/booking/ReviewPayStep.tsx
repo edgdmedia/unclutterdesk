@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Clock, Plus } from 'lucide-react';
 import { Button, Eyebrow } from '@unclutterdesk/ui';
 import { api } from '../../../utils/apiClient';
-import { formatOf, whenLabel, type Slot } from './bookingSlots';
+import { slotFormats, whenLabel, type Slot } from './bookingSlots';
 import type { WizardAction, WizardState } from './bookingWizard';
 import type { PublicService } from './useBookingData';
 import { AlertBanner, naira } from './BookingShell';
@@ -11,9 +11,25 @@ import { HoldCountdown } from './HoldCountdown';
 const TABULAR: React.CSSProperties = { fontVariantNumeric: 'tabular-nums' };
 const INK = 'var(--brand-ink, var(--brand-primary))';
 
-/** What the client pays: the agreed price, less any applied discount. */
-export function totalKobo(service: PublicService, state: WizardState): string {
-  return state.discount.status === 'applied' && state.discount.finalKobo ? state.discount.finalKobo : service.priceKobo;
+/** The price of one format; services predating per-format prices answer with their one price. */
+export function formatPriceKobo(service: PublicService, fmt: 'ONLINE' | 'IN_PERSON'): string {
+  const row = (service.formats ?? []).find((f) => f.format === fmt && f.isActive);
+  return row ? row.priceKobo : fmt === 'ONLINE' ? service.priceKobo : '0';
+}
+
+/** What the client pays: the chosen format's price, less any applied discount. */
+export function totalKobo(service: PublicService, state: WizardState, slot?: Slot | null): string {
+  const base = baseKobo(service, state, slot);
+  return state.discount.status === 'applied' && state.discount.finalKobo ? state.discount.finalKobo : base;
+}
+
+function baseKobo(service: PublicService, state: WizardState, slot?: Slot | null): string {
+  if (state.format) return formatPriceKobo(service, state.format);
+  if (slot) {
+    const fs = slotFormats(slot);
+    if (fs.length === 1) return formatPriceKobo(service, fs[0] === 'In person' ? 'IN_PERSON' : 'ONLINE');
+  }
+  return service.priceKobo;
 }
 
 function Row({ label, value, tone }: { label: string; value: React.ReactNode; tone?: 'discount' | 'total' }) {
@@ -74,7 +90,9 @@ export function ReviewPayStep({
   const [checking, setChecking] = useState(false);
   const applied = state.discount.status === 'applied';
   const invalid = state.discount.status === 'invalid';
-  const total = totalKobo(service, state);
+  const total = totalKobo(service, state, slot);
+  const slotFs = slotFormats(slot);
+  const needsChoice = slotFs.length > 1;
 
   async function applyOrRemove() {
     if (applied) {
@@ -88,7 +106,7 @@ export function ReviewPayStep({
     try {
       const preview = await api.post<{ code: string; amountSavedKobo: string; finalKobo: string }>(
         '/v1/discount/validate',
-        { tenantId, code: cleaned, priceKobo: service.priceKobo },
+        { tenantId, code: cleaned, priceKobo: baseKobo(service, state, slot) },
         { 'X-Tenant-Slug': '' },
       );
       dispatch({ type: 'discount', discount: { code: preview.code, status: 'applied', savingKobo: preview.amountSavedKobo, finalKobo: preview.finalKobo } });
@@ -107,13 +125,25 @@ export function ReviewPayStep({
         </AlertBanner>
       ) : null}
 
+      {needsChoice ? (
+        <div className="flex flex-col gap-2.5" role="radiogroup" aria-label="How would you like to meet?">
+          <Eyebrow>How would you like to meet?</Eyebrow>
+          <PayOption checked={state.format === 'ONLINE'} onChoose={() => dispatch({ type: 'chooseFormat', format: 'ONLINE' })} title={`Online — ${naira(formatPriceKobo(service, 'ONLINE'))}`}>
+            A secure video link, opened inside Unclutter Desk.
+          </PayOption>
+          <PayOption checked={state.format === 'IN_PERSON'} onChoose={() => dispatch({ type: 'chooseFormat', format: 'IN_PERSON' })} title={`In person — ${naira(formatPriceKobo(service, 'IN_PERSON'))}`}>
+            At {slot.location ? `${slot.location.name}, ${slot.location.city}` : 'the practice'}.{slot.location ? ' You get the full address and directions after booking.' : ''}
+          </PayOption>
+        </div>
+      ) : null}
+
       {showSummary ? (
       <div className="rounded-[20px] border border-[#E2E8F0] overflow-hidden">
         <Row label="Session" value={`${service.title} · ${service.durationMinutes} min`} />
         <Row label="When" value={whenLabel(slot.startsAt)} />
-        <Row label="Format" value={formatOf(slot.channel)} />
+        <Row label="Format" value={state.format ? (state.format === 'IN_PERSON' ? 'In person' : 'Online') : slotFs.join(' or ')} />
         <Row label="Therapist" value={slot.therapistName} />
-        <Row label="Price" value={naira(service.priceKobo)} />
+        <Row label="Price" value={naira(baseKobo(service, state, slot))} />
         {applied ? <Row tone="discount" label={`Discount · ${state.discount.code}`} value={`−${naira(state.discount.savingKobo)}`} /> : null}
         <Row tone="total" label="Total" value={naira(total)} />
       </div>

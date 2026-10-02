@@ -23,13 +23,16 @@ export interface WizardState {
   holdExpiresAt: string | null;
   /** BKG-09: a late payment was refunded because the time was taken; step 2 says so. */
   refunded: boolean;
+  /** SET-06: the client's choice when the chosen time allows both formats. */
+  format: 'ONLINE' | 'IN_PERSON' | null;
 }
 
 export type WizardAction =
   | { type: 'chooseService'; serviceId: string }
   | { type: 'setWeek'; weekIndex: 0 | 1 | 2 | 3 }
   | { type: 'chooseDate'; date: string }
-  | { type: 'chooseSlot'; slotId: string }
+  | { type: 'chooseSlot'; slotId: string; format?: 'ONLINE' | 'IN_PERSON' | null }
+  | { type: 'chooseFormat'; format: 'ONLINE' | 'IN_PERSON' }
   | { type: 'setFilter'; filter: FormatFilter }
   | { type: 'setNote'; note: string }
   | { type: 'discount'; discount: WizardState['discount'] }
@@ -66,6 +69,7 @@ export function initialState({ singleServiceId }: { singleServiceId?: string | n
     bookingId: null,
     holdExpiresAt: null,
     refunded: false,
+    format: null,
   };
 }
 
@@ -76,7 +80,12 @@ function firstIncomplete(s: WizardState): Step {
   return 3;
 }
 
-export function canContinue(s: WizardState, signedIn: boolean): boolean {
+/** Step 4 needs a format choice only when the time allows both. */
+export function formatNeeded(slotFormatCount: number): boolean {
+  return slotFormatCount > 1;
+}
+
+export function canContinue(s: WizardState, signedIn: boolean, needsFormat = false): boolean {
   switch (s.step) {
     case 1:
       return Boolean(s.serviceId);
@@ -84,6 +93,8 @@ export function canContinue(s: WizardState, signedIn: boolean): boolean {
       return Boolean(s.slotId);
     case 3:
       return signedIn;
+    case 4:
+      return !needsFormat || s.format !== null;
     default:
       return true;
   }
@@ -94,13 +105,15 @@ export function wizardReducer(s: WizardState, a: WizardAction): WizardState {
     case 'chooseService':
       if (a.serviceId === s.serviceId) return s;
       // A different service has different times and formats.
-      return { ...s, serviceId: a.serviceId, slotId: null, formatFilter: 'All', discount: NO_DISCOUNT, bookingId: null };
+      return { ...s, serviceId: a.serviceId, slotId: null, format: null, formatFilter: 'All', discount: NO_DISCOUNT, bookingId: null };
     case 'setWeek':
       return { ...s, weekIndex: a.weekIndex };
     case 'chooseDate':
-      return a.date === s.date ? s : { ...s, date: a.date, slotId: null };
+      return a.date === s.date ? s : { ...s, date: a.date, slotId: null, format: null };
     case 'chooseSlot':
-      return { ...s, slotId: a.slotId, slotTaken: false, refunded: false, bookingId: null, holdExpiresAt: null };
+      return { ...s, slotId: a.slotId, format: a.format ?? null, slotTaken: false, refunded: false, bookingId: null, holdExpiresAt: null };
+    case 'chooseFormat':
+      return { ...s, format: a.format };
     case 'setFilter':
       return { ...s, formatFilter: a.filter };
     case 'setNote':

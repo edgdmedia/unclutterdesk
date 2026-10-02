@@ -9,6 +9,18 @@ const withTime = [
   { type: 'chooseSlot', slotId: 't1' },
 ].reduce((s, a) => r(s, a as any), s0);
 
+describe('the format choice (SET-06)', () => {
+  it('auto-picks a single-format slot and requires a choice for a both-format slot', () => {
+    const at4 = { ...initialState({}), step: 4 as const, serviceId: 's1' };
+    const s1 = r(at4, { type: 'chooseSlot', slotId: '9', format: 'ONLINE' });
+    expect(s1.format).toBe('ONLINE');
+    const s2 = r(at4, { type: 'chooseSlot', slotId: '9', format: null });
+    expect(canContinue(s2, true, true)).toBe(false);
+    const s3 = r(s2, { type: 'chooseFormat', format: 'IN_PERSON' });
+    expect(canContinue(s3, true, true)).toBe(true);
+  });
+});
+
 describe('booking wizard', () => {
   it('starts on the service step, or on time when the practice has one service', () => {
     expect(s0.step).toBe(1);

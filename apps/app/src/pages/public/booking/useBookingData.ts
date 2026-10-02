@@ -13,9 +13,11 @@ export type PublicPractice = {
   address?: string | null;
   city?: string | null;
   cancellationHours?: number | null;
+  locations?: Array<{ name: string; city: string }>;
+  formats?: Array<'ONLINE' | 'IN_PERSON'>;
 };
 
-export type PublicService = { id: string; title: string; description?: string | null; durationMinutes: number; priceKobo: string };
+export type PublicService = { id: string; title: string; description?: string | null; durationMinutes: number; priceKobo: string; formats?: Array<{ format: 'ONLINE' | 'IN_PERSON'; priceKobo: string; isActive: boolean }> };
 export type Reviews = { averageRating: number | null; count: number };
 
 type Status = 'loading' | 'ready' | 'error';
