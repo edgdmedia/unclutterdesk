@@ -330,8 +330,14 @@ model ConsultBooking {
   /// "PAYSTACK" (paid online), "MANUAL" (bank transfer or paid at the practice,
   /// confirmed by staff), or "NONE" (the practice waived the fee).
   paymentMethod               String    @default("PAYSTACK") @db.VarChar(20)
-  /// A manual booking holds its slot until this time, then is released.
+  /// An unpaid booking holds its slot until this time, then is released:
+  /// 35 minutes for an online checkout (BKG-09), longer for a transfer or a staff link.
   holdExpiresAt               DateTime?
+  /// The expiry job released this hold (BKG-09); a later payment may re-confirm it.
+  holdReleasedAt              DateTime?
+  /// A late or duplicate payment was refunded through Paystack.
+  refundedAt                  DateTime?
+  refundRef                   String?
   /// The client said they had sent the transfer.
   clientReportedPaidAt        DateTime?
   /// Who marked a manual payment as received.
