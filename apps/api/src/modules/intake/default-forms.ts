@@ -1,8 +1,7 @@
 /**
- * BKG-06: the two forms every practice starts with — a client intake and a
- * confidentiality agreement. Practices can edit the wording; the system keys
- * mark them as ours, so the app can offer "reset to default" later and the
- * backfill knows what to create.
+ * BKG-06 / FRM-04: the five forms every practice starts with. Practices can
+ * edit the wording; the system keys mark them as ours, so the app can offer
+ * "reset to default" later and the backfill knows what to create.
  */
 export type DefaultFormTemplate = {
   systemKey: string;
@@ -10,7 +9,11 @@ export type DefaultFormTemplate = {
   description: string;
   targetType: string;
   schemaJson: unknown[];
+  /** Skip it for a practice that already made its own form of this type (it would be a duplicate). */
+  skipIfPracticeHasOwn?: boolean;
 };
+
+const RATING = ['1', '2', '3', '4', '5'];
 
 export const CLIENT_INTAKE: DefaultFormTemplate = {
   systemKey: 'CLIENT_INTAKE',
@@ -46,7 +49,54 @@ export const CONFIDENTIALITY: DefaultFormTemplate = {
   ],
 };
 
-export const DEFAULT_FORMS: DefaultFormTemplate[] = [CLIENT_INTAKE, CONFIDENTIALITY];
+export const CONSENT_TO_TREATMENT: DefaultFormTemplate = {
+  systemKey: 'CONSENT_TO_TREATMENT',
+  title: 'Consent to treatment',
+  description: 'How therapy works here, and your agreement to begin.',
+  targetType: 'CONSENT',
+  schemaJson: [
+    { id: 'what_therapy_involves', label: 'What therapy involves', type: 'text_block', required: false, text: 'Therapy is a working relationship between you and your therapist. Together you will talk through what matters to you and agree on ways to work on it. Some sessions may feel uncomfortable; that is a normal part of change, and you can always say so.' },
+    { id: 'sessions_and_cancellations', label: 'Sessions, cancellations and missed sessions', type: 'text_block', required: false, text: 'Sessions start and end at the booked time. If you need to cancel or move a session, please do it within the practice\'s cancellation notice period. A late cancellation or a missed session may still be charged.' },
+    { id: 'online_sessions', label: 'Online sessions', type: 'text_block', required: false, text: 'For online sessions, join from a private, quiet place on a reliable connection. If the call drops, your therapist will try to reconnect or contact you.' },
+    { id: 'your_rights', label: 'Your rights', type: 'text_block', required: false, text: 'You can ask questions about your care at any time, ask to see your records, and choose to stop therapy whenever you wish.' },
+    { id: 'consent', label: 'I agree to receive therapy from this practice on these terms.', type: 'single_choice', required: true, options: ['I agree'] },
+    { id: 'signature', label: 'Your signature', type: 'signature', required: true },
+  ],
+};
+
+export const SESSION_FEEDBACK: DefaultFormTemplate = {
+  systemKey: 'SESSION_FEEDBACK',
+  title: 'Session feedback',
+  description: 'A minute to tell us how your session went. Only the practice sees this.',
+  targetType: 'FEEDBACK',
+  skipIfPracticeHasOwn: true,
+  schemaJson: [
+    { id: 'helpfulness', label: 'How helpful was your session? (1 = not at all, 5 = very)', type: 'scale', required: true, options: RATING },
+    { id: 'felt_heard', label: 'Did you feel heard and understood?', type: 'single_choice', required: true, options: ['Yes', 'Somewhat', 'No'] },
+    { id: 'went_well', label: 'What went well?', type: 'textarea', required: false },
+    { id: 'could_improve', label: 'What could be better?', type: 'textarea', required: false },
+    { id: 'may_contact', label: 'May we contact you about your feedback?', type: 'single_choice', required: false, options: ['Yes', 'No'] },
+  ],
+};
+
+export const PUBLIC_REVIEW: DefaultFormTemplate = {
+  systemKey: 'PUBLIC_REVIEW',
+  title: 'Leave a review',
+  description: 'Share your experience. With your permission, the practice may show it on its booking page.',
+  targetType: 'REVIEW',
+  skipIfPracticeHasOwn: true,
+  schemaJson: [
+    { id: 'rating', label: 'Overall rating', type: 'scale', required: true, options: RATING },
+    { id: 'testimonial', label: 'What would you like others to know?', type: 'textarea', required: true },
+    { id: 'may_publish', label: 'May the practice show this review on its booking page?', type: 'single_choice', required: true, options: ['Yes', 'No'] },
+  ],
+};
+
+/** In the order a client meets them: before the first session, then after sessions. */
+export const DEFAULT_FORMS: DefaultFormTemplate[] = [CLIENT_INTAKE, CONSENT_TO_TREATMENT, CONFIDENTIALITY, SESSION_FEEDBACK, PUBLIC_REVIEW];
+
+/** The defaults a client must complete before their first session. */
+export const BEFORE_FIRST_SESSION = [CLIENT_INTAKE.systemKey, CONSENT_TO_TREATMENT.systemKey, CONFIDENTIALITY.systemKey];
 
 /** The default forms this client has not filled in for this practice yet. */
 export async function listPendingForms(
@@ -55,7 +105,7 @@ export async function listPendingForms(
   clientProfileId: bigint,
 ): Promise<{ id: string; title: string; kind: string; minutes: number }[]> {
   const forms = await prisma.universalForm.findMany({
-    where: { tenantId, isActive: true, systemKey: { in: ['CLIENT_INTAKE', 'CONFIDENTIALITY'] } },
+    where: { tenantId, isActive: true, systemKey: { in: BEFORE_FIRST_SESSION } },
     orderBy: { createdAt: 'asc' },
   });
   const submitted = await prisma.universalFormSubmission.findMany({

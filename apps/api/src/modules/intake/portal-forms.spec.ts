@@ -41,7 +41,7 @@ describe('IntakeService.pendingForms', () => {
     expect(prisma.universalForm.findMany.mock.calls[0][0].where).toMatchObject({
       tenantId: TENANT,
       isActive: true,
-      systemKey: { in: ['CLIENT_INTAKE', 'CONFIDENTIALITY'] },
+      systemKey: { in: ['CLIENT_INTAKE', 'CONSENT_TO_TREATMENT', 'CONFIDENTIALITY'] },
     });
     expect(prisma.universalFormSubmission.findMany.mock.calls[0][0].where).toMatchObject({ tenantId: TENANT, clientProfileId: 42n });
     expect(forms.map((f: any) => f.id)).toEqual(['20', '21']);
