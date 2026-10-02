@@ -160,3 +160,41 @@ describe('BookingNotifier.notifyStaff (NOT-05)', () => {
     expect(types).not.toContain('consult.booking_paid');
   });
 });
+
+describe('BookingNotifier.latePaymentRefunded (BKG-09)', () => {
+  it('tells the client a late payment is refunded because the time was taken, and offers another time', async () => {
+    const { notifier, notifications } = make(booking({ status: 'CANCELLED' }));
+    await notifier.latePaymentRefunded(900n, 'time_taken');
+    const email = (notifications.sendEmail as any).mock.calls[0][0];
+    expect(email.type).toBe('bookings.payment_refunded');
+    expect(email.title).toBe("We're refunding your ₦35,000");
+    expect(email.message).toMatch(/arrived after the time was released, and someone else has since booked it/);
+    expect(email.message).toMatch(/Paystack is refunding ₦35,000/);
+    expect(email.link).toMatch(/\/book$/);
+    expect(email.actionLabel).toBe('Choose another time');
+  });
+
+  it('explains a second payment for a session that was already paid, pointing at the portal', async () => {
+    const { notifier, notifications } = make(booking({ status: 'CONFIRMED' }));
+    await notifier.latePaymentRefunded(900n, 'duplicate');
+    const email = (notifications.sendEmail as any).mock.calls[0][0];
+    expect(email.message).toMatch(/already paid/);
+    expect(email.message).not.toMatch(/someone else/);
+    expect(email.link).toMatch(/\/portal$/);
+  });
+
+  it('explains a payment for a cancelled session', async () => {
+    const { notifier, notifications } = make(booking({ status: 'CANCELLED' }));
+    await notifier.latePaymentRefunded(900n, 'cancelled');
+    expect((notifications.sendEmail as any).mock.calls[0][0].message).toMatch(/was cancelled/);
+  });
+
+  it('tells the therapist and the practice owners about the refund', async () => {
+    const { notifier, notifications } = make(booking({ status: 'CANCELLED' }));
+    await notifier.latePaymentRefunded(900n, 'time_taken');
+    const notice = (notifications.notify as any).mock.calls[0][0];
+    expect(notice.profileIds).toEqual([7n, 11n, 12n]);
+    expect(notice.title).toBe('Payment refunded');
+    expect(notice.message).toBe('Ada Okafor’s ₦35,000 for Tue, 6 Oct · 11:30 AM arrived after the time was released and taken, so it is being refunded.');
+  });
+});

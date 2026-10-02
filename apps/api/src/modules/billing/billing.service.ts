@@ -16,6 +16,7 @@ import {
   planCodeFor,
 } from './subscription-plans';
 import { PaystackService } from './paystack.service';
+import { BookingPaymentSettler } from './booking-payment-settler.service';
 import { BookingNotifier } from '../notifications/booking-notifier.service';
 import { CalendarService } from '../calendar/calendar.service';
 import { NotificationService } from '../notifications/notification.service';
@@ -31,6 +32,7 @@ export class BillingService {
     private readonly calendar: CalendarService,
     @Optional() private readonly notifications?: NotificationService,
     @Optional() private readonly bookingNotifier?: BookingNotifier,
+    @Optional() private readonly settler?: BookingPaymentSettler,
   ) {}
 
   async getBankSubaccount(tenantId: bigint) {
@@ -470,11 +472,12 @@ export class BillingService {
     const reference: string | undefined = data?.reference;
 
     if (event === 'charge.success' && reference?.startsWith('booking-')) {
-      // Exactly one "Your session is booked" per booking: only the call that
-      // flipped it from pending sends — the pop-up confirm may get here first.
-      if (await this.markBookingPaid(reference, data)) {
-        await this.bookingNotifier?.confirmed(BigInt(reference.split('-')[1])).catch(() => undefined);
-      }
+      // BKG-09: confirm it (once, whichever of the webhook and the pop-up
+      // arrives first), re-confirm a released hold, or refund a late charge.
+      // Without the settler a payment would go unrecorded, so fail loudly and
+      // let Paystack retry.
+      if (!this.settler) throw new Error('Booking payments cannot be settled: BookingPaymentSettler is not wired.');
+      await this.settler.settle(reference, { status: 'success', paid_at: data?.paid_at });
       return;
     }
 

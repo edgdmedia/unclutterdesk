@@ -1,6 +1,7 @@
 import { describe, it, expect, vi } from 'vitest';
 import { BillingService } from './billing.service';
 import { PaystackService } from './paystack.service';
+import { BookingPaymentSettler } from './booking-payment-settler.service';
 import { chargedKobo, collectedKobo } from '../../common/revenue';
 
 /**
@@ -142,12 +143,18 @@ describe('a discounted booking', () => {
 describe('the webhook that confirms payment', () => {
   function makeWebhook() {
     const prisma: any = {
-      consultBooking: { updateMany: vi.fn().mockResolvedValue({ count: 1 }) },
+      consultBooking: {
+        updateMany: vi.fn().mockResolvedValue({ count: 1 }),
+        // A replay finds the booking already confirmed by this reference.
+        findUnique: vi.fn().mockResolvedValue({ id: 100n, status: 'CONFIRMED', paymentRef: 'booking-100-1', holdReleasedAt: null, refundRef: null }),
+      },
       tenant: { findUnique: vi.fn(), update: vi.fn() },
     };
     const calendar = { pushBookingToGoogle: vi.fn().mockResolvedValue(undefined) };
     const bookingNotifier = { confirmed: vi.fn().mockResolvedValue(undefined) };
-    const service = new BillingService(prisma, {} as any, calendar as any, undefined, bookingNotifier as any);
+    // The webhook hands booking charges to the real settler (BKG-09).
+    const settler = new BookingPaymentSettler(prisma, {} as any, bookingNotifier as any, calendar as any);
+    const service = new BillingService(prisma, {} as any, calendar as any, undefined, bookingNotifier as any, settler);
     return { service, prisma, bookingNotifier };
   }
 
@@ -179,6 +186,31 @@ describe('the webhook that confirms payment', () => {
     prisma.consultBooking.updateMany.mockResolvedValue({ count: 0 });
     await service.handleWebhook('charge.success', { reference: 'booking-100-1' });
     expect(bookingNotifier.confirmed).toHaveBeenCalledTimes(1);
+  });
+
+  it('fails loudly instead of dropping a booking payment when the settler is missing', async () => {
+    const service = new BillingService({ consultBooking: { updateMany: vi.fn() } } as any, {} as any, {} as any);
+    await expect(service.handleWebhook('charge.success', { reference: 'booking-100-1' })).rejects.toThrow(/settler/i);
+  });
+
+  // BKG-09: paid after the hold was released and the time was taken.
+  it('refunds a late payment whose time is gone', async () => {
+    const prisma: any = {
+      consultBooking: {
+        updateMany: vi.fn().mockResolvedValue({ count: 0 }),
+        findUnique: vi.fn().mockResolvedValue({ id: 100n, status: 'CANCELLED', paymentRef: 'booking-100-1', holdReleasedAt: new Date(), refundRef: null, availabilityId: 3n, availability: { createdForBooking: false } }),
+        update: vi.fn(),
+      },
+      consultAvailability: { updateMany: vi.fn().mockResolvedValue({ count: 0 }) },
+      $transaction: vi.fn(async (cb: any) => cb(prisma)),
+    };
+    const paystack: any = { refundTransaction: vi.fn().mockResolvedValue({ status: 'pending' }) };
+    const bookingNotifier: any = { confirmed: vi.fn(), latePaymentRefunded: vi.fn().mockResolvedValue(undefined) };
+    const settler = new BookingPaymentSettler(prisma, paystack, bookingNotifier, { pushBookingToGoogle: vi.fn() } as any);
+    const service = new BillingService(prisma, paystack, {} as any, undefined, bookingNotifier, settler);
+    await service.handleWebhook('charge.success', { reference: 'booking-100-1', status: 'success' });
+    expect(paystack.refundTransaction).toHaveBeenCalledWith('booking-100-1');
+    expect(bookingNotifier.latePaymentRefunded).toHaveBeenCalledWith(100n, 'time_taken');
   });
 
   it('records when Paystack says it was paid, not when we processed it', async () => {

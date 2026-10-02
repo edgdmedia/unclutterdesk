@@ -6,6 +6,9 @@ import { formatNaira } from '../billing/subscription-plans';
 import { NotificationService } from './notification.service';
 import { listPendingForms } from '../intake/default-forms';
 
+/** Why a booking payment is being refunded (BKG-09). */
+export type RefundReason = 'time_taken' | 'cancelled' | 'duplicate';
+
 /** A room name may already be a full URL (a scheduled provider room). */
 const roomLink = (roomName: string | null) =>
   roomName ? (roomName.startsWith('http') ? roomName : `https://meet.jit.si/${roomName}`) : null;
@@ -127,7 +130,38 @@ export class BookingNotifier {
    * tenant's active owners and admins (the front desk too for transfers,
    * since they confirm them). Never anyone from another practice.
    */
-  async notifyStaff(bookingId: bigint, event: 'booked' | 'paid' | 'transfer_sent' | 'cancelled'): Promise<void> {
+  /**
+   * BKG-09: a payment can't be used for its booking (it arrived after the time
+   * was released and taken, the session was cancelled, or it was a second
+   * payment), so Paystack is refunding it. The client and the practice hear why.
+   */
+  async latePaymentRefunded(bookingId: bigint, reason: RefundReason): Promise<void> {
+    const b = await this.load(bookingId);
+    if (!b) return;
+    const amount = formatNaira(Number(chargedKobo(b)));
+    const origin = tenantWebOrigin(b.tenant);
+    const session = `${b.service.title} on ${this.when(b.availability.startsAt)}`;
+    const why = {
+      time_taken: `Your payment for ${session} arrived after the time was released, and someone else has since booked it.`,
+      cancelled: `Your payment for ${session} arrived after the session was cancelled.`,
+      duplicate: `Your session, ${session}, was already paid, so this second payment isn't needed.`,
+    }[reason];
+    await this.notifications
+      .sendEmail({
+        to: b.client.email,
+        type: 'bookings.payment_refunded',
+        title: `We're refunding your ${amount}`,
+        message: `${why} Paystack is refunding ${amount} to you; it usually arrives within a few working days.`,
+        link: reason === 'duplicate' ? `${origin}/portal` : `${origin}/book`,
+        actionLabel: reason === 'duplicate' ? 'View my bookings' : 'Choose another time',
+        tenantId: b.tenantId,
+        profileId: b.clientProfileId,
+      })
+      .catch((err) => this.logger.warn(`Could not send the refund email for booking ${bookingId}: ${(err as Error).message}`));
+    await this.notifyStaff(bookingId, 'refunded', reason).catch(() => undefined);
+  }
+
+  async notifyStaff(bookingId: bigint, event: 'booked' | 'paid' | 'transfer_sent' | 'cancelled' | 'refunded', reason: RefundReason = 'time_taken'): Promise<void> {
     const b = await this.load(bookingId);
     if (!b) return;
     const roles = event === 'transfer_sent' ? ['OWNER', 'ADMIN', 'RECEPTIONIST'] : ['OWNER', 'ADMIN'];
@@ -158,6 +192,15 @@ export class BookingNotifier {
         message: `${name} says they’ve sent ${amount} (ref UD-${b.id}). Check your account and mark it paid.`,
       },
       cancelled: { type: 'consult.booking_cancelled', title: 'Session cancelled', message: `${name}’s session on ${when} was cancelled.` },
+      refunded: {
+        type: 'consult.payment_refunded',
+        title: 'Payment refunded',
+        message: {
+          time_taken: `${name}’s ${amount} for ${when} arrived after the time was released and taken, so it is being refunded.`,
+          cancelled: `${name} paid ${amount} for ${when}, which was cancelled, so it is being refunded.`,
+          duplicate: `${name} paid ${amount} twice for ${when}; the second payment is being refunded.`,
+        }[reason],
+      },
     }[event];
     await this.notifications
       .notify({
