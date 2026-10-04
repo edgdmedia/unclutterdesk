@@ -115,7 +115,7 @@ API_URL=https://api.unclutterdesk.com
 DAILY_API_KEY=
 # Your own base64 secret for Daily's meeting.ended webhook: openssl rand -base64 32
 # Daily has no webhook screen; after deploying and restarting with this set, run
-#   node --env-file=.env --env-file=apps/api/.env scripts/create-daily-webhook.mjs
+#   node --env-file=.env scripts/create-daily-webhook.mjs
 DAILY_WEBHOOK_SECRET=
 # JaaS (8x8.vc → API keys): the App ID (vpaas-magic-cookie-…), the full key id
 # shown beside the key (vpaas-magic-cookie-…/abc123), and the downloaded private
