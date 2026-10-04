@@ -120,3 +120,22 @@ describe('AppShell content', () => {
     expect(screen.getByRole('alert')).toBeTruthy();
   });
 });
+
+describe('the header slot', () => {
+  it('renders the header above the content, right-aligned', () => {
+    render(
+      <AppShell>
+        <p>page</p>
+      </AppShell>,
+    );
+    expect(screen.queryByTestId('app-header')).toBeNull();
+    render(
+      <AppShell header={<button>bell</button>}>
+        <p>page</p>
+      </AppShell>,
+    );
+    const bar = screen.getByTestId('app-header');
+    expect(bar.querySelector('button')).toBeTruthy();
+    expect(bar.className).toContain('justify-end');
+  });
+});

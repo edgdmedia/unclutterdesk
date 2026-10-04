@@ -313,6 +313,8 @@ export const api = {
     apiRequest<T>(path, { method: 'POST', body, headers }),
   put: <T>(path: string, body: unknown, headers?: Record<string, string>) =>
     apiRequest<T>(path, { method: 'PUT', body, headers }),
+  /** The base URL requests resolve against — for EventSource and plain links. */
+  baseUrl: API_BASE,
   patch: <T>(path: string, body: unknown, headers?: Record<string, string>) =>
     apiRequest<T>(path, { method: 'PATCH', body, headers }),
   delete: <T>(path: string) => apiRequest<T>(path, { method: 'DELETE' }),
