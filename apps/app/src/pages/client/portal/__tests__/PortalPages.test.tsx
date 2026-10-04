@@ -89,6 +89,23 @@ describe('portal pages', () => {
     expect(screen.queryByRole('link', { name: /My details/ })).toBeNull();
   });
 
+  // Review Focus 4: a cancelled or past session cannot go in a calendar.
+  it('offers Add to calendar only on upcoming, un-cancelled sessions with a token', async () => {
+    apiGet.mockImplementation((path: string) => (path === '/v1/consult/portal'
+      ? Promise.resolve({ clientName: 'Ada Obi', upcoming: [UPCOMING, { ...UPCOMING, id: '8', status: 'CANCELLED' }], past: [PAST] })
+      : Promise.resolve([])));
+    renderAt('/portal/sessions');
+    expect(await screen.findByRole('button', { name: /Add to calendar/ })).toBeTruthy();
+    expect(screen.getAllByText('CANCELLED').length).toBeGreaterThan(0);
+  });
+
+  it('shows neither action on a cancelled row or a past row', async () => {
+    renderAt('/portal/sessions?view=past');
+    await screen.findByText('Couples Session');
+    expect(screen.queryByRole('button', { name: /Add to calendar/ })).toBeNull();
+    expect(screen.queryByRole('button', { name: /Reschedule/ })).toBeNull();
+  });
+
   it('rescheduling reloads the shared portal data (Review Focus 5)', async () => {
     renderAt('/portal/sessions');
     fireEvent.click(await screen.findByRole('button', { name: /Reschedule/ }));

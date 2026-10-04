@@ -1,4 +1,6 @@
 import React from 'react';
+import { API_BASE } from '../../../utils/apiClient';
+import { AddToCalendar } from '../../public/booking/AddToCalendar';
 import { JoinButton } from '../../../components/video/JoinButton';
 import { DateTile } from './DateTile';
 import { formatMoney, formatTimeRange } from './portalFormat';
@@ -17,6 +19,18 @@ export function PortalSessionCard({ session, onReschedule }: { session: PortalSe
         <div className="text-[13.5px] font-extrabold text-[#0F172A]">{formatMoney(session.priceKobo)}</div>
         <div className="text-[11px] text-[#94A3B8] font-medium">{session.status}</div>
       </div>
+      {session.status !== 'CANCELLED' && session.icalToken ? (
+        <AddToCalendar
+          placement="below"
+          apiBase={API_BASE}
+          bookingId={session.id}
+          icalToken={session.icalToken}
+          serviceTitle={session.serviceTitle}
+          therapistName={session.therapistName}
+          startsAt={session.startsAt}
+          endsAt={session.endsAt}
+        />
+      ) : null}
       {session.status !== 'CANCELLED' ? (
         <button
           type="button"
