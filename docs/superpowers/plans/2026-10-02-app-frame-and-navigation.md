@@ -154,6 +154,8 @@ For each page:
 
 ### Task 6: The client portal in the same frame (POR-03)
 
+> **Moved to `2026-10-03-client-portal-redesign.md`.** Do not implement here.
+
 **Files:**
 - `apps/app/src/components/shell/ClientShell.tsx`, `clientNav.tsx`;
 - `apps/app/src/pages/client/Portal*.tsx` (split from `ClientPortalPage.tsx`);

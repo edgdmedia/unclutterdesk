@@ -210,6 +210,8 @@ Behaviour:
 
 ### Task 6: Book from the portal, and "Add to calendar" there (POR-04, POR-05)
 
+> **Moved to `2026-10-03-client-portal-redesign.md`.** Do not implement here.
+
 **Files:**
 - `apps/app/src/pages/public/booking/AddToCalendar.tsx` (extract the confirmation's dropdown: Google Calendar link, Apple/Outlook `.ics` via `/v1/calendar/bookings/:id/ical?token=…`);
 - `ConfirmationStep.tsx` uses it;
