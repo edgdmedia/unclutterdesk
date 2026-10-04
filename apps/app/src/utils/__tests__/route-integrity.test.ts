@@ -41,8 +41,28 @@ const PAGE_FILES = sourceFiles(PAGES);
 const APP_TSX = readFileSync(resolve(APP, 'App.tsx'), 'utf8')
   + readFileSync(resolve(APP, 'routes/clientRoutes.tsx'), 'utf8');
 
-/** Every path given to a <Route>, wherever the routes are declared. */
-const ROUTES = [...APP_TSX.matchAll(/<Route\s+path="([^"]+)"/g)].map((m) => m[1]);
+/**
+ * Every path given to a <Route>, wherever the routes are declared. Nested
+ * routes (a child <Route path="sessions"> inside a parent path="/portal")
+ * are stored under their full path, since menus link to the full path.
+ */
+const ROUTES: string[] = [];
+let NEST_PREFIX = '';
+for (const m of APP_TSX.matchAll(/<Route\s+path="([^"]+)"|<\/Route>/g)) {
+  if (m[0] === '</Route>') {
+    NEST_PREFIX = '';
+    continue;
+  }
+  const p = m[1];
+  if (p.startsWith('/')) {
+    ROUTES.push(p);
+    NEST_PREFIX = p;
+  } else if (NEST_PREFIX) {
+    ROUTES.push(`${NEST_PREFIX.replace(/\/+$/, '')}/${p}`);
+  } else {
+    ROUTES.push(p);
+  }
+}
 
 function routeExists(target: string): boolean {
   const path = target.split(/[?#]/)[0].replace(/\/+$/, '') || '/';

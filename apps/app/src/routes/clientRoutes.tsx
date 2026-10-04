@@ -1,10 +1,15 @@
 import React, { useEffect, useState } from 'react';
 import { lazy } from 'react';
-import { Route } from 'react-router-dom';
+import { Outlet, Route } from 'react-router-dom';
 import { BrandProvider, type TenantBrandConfig } from '@unclutterdesk/ui';
 import { api, getSubdomainTenantSlug } from '../utils/apiClient';
 
-const ClientPortalPage = lazy(() => import('../pages/client/ClientPortalPage').then((m) => ({ default: m.ClientPortalPage })));
+const ClientShell = lazy(() => import('../components/shell/ClientShell').then((m) => ({ default: m.ClientShell })));
+const PortalHomePage = lazy(() => import('../pages/client/portal/PortalHomePage').then((m) => ({ default: m.PortalHomePage })));
+const PortalSessionsPage = lazy(() => import('../pages/client/portal/PortalSessionsPage').then((m) => ({ default: m.PortalSessionsPage })));
+const PortalFormsPage = lazy(() => import('../pages/client/portal/PortalFormsPage').then((m) => ({ default: m.PortalFormsPage })));
+const PortalPaymentsPage = lazy(() => import('../pages/client/portal/PortalPaymentsPage').then((m) => ({ default: m.PortalPaymentsPage })));
+const PortalDetailsPage = lazy(() => import('../pages/client/portal/PortalDetailsPage').then((m) => ({ default: m.PortalDetailsPage })));
 const ClientSessionRoomPage = lazy(() => import('../pages/client/ClientSessionRoomPage').then((m) => ({ default: m.ClientSessionRoomPage })));
 const PortalAssessmentPage = lazy(() => import('../pages/client/PortalAssessmentPage').then((m) => ({ default: m.PortalAssessmentPage })));
 const ClientFormPage = lazy(() => import('../pages/client/ClientFormPage').then((m) => ({ default: m.ClientFormPage })));
@@ -42,7 +47,13 @@ export function ClientBrandProvider({ children }: { children: React.ReactNode })
 
 export const CLIENT_PORTAL_ROUTES = (
   <>
-    <Route path="/portal" element={<ClientPortalPage />} />
+    <Route path="/portal" element={<ClientShell><Outlet /></ClientShell>}>
+      <Route index element={<PortalHomePage />} />
+      <Route path="sessions" element={<PortalSessionsPage />} />
+      <Route path="forms" element={<PortalFormsPage />} />
+      <Route path="payments" element={<PortalPaymentsPage />} />
+      <Route path="details" element={<PortalDetailsPage />} />
+    </Route>
     <Route path="/portal/assessments/:id" element={<PortalAssessmentPage />} />
     <Route path="/portal/sessions/:id/room" element={<ClientSessionRoomPage />} />
     <Route path="/forms/:id" element={<ClientFormPage />} />
