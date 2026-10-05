@@ -74,6 +74,7 @@ A running log of what shows up in testing, what we decide about it, and when it'
 | SET-09 | Settings | A practice discount can be turned off, but not back on, edited or deleted | Bug | P1 | Fixed |
 | BKG-11 | Booking page | The practice's booking link doesn't carry the new wizard design: too wide, no practice logo | Bug | P1 | Fixed |
 | BKG-12 | Booking page | "Go to my bookings" and the calendar buttons should share one row; the two calendar links can be one dropdown | UX | P3 | Fixed |
+| BKG-13 | Booking page | The public profile shows the same long bio twice, and there is no tagline field in the practice profile | Bug | P2 | Fixed |
 | VID-01 | Video | The session room is a mock-up, not a real video call | Feature | P0 | Fixed |
 | POR-01 | Client portal | /portal only works on app.unclutterdesk.com, not on the practice's own link | Bug | P1 | Fixed |
 | POR-02 | Client portal | The portal should look like a dashboard, not a plain list | UX | P2 | Fixed |
@@ -481,6 +482,13 @@ A running log of what shows up in testing, what we decide about it, and when it'
 - **Feedback / decision:** Put "Go to my bookings" in the same row as the calendar actions, and collapse the two calendar options into one button with a dropdown of the two.
 - **Fix:** `d140a51` on `dev`. **Go to my bookings** and one **Add to calendar ▾** button share a single row; the dropdown holds "Download (.ics)" and "Google Calendar" (Esc/click-away close it). Covered by `ConfirmationStep.test.tsx`.
 - **Verified:** Browser check 2 Oct: after a real test payment the two actions sit in one flex row and the menu opens with both links.
+
+### BKG-13 · The public profile shows the bio twice; no tagline anywhere
+- **Type:** Bug · **Priority:** P2 · **Status:** Fixed
+- **Observed:** 5 Oct 2026, live testing. On the practice's public profile the one `welcomeMessage` renders both under the hero name and in "About the Practice" — the same long paragraph twice, where a short tagline and a full bio were intended. There is no tagline field in Settings → Practice profile (its label even reads "Bio / tagline").
+- **Feedback / decision:** The hero carries a one-line tagline; the About section carries the bio, once. Add a Tagline field to the practice profile (and the therapist profile, which the public page prefers).
+- **Fix:** New `tagline` column on Tenant and ConsultTherapistProfile (migration `20261005100000_practice_tagline`), carried through the public info/therapists endpoints and both profile updates. The hero now renders the tagline (therapist first, then practice) and the bio appears only in About; a practice with no tagline shows no hero line. "Bio / tagline" in Settings → Profile split into **Tagline** (one line) and **Bio**; Therapist profile got the same. Covered by `PublicProfilePage.test.tsx`.
+- **Verified:** 5 Oct 2026 in the browser: saved a tagline on dr-smith's practice profile; the public page shows the tagline once in the hero and the bio once in About (counts 1 and 1).
 
 ### VID-01 · The session room isn't a real video call
 - **Type:** Feature · **Priority:** P0 · **Status:** Fixed
