@@ -91,7 +91,9 @@ export function ConfirmationStep({
     return () => window.clearInterval(t);
   }, [payment]);
   const remaining = payment ? new Date(payment.holdExpiresAt).getTime() - now : 0;
-  const online = booking.format === 'IN_PERSON' ? false : formatOf(channel) === 'Online';
+  // The person chose the format in the wizard; the slot's own channel only
+  // speaks for dual-format slots when the booking carries no format at all.
+  const online = booking.format ? booking.format !== 'IN_PERSON' : formatOf(channel) === 'Online';
   const at = booking.format === 'IN_PERSON' ? booking.location : null;
 
   return (
@@ -126,7 +128,7 @@ export function ConfirmationStep({
       <div className="rounded-[20px] border border-[#E2E8F0] overflow-hidden">
         {[
           ['When', whenLabel(booking.startsAt)],
-          ['Format', formatOf(channel)],
+          ['Format', booking.format ? formatOf(booking.format) : formatOf(channel)],
           ['With', booking.therapistName],
         ].map(([label, value]) => (
           <div key={label} className="flex items-center gap-3 px-4 py-[13px] border-t border-[#F1F5F9] first:border-t-0">

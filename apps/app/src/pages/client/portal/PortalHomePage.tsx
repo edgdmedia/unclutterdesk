@@ -131,7 +131,7 @@ export function PortalHomePage() {
               <h2 className="mt-1 text-[22px] font-bold tracking-[-0.02em] text-white">{formatTimeRange(nextSession.startsAt, nextSession.endsAt)}</h2>
               <p className="mt-1 text-[13.5px] font-medium text-[#CBD5E1]">{nextSession.serviceTitle} · with {nextSession.therapistName}</p>
             </div>
-            <div className="flex gap-3 shrink-0 flex-wrap">
+            <div className="flex gap-3 shrink-0 flex-wrap w-full sm:w-auto justify-start">
               <a
                 href={`${API_BASE}/v1/calendar/bookings/${nextSession.id}/ical?token=${nextSession.icalToken ?? ''}`}
                 download
