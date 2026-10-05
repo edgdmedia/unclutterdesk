@@ -112,6 +112,15 @@ export class TenantController {
     return this.tenantService.getTenantBrand(authenticatedTenantId(req));
   }
 
+  @Permissions('practice.staff')
+  @Get('brand/custom-domain')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @ApiBearerAuth('access-token')
+  @ApiOperation({ summary: 'Custom domain state plus the DNS records a practice must publish' })
+  getCustomDomain(@Req() req: any) {
+    return this.tenantService.getCustomDomainStatus(authenticatedTenantId(req));
+  }
+
   @Permissions('practice.admin')
   @Post('brand/custom-domain/verify')
   @UseGuards(JwtAuthGuard, RolesGuard)

@@ -4,12 +4,13 @@ import { LocationsController } from './locations.controller';
 import { LocationsService } from './locations.service';
 import { TenantController } from './tenant.controller';
 import { TenantService } from './tenant.service';
+import { CloudflareSaasService } from './cloudflare-saas.service';
 import { PrismaService } from '../../common/prisma/prisma.service';
 
 @Module({
   imports: [IntakeModule],
   controllers: [TenantController, LocationsController],
-  providers: [TenantService, LocationsService, PrismaService],
-  exports: [TenantService, LocationsService],
+  providers: [TenantService, LocationsService, PrismaService, CloudflareSaasService],
+  exports: [TenantService, LocationsService, CloudflareSaasService],
 })
 export class TenantModule {}
