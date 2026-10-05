@@ -75,8 +75,8 @@ A running log of what shows up in testing, what we decide about it, and when it'
 | BKG-11 | Booking page | The practice's booking link doesn't carry the new wizard design: too wide, no practice logo | Bug | P1 | Fixed |
 | BKG-12 | Booking page | "Go to my bookings" and the calendar buttons should share one row; the two calendar links can be one dropdown | UX | P3 | Fixed |
 | BKG-13 | Booking page | The public profile shows the same long bio twice, and there is no tagline field in the practice profile | Bug | P2 | Fixed |
-| BKG-14 | Booking page | The public profile misses details from the Claude design: About headline, Learn More button, real location names | UX | P2 | Ready |
-| BKG-15 | Booking page | "Log in" on the practice's page sends clients to the staff login | Bug | P1 | Ready |
+| BKG-14 | Booking page | The public profile misses details from the Claude design: About headline, Learn More button, real location names | UX | P2 | Fixed |
+| BKG-15 | Booking page | "Log in" on the practice's page sends clients to the staff login | Bug | P1 | Fixed |
 | VID-01 | Video | The session room is a mock-up, not a real video call | Feature | P0 | Fixed |
 | POR-01 | Client portal | /portal only works on app.unclutterdesk.com, not on the practice's own link | Bug | P1 | Fixed |
 | POR-02 | Client portal | The portal should look like a dashboard, not a plain list | UX | P2 | Fixed |
@@ -496,15 +496,15 @@ A running log of what shows up in testing, what we decide about it, and when it'
 - **Type:** UX · **Priority:** P2 · **Status:** Ready
 - **Observed:** 5 Oct 2026, against `docs/design/Unclutter Desk Public Practice Profile.dc.html`. The About section has no headline (the design's *"A calm, evidence-based approach to therapy"* — the `welcomeTitle` field exists in the database and API but nothing renders or edits it); the hero lacks the design's secondary **Learn More** button; the Location & Format card prints a synthesised "In person in Lagos" instead of the practice's real location names (PracticeLocation records exist and ship in the public payload unused). Availability and Insurance were compared and decided against: keep "Next Available" as implemented, and "Insurance Accepted" is dropped from the design.
 - **Feedback / decision:** Founder 5 Oct 2026: no insurance section; availability stays as it is. Most of the "empty" look is unfilled data — Specialty, Credentials, Years, Modalities and Languages live in **Account menu → My profile**, not the practice profile.
-- **Fix:** 
-- **Verified:** 
+- **Fix:** `d807f77` and `255d676` on `dev`: the About section renders `welcomeTitle` as the design's headline — now editable as **Welcome headline** in Settings → Practice profile (the API already accepted it); the hero gained the secondary **Learn More** button which smooth-scrolls to About (only shown when there is an About to see); the Location & Format card lists the practice's real PracticeLocation records ("Lekki clinic · Lagos") plus "Online via secure video" when an online format is on. Covered by `PublicProfilePage.test.tsx`.
+- **Verified:** 5 Oct 2026 browser check: set the headline on dr-smith's profile; the public page shows it, Learn More scrolls to #about, and the locations card lists both saved rooms and the online line. 
 
 ### BKG-15 · "Log in" on the practice's page sends clients to the staff login
 - **Type:** Bug · **Priority:** P1 · **Status:** Ready
 - **Observed:** 5 Oct 2026, live on the custom domain. On `consult.unclutter.com.ng` the client's "Log in" links to `app.unclutterdesk.com/login`, which is designed for signing in to a practice, not as one's client. Even the practice host's own `/login` renders the staff form.
 - **Feedback / decision:** Clients should stay on the practice's host and get the client sign-in (the panel from the booking wizard). Staff keep their page, reachable via a quiet "Are you the practice? Staff sign in" link.
-- **Fix:** 
-- **Verified:** 
+- **Fix:** On a practice host (`getAppType() === 'booking'`) `/login` now renders `ClientLoginPage.tsx` — the branded client panel (Sign in / Create account, `initialMode` added to `ClientAuthPanel`) landing on `/portal` — and the public page's "Log in" became the relative `/login`. The app host's `/login` is untouched; the client page offers staff a link back to it. Tested in `ClientLoginPage.test.tsx` and `PublicProfilePage.test.tsx`.
+- **Verified:** 5 Oct 2026 browser check: on dr-smith.localhost, "Log in" opened the client page (staff link visible), creating an account landed straight on /portal signed in; app-host staff login unchanged. Test client removed afterwards. (The same fix serves the portal's "Sign in to see your sessions" card, which already links to `/login`.)
 
 ### VID-01 · The session room isn't a real video call
 - **Type:** Feature · **Priority:** P0 · **Status:** Fixed
