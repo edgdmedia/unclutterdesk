@@ -153,16 +153,24 @@ sees it all in Settings → Practice profile → Custom domain.
 2. **Fallback origin:** `app.unclutterdesk.com` (already proxied). Traffic only
    lands there if a hostname has no Worker route — the provisioning service
    always creates the route, and Pages answering 403 is the loud failure.
-3. **API token** scoped to this zone: `Cloudflare for SaaS: Edit`,
-   `Workers Routes: Edit`, `Zone: Read`. Put it on the server's API `.env`:
+3. **Credentials.** The custom-hostname endpoints do **not** accept scoped
+   API tokens (the SaaS permission is absent from the token builder by
+   design; tokens get `10000`/`10405`). Use the owner's **Global API key**:
+   My Profile → API Tokens → Global API Key → View. Put these on the server's
+   API `.env`:
 
 ```
-CLOUDFLARE_API_TOKEN=<token>
+CLOUDFLARE_AUTH_EMAIL=<account email>
+CLOUDFLARE_API_KEY=<global api key>
 CLOUDFLARE_ZONE_ID=d4b3dd0ef46d1eb1625327cdbf39086e
 CLOUDFLARE_WORKER_SCRIPT=unclutterdesk-tenant-router
 ```
 
-   and restart the API. Without these the panel still stores the domain and
+   (`CLOUDFLARE_API_TOKEN` remains accepted for any endpoint that does
+   support tokens; the key wins when both are present.)
+
+   and restart the API. The key is account-wide — keep it server-side only,
+   and rotate it if it ever leaks. Without these the panel still stores the domain and
    behaves exactly like before (PENDING + manual verify via public DNS) — dev,
    CI and unenrolled environments are unaffected.
 

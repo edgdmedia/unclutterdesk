@@ -105,11 +105,12 @@ PAYSTACK_PLAN_CLINIC=PLN_leght05vpcu41ad
 # Only needed if an origin outside *.unclutterdesk.com calls the API
 # CORS_ORIGINS=https://example.com
 
-# SET-13 custom domains. Token: Cloudflare dashboard → My Profile → API Tokens,
-# scoped to the unclutterdesk.com zone, permissions Cloudflare for SaaS: Edit +
-# Workers Routes: Edit + Zone: Read. Without these, saving a custom domain keeps
-# the old behaviour (stored PENDING, manual verify) — see docs/CLOUDFLARE_SETUP.md §5.
-CLOUDFLARE_API_TOKEN=<cf token>
+# SET-13 custom domains. The Cloudflare custom-hostname API rejects scoped
+# tokens, so this is the account owner's Global API key (My Profile → API
+# Tokens → Global API Key). Without these, saving a custom domain keeps the
+# old behaviour (stored PENDING, manual verify) — see docs/CLOUDFLARE_SETUP.md §5.
+CLOUDFLARE_AUTH_EMAIL=<account email>
+CLOUDFLARE_API_KEY=<global api key>
 CLOUDFLARE_ZONE_ID=d4b3dd0ef46d1eb1625327cdbf39086e
 CLOUDFLARE_WORKER_SCRIPT=unclutterdesk-tenant-router
 

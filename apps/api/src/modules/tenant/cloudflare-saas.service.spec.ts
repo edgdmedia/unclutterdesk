@@ -17,6 +17,8 @@ describe('CloudflareSaasService', () => {
   beforeEach(() => {
     saved = {
       CLOUDFLARE_API_TOKEN: process.env.CLOUDFLARE_API_TOKEN,
+      CLOUDFLARE_AUTH_EMAIL: process.env.CLOUDFLARE_AUTH_EMAIL,
+      CLOUDFLARE_API_KEY: process.env.CLOUDFLARE_API_KEY,
       CLOUDFLARE_ZONE_ID: process.env.CLOUDFLARE_ZONE_ID,
       CLOUDFLARE_WORKER_SCRIPT: process.env.CLOUDFLARE_WORKER_SCRIPT,
     };
@@ -37,6 +39,22 @@ describe('CloudflareSaasService', () => {
     const service = new CloudflareSaasService();
     expect(service.configured()).toBe(false);
     expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it('sends the legacy Global API key headers when configured — custom hostnames reject tokens', async () => {
+    delete process.env.CLOUDFLARE_API_TOKEN;
+    process.env.CLOUDFLARE_AUTH_EMAIL = 'me@example.com';
+    process.env.CLOUDFLARE_API_KEY = 'legacykey';
+    fetchMock.mockResolvedValue(ok({ id: 'cf-id-9', status: 'pending', ssl: { status: 'pending' } }));
+    const service = new CloudflareSaasService();
+    expect(service.configured()).toBe(true);
+    await service.getStatus('cf-id-9');
+    const headers = fetchMock.mock.calls[0][1].headers;
+    expect(headers['X-Auth-Email']).toBe('me@example.com');
+    expect(headers['X-Auth-Key']).toBe('legacykey');
+    expect(headers.Authorization).toBeUndefined();
+    delete process.env.CLOUDFLARE_AUTH_EMAIL;
+    delete process.env.CLOUDFLARE_API_KEY;
   });
 
   it('creates the hostname with CNAME validation and maps the verification records', async () => {

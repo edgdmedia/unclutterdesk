@@ -38,12 +38,21 @@ interface CfJson {
 @Injectable()
 export class CloudflareSaasService {
   private readonly apiToken = process.env.CLOUDFLARE_API_TOKEN || '';
+  private readonly authEmail = process.env.CLOUDFLARE_AUTH_EMAIL || '';
+  private readonly authKey = process.env.CLOUDFLARE_API_KEY || '';
   private readonly zoneId = process.env.CLOUDFLARE_ZONE_ID || '';
   private readonly workerScript = process.env.CLOUDFLARE_WORKER_SCRIPT || 'unclutterdesk-tenant-router';
   private readonly apiBase = 'https://api.cloudflare.com/client/v4';
 
+  /**
+   * Custom hostnames are one of the few Cloudflare API areas that reject
+   * scoped API tokens — the endpoints accept only the legacy Global API key
+   * (X-Auth-Email + X-Auth-Key) or OAuth. The zone id and either credential
+   * are required; the token headers stay supported in case the platform
+   * broadens auth for these routes later.
+   */
   configured(): boolean {
-    return Boolean(this.apiToken && this.zoneId);
+    return Boolean(this.zoneId && (this.authKey || this.apiToken));
   }
 
   /**
@@ -145,7 +154,9 @@ export class CloudflareSaasService {
       response = await fetch(`${this.apiBase}${path}`, {
         method,
         headers: {
-          Authorization: `Bearer ${this.apiToken}`,
+          ...(this.authKey && this.authEmail
+            ? { 'X-Auth-Email': this.authEmail, 'X-Auth-Key': this.authKey }
+            : { Authorization: `Bearer ${this.apiToken}` }),
           'Content-Type': 'application/json',
         },
         body: body === undefined ? undefined : JSON.stringify(body),
