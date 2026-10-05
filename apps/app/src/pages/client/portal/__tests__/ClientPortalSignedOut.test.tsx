@@ -1,19 +1,20 @@
 import { describe, it, expect, vi, afterEach } from 'vitest';
 import React, { useSyncExternalStore } from 'react';
 import { act } from 'react';
-import { renderWithApp, screen, waitFor, cleanup } from '../../test/renderWithApp';
+import { renderWithApp, screen, waitFor, cleanup } from '../../../../test/renderWithApp';
 
 /**
  * A portal that learns the person is signed out must stop showing their
- * sessions. It used to keep them on screen beside "Sign in to see your
- * sessions", so the page claimed both at once.
+ * sessions. The shell now guards at the frame: the children never render,
+ * so nothing of theirs is left on screen beside the sign-in card.
  */
 const apiGet = vi.fn();
 
-vi.mock('../../utils/apiClient', () => ({
-  api: { get: (...args: unknown[]) => apiGet(...args), post: vi.fn() },
+vi.mock('../../../../utils/apiClient', () => ({
+  api: { get: (...args: unknown[]) => apiGet(...args), post: vi.fn(), patch: vi.fn(), baseUrl: '' },
   getBookingUrl: (slug: string) => `https://${slug}.unclutterdesk.com`,
-  TENANT_SLUG: 'practice',
+  getAppType: () => 'booking',
+  TENANT_SLUG: 'dr-smith',
   API_BASE: '',
 }));
 
@@ -23,7 +24,7 @@ function setSignedIn(value: boolean) {
   signedIn = value;
   listeners.forEach((l) => l());
 }
-vi.mock('../../context/AuthContext', () => ({
+vi.mock('../../../../context/AuthContext', () => ({
   useAuth: () => {
     const on = useSyncExternalStore(
       (l) => {
@@ -33,12 +34,13 @@ vi.mock('../../context/AuthContext', () => ({
       () => signedIn,
     );
     return on
-      ? { isAuthenticated: true, profile: { email: 'ada@example.com', type: 'user' } }
-      : { isAuthenticated: false, profile: null };
+      ? { isAuthenticated: true, profile: { email: 'ada@example.com', type: 'user', firstName: 'Ada' }, logout: vi.fn() }
+      : { isAuthenticated: false, profile: null, logout: vi.fn() };
   },
 }));
 
-const { ClientPortalPage } = await import('../client/ClientPortalPage');
+const { ClientShell } = await import('../../../../components/shell/ClientShell');
+const { PortalHomePage } = await import('../PortalHomePage');
 
 const SESSION = {
   id: '9',
@@ -62,7 +64,7 @@ afterEach(() => {
 
 describe('the portal once the person is signed out', () => {
   it('hides their name and sessions and shows only the sign-in card', async () => {
-    renderWithApp(<ClientPortalPage />);
+    renderWithApp(<ClientShell><PortalHomePage /></ClientShell>);
     await waitFor(() => expect(screen.getByText('Hello, Ada')).toBeTruthy());
 
     act(() => setSignedIn(false));

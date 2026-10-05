@@ -10,6 +10,8 @@ export interface AppShellProps {
   onCollapsedChange?: (collapsed: boolean) => void;
   bottomNav?: Omit<BottomNavProps, 'onMore'>;
   banner?: ReactNode;
+  /** A slim bar above the page content, right-aligned — the notification bell lives here. */
+  header?: ReactNode;
   children: ReactNode;
 }
 
@@ -19,7 +21,7 @@ export interface AppShellProps {
  * desktop, full or rail by the user's choice. The content column fills the
  * rest and can never be forced wider than the screen.
  */
-export function AppShell({ sidebar, collapsed = false, onCollapsedChange, bottomNav, banner, children }: AppShellProps) {
+export function AppShell({ sidebar, collapsed = false, onCollapsedChange, bottomNav, banner, header, children }: AppShellProps) {
   const viewport = useViewport();
   const [overlayOpen, setOverlayOpen] = useState(false);
   const opener = useRef<HTMLElement | null>(null);
@@ -56,6 +58,11 @@ export function AppShell({ sidebar, collapsed = false, onCollapsedChange, bottom
       {inlineMode && sidebar ? <Sidebar {...sidebar} mode={inlineMode} onToggleCollapse={onToggleCollapse} /> : null}
       {overlayOpen && sidebar ? <Sidebar {...sidebar} mode="overlay" onClose={closeOverlay} onNavigate={closeOverlay} /> : null}
       <div data-testid="app-content" className={`flex-1 min-w-0 flex flex-col ${showBottom ? 'pb-[84px]' : ''}`.trim()}>
+        {header ? (
+          <div data-testid="app-header" className="flex items-center justify-end gap-2 px-4 py-2 md:px-6 shrink-0">
+            {header}
+          </div>
+        ) : null}
         {banner}
         {children}
       </div>

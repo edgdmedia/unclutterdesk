@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { CalendarPlus, Check, ChevronDown, Clock, FileText, MapPin } from 'lucide-react';
+import { Check, Clock, FileText, MapPin } from 'lucide-react';
+import { AddToCalendar } from './AddToCalendar';
 import { Eyebrow } from '@unclutterdesk/ui';
 import { formatOf, whenLabel } from './bookingSlots';
 import { naira } from './BookingShell';
@@ -33,18 +34,6 @@ const pad = (n: number) => String(n).padStart(2, '0');
 function countdown(ms: number) {
   const s = Math.max(0, Math.floor(ms / 1000));
   return `${pad(Math.floor(s / 3600))}:${pad(Math.floor((s % 3600) / 60))}:${pad(s % 60)}`;
-}
-
-/** 20261006T103000Z */
-const gcalTime = (iso: string) => new Date(iso).toISOString().replace(/[-:]/g, '').replace(/\.\d{3}/, '');
-
-function googleCalendarUrl(b: ConfirmedBooking) {
-  const params = new URLSearchParams({
-    action: 'TEMPLATE',
-    text: `${b.serviceTitle} with ${b.therapistName}`,
-    dates: `${gcalTime(b.startsAt)}/${gcalTime(b.endsAt)}`,
-  });
-  return `https://calendar.google.com/calendar/render?${params.toString()}`;
 }
 
 function CopyRow({ label, value, copyLabel }: { label: string; value: string; copyLabel?: string }) {
@@ -82,41 +71,6 @@ function BankDetails({ payment }: { payment: NonNullable<ConfirmedBooking['manua
   );
 }
 
-/** One button, two ways to put the session in a calendar (BKG-12). */
-function CalendarMenu({ icsHref, googleHref }: { icsHref: string; googleHref: string }) {
-  const [open, setOpen] = useState(false);
-  const ref = useRef<HTMLDivElement>(null);
-  useEffect(() => {
-    if (!open) return;
-    const onClick = (e: MouseEvent) => { if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false); };
-    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setOpen(false); };
-    document.addEventListener('mousedown', onClick);
-    document.addEventListener('keydown', onKey);
-    return () => { document.removeEventListener('mousedown', onClick); document.removeEventListener('keydown', onKey); };
-  }, [open]);
-  const item = 'w-full text-left px-3.5 py-2.5 text-[13.5px] font-semibold text-[#0F172A] hover:bg-[#F1F5F9] block';
-  return (
-    <div ref={ref} className="relative">
-      <button
-        type="button"
-        aria-haspopup="menu"
-        aria-expanded={open}
-        onClick={() => setOpen((v) => !v)}
-        className="h-11 px-5 rounded-[14px] border border-[#CBD5E1] bg-white text-[14px] font-semibold text-[#0F172A] inline-flex items-center gap-2 cursor-pointer"
-      >
-        <CalendarPlus className="h-4 w-4" aria-hidden="true" /> Add to calendar
-        <ChevronDown className={`h-4 w-4 text-[#64748B] transition-transform ${open ? 'rotate-180' : ''}`} aria-hidden="true" />
-      </button>
-      {open ? (
-        <div role="menu" className="absolute left-0 bottom-full mb-2 w-[240px] rounded-[14px] border border-[#E2E8F0] bg-white shadow-xl py-1.5 z-20">
-          <a role="menuitem" className={item} href={icsHref} download>Download (.ics)</a>
-          <a role="menuitem" className={item} href={googleHref} target="_blank" rel="noreferrer">Google Calendar</a>
-        </div>
-      ) : null}
-    </div>
-  );
-}
-
 /** Step 5: the booking is made (README, Step 5). */
 export function ConfirmationStep({
   booking,
@@ -137,7 +91,9 @@ export function ConfirmationStep({
     return () => window.clearInterval(t);
   }, [payment]);
   const remaining = payment ? new Date(payment.holdExpiresAt).getTime() - now : 0;
-  const online = booking.format === 'IN_PERSON' ? false : formatOf(channel) === 'Online';
+  // The person chose the format in the wizard; the slot's own channel only
+  // speaks for dual-format slots when the booking carries no format at all.
+  const online = booking.format ? booking.format !== 'IN_PERSON' : formatOf(channel) === 'Online';
   const at = booking.format === 'IN_PERSON' ? booking.location : null;
 
   return (
@@ -172,7 +128,7 @@ export function ConfirmationStep({
       <div className="rounded-[20px] border border-[#E2E8F0] overflow-hidden">
         {[
           ['When', whenLabel(booking.startsAt)],
-          ['Format', formatOf(channel)],
+          ['Format', booking.format ? formatOf(booking.format) : formatOf(channel)],
           ['With', booking.therapistName],
         ].map(([label, value]) => (
           <div key={label} className="flex items-center gap-3 px-4 py-[13px] border-t border-[#F1F5F9] first:border-t-0">
@@ -189,9 +145,14 @@ export function ConfirmationStep({
             >
               <Check className="h-4 w-4" aria-hidden="true" /> Go to my bookings
             </a>
-            <CalendarMenu
-              icsHref={`${apiBase}/v1/calendar/bookings/${booking.bookingId}/ical?token=${booking.icalToken ?? ''}`}
-              googleHref={googleCalendarUrl(booking)}
+            <AddToCalendar
+              bookingId={booking.bookingId}
+              icalToken={booking.icalToken}
+              serviceTitle={booking.serviceTitle}
+              therapistName={booking.therapistName}
+              startsAt={booking.startsAt}
+              endsAt={booking.endsAt}
+              apiBase={apiBase}
             />
           </div>
           <p className="text-[13px] text-[#64748B]">Manage your booking any time: reschedule, cancel, pay or fill in your forms.</p>

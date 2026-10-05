@@ -12,6 +12,7 @@ type ProfileRecord = {
   credentials?: string;
   yearsExperience?: number;
   welcomeMessage?: string;
+  tagline?: string;
   modalities?: string[];
   languages?: string[];
   bookingEmail?: string;
@@ -110,6 +111,7 @@ export function MyProfilePage() {
                   <div><label className="block text-[11.5px] font-bold text-[#475569] mb-1.5">Booking email</label><input className={inputCls} value={profile.bookingEmail || ''} onChange={(e) => setProfile((p) => ({ ...p, bookingEmail: e.target.value }))} /></div>
                   <div><label className="block text-[11.5px] font-bold text-[#475569] mb-1.5">Notification email</label><input className={inputCls} value={profile.notificationEmail || ''} onChange={(e) => setProfile((p) => ({ ...p, notificationEmail: e.target.value }))} /></div>
                 </div>
+                <div className="mt-4"><label className="block text-[11.5px] font-bold text-[#475569] mb-1.5">Tagline</label><input className={inputCls} value={profile.tagline || ''} maxLength={120} placeholder="One line under your name on the booking page" onChange={(e) => setProfile((p) => ({ ...p, tagline: e.target.value }))} /></div>
                 <div className="mt-4"><label className="block text-[11.5px] font-bold text-[#475569] mb-1.5">Bio</label><textarea rows={5} className="w-full min-h-[96px] p-3.5 rounded-[14px] bg-[#F8FAFC] border border-[#E2E8F0] text-sm font-medium text-[#0F172A] outline-none focus:bg-white focus:border-[#94A3B8] resize-none leading-relaxed" value={profile.welcomeMessage || ''} onChange={(e) => setProfile((p) => ({ ...p, welcomeMessage: e.target.value }))} /></div>
               </div>
 

@@ -54,3 +54,22 @@ describe('PageHeader', () => {
     expect(screen.getAllByRole('button', { name: 'Export file' }).length).toBe(2);
   });
 });
+
+describe('Page with a side panel', () => {
+  it('puts children in the main column and the aside in a 372px panel', () => {
+    const { container } = render(
+      <Page layout="main-aside" aside={<div>side</div>}>
+        <div>main</div>
+      </Page>,
+    );
+    const grid = container.querySelector('[class*="372px"]');
+    expect(grid).toBeTruthy();
+    expect(grid?.textContent).toContain('main');
+    expect(grid?.textContent).toContain('side');
+  });
+
+  it('is unchanged without the layout', () => {
+    const { container } = render(<Page><div>only</div></Page>);
+    expect(container.querySelector('[class*="372px"]')).toBeNull();
+  });
+});

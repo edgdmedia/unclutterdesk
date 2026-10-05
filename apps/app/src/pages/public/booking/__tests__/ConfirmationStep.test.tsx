@@ -18,6 +18,13 @@ const booking = {
 };
 
 describe('ConfirmationStep', () => {
+  // A dual-format slot names one channel; the format the person chose wins.
+  it('shows the chosen format, not the slot\'s default channel', () => {
+    renderWithApp(<ConfirmationStep booking={{ ...booking, format: 'ONLINE' }} channel="IN_PERSON" mode="paid" apiBase="https://api.x" />);
+    expect(screen.getByText('Online')).toBeTruthy();
+    expect(screen.queryByText('In person')).toBeNull();
+  });
+
   // BKG-10: the confirmation screen hands the client to their own bookings.
   it('points the client to their bookings, above the calendar links', () => {
     renderWithApp(<ConfirmationStep booking={booking} channel="VIDEO" mode="paid" apiBase="https://api.x" />);

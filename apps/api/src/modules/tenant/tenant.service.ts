@@ -70,6 +70,7 @@ export const PUBLIC_TENANT_SELECT = {
   cancellationHours: true,
   welcomeTitle: true,
   welcomeMessage: true,
+  tagline: true,
   publicEmail: true,
   publicPhone: true,
   city: true,
@@ -284,6 +285,7 @@ export class TenantService {
     cancellationHours?: number;
     welcomeTitle?: string;
     welcomeMessage?: string;
+    tagline?: string;
     publicEmail?: string;
     publicPhone?: string;
     city?: string;
@@ -330,6 +332,7 @@ export class TenantService {
       ...(dto.cancellationHours !== undefined ? { cancellationHours: dto.cancellationHours } : {}),
       ...(dto.welcomeTitle !== undefined ? { welcomeTitle: dto.welcomeTitle } : {}),
       ...(dto.welcomeMessage !== undefined ? { welcomeMessage: dto.welcomeMessage } : {}),
+      ...(dto.tagline !== undefined ? { tagline: dto.tagline?.trim() || null } : {}),
       ...(dto.publicEmail !== undefined ? { publicEmail: dto.publicEmail?.trim() || null } : {}),
       ...(dto.publicPhone !== undefined ? { publicPhone: dto.publicPhone?.trim() || null } : {}),
       ...(dto.city !== undefined ? { city: dto.city?.trim() || null } : {}),
@@ -368,6 +371,7 @@ export class TenantService {
         cancellationHours: true,
         welcomeTitle: true,
         welcomeMessage: true,
+        tagline: true,
         publicEmail: true,
         publicPhone: true,
         city: true,

@@ -74,6 +74,9 @@ A running log of what shows up in testing, what we decide about it, and when it'
 | SET-09 | Settings | A practice discount can be turned off, but not back on, edited or deleted | Bug | P1 | Fixed |
 | BKG-11 | Booking page | The practice's booking link doesn't carry the new wizard design: too wide, no practice logo | Bug | P1 | Fixed |
 | BKG-12 | Booking page | "Go to my bookings" and the calendar buttons should share one row; the two calendar links can be one dropdown | UX | P3 | Fixed |
+| BKG-13 | Booking page | The public profile shows the same long bio twice, and there is no tagline field in the practice profile | Bug | P2 | Fixed |
+| BKG-14 | Booking page | The public profile misses details from the Claude design: About headline, Learn More button, real location names | UX | P2 | Fixed |
+| BKG-15 | Booking page | "Log in" on the practice's page sends clients to the staff login | Bug | P1 | Fixed |
 | VID-01 | Video | The session room is a mock-up, not a real video call | Feature | P0 | Fixed |
 | POR-01 | Client portal | /portal only works on app.unclutterdesk.com, not on the practice's own link | Bug | P1 | Fixed |
 | POR-02 | Client portal | The portal should look like a dashboard, not a plain list | UX | P2 | Fixed |
@@ -90,9 +93,9 @@ A running log of what shows up in testing, what we decide about it, and when it'
 | SET-12 | Settings | "Active sessions" lists the same browser many times | Bug | P2 | Ready |
 | FRM-03 | Forms | Submissions should show everything clients send, assessments included | Feature | P2 | Ready |
 | FRM-04 | Forms | The Forms page still has an "Assessment" type | UX | P2 | Ready |
-| POR-03 | Client portal | The portal should use the same dashboard frame as practice and admin | UX | P2 | Ready |
-| POR-04 | Client portal | Clients can't book a session from the portal | Feature | P1 | Ready |
-| POR-05 | Client portal | No "Add to calendar" for sessions in the portal | UX | P2 | Ready |
+| POR-03 | Client portal | The portal should use the same dashboard frame as practice and admin | UX | P2 | Fixed |
+| POR-04 | Client portal | Clients can't book a session from the portal | Feature | P1 | Fixed |
+| POR-05 | Client portal | No "Add to calendar" for sessions in the portal | UX | P2 | Fixed |
 | POR-06 | Client portal | Portal shows your sessions and "Sign in" at the same time after a while away | Bug | P1 | Fixed |
 | ADM-04 | Admin | Gross revenue counts practices' income, not Unclutter Desk's | Bug | P2 | Ready |
 | BKG-13 | Sessions | Past sessions with no outcome stay "Confirmed" forever | Feature | P1 | Ready |
@@ -482,6 +485,27 @@ A running log of what shows up in testing, what we decide about it, and when it'
 - **Fix:** `d140a51` on `dev`. **Go to my bookings** and one **Add to calendar ▾** button share a single row; the dropdown holds "Download (.ics)" and "Google Calendar" (Esc/click-away close it). Covered by `ConfirmationStep.test.tsx`.
 - **Verified:** Browser check 2 Oct: after a real test payment the two actions sit in one flex row and the menu opens with both links.
 
+### BKG-13 · The public profile shows the bio twice; no tagline anywhere
+- **Type:** Bug · **Priority:** P2 · **Status:** Fixed
+- **Observed:** 5 Oct 2026, live testing. On the practice's public profile the one `welcomeMessage` renders both under the hero name and in "About the Practice" — the same long paragraph twice, where a short tagline and a full bio were intended. There is no tagline field in Settings → Practice profile (its label even reads "Bio / tagline").
+- **Feedback / decision:** The hero carries a one-line tagline; the About section carries the bio, once. Add a Tagline field to the practice profile (and the therapist profile, which the public page prefers).
+- **Fix:** New `tagline` column on Tenant and ConsultTherapistProfile (migration `20261005100000_practice_tagline`), carried through the public info/therapists endpoints and both profile updates. The hero now renders the tagline (therapist first, then practice) and the bio appears only in About; a practice with no tagline shows no hero line. "Bio / tagline" in Settings → Profile split into **Tagline** (one line) and **Bio**; Therapist profile got the same. Covered by `PublicProfilePage.test.tsx`.
+- **Verified:** 5 Oct 2026 in the browser: saved a tagline on dr-smith's practice profile; the public page shows the tagline once in the hero and the bio once in About (counts 1 and 1).
+
+### BKG-14 · The public profile misses details from the design
+- **Type:** UX · **Priority:** P2 · **Status:** Ready
+- **Observed:** 5 Oct 2026, against `docs/design/Unclutter Desk Public Practice Profile.dc.html`. The About section has no headline (the design's *"A calm, evidence-based approach to therapy"* — the `welcomeTitle` field exists in the database and API but nothing renders or edits it); the hero lacks the design's secondary **Learn More** button; the Location & Format card prints a synthesised "In person in Lagos" instead of the practice's real location names (PracticeLocation records exist and ship in the public payload unused). Availability and Insurance were compared and decided against: keep "Next Available" as implemented, and "Insurance Accepted" is dropped from the design.
+- **Feedback / decision:** Founder 5 Oct 2026: no insurance section; availability stays as it is. Most of the "empty" look is unfilled data — Specialty, Credentials, Years, Modalities and Languages live in **Account menu → My profile**, not the practice profile.
+- **Fix:** `d807f77` and `255d676` on `dev`: the About section renders `welcomeTitle` as the design's headline — now editable as **Welcome headline** in Settings → Practice profile (the API already accepted it); the hero gained the secondary **Learn More** button which smooth-scrolls to About (only shown when there is an About to see); the Location & Format card lists the practice's real PracticeLocation records ("Lekki clinic · Lagos") plus "Online via secure video" when an online format is on. Covered by `PublicProfilePage.test.tsx`.
+- **Verified:** 5 Oct 2026 browser check: set the headline on dr-smith's profile; the public page shows it, Learn More scrolls to #about, and the locations card lists both saved rooms and the online line. 
+
+### BKG-15 · "Log in" on the practice's page sends clients to the staff login
+- **Type:** Bug · **Priority:** P1 · **Status:** Ready
+- **Observed:** 5 Oct 2026, live on the custom domain. On `consult.unclutter.com.ng` the client's "Log in" links to `app.unclutterdesk.com/login`, which is designed for signing in to a practice, not as one's client. Even the practice host's own `/login` renders the staff form.
+- **Feedback / decision:** Clients should stay on the practice's host and get the client sign-in (the panel from the booking wizard). Staff keep their page, reachable via a quiet "Are you the practice? Staff sign in" link.
+- **Fix:** On a practice host (`getAppType() === 'booking'`) `/login` now renders `ClientLoginPage.tsx` — the branded client panel (Sign in / Create account, `initialMode` added to `ClientAuthPanel`) landing on `/portal` — and the public page's "Log in" became the relative `/login`. The app host's `/login` is untouched; the client page offers staff a link back to it. Tested in `ClientLoginPage.test.tsx` and `PublicProfilePage.test.tsx`.
+- **Verified:** 5 Oct 2026 browser check: on dr-smith.localhost, "Log in" opened the client page (staff link visible), creating an account landed straight on /portal signed in; app-host staff login unchanged. Test client removed afterwards. (The same fix serves the portal's "Sign in to see your sessions" card, which already links to `/login`.)
+
 ### VID-01 · The session room isn't a real video call
 - **Type:** Feature · **Priority:** P0 · **Status:** Fixed
 - **Observed:** The telehealth room (`TelehealthVideoRoomPage.tsx`, the designed video screen) is a mock-up labelled "Room preview" with the client's initials; there's no camera or call in it.
@@ -516,25 +540,25 @@ A running log of what shows up in testing, what we decide about it, and when it'
 - **Verified:** Browser check 2 Oct: tiles read "9 Oct 2026 / 1 / ₦0 / 2" for a fresh client on the practice host; no overflow at 390px.
 
 ### POR-03 · The portal should use the same dashboard frame as practice and admin
-- **Type:** UX · **Priority:** P2 · **Status:** Ready
+- **Type:** UX · **Priority:** P2 · **Status:** Fixed
 - **Observed:** The portal has dashboard tiles (POR-02) but not the shared frame.
 - **Feedback / decision:** Decided 2 Oct 2026. Sidebar on desktop, bottom bar on phones, in the practice's colours and logo, with the notification bell. Menu: Home, Sessions, Forms & assessments, Payments, My details.
-- **Fix:** 
-- **Verified:** 
+- **Fix:** The portal is five pages inside the shared AppShell frame (plan `docs/superpowers/plans/2026-10-03-client-portal-redesign.md`). `ClientShell.tsx` + `clientNav.tsx` give the sidebar (collapsible rail), the phone bottom bar, the bell and the account menu in the practice's logo and colours; `PortalDataContext.tsx` loads the portal once for all pages; Home / Sessions (`?view=past` in the URL) / Forms & assessments / Payments (fetched only on its page) / My details replace the old tabbed `ClientPortalPage`, nested under `/portal` in `clientRoutes.tsx` so both hosts serve them. Signed out, the shell renders only the sign-in card — POR-06's guarantee moved up a level and is tested (`ClientPortalSignedOut.test.tsx`). Commits 0764694, f3ee7fc, ecb5ce6, 63fb055.
+- **Verified:** 4 Oct 2026 in the browser as a new client on dr-smith.localhost at 1280px (sidebar and collapsed rail) and 390px: all five pages in the frame, practice branding, no horizontal scroll; Home's tiles matched Payments. Found and fixed while checking: the hero's buttons overflowed phones, and the booking confirmation printed the slot's default channel instead of the format chosen (1c6b69a, regression test added).
 
 ### POR-04 · Clients can't book a session from the portal
-- **Type:** Feature · **Priority:** P1 · **Status:** Ready
+- **Type:** Feature · **Priority:** P1 · **Status:** Fixed
 - **Observed:** There is no "Book a session" in the portal.
 - **Feedback / decision:** Decided 2 Oct 2026. "Book a session" on the portal home and Sessions page opens the booking wizard, already signed in, for the same practice.
-- **Fix:** 
-- **Verified:** 
+- **Fix:** `BookSessionButton.tsx` sits in the Home, Sessions and Payments page headers. `bookingHref` keeps the link on `/book` on a practice's own host (already signed in there) and builds the practice's full address from app.unclutterdesk.com — the session cookie lives on the api domain, so the client stays signed in across the hop (523f3cc). Unit-tested in `BookSessionButton.test.tsx`.
+- **Verified:** 4 Oct 2026 in the browser: from dr-smith.localhost/portal the button stayed on the practice host and a full booking (account created in the wizard, Paystack test, online ₦30,000) landed on Home and Sessions; from localhost:5173/portal, signed in as the same client, the button's href was the practice's own host (Review Focus 3).
 
 ### POR-05 · No "Add to calendar" for sessions in the portal
-- **Type:** UX · **Priority:** P2 · **Status:** Ready
+- **Type:** UX · **Priority:** P2 · **Status:** Fixed
 - **Observed:** Only the booking confirmation offers calendar links.
 - **Feedback / decision:** Decided 2 Oct 2026. Each upcoming session in the portal has the same "Add to calendar" dropdown as the confirmation (Google Calendar, Apple/Outlook .ics).
-- **Fix:** 
-- **Verified:** 
+- **Fix:** The confirmation's menu was extracted into shared `AddToCalendar.tsx` (.ics download with the booking token + prefilled Google link) and put on every upcoming, un-cancelled session card; the card's menu opens below since the card sits near the top of the page (6b50da5). Cancelled and past rows show neither it nor Reschedule. Tested in `AddToCalendar.test.tsx` and `PortalPages.test.tsx`.
+- **Verified:** 4 Oct 2026 in the browser: on the Sessions page the menu opened below the button, booking-29.ics downloaded, the Google link carried title and times, and Escape closed the menu.
 
 ### POR-06 · Portal shows your sessions and "Sign in" at the same time after a while away
 - **Type:** Bug · **Priority:** P1 · **Status:** Fixed

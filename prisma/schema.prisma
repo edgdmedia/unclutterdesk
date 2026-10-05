@@ -30,6 +30,7 @@ model Tenant {
   shortName         String?
   welcomeTitle      String?
   welcomeMessage    String?
+  tagline           String?
   publicEmail       String?
   publicPhone       String?
   city              String?
@@ -256,6 +257,7 @@ model ConsultTherapistProfile {
   bookingEmail          String?
   notificationEmail     String?
   welcomeMessage        String?
+  tagline               String?
   specialty             String?
   modalities            String[] @default([])
   credentials           String?

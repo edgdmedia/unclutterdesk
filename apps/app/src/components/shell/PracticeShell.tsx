@@ -1,6 +1,7 @@
 import { useMemo, useState, type ReactNode } from 'react';
 import { useLocation } from 'react-router-dom';
 import { AppShell } from '@unclutterdesk/ui';
+import { NotificationBell } from './NotificationBell';
 import { useAuth } from '../../context/AuthContext';
 import { PRACTICE_BOTTOM_NAV, activeNavKey, practiceSections } from './practiceNav';
 import { RouterLink } from './RouterLink';
@@ -65,6 +66,7 @@ export function PracticeShell({ plan, banner, children }: { plan?: string; banne
         LinkComponent: RouterLink,
       }}
       banner={banner}
+      header={<NotificationBell allHref="/dashboard/notifications" />}
     >
       {children}
     </AppShell>
