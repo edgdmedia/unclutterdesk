@@ -13,9 +13,9 @@ const label = 'flex flex-col gap-1.5 text-[12.5px] font-semibold text-[#475569]'
  * practice before the booking goes through, so the portal, the reminders and
  * the recap all have someone to reach.
  */
-export function ClientAuthPanel({ onDone }: { onDone: () => void }) {
+export function ClientAuthPanel({ onDone, initialMode = 'create' }: { onDone: () => void; initialMode?: 'create' | 'signin' }) {
   const { login } = useAuth();
-  const [mode, setMode] = useState<'create' | 'signin'>('create');
+  const [mode, setMode] = useState<'create' | 'signin'>(initialMode);
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
   const [email, setEmail] = useState('');

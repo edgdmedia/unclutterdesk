@@ -3,7 +3,7 @@ import { PracticeLogo } from '../../components/public/PracticeLogo';
 import { useNavigate } from 'react-router-dom';
 import { MapPin, Star } from 'lucide-react';
 import { useBrand } from '@unclutterdesk/ui';
-import { api, APP_BASE_URL, getSubdomainTenantSlug } from '../../utils/apiClient';
+import { api, getSubdomainTenantSlug } from '../../utils/apiClient';
 
 type PublicTenantInfo = {
   id: string;
@@ -119,13 +119,26 @@ export function PublicProfilePage() {
     ? `${therapist.yearsExperience}+ years of clinical practice`
     : null;
   // BKG-07/SET-06: the practice's real cities and formats, not a stock line.
-  const cities = [...new Set((tenant?.locations ?? []).map((l) => l.city).filter(Boolean))] as string[];
-  const fmts = (tenant?.formats ?? []).map((f) => (f === 'IN_PERSON' ? 'in person' : 'online'));
-  const locations = [
-    cities.length ? `In person in ${cities.join(', ')}` : tenant?.address || tenant?.city || null,
-    fmts.length ? `Sessions: ${fmts.join(' & ')}` : 'Online via secure video',
-  ].filter(Boolean) as string[];
+  const placeRows = tenant?.locations ?? [];
+  const fmts = tenant?.formats ?? [];
+  // BKG-14: name the practice's real rooms (PracticeLocation records), the way
+  // the design does, instead of a synthesised city list. Practices with no
+  // location rows keep the old fallback line.
+  const cities = [...new Set(placeRows.map((l) => l.city).filter(Boolean))] as string[];
+  const locations = placeRows.length
+    ? [
+        ...placeRows.map((l) => (l.city ? `${l.name} · ${l.city}` : l.name)),
+        ...(fmts.includes('ONLINE') ? ['Online via secure video'] : []),
+      ]
+    : ([
+        tenant?.address || tenant?.city || null,
+        fmts.length ? `Sessions: ${fmts.map((f) => (f === 'IN_PERSON' ? 'in person' : 'online')).join(' & ')}` : 'Online via secure video',
+      ].filter(Boolean) as string[]);
   const languages = therapist?.languages ?? [];
+  // BKG-14: the hero's Learn More button only makes sense when there is
+  // actually something below to learn.
+  const aboutHeadline = tenant?.welcomeTitle || null;
+  const hasAbout = Boolean(bio || aboutHeadline || specialties.length > 0);
 
   return (
     <div className="min-h-screen bg-[#F8FAFC] flex flex-col font-sans">
@@ -135,7 +148,7 @@ export function PublicProfilePage() {
           <span className="text-[15px] font-bold tracking-[-0.01em] text-[#0F172A] truncate">{practiceName || 'Unclutter Desk'}</span>
         </div>
         <a
-          href={`${APP_BASE_URL}/login`}
+          href="/login"
           className="h-[36px] md:h-[40px] px-3 md:px-4 rounded-[10px] md:rounded-[12px] bg-white border border-[#CBD5E1] text-[12px] md:text-[13px] font-bold flex items-center"
           style={{ color: primaryColor }}
         >
@@ -227,13 +240,18 @@ export function PublicProfilePage() {
             </div>
           </section>
 
-          {bio || specialties.length > 0 ? (
-            <section className="px-4 py-8 md:py-[80px] md:px-10 bg-white border-t border-[#E2E8F0]">
+          {hasAbout ? (
+            <section id="about" className="px-4 py-8 md:py-[80px] md:px-10 bg-white border-t border-[#E2E8F0]">
               <div className="max-w-[960px] mx-auto grid grid-cols-1 md:grid-cols-2 gap-5 md:gap-[60px] items-start">
                 <div className="flex flex-col gap-2 md:gap-5">
                   <div className="text-[11px] md:text-[13px] font-black tracking-[0.12em] md:tracking-[0.22em] text-[#94A3B8] uppercase">
                     About the Practice
                   </div>
+                  {aboutHeadline ? (
+                    <h2 className="m-0 text-[22px] md:text-[34px] font-[800] tracking-[-0.035em] text-[#0F172A]">
+                      {aboutHeadline}
+                    </h2>
+                  ) : null}
                   {bio ? (
                     <p className="m-0 text-[13px] md:text-[15px] leading-[1.6] md:leading-[1.7] text-[#475569]">
                       {bio}

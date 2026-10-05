@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { lazy } from 'react';
 import { Outlet, Route } from 'react-router-dom';
 import { BrandProvider, type TenantBrandConfig } from '@unclutterdesk/ui';
-import { api, getSubdomainTenantSlug } from '../utils/apiClient';
+import { api, getAppType, getSubdomainTenantSlug } from '../utils/apiClient';
 
 const ClientShell = lazy(() => import('../components/shell/ClientShell').then((m) => ({ default: m.ClientShell })));
 const PortalHomePage = lazy(() => import('../pages/client/portal/PortalHomePage').then((m) => ({ default: m.PortalHomePage })));
@@ -14,6 +14,7 @@ const ClientSessionRoomPage = lazy(() => import('../pages/client/ClientSessionRo
 const PortalAssessmentPage = lazy(() => import('../pages/client/PortalAssessmentPage').then((m) => ({ default: m.PortalAssessmentPage })));
 const ClientFormPage = lazy(() => import('../pages/client/ClientFormPage').then((m) => ({ default: m.ClientFormPage })));
 const LoginPage = lazy(() => import('../pages/auth/LoginPage').then((m) => ({ default: m.LoginPage })));
+const ClientLoginPage = lazy(() => import('../pages/public/ClientLoginPage').then((m) => ({ default: m.ClientLoginPage })));
 const SetPasswordPage = lazy(() => import('../pages/public/SetPasswordPage').then((m) => ({ default: m.SetPasswordPage })));
 
 /**
@@ -57,7 +58,7 @@ export const CLIENT_PORTAL_ROUTES = (
     <Route path="/portal/assessments/:id" element={<PortalAssessmentPage />} />
     <Route path="/portal/sessions/:id/room" element={<ClientSessionRoomPage />} />
     <Route path="/forms/:id" element={<ClientFormPage />} />
-    <Route path="/login" element={<LoginPage />} />
+    <Route path="/login" element={getAppType() === 'booking' ? <ClientLoginPage /> : <LoginPage />} />
     <Route path="/set-password" element={<SetPasswordPage />} />
   </>
 );
