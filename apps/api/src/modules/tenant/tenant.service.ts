@@ -504,7 +504,7 @@ export class TenantService {
   async verifyCustomDomain(tenantId: bigint) {
     const tenant = await this.prisma.tenant.findUnique({
       where: { id: tenantId },
-      select: { id: true, customDomain: true },
+      select: { id: true, customDomain: true, customHostnameId: true },
     });
 
     if (!tenant) throw new NotFoundException('Practice tenant not found');
