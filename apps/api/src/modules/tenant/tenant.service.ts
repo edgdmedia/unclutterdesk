@@ -4,6 +4,7 @@ import { createHash, randomBytes } from 'crypto';
 import { promises as dns } from 'dns';
 import { Logger } from '@nestjs/common';
 import { PrismaService } from '../../common/prisma/prisma.service';
+import { CloudflareSaasService } from './cloudflare-saas.service';
 import { NotificationService } from '../notifications/notification.service';
 import { DefaultFormsService } from '../intake/default-forms.service';
 import { decryptNoteFields } from '../../common/field-encryption';
@@ -129,6 +130,7 @@ export class TenantService {
     private readonly prisma: PrismaService,
     private readonly notifications: NotificationService,
     @Optional() private readonly defaultForms?: DefaultFormsService,
+    @Optional() private readonly cf?: CloudflareSaasService,
   ) {}
 
   private normalizeCustomDomain(input?: string | null) {
@@ -292,12 +294,17 @@ export class TenantService {
     address?: string;
     category?: string;
   }) {
-    if (dto.customDomain) {
-      const tenant = await this.prisma.tenant.findUnique({ where: { id: tenantId } });
+    let previousDomain: { customDomain: string | null; customHostnameId: string | null } | null = null;
+    if (dto.customDomain !== undefined) {
+      const tenant = await this.prisma.tenant.findUnique({
+        where: { id: tenantId },
+        select: { id: true, subscriptionTier: true, customDomain: true, customHostnameId: true },
+      });
       const tier = (tenant?.subscriptionTier || 'STARTER').toUpperCase();
-      if (tier === 'STARTER') {
+      if (dto.customDomain && tier === 'STARTER') {
         throw new ForbiddenException('Custom domain requires a Pro subscription.');
       }
+      previousDomain = { customDomain: tenant?.customDomain ?? null, customHostnameId: tenant?.customHostnameId ?? null };
     }
 
     const logoUrl = cleanLogoUrl(dto.logoUrl);
@@ -341,16 +348,85 @@ export class TenantService {
     };
 
     try {
-      return await this.prisma.tenant.update({
+      const updated = await this.prisma.tenant.update({
         where: { id: tenantId },
         data,
       });
+      if (dto.customDomain !== undefined && previousDomain) {
+        const refreshed = await this.provisionCustomDomain(
+          tenantId,
+          updated.customDomain ?? null,
+          previousDomain,
+        );
+        return refreshed ?? updated;
+      }
+      return updated;
     } catch (err) {
       if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === 'P2002') {
         throw new ConflictException('That booking handle is already taken. Try another one.');
       }
       throw err;
     }
+  }
+
+  /**
+   * SET-13: keep Cloudflare in step with the domain a practice saved.
+   *
+   * The platform is the only writer of these fields once enrolled: a changed
+   * domain replaces its hostname object and Worker route, a cleared domain
+   * removes both, and an unchanged one is left alone so a re-save of the form
+   * never deletes a domain that is mid-verification. When Cloudflare has not
+   * been configured (dev, CI, an unenrolled zone) nothing happens and the row
+   * keeps the old store-and-PENDING behaviour.
+   */
+  async provisionCustomDomain(
+    tenantId: bigint,
+    domain: string | null,
+    previous: { customDomain: string | null; customHostnameId: string | null },
+  ) {
+    if (!this.cf?.configured()) return null;
+
+    const oldDomain = previous.customDomain ? this.validateCustomDomain(previous.customDomain) : null;
+    if (domain === oldDomain) {
+      // Nothing moved. An unchanged domain that lacks a hostname object is
+      // retried by the verification cron, not here: re-saving the rest of the
+      // profile must never disturb a domain mid-verification.
+      return null;
+    }
+
+    if (previous.customHostnameId) {
+      try {
+        await this.cf.deleteHostname(previous.customHostnameId);
+      } catch {
+        // The orphan sweep retries a hostname we could not delete.
+      }
+    }
+    if (oldDomain) {
+      try {
+        await this.cf.removeRoute(oldDomain);
+      } catch {
+        // Same: sweep retries.
+      }
+    }
+
+    let data: { customHostnameId: string | null; customHostnameError: string | null } | null;
+    if (domain) {
+      try {
+        const created = await this.cf.createHostname(domain, tenantId.toString());
+        await this.cf.ensureRoute(domain);
+        data = { customHostnameId: created.id, customHostnameError: null };
+      } catch (err) {
+        data = { customHostnameId: null, customHostnameError: (err as Error).message.slice(0, 400) };
+      }
+    } else {
+      data = { customHostnameId: null, customHostnameError: null };
+    }
+
+    return this.prisma.tenant.update({
+      where: { id: tenantId },
+      data,
+      select: { id: true, customDomain: true, customDomainStatus: true, customHostnameId: true, customHostnameError: true },
+    });
   }
 
   async getTenantBrand(tenantId: bigint) {
@@ -428,7 +504,7 @@ export class TenantService {
   async verifyCustomDomain(tenantId: bigint) {
     const tenant = await this.prisma.tenant.findUnique({
       where: { id: tenantId },
-      select: { id: true, customDomain: true },
+      select: { id: true, customDomain: true, customHostnameId: true },
     });
 
     if (!tenant) throw new NotFoundException('Practice tenant not found');
@@ -436,14 +512,46 @@ export class TenantService {
       throw new BadRequestException('No custom domain has been configured for this practice.');
     }
 
+    const normalized = this.validateCustomDomain(tenant.customDomain)!;
+
     const target = this.customDomainTarget();
-    if (!target) {
+    if (!this.cf?.configured() && !target) {
       throw new BadRequestException(
         'Custom domains are not available yet. Your practice keeps working at its unclutterdesk.com address.',
       );
     }
 
-    const normalized = this.validateCustomDomain(tenant.customDomain)!;
+    // SET-13: when Cloudflare manages this hostname, its own verdict is the
+    // truth — the object is `active` once the practice's DNS points at us and
+    // `ssl.status` is active once the certificate is issued. No guessing via
+    // public DNS from this server.
+    if (tenant.customHostnameId && this.cf?.configured()) {
+      const verdict = await this.cf.getVerification(tenant.customHostnameId);
+      if (verdict.status === 'active' && verdict.sslStatus === 'active') {
+        const activated = await this.prisma.tenant.update({
+          where: { id: tenantId },
+          data: { customDomain: normalized, customDomainStatus: 'ACTIVE', customHostnameError: null },
+          select: { id: true, customDomain: true, customDomainStatus: true },
+        });
+        return { id: activated.id.toString(), customDomain: activated.customDomain, customDomainStatus: activated.customDomainStatus };
+      }
+      await this.prisma.tenant.update({
+        where: { id: tenantId },
+        data: { customDomainStatus: 'PENDING' },
+      });
+      const cnameTarget = verdict.cnameTarget
+        ? ` Add a CNAME record pointing your domain at ${verdict.cnameTarget}.`
+        : '';
+      throw new BadRequestException(
+        `${normalized} is not ready yet${cnameTarget} Certificates take a few minutes after DNS changes.`,
+      );
+    }
+
+    if (!target) {
+      throw new BadRequestException(
+        'Custom domains are not available yet. Your practice keeps working at its unclutterdesk.com address.',
+      );
+    }
     const setStatus = (customDomainStatus: 'ACTIVE' | 'PENDING' | 'FAILED') =>
       this.prisma.tenant.update({
         where: { id: tenantId },
@@ -473,6 +581,55 @@ export class TenantService {
       customDomain: updated.customDomain,
       customDomainStatus: updated.customDomainStatus,
     };
+  }
+
+  /**
+   * SET-13: everything the Settings editor needs about the practice's own
+   * domain — stored state plus, when Cloudflare manages it, the live records
+   * to publish at the registrar.
+   */
+  async getCustomDomainStatus(tenantId: bigint) {
+    const tenant = await this.prisma.tenant.findUnique({
+      where: { id: tenantId },
+      select: {
+        id: true,
+        customDomain: true,
+        customDomainStatus: true,
+        customHostnameId: true,
+        customHostnameError: true,
+      },
+    });
+    if (!tenant) throw new NotFoundException('Practice tenant not found');
+
+    const payload: {
+      id: string;
+      hostname: string | null;
+      status: string | null;
+      error: string | null;
+      cnameTarget: string | null;
+      records: Array<{ name: string; type: string; data: string }>;
+      cfStatus: { status: string; sslStatus: string } | null;
+    } = {
+      id: tenant.id.toString(),
+      hostname: tenant.customDomain,
+      status: tenant.customDomain ? tenant.customDomainStatus : null,
+      error: tenant.customHostnameError,
+      cnameTarget: null,
+      records: [],
+      cfStatus: null,
+    };
+
+    if (tenant.customHostnameId && this.cf?.configured()) {
+      try {
+        const live = await this.cf.getVerification(tenant.customHostnameId);
+        payload.cnameTarget = live.cnameTarget;
+        payload.records = live.verificationRecords.map((r) => ({ name: r.name, type: r.type, data: r.data }));
+        payload.cfStatus = { status: live.status, sslStatus: live.sslStatus };
+      } catch {
+        // The stored state still tells the truth about our side.
+      }
+    }
+    return payload;
   }
 
   async getNotifications(tenantId: bigint) {

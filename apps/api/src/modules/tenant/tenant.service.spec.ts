@@ -288,3 +288,133 @@ describe('publicTenantFields', () => {
     expect(out).toEqual({ id: '9', name: 'Calm Harbor', slug: 'calm-harbor', primaryColor: '#123456' });
   });
 });
+
+/** SET-13: saving a domain provisions Cloudflare; every shape is covered. */
+describe('TenantService SET-13 custom domain provisioning', () => {
+  function cfMock() {
+    return {
+      configured: () => true,
+      createHostname: vi.fn().mockResolvedValue({ id: 'cf1', status: 'pending', sslStatus: 'pending', cnameTarget: 'tag.my.cloudflare.net', verificationRecords: [] }),
+      ensureRoute: vi.fn().mockResolvedValue(undefined),
+      deleteHostname: vi.fn().mockResolvedValue(undefined),
+      removeRoute: vi.fn().mockResolvedValue(undefined),
+      getVerification: vi.fn(),
+      getStatus: vi.fn(),
+    } as any;
+  }
+
+  function serviceWith(prisma: any, cf: any) {
+    return new TenantService(prisma, notificationsMock(), undefined, cf);
+  }
+
+  test('a new domain creates the hostname and the worker route', async () => {
+    const prisma = createPrismaMock();
+    const cf = cfMock();
+    prisma.tenant.findUnique.mockResolvedValue({ id: BigInt(1), subscriptionTier: 'PRO', customDomain: null, customHostnameId: null });
+    prisma.tenant.update.mockResolvedValue({ id: BigInt(1), customDomain: 'book.acme.ng' });
+
+    await serviceWith(prisma, cf).updateTenantBrand(BigInt(1), { customDomain: 'book.acme.ng' });
+
+    expect(cf.createHostname).toHaveBeenCalledWith('book.acme.ng', '1');
+    expect(cf.ensureRoute).toHaveBeenCalledWith('book.acme.ng');
+    const last = prisma.tenant.update.mock.calls.at(-1)[0];
+    expect(last.data).toEqual({ customHostnameId: 'cf1', customHostnameError: null });
+  });
+
+  test('a changed domain deletes the old hostname and route first', async () => {
+    const prisma = createPrismaMock();
+    const cf = cfMock();
+    prisma.tenant.findUnique.mockResolvedValue({ id: BigInt(1), subscriptionTier: 'PRO', customDomain: 'book.old.ng', customHostnameId: 'cf0' });
+    prisma.tenant.update.mockResolvedValue({ id: BigInt(1), customDomain: 'book.acme.ng' });
+
+    await serviceWith(prisma, cf).updateTenantBrand(BigInt(1), { customDomain: 'book.acme.ng' });
+
+    expect(cf.deleteHostname).toHaveBeenCalledWith('cf0');
+    expect(cf.removeRoute).toHaveBeenCalledWith('book.old.ng');
+    expect(cf.createHostname).toHaveBeenCalledWith('book.acme.ng', '1');
+  });
+
+  test('re-saving the same domain leaves Cloudflare alone', async () => {
+    const prisma = createPrismaMock();
+    const cf = cfMock();
+    prisma.tenant.findUnique.mockResolvedValue({ id: BigInt(1), subscriptionTier: 'PRO', customDomain: 'book.acme.ng', customHostnameId: 'cf1' });
+    prisma.tenant.update.mockResolvedValue({ id: BigInt(1), customDomain: 'book.acme.ng' });
+
+    await serviceWith(prisma, cf).updateTenantBrand(BigInt(1), { customDomain: 'book.acme.ng' });
+
+    expect(cf.deleteHostname).not.toHaveBeenCalled();
+    expect(cf.createHostname).not.toHaveBeenCalled();
+    expect(prisma.tenant.update).toHaveBeenCalledTimes(1);
+  });
+
+  test('a provisioning failure is stored, never thrown at the practice', async () => {
+    const prisma = createPrismaMock();
+    const cf = cfMock();
+    cf.createHostname.mockRejectedValue(new Error('Cloudflare 12021: quota reached'));
+    prisma.tenant.findUnique.mockResolvedValue({ id: BigInt(1), subscriptionTier: 'PRO', customDomain: null, customHostnameId: null });
+    prisma.tenant.update.mockResolvedValue({ id: BigInt(1), customDomain: 'book.acme.ng' });
+
+    await expect(serviceWith(prisma, cf).updateTenantBrand(BigInt(1), { customDomain: 'book.acme.ng' })).resolves.toBeTruthy();
+    const last = prisma.tenant.update.mock.calls.at(-1)[0];
+    expect(last.data.customHostnameId).toBeNull();
+    expect(last.data.customHostnameError).toMatch(/12021/);
+  });
+
+  test('with Cloudflare unconfigured nothing is called', async () => {
+    const prisma = createPrismaMock();
+    const cf = cfMock();
+    cf.configured = () => false;
+    prisma.tenant.findUnique.mockResolvedValue({ id: BigInt(1), subscriptionTier: 'PRO', customDomain: null, customHostnameId: null });
+    prisma.tenant.update.mockResolvedValue({ id: BigInt(1), customDomain: 'book.acme.ng' });
+
+    await serviceWith(prisma, cf).updateTenantBrand(BigInt(1), { customDomain: 'book.acme.ng' });
+    expect(cf.createHostname).not.toHaveBeenCalled();
+    expect(prisma.tenant.update).toHaveBeenCalledTimes(1);
+  });
+
+  test('the status endpoint merges stored state with live Cloudflare records', async () => {
+    const prisma = createPrismaMock();
+    const cf = cfMock();
+    cf.getVerification.mockResolvedValue({
+      id: 'cf1', status: 'pending', sslStatus: 'initializing',
+      cnameTarget: 'tag.my.cloudflare.net',
+      verificationRecords: [{ name: 'consult.unclutter.com.ng', type: 'CNAME', data: 'x' }],
+    });
+    prisma.tenant.findUnique.mockResolvedValue({
+      id: BigInt(1), customDomain: 'consult.unclutter.com.ng', customDomainStatus: 'PENDING',
+      customHostnameId: 'cf1', customHostnameError: null,
+    });
+
+    const out = await serviceWith(prisma, cf).getCustomDomainStatus(BigInt(1));
+    expect(out).toMatchObject({
+      hostname: 'consult.unclutter.com.ng',
+      status: 'PENDING',
+      cnameTarget: 'tag.my.cloudflare.net',
+      cfStatus: { status: 'pending', sslStatus: 'initializing' },
+    });
+    expect(out.records).toHaveLength(1);
+  });
+
+  test('verify promotes on Cloudflare verdict without touching public DNS', async () => {
+    const prisma = createPrismaMock();
+    const cf = cfMock();
+    cf.getVerification.mockResolvedValue({ id: 'cf1', status: 'active', sslStatus: 'active', cnameTarget: null, verificationRecords: [] });
+    prisma.tenant.findUnique.mockResolvedValue({ id: BigInt(1), customDomain: 'book.acme.ng', customHostnameId: 'cf1' });
+    prisma.tenant.update.mockResolvedValue({ id: BigInt(1), customDomain: 'book.acme.ng', customDomainStatus: 'ACTIVE' });
+
+    const out = await serviceWith(prisma, cf).verifyCustomDomain(BigInt(1));
+    expect(out.customDomainStatus).toBe('ACTIVE');
+    expect(prisma.tenant.update).toHaveBeenCalled();
+  });
+
+  test('verify explains what is still missing while the hostname waits', async () => {
+    const prisma = createPrismaMock();
+    const cf = cfMock();
+    cf.getVerification.mockResolvedValue({ id: 'cf1', status: 'pending', sslStatus: 'pending', cnameTarget: 'tag.my.cloudflare.net', verificationRecords: [] });
+    prisma.tenant.findUnique.mockResolvedValue({ id: BigInt(1), customDomain: 'book.acme.ng', customHostnameId: 'cf1' });
+    prisma.tenant.update.mockResolvedValue({ id: BigInt(1) });
+
+    await expect(serviceWith(prisma, cf).verifyCustomDomain(BigInt(1)))
+      .rejects.toThrow(/tag\.my\.cloudflare\.net/);
+  });
+});

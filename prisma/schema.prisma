@@ -16,6 +16,8 @@ model Tenant {
   slug               String  @unique @db.VarChar(50) // e.g., "dr-jane" -> dr-jane.unclutterdesk.com
   customDomain       String? @unique @db.VarChar(100) // e.g., "booking.drjanetherapy.com"
   customDomainStatus String  @default("PENDING") @db.VarChar(20) // "PENDING", "ACTIVE", "FAILED"
+  customHostnameId   String? @db.VarChar(60) // Cloudflare for SaaS custom hostname object id
+  customHostnameError String? // last human-readable provisioning failure, shown in Settings
 
   // White-Label Brand Tokens
   logoUrl        String?

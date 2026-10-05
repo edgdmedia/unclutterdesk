@@ -105,6 +105,14 @@ PAYSTACK_PLAN_CLINIC=PLN_leght05vpcu41ad
 # Only needed if an origin outside *.unclutterdesk.com calls the API
 # CORS_ORIGINS=https://example.com
 
+# SET-13 custom domains. Token: Cloudflare dashboard → My Profile → API Tokens,
+# scoped to the unclutterdesk.com zone, permissions Cloudflare for SaaS: Edit +
+# Workers Routes: Edit + Zone: Read. Without these, saving a custom domain keeps
+# the old behaviour (stored PENDING, manual verify) — see docs/CLOUDFLARE_SETUP.md §5.
+CLOUDFLARE_API_TOKEN=<cf token>
+CLOUDFLARE_ZONE_ID=d4b3dd0ef46d1eb1625327cdbf39086e
+CLOUDFLARE_WORKER_SCRIPT=unclutterdesk-tenant-router
+
 # The API's own public address. Practice logos in emails are served from
 # GET /v1/tenant/:id/logo, and the emails need the absolute URL. Defaults to
 # https://api.unclutterdesk.com in production; set it explicitly if that ever moves.
