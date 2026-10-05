@@ -90,9 +90,9 @@ A running log of what shows up in testing, what we decide about it, and when it'
 | SET-12 | Settings | "Active sessions" lists the same browser many times | Bug | P2 | Ready |
 | FRM-03 | Forms | Submissions should show everything clients send, assessments included | Feature | P2 | Ready |
 | FRM-04 | Forms | The Forms page still has an "Assessment" type | UX | P2 | Ready |
-| POR-03 | Client portal | The portal should use the same dashboard frame as practice and admin | UX | P2 | Ready |
-| POR-04 | Client portal | Clients can't book a session from the portal | Feature | P1 | Ready |
-| POR-05 | Client portal | No "Add to calendar" for sessions in the portal | UX | P2 | Ready |
+| POR-03 | Client portal | The portal should use the same dashboard frame as practice and admin | UX | P2 | Fixed |
+| POR-04 | Client portal | Clients can't book a session from the portal | Feature | P1 | Fixed |
+| POR-05 | Client portal | No "Add to calendar" for sessions in the portal | UX | P2 | Fixed |
 | POR-06 | Client portal | Portal shows your sessions and "Sign in" at the same time after a while away | Bug | P1 | Fixed |
 | ADM-04 | Admin | Gross revenue counts practices' income, not Unclutter Desk's | Bug | P2 | Ready |
 | BKG-13 | Sessions | Past sessions with no outcome stay "Confirmed" forever | Feature | P1 | Ready |
@@ -516,25 +516,25 @@ A running log of what shows up in testing, what we decide about it, and when it'
 - **Verified:** Browser check 2 Oct: tiles read "9 Oct 2026 / 1 / ₦0 / 2" for a fresh client on the practice host; no overflow at 390px.
 
 ### POR-03 · The portal should use the same dashboard frame as practice and admin
-- **Type:** UX · **Priority:** P2 · **Status:** Ready
+- **Type:** UX · **Priority:** P2 · **Status:** Fixed
 - **Observed:** The portal has dashboard tiles (POR-02) but not the shared frame.
 - **Feedback / decision:** Decided 2 Oct 2026. Sidebar on desktop, bottom bar on phones, in the practice's colours and logo, with the notification bell. Menu: Home, Sessions, Forms & assessments, Payments, My details.
-- **Fix:** 
-- **Verified:** 
+- **Fix:** The portal is five pages inside the shared AppShell frame (plan `docs/superpowers/plans/2026-10-03-client-portal-redesign.md`). `ClientShell.tsx` + `clientNav.tsx` give the sidebar (collapsible rail), the phone bottom bar, the bell and the account menu in the practice's logo and colours; `PortalDataContext.tsx` loads the portal once for all pages; Home / Sessions (`?view=past` in the URL) / Forms & assessments / Payments (fetched only on its page) / My details replace the old tabbed `ClientPortalPage`, nested under `/portal` in `clientRoutes.tsx` so both hosts serve them. Signed out, the shell renders only the sign-in card — POR-06's guarantee moved up a level and is tested (`ClientPortalSignedOut.test.tsx`). Commits 0764694, f3ee7fc, ecb5ce6, 63fb055.
+- **Verified:** 4 Oct 2026 in the browser as a new client on dr-smith.localhost at 1280px (sidebar and collapsed rail) and 390px: all five pages in the frame, practice branding, no horizontal scroll; Home's tiles matched Payments. Found and fixed while checking: the hero's buttons overflowed phones, and the booking confirmation printed the slot's default channel instead of the format chosen (1c6b69a, regression test added).
 
 ### POR-04 · Clients can't book a session from the portal
-- **Type:** Feature · **Priority:** P1 · **Status:** Ready
+- **Type:** Feature · **Priority:** P1 · **Status:** Fixed
 - **Observed:** There is no "Book a session" in the portal.
 - **Feedback / decision:** Decided 2 Oct 2026. "Book a session" on the portal home and Sessions page opens the booking wizard, already signed in, for the same practice.
-- **Fix:** 
-- **Verified:** 
+- **Fix:** `BookSessionButton.tsx` sits in the Home, Sessions and Payments page headers. `bookingHref` keeps the link on `/book` on a practice's own host (already signed in there) and builds the practice's full address from app.unclutterdesk.com — the session cookie lives on the api domain, so the client stays signed in across the hop (523f3cc). Unit-tested in `BookSessionButton.test.tsx`.
+- **Verified:** 4 Oct 2026 in the browser: from dr-smith.localhost/portal the button stayed on the practice host and a full booking (account created in the wizard, Paystack test, online ₦30,000) landed on Home and Sessions; from localhost:5173/portal, signed in as the same client, the button's href was the practice's own host (Review Focus 3).
 
 ### POR-05 · No "Add to calendar" for sessions in the portal
-- **Type:** UX · **Priority:** P2 · **Status:** Ready
+- **Type:** UX · **Priority:** P2 · **Status:** Fixed
 - **Observed:** Only the booking confirmation offers calendar links.
 - **Feedback / decision:** Decided 2 Oct 2026. Each upcoming session in the portal has the same "Add to calendar" dropdown as the confirmation (Google Calendar, Apple/Outlook .ics).
-- **Fix:** 
-- **Verified:** 
+- **Fix:** The confirmation's menu was extracted into shared `AddToCalendar.tsx` (.ics download with the booking token + prefilled Google link) and put on every upcoming, un-cancelled session card; the card's menu opens below since the card sits near the top of the page (6b50da5). Cancelled and past rows show neither it nor Reschedule. Tested in `AddToCalendar.test.tsx` and `PortalPages.test.tsx`.
+- **Verified:** 4 Oct 2026 in the browser: on the Sessions page the menu opened below the button, booking-29.ics downloaded, the Google link carried title and times, and Escape closed the menu.
 
 ### POR-06 · Portal shows your sessions and "Sign in" at the same time after a while away
 - **Type:** Bug · **Priority:** P1 · **Status:** Fixed
