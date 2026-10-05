@@ -219,6 +219,15 @@ export function PublicProfilePage() {
                 >
                   Book Consultation
                 </button>
+                {hasAbout ? (
+                  <button
+                    onClick={() => document.getElementById('about')?.scrollIntoView?.({ behavior: 'smooth', block: 'start' })}
+                    className="w-full md:w-auto h-[48px] md:h-[52px] px-7 rounded-[14px] md:rounded-[16px] bg-white border border-[#CBD5E1] text-[14px] md:text-[15px] font-[700] cursor-pointer"
+                    style={{ color: primaryColor }}
+                  >
+                    Learn More
+                  </button>
+                ) : null}
               </div>
             </div>
 

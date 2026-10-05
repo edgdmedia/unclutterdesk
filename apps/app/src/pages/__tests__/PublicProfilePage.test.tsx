@@ -103,4 +103,37 @@ describe('PublicProfilePage', () => {
     expect((await screen.findAllByText('Calm, practical therapy.')).length).toBe(1);
     expect(screen.getAllByText(/used to appear twice/).length).toBe(1);
   });
+
+  // BKG-14: the design's About headline, real location names, and Learn More.
+  it('renders the welcome headline, named locations and a Learn More button', async () => {
+    getSubdomainTenantSlug.mockReturnValue('demo');
+    apiGet.mockImplementation((path: string) => {
+      if (path.startsWith('/v1/tenant/public')) {
+        return Promise.resolve({
+          id: '1', name: 'Demo Practice', slug: 'demo',
+          primaryColor: '#0F3A53', secondaryColor: '#E3B341',
+          welcomeTitle: 'A calm, evidence-based approach to therapy',
+          welcomeMessage: 'The long bio goes here.',
+          locations: [{ name: 'Lekki Clinic', city: 'Lagos' }],
+          formats: ['ONLINE', 'IN_PERSON'],
+        });
+      }
+      return Promise.resolve([]);
+    });
+    renderPage();
+    expect(await screen.findByText('A calm, evidence-based approach to therapy')).toBeTruthy();
+    expect(screen.getByText('Lekki Clinic · Lagos')).toBeTruthy();
+    expect(screen.getByText('Online via secure video')).toBeTruthy();
+    const learn = screen.getByRole('button', { name: 'Learn More' });
+    learn.click(); // jsdom has no scrollIntoView; the guarded call must not throw
+    expect(document.getElementById('about')).toBeTruthy();
+  });
+
+  // BKG-15: the client's Log in stays on the practice's host.
+  it('links Log in to the same host, not the staff app', async () => {
+    getSubdomainTenantSlug.mockReturnValue('demo');
+    apiGet.mockImplementation(() => Promise.resolve([]));
+    renderPage();
+    await waitFor(() => expect(screen.getByRole('link', { name: 'Log in' }).getAttribute('href')).toBe('/login'));
+  });
 });
