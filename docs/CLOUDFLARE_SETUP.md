@@ -137,23 +137,56 @@ why it is not enforced yet.
 
 ---
 
-## §5. Practice custom domains — when offered
+## §5. Practice custom domains — built (SET-13)
 
-For practices on their own domain (`booking.drjane.com`). The app side is done;
-what is missing is Cloudflare for SaaS.
+A practice's own booking address, provisioned by the platform. The code is in
+`apps/api/src/modules/tenant/cloudflare-saas.service.ts` (hostname + route calls),
+`tenant.service.ts` (provision on save, status, CF-aware verify) and
+`custom-domain.cron.ts` (promote / retry / sweep every 5 minutes); the practice
+sees it all in Settings → Practice profile → Custom domain.
 
-1. Enable **Cloudflare for SaaS** on the zone.
-2. **Fallback origin:** a proxied record, e.g. `fallback.unclutterdesk.com`, where
-   custom-hostname traffic lands; add a Worker route for it to the tenant router.
-3. **CNAME target** for practices to point at, e.g. `customers.unclutterdesk.com`.
-4. Set `CUSTOM_DOMAIN_TARGET=customers.unclutterdesk.com` in the API's `.env` and
-   restart. Until then the app tells practices custom domains are not available.
-5. Per practice: add the custom hostname in Cloudflare; the practice adds a CNAME
-   to the target and presses **Verify** in Brand settings. Verify checks the
-   CNAME and that HTTPS works (certificate issued) before marking it `ACTIVE`;
-   only then does the domain appear in links, emails and CORS.
+### One-time (human, dashboard)
 
-Priced per custom hostname — check current rates before including it in a plan.
+1. Add a payment method to the account, then zone → **SSL/TLS → Custom Hostnames
+   → Enable**. (Cloudflare requires payment details for SaaS on non-Enterprise,
+   but the Free zone plan includes 100 custom hostnames; $0.10/month each after.)
+2. **Fallback origin:** `app.unclutterdesk.com` (already proxied). Traffic only
+   lands there if a hostname has no Worker route — the provisioning service
+   always creates the route, and Pages answering 403 is the loud failure.
+3. **API token** scoped to this zone: `Cloudflare for SaaS: Edit`,
+   `Workers Routes: Edit`, `Zone: Read`. Put it on the server's API `.env`:
+
+```
+CLOUDFLARE_API_TOKEN=<token>
+CLOUDFLARE_ZONE_ID=d4b3dd0ef46d1eb1625327cdbf39086e
+CLOUDFLARE_WORKER_SCRIPT=unclutterdesk-tenant-router
+```
+
+   and restart the API. Without these the panel still stores the domain and
+   behaves exactly like before (PENDING + manual verify via public DNS) — dev,
+   CI and unenrolled environments are unaffected.
+
+### Per practice (self-serve)
+
+1. Practice saves `book.theirpractice.com` → the API creates the custom hostname
+   (CNAME-validated certificate) with `custom_metadata.tenant = <tenant id>` and
+   a Workers route `book.theirpractice.com/*` → the tenant router. The router
+   already serves any host: no Pages custom domain per tenant, no DNS record
+   on our side.
+2. The panel shows exactly what to publish at their domain provider (the
+   certificate's CNAME validation record + the hostname CNAME to
+   `*.my.cloudflare.net`).
+3. Once Cloudflare reports the hostname **and** the certificate `active`, the
+   cron flips `customDomainStatus=ACTIVE` — and only then. ACTIVE is what makes
+   CORS allow the origin, the middleware resolve it, and `tenantWebOrigin()`
+   switch booking emails and links onto the domain. A typo'd domain simply
+   never goes live; nothing wrong can be emailed.
+4. Changing or clearing the domain deletes the old hostname object and its
+   route; anything the delete misses is swept by the same cron via
+   `custom_metadata.tenant`.
+
+`CUSTOM_DOMAIN_TARGET` keeps its old meaning for environments without the
+token: manual verify then checks public DNS + HTTPS itself, as before.
 
 ---
 
