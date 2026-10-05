@@ -8,6 +8,7 @@ type PracticeProfile = {
   name?: string;
   shortName?: string;
   welcomeMessage?: string;
+  tagline?: string;
   publicEmail?: string;
   publicPhone?: string;
   city?: string;
@@ -80,7 +81,8 @@ export function PracticeProfilePage() {
                   <div><label className="block text-[11.5px] font-bold text-[#475569] mb-1.5">Practice name</label><input className={inputCls} value={profile.name || ''} onChange={(e) => setProfile((p) => ({ ...p, name: e.target.value }))} /></div>
                   <div><label className="block text-[11.5px] font-bold text-[#475569] mb-1.5">Short name</label><input className={inputCls} value={profile.shortName || ''} onChange={(e) => setProfile((p) => ({ ...p, shortName: e.target.value }))} /></div>
                 </div>
-                <div className="mt-4"><label className="block text-[11.5px] font-bold text-[#475569] mb-1.5">Bio / tagline</label><textarea rows={4} className="w-full px-[14px] py-3 rounded-[14px] bg-[#F8FAFC] border border-[#E2E8F0] text-sm text-[#0F172A] outline-none focus:bg-white focus:border-[#94A3B8] resize-none leading-relaxed" value={profile.welcomeMessage || ''} onChange={(e) => setProfile((p) => ({ ...p, welcomeMessage: e.target.value }))} /></div>
+                <div className="mt-4"><label className="block text-[11.5px] font-bold text-[#475569] mb-1.5">Tagline</label><input className="h-[46px] w-full px-[14px] rounded-[14px] bg-[#F8FAFC] border border-[#E2E8F0] text-sm font-medium text-[#0F172A] outline-none focus:bg-white focus:border-[#94A3B8]" value={profile.tagline || ''} maxLength={120} placeholder="One line under your name on the booking page" onChange={(e) => setProfile((p) => ({ ...p, tagline: e.target.value }))} /></div>
+                <div className="mt-4"><label className="block text-[11.5px] font-bold text-[#475569] mb-1.5">Bio</label><textarea rows={4} className="w-full px-[14px] py-3 rounded-[14px] bg-[#F8FAFC] border border-[#E2E8F0] text-sm text-[#0F172A] outline-none focus:bg-white focus:border-[#94A3B8] resize-none leading-relaxed" value={profile.welcomeMessage || ''} onChange={(e) => setProfile((p) => ({ ...p, welcomeMessage: e.target.value }))} /></div>
               </div>
 
               <div className="bg-white rounded-[24px] border border-[#E2E8F0] p-[24px_26px]">

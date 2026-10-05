@@ -76,4 +76,31 @@ describe('PublicProfilePage', () => {
     expect(document.querySelector('img[src="/unclutterdesk-mark.svg"]')).toBeNull();
     expect(document.body.innerHTML).not.toContain('max-w-[1320px]');
   });
+
+  // BKG-13: one tagline in the hero, one bio in About — never the same
+  // paragraph in two places.
+  it('shows the tagline once in the hero and the bio once in About', async () => {
+    getSubdomainTenantSlug.mockReturnValue('demo');
+    apiGet.mockImplementation((path: string) => {
+      if (path.startsWith('/v1/tenant/public')) {
+        return Promise.resolve({
+          id: '1', name: 'Demo Practice', slug: 'demo',
+          primaryColor: '#0F3A53', secondaryColor: '#E3B341',
+          tagline: 'Calm, practical therapy.',
+          welcomeMessage: 'A very long paragraph about the practice that used to appear twice.',
+        });
+      }
+      if (path === '/v1/consult/public/therapists') {
+        return Promise.resolve([{
+          profileId: '1', firstName: 'Jane', lastName: 'Smith', avatarUrl: null,
+          specialty: 'Clinical Psychology', credentials: null, yearsExperience: null,
+          welcomeMessage: null, tagline: null, modalities: [], languages: [],
+        }]);
+      }
+      return Promise.resolve([]);
+    });
+    renderPage();
+    expect((await screen.findAllByText('Calm, practical therapy.')).length).toBe(1);
+    expect(screen.getAllByText(/used to appear twice/).length).toBe(1);
+  });
 });

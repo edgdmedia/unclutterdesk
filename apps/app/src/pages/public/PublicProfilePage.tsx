@@ -12,6 +12,7 @@ type PublicTenantInfo = {
   shortName?: string | null;
   welcomeTitle?: string | null;
   welcomeMessage?: string | null;
+  tagline?: string | null;
   category?: string | null;
   city?: string | null;
   address?: string | null;
@@ -33,6 +34,7 @@ type PublicTherapist = {
   credentials: string | null;
   yearsExperience: number | null;
   welcomeMessage: string | null;
+  tagline: string | null;
   modalities: string[];
   languages: string[];
 };
@@ -102,6 +104,10 @@ export function PublicProfilePage() {
     .slice(0, 2)
     .toUpperCase();
 
+  // BKG-13: the hero carries the one-line tagline; the bio belongs to the
+  // About section alone. Practices that never set a tagline simply show no
+  // hero line — never the long paragraph twice.
+  const tagline = therapist?.tagline || tenant?.tagline || null;
   const bio = therapist?.welcomeMessage || tenant?.welcomeMessage || null;
   const specialties = therapist?.modalities?.length
     ? therapist.modalities
@@ -186,9 +192,9 @@ export function PublicProfilePage() {
                     {reviews.averageRating.toFixed(1)} ({reviews.count} client review{reviews.count === 1 ? '' : 's'})
                   </div>
                 ) : null}
-                {bio ? (
+                {tagline ? (
                   <p className="m-0 text-[13px] md:text-[14px] text-[#64748B] max-w-[520px] leading-[1.65] mx-auto md:mx-0 text-pretty">
-                    {bio}
+                    {tagline}
                   </p>
                 ) : null}
               </div>

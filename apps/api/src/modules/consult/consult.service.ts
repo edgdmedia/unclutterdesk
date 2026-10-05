@@ -74,6 +74,7 @@ export class ConsultService {
       credentials: p.credentials,
       yearsExperience: p.yearsExperience,
       welcomeMessage: p.welcomeMessage,
+      tagline: p.tagline,
       modalities: p.modalities,
       languages: p.languages,
       isPublic: p.isPublic,
@@ -103,6 +104,7 @@ export class ConsultService {
       credentials: profile.credentials,
       yearsExperience: profile.yearsExperience,
       welcomeMessage: profile.welcomeMessage,
+      tagline: profile.tagline,
       modalities: profile.modalities,
       languages: profile.languages,
       isPublic: profile.isPublic,
@@ -125,6 +127,7 @@ export class ConsultService {
     bookingEmail?: string;
     notificationEmail?: string;
     welcomeMessage?: string;
+    tagline?: string;
     specialty?: string;
     credentials?: string;
     yearsExperience?: number;
@@ -201,6 +204,7 @@ export class ConsultService {
         ...(dto.bookingEmail ? { bookingEmail: dto.bookingEmail.trim() } : {}),
         ...(dto.notificationEmail ? { notificationEmail: dto.notificationEmail.trim() } : {}),
         ...(dto.welcomeMessage !== undefined ? { welcomeMessage: dto.welcomeMessage } : {}),
+        ...(dto.tagline !== undefined ? { tagline: dto.tagline?.trim() || null } : {}),
         ...(dto.specialty !== undefined ? { specialty: dto.specialty } : {}),
         ...(dto.credentials !== undefined ? { credentials: dto.credentials } : {}),
         ...(dto.yearsExperience !== undefined ? { yearsExperience: dto.yearsExperience } : {}),
