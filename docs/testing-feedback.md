@@ -75,6 +75,8 @@ A running log of what shows up in testing, what we decide about it, and when it'
 | BKG-11 | Booking page | The practice's booking link doesn't carry the new wizard design: too wide, no practice logo | Bug | P1 | Fixed |
 | BKG-12 | Booking page | "Go to my bookings" and the calendar buttons should share one row; the two calendar links can be one dropdown | UX | P3 | Fixed |
 | BKG-13 | Booking page | The public profile shows the same long bio twice, and there is no tagline field in the practice profile | Bug | P2 | Fixed |
+| BKG-14 | Booking page | The public profile misses details from the Claude design: About headline, Learn More button, real location names | UX | P2 | Ready |
+| BKG-15 | Booking page | "Log in" on the practice's page sends clients to the staff login | Bug | P1 | Ready |
 | VID-01 | Video | The session room is a mock-up, not a real video call | Feature | P0 | Fixed |
 | POR-01 | Client portal | /portal only works on app.unclutterdesk.com, not on the practice's own link | Bug | P1 | Fixed |
 | POR-02 | Client portal | The portal should look like a dashboard, not a plain list | UX | P2 | Fixed |
@@ -489,6 +491,20 @@ A running log of what shows up in testing, what we decide about it, and when it'
 - **Feedback / decision:** The hero carries a one-line tagline; the About section carries the bio, once. Add a Tagline field to the practice profile (and the therapist profile, which the public page prefers).
 - **Fix:** New `tagline` column on Tenant and ConsultTherapistProfile (migration `20261005100000_practice_tagline`), carried through the public info/therapists endpoints and both profile updates. The hero now renders the tagline (therapist first, then practice) and the bio appears only in About; a practice with no tagline shows no hero line. "Bio / tagline" in Settings → Profile split into **Tagline** (one line) and **Bio**; Therapist profile got the same. Covered by `PublicProfilePage.test.tsx`.
 - **Verified:** 5 Oct 2026 in the browser: saved a tagline on dr-smith's practice profile; the public page shows the tagline once in the hero and the bio once in About (counts 1 and 1).
+
+### BKG-14 · The public profile misses details from the design
+- **Type:** UX · **Priority:** P2 · **Status:** Ready
+- **Observed:** 5 Oct 2026, against `docs/design/Unclutter Desk Public Practice Profile.dc.html`. The About section has no headline (the design's *"A calm, evidence-based approach to therapy"* — the `welcomeTitle` field exists in the database and API but nothing renders or edits it); the hero lacks the design's secondary **Learn More** button; the Location & Format card prints a synthesised "In person in Lagos" instead of the practice's real location names (PracticeLocation records exist and ship in the public payload unused). Availability and Insurance were compared and decided against: keep "Next Available" as implemented, and "Insurance Accepted" is dropped from the design.
+- **Feedback / decision:** Founder 5 Oct 2026: no insurance section; availability stays as it is. Most of the "empty" look is unfilled data — Specialty, Credentials, Years, Modalities and Languages live in **Account menu → My profile**, not the practice profile.
+- **Fix:** 
+- **Verified:** 
+
+### BKG-15 · "Log in" on the practice's page sends clients to the staff login
+- **Type:** Bug · **Priority:** P1 · **Status:** Ready
+- **Observed:** 5 Oct 2026, live on the custom domain. On `consult.unclutter.com.ng` the client's "Log in" links to `app.unclutterdesk.com/login`, which is designed for signing in to a practice, not as one's client. Even the practice host's own `/login` renders the staff form.
+- **Feedback / decision:** Clients should stay on the practice's host and get the client sign-in (the panel from the booking wizard). Staff keep their page, reachable via a quiet "Are you the practice? Staff sign in" link.
+- **Fix:** 
+- **Verified:** 
 
 ### VID-01 · The session room isn't a real video call
 - **Type:** Feature · **Priority:** P0 · **Status:** Fixed
