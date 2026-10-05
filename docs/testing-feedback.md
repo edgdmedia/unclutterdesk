@@ -77,6 +77,7 @@ A running log of what shows up in testing, what we decide about it, and when it'
 | BKG-13 | Booking page | The public profile shows the same long bio twice, and there is no tagline field in the practice profile | Bug | P2 | Fixed |
 | BKG-14 | Booking page | The public profile misses details from the Claude design: About headline, Learn More button, real location names | UX | P2 | Fixed |
 | BKG-15 | Booking page | "Log in" on the practice's page sends clients to the staff login | Bug | P1 | Fixed |
+| SET-13 | Settings | Custom domains should be self-serve via Cloudflare for SaaS | Feature | P2 | Ready |
 | VID-01 | Video | The session room is a mock-up, not a real video call | Feature | P0 | Fixed |
 | POR-01 | Client portal | /portal only works on app.unclutterdesk.com, not on the practice's own link | Bug | P1 | Fixed |
 | POR-02 | Client portal | The portal should look like a dashboard, not a plain list | UX | P2 | Fixed |
@@ -565,6 +566,14 @@ A running log of what shows up in testing, what we decide about it, and when it'
 - **Observed:** 2 Oct 2026. After leaving the portal for a while, it showed "Hello, Olalekan", the next session and Join, and also "Sign in to see your sessions".
 - **Feedback / decision:** Either signed in or signed out, never both.
 - **Fix:** Cause: the page-load sign-in check (`/v1/auth/status`) was set never to refresh the session. The access cookie lasts 15 minutes and the refresh cookie is only sent to `/v1/auth/refresh`, so after a quiet spell (or a sleeping tab reloading), the check failed and signed the person out, while the portal's own request refreshed and loaded the sessions. Now the check refreshes and retries like every other request (`apiClient.ts`), and a signed-out portal clears everything private. Also affected staff: the dashboard signed people out the same way. Covered by `apiClient.sessionRefresh.test.ts` and `ClientPortalSignedOut.test.tsx`.
+- **Verified:** 
+
+### SET-13 · Self-serve custom domains through Cloudflare for SaaS
+- **Type:** Feature · **Priority:** P2 · **Status:** Ready
+- **Observed:** 5 Oct 2026. A practice's custom domain works (consult.unclutter.com.ng is live) but every domain is manual: an admin adds a Pages custom domain by hand and flips `customDomainStatus` in the database. Nothing promotes the PENDING row Settings saves, and customers cannot do it themselves.
+- **Feedback / decision:** Adopt Cloudflare for SaaS — the Free plan zone includes 100 custom hostnames ($0.10/mo each after, 50k max). Cloudflare cannot fall back to a Pages project (no proxy to Cloudflare-owned hosts), so the app must be served from a Worker with the same Vite build as static assets; the API already resolves ACTIVE custom domains from the Host header. Founder 5 Oct 2026: implement — likely the next working day.
+- **Scope:** (1) Deploy the existing app build behind a Worker (static assets + SPA fallback; wrangler config + a deploy workflow; Pages stays until cutover). (2) Zone: enable Cloudflare for SaaS, set the fallback origin. (3) API: on save of `customDomain`, create the custom hostname via the Cloudflare API, store its id, and surface the ownership TXT + CNAME target in Settings → Profile for the practice to add at their registrar. (4) A scheduled poll flips `customDomainStatus` to ACTIVE when hostname `status` and `ssl.status` are both active — replacing today's manual DB edit. (5) Remove/deactivate cleanly when the domain is edited away.
+- **Fix:** 
 - **Verified:** 
 
 ## Forms & templates
