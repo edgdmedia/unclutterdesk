@@ -525,6 +525,16 @@ export class TenantService {
     // truth — the object is `active` once the practice's DNS points at us and
     // `ssl.status` is active once the certificate is issued. No guessing via
     // public DNS from this server.
+    if (this.cf?.configured() && !tenant.customHostnameId) {
+      // Cloudflare is wired up but this domain never got provisioned (the
+      // first save predates the credentials, or CF rejected it and the cron
+      // has not caught up). Say so plainly instead of falling through to the
+      // legacy DNS path, whose "not available" message is simply wrong here.
+      throw new BadRequestException(
+        'This domain has not been provisioned yet. Save it again (clear it, save, re-enter, save) and it will be created.',
+      );
+    }
+
     if (tenant.customHostnameId && this.cf?.configured()) {
       const verdict = await this.cf.getVerification(tenant.customHostnameId);
       if (verdict.status === 'active' && verdict.sslStatus === 'active') {
