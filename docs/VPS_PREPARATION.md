@@ -113,6 +113,7 @@ CLOUDFLARE_AUTH_EMAIL=<account email>
 CLOUDFLARE_API_KEY=<global api key>
 CLOUDFLARE_ZONE_ID=d4b3dd0ef46d1eb1625327cdbf39086e
 CLOUDFLARE_WORKER_SCRIPT=unclutterdesk-tenant-router
+CLOUDFLARE_SAAS_CNAME_TARGET=customers.unclutterdesk.com
 
 # The API's own public address. Practice logos in emails are served from
 # GET /v1/tenant/:id/logo, and the emails need the absolute URL. Defaults to

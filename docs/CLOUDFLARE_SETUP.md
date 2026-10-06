@@ -170,7 +170,12 @@ CLOUDFLARE_AUTH_EMAIL=<account email>
 CLOUDFLARE_API_KEY=<global api key>
 CLOUDFLARE_ZONE_ID=d4b3dd0ef46d1eb1625327cdbf39086e
 CLOUDFLARE_WORKER_SCRIPT=unclutterdesk-tenant-router
+CLOUDFLARE_SAAS_CNAME_TARGET=customers.unclutterdesk.com
 ```
+
+   (`CLOUDFLARE_SAAS_CNAME_TARGET` is the fixed address every practice
+   CNAMEs to: a proxied CNAME record pointing at the fallback origin.
+   Without it the panel shows the TXT records but no CNAME line.)
 
    (`CLOUDFLARE_API_TOKEN` remains accepted for any endpoint that does
    support tokens; the key wins when both are present.)

@@ -80,6 +80,24 @@ describe('CloudflareSaasService', () => {
     expect(result.verificationRecords).toHaveLength(1);
   });
 
+  it('lists the domain-ownership TXT with the DCV records and uses the static SaaS CNAME target', async () => {
+    process.env.CLOUDFLARE_SAAS_CNAME_TARGET = 'customers.unclutterdesk.com';
+    fetchMock.mockResolvedValue(ok({
+      id: 'cf-id-2', status: 'pending',
+      cname_target: undefined,
+      ownership_verification: { type: 'TXT', name: '_cf-custom-hostname.book.acme.ng', value: 'own-123' },
+      ssl: { status: 'initializing', verification_records: [{ name: 'txt.book.acme.ng', type: 'TXT', data: 'dcv-456' }] },
+    }));
+    const service = new CloudflareSaasService();
+    const result = await service.getVerification('cf-id-2');
+    expect(result.cnameTarget).toBe('customers.unclutterdesk.com');
+    expect(result.verificationRecords).toEqual([
+      { name: 'txt.book.acme.ng', type: 'TXT', data: 'dcv-456', target: undefined },
+      { name: '_cf-custom-hostname.book.acme.ng', type: 'TXT', data: 'own-123' },
+    ]);
+    delete process.env.CLOUDFLARE_SAAS_CNAME_TARGET;
+  });
+
   it('reads status back for the poller', async () => {
     fetchMock.mockResolvedValue(ok({ id: 'cf-id-1', status: 'active', ssl: { status: 'active' } }));
     const service = new CloudflareSaasService();
