@@ -3,7 +3,6 @@ import { Link } from 'react-router-dom';
 import { Save, Info } from 'lucide-react';
 import { Eyebrow, useToast } from '@unclutterdesk/ui';
 import { api } from '../../../utils/apiClient';
-import { CustomDomainPanel } from './CustomDomainPanel';
 
 type PracticeProfile = {
   name?: string;
@@ -97,8 +96,6 @@ export function PracticeProfilePage() {
                   <div className="col-span-2"><label className="block text-[11.5px] font-bold text-[#475569] mb-1.5">Practice category</label><input className={inputCls} value={profile.category || ''} onChange={(e) => setProfile((p) => ({ ...p, category: e.target.value }))} /></div>
                 </div>
               </div>
-
-              <CustomDomainPanel />
             </>
           )}
         </div>

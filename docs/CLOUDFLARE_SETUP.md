@@ -143,7 +143,7 @@ A practice's own booking address, provisioned by the platform. The code is in
 `apps/api/src/modules/tenant/cloudflare-saas.service.ts` (hostname + route calls),
 `tenant.service.ts` (provision on save, status, CF-aware verify) and
 `custom-domain.cron.ts` (promote / retry / sweep every 5 minutes); the practice
-sees it all in Settings → Practice profile → Custom domain.
+sees it all in Settings → Brand → Custom domain.
 
 ### One-time (human, dashboard)
 

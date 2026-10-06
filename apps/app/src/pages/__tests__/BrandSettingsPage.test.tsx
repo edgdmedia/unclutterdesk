@@ -57,13 +57,14 @@ describe('Brand settings', () => {
     );
   });
 
-  it('shows custom domains as coming soon, with no domain field or verify button (SET-03)', async () => {
+  // SET-03 parked this as "Coming soon"; SET-13 built it. The live panel now
+  // sits here, next to the booking link, exactly where people looked for it.
+  it('offers the live custom domain panel where the placeholder used to be', async () => {
     renderWithApp(<BrandSettingsPage />);
-    await screen.findByText(/coming soon/i);
-    expect(screen.getByText(/booking\.yourpractice\.com, on Pro and Clinic/)).toBeTruthy();
-    expect(screen.queryByLabelText('Custom domain')).toBeNull();
-    expect(screen.queryByRole('button', { name: /verify domain/i })).toBeNull();
-    expect(screen.queryByRole('button', { name: /save domain/i })).toBeNull();
+    expect(screen.queryByText(/coming soon/i)).toBeNull();
+    expect(await screen.findByRole('button', { name: /save domain/i })).toBeTruthy();
+    expect(screen.getByPlaceholderText('book.yourpractice.com')).toBeTruthy();
+    expect(screen.getByText('Your own booking address')).toBeTruthy();
   });
 });
 

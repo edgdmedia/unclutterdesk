@@ -1,11 +1,12 @@
 import React, { useEffect, useState } from 'react';
-import { Globe, Palette, Sparkles } from 'lucide-react';
+import { Palette, Sparkles } from 'lucide-react';
 import { Eyebrow, Card, BookingLinkField, useToast } from '@unclutterdesk/ui';
 import { BookingWizardPage } from '../../public/booking/BookingWizardPage';
 import { BookingConfirmedPage } from '../../public/BookingConfirmedPage';
 import { api, practiceBookingUrl } from '../../../utils/apiClient';
 import { usePracticeBrand } from '../../../context/PracticeBrandContext';
 import { SendingDomainCard } from '../../../components/email/SendingDomainCard';
+import { CustomDomainPanel } from './CustomDomainPanel';
 import { LogoField } from '../../../components/settings/LogoField';
 import { BookingLinkCard } from '../../../components/settings/BookingLinkCard';
 
@@ -142,14 +143,8 @@ export function BrandSettingsPage() {
                 }}
               />
 
-              {/* SET-03: custom domains come later (Cloudflare for SaaS, Domain Connect); nothing to set until then. */}
-              <Card padding="p-[22px]" className="space-y-3">
-                <div className="flex items-center gap-2 border-b border-[#E2E8F0] pb-3"><Globe className="h-4 w-4 text-blue-600" /><Eyebrow>CUSTOM DOMAIN</Eyebrow></div>
-                <p className="text-[12.5px] leading-[1.55] text-[#64748B]">
-                  <span className="mr-2 inline-flex items-center rounded-full bg-[#F1F5F9] px-2.5 py-0.5 text-[11px] font-bold uppercase tracking-[0.06em] text-[#475569]">Coming soon</span>
-                  Use your own address, like booking.yourpractice.com, on Pro and Clinic. Until then, clients book at your Unclutter Desk link above.
-                </p>
-              </Card>
+              {/* SET-03 → SET-13: the placeholder is gone; this is the live panel. */}
+              <CustomDomainPanel />
             </>
           )}
 
