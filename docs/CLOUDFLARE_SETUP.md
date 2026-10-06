@@ -153,11 +153,17 @@ sees it all in Settings → Brand → Custom domain.
 2. **Fallback origin:** `app.unclutterdesk.com` (already proxied). Traffic only
    lands there if a hostname has no Worker route — the provisioning service
    always creates the route, and Pages answering 403 is the loud failure.
-3. **Credentials.** The custom-hostname endpoints do **not** accept scoped
-   API tokens (the SaaS permission is absent from the token builder by
-   design; tokens get `10000`/`10405`). Use the owner's **Global API key**:
-   My Profile → API Tokens → Global API Key → View. Put these on the server's
-   API `.env`:
+3. **Credentials.** The custom-hostname endpoints accept **only the legacy
+   Global API key**, verified empirically 5 Oct 2026: a scoped API token with
+   SSL-and-Certificates/Workers-Routes write gets `10000`, and a wrangler
+   OAuth (`cfoat_`) token — the same species an OAuth client would mint —
+   gets `10000` too. Dashboard-only for the fallback origin (`10405` for any
+   token). So: don't use the owner's key. Create a dedicated throwaway
+   Cloudflare account (alias email), invite it to this account as a **Member
+   with a custom role** limited to Cloudflare for SaaS + Workers Routes
+   permissions, let it accept the invite, and generate **that member's**
+   Global API key (My Profile → API Tokens → Global API Key → View). Put the
+   member's identity on the server's API `.env`:
 
 ```
 CLOUDFLARE_AUTH_EMAIL=<account email>
@@ -169,8 +175,9 @@ CLOUDFLARE_WORKER_SCRIPT=unclutterdesk-tenant-router
    (`CLOUDFLARE_API_TOKEN` remains accepted for any endpoint that does
    support tokens; the key wins when both are present.)
 
-   and restart the API. The key is account-wide — keep it server-side only,
-   and rotate it if it ever leaks. Without these the panel still stores the domain and
+   and restart the API. The key is as strong as the member's role — keep it
+   server-side only, and rotate the member's key if it ever leaks. Without
+   these the panel still stores the domain and
    behaves exactly like before (PENDING + manual verify via public DNS) — dev,
    CI and unenrolled environments are unaffected.
 
