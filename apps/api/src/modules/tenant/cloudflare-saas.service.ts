@@ -62,7 +62,11 @@ export class CloudflareSaasService {
   async createHostname(hostname: string, tenantId: string): Promise<CfHostnameResult> {
     const body = {
       hostname,
-      ssl: { method: 'cname', settings: { min_tls_version: '1.2' } },
+      // DCV by TXT record: the practice publishes one TXT row at their
+      // provider, so the certificate can issue before any traffic switches
+      // over. ('cname' here was rejected as invalid — the API accepts only
+      // http, txt and email for this field.)
+      ssl: { method: 'txt', type: 'dv', settings: { min_tls_version: '1.2' } },
       custom_metadata: { tenant: tenantId },
     };
     const result = await this.call(`/zones/${this.zoneId}/custom_hostnames`, 'POST', body);

@@ -75,7 +75,7 @@ describe('CloudflareSaasService', () => {
       expect.objectContaining({ method: 'POST' }),
     );
     const body = JSON.parse(fetchMock.mock.calls[0][1].body);
-    expect(body).toMatchObject({ hostname: 'booking.acme.ng', ssl: { method: 'cname' }, custom_metadata: { tenant: '42' } });
+    expect(body).toMatchObject({ hostname: 'booking.acme.ng', ssl: { method: 'txt', type: 'dv' }, custom_metadata: { tenant: '42' } });
     expect(result).toMatchObject({ id: 'cf-id-1', status: 'pending', sslStatus: 'pending', cnameTarget: 'zone-tag.my.cloudflare.net' });
     expect(result.verificationRecords).toHaveLength(1);
   });

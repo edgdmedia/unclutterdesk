@@ -184,13 +184,13 @@ CLOUDFLARE_WORKER_SCRIPT=unclutterdesk-tenant-router
 ### Per practice (self-serve)
 
 1. Practice saves `book.theirpractice.com` → the API creates the custom hostname
-   (CNAME-validated certificate) with `custom_metadata.tenant = <tenant id>` and
+   (TXT-validated certificate) with `custom_metadata.tenant = <tenant id>` and
    a Workers route `book.theirpractice.com/*` → the tenant router. The router
    already serves any host: no Pages custom domain per tenant, no DNS record
    on our side.
 2. The panel shows exactly what to publish at their domain provider (the
-   certificate's CNAME validation record + the hostname CNAME to
-   `*.my.cloudflare.net`).
+certificate's TXT validation record + the hostname CNAME to the SaaS
+target).
 3. Once Cloudflare reports the hostname **and** the certificate `active`, the
    cron flips `customDomainStatus=ACTIVE` — and only then. ACTIVE is what makes
    CORS allow the origin, the middleware resolve it, and `tenantWebOrigin()`
