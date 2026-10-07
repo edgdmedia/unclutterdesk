@@ -102,7 +102,7 @@ A running log of what shows up in testing, what we decide about it, and when it'
 | BKG-13 | Sessions | Past sessions with no outcome stay "Confirmed" forever | Feature | P1 | Ready |
 | VID-02 | Video | "Join session" works any time, even days before | Bug | P1 | Fixed |
 | GEN-01 | Design system | Pages set their own widths and hand-write their grids | UX | P2 | Ready |
-| GEN-02 | Design system | The dashboard keeps showing Profile photo and Practice branding cards | UX | P3 | Ready |
+| GEN-02 | Design system | The dashboard keeps showing Profile photo and Practice branding cards | UX | P3 | Fixed |
 | GEN-03 | Design system | The menu feels disconnected | UX | P2 | Fixed |
 | GEN-04 | Design system | Settings is twelve loose pages; unrelated things share a page | UX | P2 | Fixed |
 | NOT-12 | Notifications | Practices can't change the wording of their emails | Feature | P2 | Ready |
@@ -636,11 +636,11 @@ A running log of what shows up in testing, what we decide about it, and when it'
 - **Verified:** 
 
 ### GEN-02 · The dashboard keeps showing Profile photo and Practice branding cards
-- **Type:** UX · **Priority:** P3 · **Status:** Ready
+- **Type:** UX · **Priority:** P3 · **Status:** Fixed
 - **Observed:** Setup prompts stay on the dashboard after they are done.
-- **Feedback / decision:** Decided 2 Oct 2026. Show each card only until it is done; both stay editable in settings.
-- **Fix:** 
-- **Verified:** 
+- **Feedback / decision:** Decided 2 Oct 2026. Show each card only until it is done; both stay editable in settings. Founder 7 Oct: "PROFILE PHOTO is only on dashboard, that is so wrong, and when it is set, it should stop showing" — same for Practice branding.
+- **Fix:** Both right-column cards now retire on the *saved* state, not the in-flight editor state: the Profile photo card hides once the therapist profile has an `avatarUrl` (server-loaded, or the moment a save succeeds — picking a file for the first time still keeps the card on screen); the Practice branding card hides once the tenant has a `logoUrl`. Both things stay editable where they belong (My profile; Settings → Brand).
+- **Verified:** `DashboardProfilePhoto.test.tsx` — a saved photo and a logoed brand render neither card; an unset practice still gets both; the upload flow's card retires after the server confirms. Suite 521 app tests green. 
 
 ### GEN-04 · Settings is twelve loose pages; unrelated things share a page
 - **Type:** UX · **Priority:** P2 · **Status:** Ready
@@ -648,6 +648,13 @@ A running log of what shows up in testing, what we decide about it, and when it'
 - **Feedback / decision:** Founder 6 Oct 2026: collapse Settings into one page with a left tab rail (top tabs on mobile), grouped — **Practice** (Profile · Locations · Brand & booking page), **Booking** (Availability · Services & pricing · Discounts), **Domain & email** (Custom domain · Notifications · Sending domain), **Team & billing** (Team · Subscription · Preferences). Sidebar shows a single Settings entry; role/tier gating moves onto the tabs. Forms keeps its own sidebar home (it is a workspace, not a setting), Payouts keeps a direct link. Implemented with the GEN-03 regrouping — plan `docs/superpowers/plans/2026-10-06-settings-hub-and-menu-regroup.md`.
 - **Fix:** `4166459` + `279dede` on `dev`. `SettingsPage.tsx` is the hub: grouped rail (a compact chip strip under `md`), `settingsTabsFor()` in `practiceNav.tsx` filters by role and tags by plan, `/dashboard/settings` and any unknown tab redirect to the first visible one, and every tab keeps its **old URL** — deep links, notifications and tests never moved. New tabs: Booking address (BookingLinkCard + the custom-domain panel together) and Sending domain (the card moved out of Brand); Brand is now just brand. Embedded pages dropped their `min-w-[1192px]` and the profile's fixed side column became `xl:` so nothing overflows a phone. `SettingsHub.test.tsx` and `SettingsDomainPage.test.tsx` cover the behaviour.
 - **Verified:** 7 Oct 2026 browser check: owners land on Practice profile, rail lists all four groups with the Clinic tag on Team; old deep link `/dashboard/settings/availability` renders in the hub; 390px shows the chip strip with no horizontal scroll (0px at 390 and 1280). 
+
+### SET-14 · The Active sessions panel renders every session the account ever made
+- **Type:** UX · **Priority:** P3 · **Status:** Fixed
+- **Observed:** 7 Oct 2026. Settings → Preferences lists all live sessions in one long column; an old account scrolls forever.
+- **Feedback / decision:** Founder 7 Oct 2026: cap it.
+- **Fix:** The panel shows the five most recently used (the server already orders by last use, current device first) with **Show all N sessions / Show fewer** beneath; per-device sign-out and "Sign out other devices" are unchanged. SET-12 (same browser listed many times) remains open and is the deeper fix.
+- **Verified:** `AccountPreferencesPage.test.tsx` — eight sessions render five rows, expand to eight, collapse again.
 
 ### GEN-03 · The menu feels disconnected
 - **Type:** UX · **Priority:** P2 · **Status:** Ready
