@@ -103,8 +103,8 @@ A running log of what shows up in testing, what we decide about it, and when it'
 | VID-02 | Video | "Join session" works any time, even days before | Bug | P1 | Fixed |
 | GEN-01 | Design system | Pages set their own widths and hand-write their grids | UX | P2 | Ready |
 | GEN-02 | Design system | The dashboard keeps showing Profile photo and Practice branding cards | UX | P3 | Ready |
-| GEN-03 | Design system | The menu feels disconnected | UX | P2 | Ready |
-| GEN-04 | Design system | Settings is twelve loose pages; unrelated things share a page | UX | P2 | Ready |
+| GEN-03 | Design system | The menu feels disconnected | UX | P2 | Fixed |
+| GEN-04 | Design system | Settings is twelve loose pages; unrelated things share a page | UX | P2 | Fixed |
 | NOT-12 | Notifications | Practices can't change the wording of their emails | Feature | P2 | Ready |
 | NOT-13 | Notifications | Clients can't choose their reminders | Feature | P1 | Ready |
 | NOT-14 | Notifications | Practices can't see or send a session's reminders | Feature | P2 | Ready |
@@ -645,16 +645,16 @@ A running log of what shows up in testing, what we decide about it, and when it'
 ### GEN-04 · Settings is twelve loose pages; unrelated things share a page
 - **Type:** UX · **Priority:** P2 · **Status:** Ready
 - **Observed:** 6 Oct 2026, live testing. Eleven `/dashboard/settings/*` pages sit as separate sidebar links; the Brand page carried custom domain *and* sending-email settings together ("Custom domain and sending email settings shouldn't be on the same page"), and Availability/Services/Discounts/Team each feel like their own app.
-- **Feedback / decision:** Founder 6 Oct 2026: collapse Settings into one page with a left tab rail (top tabs on mobile), grouped — **Practice** (Profile · Locations · Brand & booking page), **Booking** (Availability · Services & pricing · Discounts), **Domain & email** (Custom domain · Notifications · Sending domain), **Team & billing** (Team · Subscription · Payouts). Sidebar shows a single Settings entry; role/tier gating moves onto the tabs. Forms keeps its own sidebar home (it is a workspace, not a setting). Implemented together with the GEN-03 menu regrouping — plan `docs/superpowers/plans/2026-10-06-settings-hub-and-menu-regroup.md`.
-- **Fix:** 
-- **Verified:** 
+- **Feedback / decision:** Founder 6 Oct 2026: collapse Settings into one page with a left tab rail (top tabs on mobile), grouped — **Practice** (Profile · Locations · Brand & booking page), **Booking** (Availability · Services & pricing · Discounts), **Domain & email** (Custom domain · Notifications · Sending domain), **Team & billing** (Team · Subscription · Preferences). Sidebar shows a single Settings entry; role/tier gating moves onto the tabs. Forms keeps its own sidebar home (it is a workspace, not a setting), Payouts keeps a direct link. Implemented with the GEN-03 regrouping — plan `docs/superpowers/plans/2026-10-06-settings-hub-and-menu-regroup.md`.
+- **Fix:** `4166459` + `279dede` on `dev`. `SettingsPage.tsx` is the hub: grouped rail (a compact chip strip under `md`), `settingsTabsFor()` in `practiceNav.tsx` filters by role and tags by plan, `/dashboard/settings` and any unknown tab redirect to the first visible one, and every tab keeps its **old URL** — deep links, notifications and tests never moved. New tabs: Booking address (BookingLinkCard + the custom-domain panel together) and Sending domain (the card moved out of Brand); Brand is now just brand. Embedded pages dropped their `min-w-[1192px]` and the profile's fixed side column became `xl:` so nothing overflows a phone. `SettingsHub.test.tsx` and `SettingsDomainPage.test.tsx` cover the behaviour.
+- **Verified:** 7 Oct 2026 browser check: owners land on Practice profile, rail lists all four groups with the Clinic tag on Team; old deep link `/dashboard/settings/availability` renders in the hub; 390px shows the chip strip with no horizontal scroll (0px at 390 and 1280). 
 
 ### GEN-03 · The menu feels disconnected
 - **Type:** UX · **Priority:** P2 · **Status:** Ready
 - **Observed:** Hours log and Notifications are main-menu items; settings groups mix concerns.
-- **Feedback / decision:** Decided 2 Oct 2026. Main: Today, Schedule, Sessions, Clients. Forms & assessments: Submissions, Assessments, Forms. Settings: Booking page (Practice profile, Locations, Brand & booking page); Scheduling & pricing (Availability, Services & pricing, Discounts); Team & staff; Reports; Billing (Payouts, Subscription). Avatar menu: My profile, Hours log, Notification settings, Account & security. The bell is in the header (NOT-06).
-- **Fix:** 
-- **Verified:** 
+- **Feedback / decision:** Decided 2 Oct 2026, refined 6 Oct by GEN-04: Settings collapses to ONE sidebar entry (the page itself carries the groups), and Payouts stays a direct link. Main: Today, Schedule, Sessions, Clients. Forms & assessments: Submissions, Assessments, Forms. Then Settings, Reports, Payouts. Hours log and Notifications leave the sidebar for the avatar menu (the bell covers notifications).
+- **Fix:** `4166459` + `279dede` on `dev`. `practiceNav.tsx` rewritten to that shape (tabs as data too, see GEN-04); `AccountMenu.tsx` gained Availability, Notifications and — clinical roles only — Hours log; Analytics relabels to Reports; the tour's Availability stop retargets the Settings entry (`nav-availability` → `nav-settings`); the phone bar is Today, Schedule, Sessions, Clients. Covered by `practiceNav.test.ts` and `DashboardTour.test.tsx`.
+- **Verified:** 7 Oct 2026 browser check (owner, dr-smith workspace): sidebar reads Today · Schedule · Sessions · Clients / Submissions · Assessments · Forms / Settings / Reports · Payouts — no Hours log, no Notifications; 1280 and 390 clean. 
 
 ## Template for new items
 

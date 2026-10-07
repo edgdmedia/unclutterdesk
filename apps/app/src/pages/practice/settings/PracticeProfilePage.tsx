@@ -71,7 +71,7 @@ export function PracticeProfilePage() {
         </button>
       </header>
 
-      <main className="p-[24px_26px_30px] grid grid-cols-[minmax(0,1fr)_372px] gap-[20px] items-start flex-1">
+      <main className="p-[24px_26px_30px] grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_372px] gap-[20px] items-start flex-1">
         <div className="space-y-5">
           {error ? <div className="rounded-[18px] border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-medium text-rose-700">{error}</div> : null}
           {loading ? <div className="rounded-[24px] border border-[#E2E8F0] bg-white px-6 py-10 text-sm font-medium text-[#64748B]">Loading practice profile...</div> : (
