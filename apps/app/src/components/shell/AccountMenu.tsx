@@ -1,17 +1,27 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { ChevronDown, Compass, IdCard, Loader2, LogOut, MessageSquarePlus, ShieldCheck, UserCog } from 'lucide-react';
+import { Bell, CalendarClock, ChevronDown, Clock, Compass, IdCard, Loader2, LogOut, MessageSquarePlus, ShieldCheck, UserCog } from 'lucide-react';
 import { useBrand, type SidebarMode } from '@unclutterdesk/ui';
 import { useAuth } from '../../context/AuthContext';
 import { AdminSwitchDialog } from '../AdminSwitchDialog';
 
 const ACCOUNT_MENU_ITEMS = [
   { to: '/dashboard/profile', label: 'My profile', icon: IdCard },
+  { to: '/dashboard/settings/availability', label: 'Availability', icon: CalendarClock },
   { to: '/dashboard/settings/account', label: 'Account & preferences', icon: UserCog },
+  { to: '/dashboard/notifications', label: 'Notifications', icon: Bell },
+  // GEN-03: personal and clinical-only items live in the avatar menu now.
+  { to: '/dashboard/hours', label: 'Hours log', icon: Clock, clinicalOnly: true },
   { to: '/dashboard/requests', label: 'Requests & feedback', icon: MessageSquarePlus },
 ];
 
 const MENU_ITEM = 'w-full flex items-center gap-2.5 px-3 h-[38px] rounded-[10px] text-[13.5px] font-semibold text-[#CBD5E1] hover:text-white hover:bg-[#334155] cursor-pointer';
+
+/** The Hours log is clinical work; a receptionist has no cases to log against. */
+export function visibleAccountMenuItems(profile: { role?: string | null; type?: string | null } | null | undefined) {
+  const isReceptionist = [profile?.role, profile?.type].some((r) => String(r ?? '').toUpperCase() === 'RECEPTIONIST');
+  return ACCOUNT_MENU_ITEMS.filter((item) => !item.clinicalOnly || !isReceptionist);
+}
 
 export function AccountMenu({ mode }: { mode: SidebarMode }) {
   const compact = mode === 'rail';
@@ -81,7 +91,7 @@ export function AccountMenu({ mode }: { mode: SidebarMode }) {
           role="menu"
           className={`absolute bottom-full mb-2 rounded-[14px] bg-[#1E293B] border border-white/10 shadow-2xl p-1.5 space-y-0.5 z-50 ${compact ? 'left-0 w-[220px]' : 'left-0 right-0'}`}
         >
-          {ACCOUNT_MENU_ITEMS.map((item) => (
+          {visibleAccountMenuItems(profile).map((item) => (
             <Link key={item.to} to={item.to} role="menuitem" onClick={() => setOpen(false)} className={MENU_ITEM}>
               <item.icon className="h-4 w-4 shrink-0" />
               <span className="truncate">{item.label}</span>

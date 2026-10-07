@@ -1,6 +1,6 @@
 import {
-  Activity, BarChart3, Bell, Calendar, CalendarClock, ClipboardCheck, ClipboardList, Clock, CreditCard, FileText,
-  Home, IdCard, LayoutDashboard, MapPin, Palette, Settings, Tag, Users, type LucideIcon,
+  BarChart3, Bell, Calendar, CalendarClock, ClipboardCheck, ClipboardList, CreditCard, FileText, Globe,
+  Home, IdCard, LayoutDashboard, Mail, MapPin, Palette, Settings, UserCog, Users, type LucideIcon,
 } from 'lucide-react';
 import type { SidebarSection } from '@unclutterdesk/ui';
 
@@ -16,57 +16,77 @@ interface NavEntry {
   /** Element id for the guided tour. */
   tourId?: string;
   tier?: 'pro' | 'clinic';
-  /** Only for roles that see clients clinically (owner, admin, therapist). */
   clinicalOnly?: boolean;
 }
 
+// GEN-03: the menu in the order the founder signed off — a few meaningful
+// groups instead of a wall of links. Hours log left for the avatar menu and
+// Notifications for the header bell: the sidebar says where the work is,
+// not where every page is.
 const MAIN: NavEntry[] = [
-  { href: '/dashboard', label: 'Overview', icon: LayoutDashboard },
+  { href: '/dashboard', label: 'Today', icon: LayoutDashboard },
   { href: '/dashboard/schedule', label: 'Schedule', icon: Calendar },
   { href: '/dashboard/sessions', label: 'Sessions', icon: ClipboardList, tourId: 'nav-sessions' },
   { href: '/dashboard/clients', label: 'Clients', icon: Users, tourId: 'nav-clients' },
-  { href: '/dashboard/assessments', label: 'Assessments', icon: Activity },
-  { href: '/dashboard/hours', label: 'Hours log', icon: Clock, clinicalOnly: true },
+];
+
+const FORMS: NavEntry[] = [
   { href: '/dashboard/submissions', label: 'Submissions', icon: ClipboardCheck },
-  { href: '/dashboard/analytics', label: 'Analytics', icon: BarChart3 },
-  { href: '/dashboard/notifications', label: 'Notifications', icon: Bell },
+  { href: '/dashboard/assessments', label: 'Assessments', icon: ClipboardList },
+  { href: '/dashboard/settings/forms', label: 'Forms', icon: FileText, tier: 'pro', tourId: 'nav-forms' },
 ];
 
-// Full settings for practice owners and admins.
-const OWNER_GROUPS: { label: string; items: NavEntry[] }[] = [
-  {
-    label: 'Client-facing',
-    items: [
-      { href: '/dashboard/settings/profile', label: 'Practice profile', icon: IdCard },
-      { href: '/dashboard/settings/locations', label: 'Locations', icon: MapPin },
-      { href: '/dashboard/settings/brand', label: 'Brand & booking page', icon: Palette, tier: 'pro' },
-    ],
-  },
-  {
-    label: 'Operations',
-    items: [
-      { href: '/dashboard/settings/availability', label: 'Availability', icon: CalendarClock, tourId: 'nav-availability' },
-      { href: '/dashboard/settings/services', label: 'Services & pricing', icon: Settings },
-      { href: '/dashboard/settings/team', label: 'Team & staff', icon: Users, tier: 'clinic' },
-      { href: '/dashboard/settings/subscription', label: 'Subscription', icon: CreditCard },
-      { href: '/dashboard/settings/payouts', label: 'Payouts', icon: CreditCard, tourId: 'nav-payouts' },
-      { href: '/dashboard/settings/forms', label: 'Forms', icon: FileText, tier: 'pro', tourId: 'nav-forms' },
-      { href: '/dashboard/settings/discounts', label: 'Discounts & promos', icon: Tag, tier: 'pro' },
-    ],
-  },
+// One entry for the whole settings area; the page itself is the tab hub.
+const SETTINGS: NavEntry[] = [
+  { href: '/dashboard/settings', label: 'Settings', icon: Settings },
 ];
 
-// Therapists and receptionists manage their own availability only.
-const OWN_AVAILABILITY: { label: string; items: NavEntry[] }[] = [
-  { label: 'My settings', items: [{ href: '/dashboard/settings/availability', label: 'Availability', icon: CalendarClock, tourId: 'nav-availability' }] },
+const INSIGHTS: NavEntry[] = [
+  { href: '/dashboard/analytics', label: 'Reports', icon: BarChart3 },
+  // Money earns its own link: the tour and the payout alerts point here.
+  { href: '/dashboard/settings/payouts', label: 'Payouts', icon: CreditCard, tourId: 'nav-payouts' },
+];
+
+/**
+ * GEN-04: everything that used to be a dozen sidebar links is one page with
+ * grouped tabs. The hub renders this list; routes stay flat and deep-linkable,
+ * and each tab's old URL still works (the path IS the old path).
+ */
+export interface SettingsTab {
+  href: string;
+  label: string;
+  icon: LucideIcon;
+  group: string;
+  /** Set when the tab sits outside the practice's plan — shown as a tag. */
+  badgeTier?: 'pro' | 'clinic';
+}
+
+interface TabDefinition extends Omit<SettingsTab, 'badgeTier'> {
+  tier?: 'pro' | 'clinic';
+  ownerOnly?: boolean;
+}
+
+const SETTINGS_TABS: TabDefinition[] = [
+  { href: '/dashboard/settings/profile', label: 'Practice profile', icon: IdCard, group: 'Practice', ownerOnly: true },
+  { href: '/dashboard/settings/locations', label: 'Locations', icon: MapPin, group: 'Practice', ownerOnly: true },
+  { href: '/dashboard/settings/brand', label: 'Brand & booking page', icon: Palette, group: 'Practice', tier: 'pro', ownerOnly: true },
+  { href: '/dashboard/settings/availability', label: 'Availability', icon: CalendarClock, group: 'Booking' },
+  { href: '/dashboard/settings/services', label: 'Services & pricing', icon: Settings, group: 'Booking', ownerOnly: true },
+  { href: '/dashboard/settings/discounts', label: 'Discounts & promos', icon: BarChart3, group: 'Booking', tier: 'pro', ownerOnly: true },
+  { href: '/dashboard/settings/domain', label: 'Custom domain', icon: Globe, group: 'Domain & email', tier: 'pro', ownerOnly: true },
+  { href: '/dashboard/settings/notifications', label: 'Notifications', icon: Bell, group: 'Domain & email', ownerOnly: true },
+  { href: '/dashboard/settings/sending-domain', label: 'Sending domain', icon: Mail, group: 'Domain & email', tier: 'pro', ownerOnly: true },
+  { href: '/dashboard/settings/team', label: 'Team & staff', icon: Users, group: 'Team & billing', tier: 'clinic', ownerOnly: true },
+  { href: '/dashboard/settings/subscription', label: 'Subscription', icon: CreditCard, group: 'Team & billing', ownerOnly: true },
+  { href: '/dashboard/settings/account', label: 'Preferences', icon: UserCog, group: 'Team & billing' },
 ];
 
 /** The phone's bottom bar; everything else is under "More". */
 export const PRACTICE_BOTTOM_NAV: { href: string; label: string; icon: LucideIcon; tourId?: string }[] = [
   { href: '/dashboard', label: 'Today', icon: Home },
   { href: '/dashboard/schedule', label: 'Schedule', icon: Calendar },
+  { href: '/dashboard/sessions', label: 'Sessions', icon: ClipboardList, tourId: 'nav-sessions' },
   { href: '/dashboard/clients', label: 'Clients', icon: Users, tourId: 'nav-clients' },
-  { href: '/dashboard/notifications', label: 'Notifications', icon: Bell },
 ];
 
 const PLAN_RANK: Record<string, number> = { starter: 0, pro: 1, clinic: 2 };
@@ -79,9 +99,20 @@ export function planIncludes(plan: string | undefined, tier: string): boolean {
 const isRole = (p: NavProfile | null | undefined, role: string) =>
   [p?.role, p?.type].some((r) => String(r ?? '').toUpperCase() === role);
 
-function settingsGroups(p: NavProfile | null | undefined) {
-  if (isRole(p, 'OWNER') || isRole(p, 'ADMIN')) return OWNER_GROUPS;
-  return OWN_AVAILABILITY;
+const isOwnerOrAdmin = (p: NavProfile | null | undefined) => isRole(p, 'OWNER') || isRole(p, 'ADMIN');
+
+/**
+ * The tabs this person sees. Staff manage their own availability and
+ * preferences; the practice itself is the owner's to configure. Plan gating
+ * stays visible (a tag, not a removal) so owners can see what they're on.
+ */
+export function settingsTabsFor(profile: NavProfile | null | undefined, plan?: string): SettingsTab[] {
+  return SETTINGS_TABS
+    .filter((t) => !t.ownerOnly || isOwnerOrAdmin(profile))
+    .map(({ ownerOnly, tier, ...tab }) => ({
+      ...tab,
+      badgeTier: tier && plan && !planIncludes(plan, tier) ? tier : undefined,
+    }));
 }
 
 function PlanTag({ tier }: { tier: 'pro' | 'clinic' }) {
@@ -110,12 +141,14 @@ export function practiceSections(profile: NavProfile | null | undefined, plan: s
   return [
     { key: 'main', groups: [{ key: 'main', items: MAIN.filter((e) => !e.clinicalOnly || !receptionist).map(toItem) }] },
     {
-      key: 'practice',
-      label: 'Practice',
-      icon: <Settings className="h-3.5 w-3.5" />,
+      key: 'forms',
+      label: 'Forms & assessments',
+      icon: <ClipboardCheck className="h-3.5 w-3.5" />,
       collapsible: true,
-      groups: settingsGroups(profile).map((g) => ({ key: g.label, label: g.label, items: g.items.map(toItem) })),
+      groups: [{ key: 'forms', items: FORMS.map(toItem) }],
     },
+    { key: 'settings', groups: [{ key: 'settings', items: SETTINGS.map(toItem) }] },
+    { key: 'insights', groups: [{ key: 'insights', items: INSIGHTS.map(toItem) }] },
   ];
 }
 
