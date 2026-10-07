@@ -315,7 +315,7 @@ describe('TenantService SET-13 custom domain provisioning', () => {
 
     await serviceWith(prisma, cf).updateTenantBrand(BigInt(1), { customDomain: 'book.acme.ng' });
 
-    expect(cf.createHostname).toHaveBeenCalledWith('book.acme.ng', '1');
+    expect(cf.createHostname).toHaveBeenCalledWith('book.acme.ng');
     expect(cf.ensureRoute).toHaveBeenCalledWith('book.acme.ng');
     const last = prisma.tenant.update.mock.calls.at(-1)[0];
     expect(last.data).toEqual({ customHostnameId: 'cf1', customHostnameError: null });
@@ -331,7 +331,7 @@ describe('TenantService SET-13 custom domain provisioning', () => {
 
     expect(cf.deleteHostname).toHaveBeenCalledWith('cf0');
     expect(cf.removeRoute).toHaveBeenCalledWith('book.old.ng');
-    expect(cf.createHostname).toHaveBeenCalledWith('book.acme.ng', '1');
+    expect(cf.createHostname).toHaveBeenCalledWith('book.acme.ng');
   });
 
   test('re-saving the same domain leaves Cloudflare alone', async () => {

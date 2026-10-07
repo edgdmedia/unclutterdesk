@@ -412,7 +412,7 @@ export class TenantService {
     let data: { customHostnameId: string | null; customHostnameError: string | null } | null;
     if (domain) {
       try {
-        const created = await this.cf.createHostname(domain, tenantId.toString());
+        const created = await this.cf.createHostname(domain);
         await this.cf.ensureRoute(domain);
         data = { customHostnameId: created.id, customHostnameError: null };
       } catch (err) {

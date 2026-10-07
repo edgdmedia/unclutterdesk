@@ -189,7 +189,8 @@ CLOUDFLARE_SAAS_CNAME_TARGET=customers.unclutterdesk.com
 ### Per practice (self-serve)
 
 1. Practice saves `book.theirpractice.com` → the API creates the custom hostname
-   (TXT-validated certificate) with `custom_metadata.tenant = <tenant id>` and
+   (TXT-validated certificate, **no custom_metadata** — tagging hostnames with
+   the tenant is an Enterprise add-on; the zone answers `1413` without it) and
    a Workers route `book.theirpractice.com/*` → the tenant router. The router
    already serves any host: no Pages custom domain per tenant, no DNS record
    on our side.
@@ -202,8 +203,8 @@ target).
    switch booking emails and links onto the domain. A typo'd domain simply
    never goes live; nothing wrong can be emailed.
 4. Changing or clearing the domain deletes the old hostname object and its
-   route; anything the delete misses is swept by the same cron via
-   `custom_metadata.tenant`.
+   route; anything the delete misses is swept by the same cron, which treats
+   any hostname no tenant names in its `customDomain` as an orphan.
 
 `CUSTOM_DOMAIN_TARGET` keeps its old meaning for environments without the
 token: manual verify then checks public DNS + HTTPS itself, as before.
