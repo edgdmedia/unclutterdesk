@@ -594,9 +594,34 @@ export class TenantService {
   }
 
   /**
+   * Zoho-style answer for one expected record: is it actually published?
+   * 'unknown' whenever the resolver itself could not give a clean answer —
+   * an inconclusive check must never read as "not set". Separate so tests
+   * can stand in for DNS.
+   */
+  protected async checkPublishedRecord(rec: { type: string; name: string; value: string }): Promise<'verified' | 'missing' | 'unknown'> {
+    const clean = (v: string) => v.toLowerCase().replace(/\.$/, '');
+    try {
+      if (rec.type === 'CNAME') {
+        const cnames = await dns.resolveCname(rec.name);
+        return cnames.some((c) => clean(c) === clean(rec.value)) ? 'verified' : 'missing';
+      }
+      const chunks = await dns.resolveTxt(rec.name);
+      return chunks.some((parts) => parts.join('') === rec.value) ? 'verified' : 'missing';
+    } catch (err) {
+      const code = (err as NodeJS.ErrnoException).code || '';
+      // ENODATA/ENOENT mean the name exists but no such record — genuinely
+      // not published yet. Everything else (SERVFAIL, timeouts) is unknown.
+      if (/ENODATA|ENOENT|ENOTFOUND/.test(code)) return 'missing';
+      return 'unknown';
+    }
+  }
+
+  /**
    * SET-13: everything the Settings editor needs about the practice's own
    * domain — stored state plus, when Cloudflare manages it, the live records
-   * to publish at the registrar.
+   * to publish at the registrar, each marked verified / missing / unknown by
+   * checking public DNS for it.
    */
   async getCustomDomainStatus(tenantId: bigint) {
     const tenant = await this.prisma.tenant.findUnique({
@@ -617,7 +642,7 @@ export class TenantService {
       status: string | null;
       error: string | null;
       cnameTarget: string | null;
-      records: Array<{ name: string; type: string; data: string }>;
+      records: Array<{ type: string; name: string; value: string; state: 'verified' | 'missing' | 'unknown' }>;
       cfStatus: { status: string; sslStatus: string } | null;
     } = {
       id: tenant.id.toString(),
@@ -633,8 +658,16 @@ export class TenantService {
       try {
         const live = await this.cf.getVerification(tenant.customHostnameId);
         payload.cnameTarget = live.cnameTarget;
-        payload.records = live.verificationRecords.map((r) => ({ name: r.name, type: r.type, data: r.data }));
         payload.cfStatus = { status: live.status, sslStatus: live.sslStatus };
+        const expected = [
+          ...(tenant.customDomain && live.cnameTarget
+            ? [{ type: 'CNAME', name: tenant.customDomain, value: live.cnameTarget }]
+            : []),
+          ...live.verificationRecords.map((r) => ({ type: r.type, name: r.name, value: r.data })),
+        ];
+        payload.records = await Promise.all(
+          expected.map(async (rec) => ({ ...rec, state: await this.checkPublishedRecord(rec) })),
+        );
       } catch {
         // The stored state still tells the truth about our side.
       }

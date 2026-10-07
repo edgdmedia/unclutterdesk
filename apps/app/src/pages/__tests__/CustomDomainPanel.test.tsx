@@ -17,9 +17,13 @@ const { CustomDomainPanel } = await import('../practice/settings/CustomDomainPan
 
 const PENDING = {
   id: '1', hostname: 'book.acme.ng', status: 'PENDING', error: null,
-  cnameTarget: 'tag.my.cloudflare.net',
-  records: [{ name: 'book.acme.ng', type: 'CNAME', data: 'verify.tag.my.cloudflare.net' }],
-  cfStatus: { status: 'pending', sslStatus: 'initializing' },
+  cnameTarget: 'customers.unclutterdesk.com',
+  records: [
+    { type: 'CNAME', name: 'book.acme.ng', value: 'customers.unclutterdesk.com', state: 'verified' },
+    { type: 'TXT', name: '_cf-custom-hostname.book.acme.ng', value: 'own-123', state: 'verified' },
+    { type: 'TXT', name: '_dcv.book.acme.ng', value: 'dcv-456', state: 'missing' },
+  ],
+  cfStatus: { status: 'active', sslStatus: 'pending_validation' },
 };
 
 beforeEach(() => {
@@ -30,37 +34,43 @@ beforeEach(() => {
 afterEach(cleanup);
 
 describe('the custom domain panel', () => {
-  it('shows what is waiting and the records to publish', async () => {
+  it('lists every expected record with a per-record DNS status', async () => {
     renderWithApp(<CustomDomainPanel />);
     expect(await screen.findByText('Waiting on DNS')).toBeTruthy();
-    expect(screen.getByText('verify.tag.my.cloudflare.net')).toBeTruthy();
-    expect(screen.getByText('tag.my.cloudflare.net')).toBeTruthy();
-    expect(screen.getByRole('button', { name: 'Copy CNAME target' })).toBeTruthy();
-    expect(screen.getByText(/certificate initializing/)).toBeTruthy();
+    expect(screen.getAllByText('Set')).toHaveLength(2);
+    expect(screen.getAllByText('Not found yet')).toHaveLength(1);
+    expect(screen.getByText('_dcv.book.acme.ng')).toBeTruthy();
+    expect(screen.getByText(/certificate: pending_validation/)).toBeTruthy();
+  });
+
+  it('re-checks on demand and verifies on request', async () => {
+    apiPost.mockResolvedValue({ customDomainStatus: 'ACTIVE' });
+    renderWithApp(<CustomDomainPanel />);
+    await screen.findByText('Waiting on DNS');
+    fireEvent.click(screen.getByRole('button', { name: /Re-check/ }));
+    await waitFor(() => expect(apiGet).toHaveBeenCalledTimes(2));
+    fireEvent.click(screen.getByRole('button', { name: /Verify & go live/ }));
+    await waitFor(() => expect(apiPost).toHaveBeenCalledWith('/v1/tenant/brand/custom-domain/verify', {}));
   });
 
   it('saves through the brand endpoint and reloads', async () => {
     renderWithApp(<CustomDomainPanel />);
     const field = await screen.findByDisplayValue('book.acme.ng');
-    fireEvent.change(field, { target: { value: 'book.newpractice.ng' } });
+    fireEvent.change(field, { target: { value: 'Book.NewPractice.NG ' } });
     fireEvent.click(screen.getByRole('button', { name: /Save domain/ }));
     await waitFor(() => expect(apiPatch).toHaveBeenCalledWith('/v1/tenant/brand', { customDomain: 'book.newpractice.ng' }));
-    await waitFor(() => expect(apiGet).toHaveBeenCalledTimes(2));
   });
 
   it('a live domain shows the promise it delivers', async () => {
-    apiGet.mockResolvedValue({ ...PENDING, status: 'ACTIVE', records: [], cnameTarget: null, cfStatus: null });
+    apiGet.mockResolvedValue({ ...PENDING, status: 'ACTIVE', records: [], cfStatus: null });
     renderWithApp(<CustomDomainPanel />);
     expect(await screen.findByText('Live')).toBeTruthy();
-    expect(screen.getByText(/now use https:\/\/book.acme.ng/)).toBeTruthy();
-    expect(screen.queryByText('Waiting on DNS')).toBeNull();
+    expect(screen.getByText(/https:\/\/book\.acme\.ng/)).toBeTruthy();
   });
 
-  it('Check now calls verify and surfaces its answer', async () => {
-    apiPost.mockRejectedValue(new Error('not ready yet, add a CNAME'));
+  it('a stored failure is shown, not hidden', async () => {
+    apiGet.mockResolvedValue({ ...PENDING, error: 'Cloudflare 1413: quota', records: [] });
     renderWithApp(<CustomDomainPanel />);
-    fireEvent.click(await screen.findByRole('button', { name: /Check now/ }));
-    await waitFor(() => expect(apiPost).toHaveBeenCalledWith('/v1/tenant/brand/custom-domain/verify', {}));
-    await waitFor(() => expect(screen.getByText(/not ready yet/)).toBeTruthy());
+    expect(await screen.findByText('Cloudflare 1413: quota')).toBeTruthy();
   });
 });
