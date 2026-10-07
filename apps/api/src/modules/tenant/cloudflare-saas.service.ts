@@ -58,18 +58,20 @@ export class CloudflareSaasService {
   }
 
   /**
-   * Create the custom hostname with a CNAME-validated certificate and return
+   * Create the custom hostname with a TXT-validated certificate and return
    * the records the practice must publish at its own DNS provider.
+   *
+   * The body deliberately carries NO custom_metadata: tagging hostnames with
+   * the owning tenant reads nicer, but custom metadata is an Enterprise
+   * add-on and Cloudflare refuses it with error 1413 on our zone. Ownership
+   * is resolved by matching hostnames against tenants instead — see the
+   * sweep cron. ('cname' as the DCV method was also rejected: the API
+   * accepts only http, txt and email.)
    */
-  async createHostname(hostname: string, tenantId: string): Promise<CfHostnameResult> {
+  async createHostname(hostname: string): Promise<CfHostnameResult> {
     const body = {
       hostname,
-      // DCV by TXT record: the practice publishes one TXT row at their
-      // provider, so the certificate can issue before any traffic switches
-      // over. ('cname' here was rejected as invalid — the API accepts only
-      // http, txt and email for this field.)
       ssl: { method: 'txt', type: 'dv', settings: { min_tls_version: '1.2' } },
-      custom_metadata: { tenant: tenantId },
     };
     const result = await this.call(`/zones/${this.zoneId}/custom_hostnames`, 'POST', body);
     return {
@@ -151,12 +153,11 @@ export class CloudflareSaasService {
   }
 
   /** All hostnames on the zone — used by the orphan sweep. */
-  async listHostnames(): Promise<Array<{ id: string; hostname: string; tenantId: string | null }>> {
+  async listHostnames(): Promise<Array<{ id: string; hostname: string }>> {
     const list = await this.callRaw(`/zones/${this.zoneId}/custom_hostnames?per_page=800`, 'GET');
     return ((list.result || []) as any[]).map((h) => ({
       id: String(h.id),
       hostname: String(h.hostname),
-      tenantId: h.custom_metadata?.tenant ? String(h.custom_metadata.tenant) : null,
     }));
   }
 

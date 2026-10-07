@@ -65,26 +65,22 @@ describe('CustomDomainCron', () => {
     );
   });
 
-  it('sweeps hostnames whose tenant no longer owns them', async () => {
+  it('sweeps hostnames no tenant claims by name', async () => {
     const { prisma, cf, tenantService, cron } = deps();
     cf.listHostnames.mockResolvedValue([
-      { id: 'cf-kept', hostname: 'keep.acme.ng', tenantId: '3' },
-      { id: 'cf-orphan', hostname: 'gone.acme.ng', tenantId: '4' },
-      { id: 'cf-manual', hostname: 'manual.acme.ng', tenantId: null },
+      { id: 'cf-kept', hostname: 'keep.acme.ng' },
+      { id: 'cf-orphan', hostname: 'gone.acme.ng' },
     ]);
-    prisma.tenant.findUnique.mockImplementation(({ where }: any) =>
-      where.id === BigInt(3)
-        ? Promise.resolve({ id: BigInt(3), customDomain: 'keep.acme.ng', customHostnameId: 'cf-kept' })
-        : where.id === BigInt(4)
-          ? Promise.resolve(null)
-          : Promise.resolve(null),
+    prisma.tenant.findMany.mockImplementation((args: any) =>
+      args.where?.customDomain?.in
+        ? Promise.resolve([{ customDomain: 'keep.acme.ng' }])
+        : Promise.resolve([]),
     );
 
     await cron.tick();
     expect(cf.deleteHostname).toHaveBeenCalledWith('cf-orphan');
     expect(cf.removeRoute).toHaveBeenCalledWith('gone.acme.ng');
     expect(cf.deleteHostname).not.toHaveBeenCalledWith('cf-kept');
-    expect(cf.deleteHostname).not.toHaveBeenCalledWith('cf-manual');
   });
 
   it('survives a Cloudflare outage without throwing', async () => {

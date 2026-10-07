@@ -68,14 +68,14 @@ describe('CloudflareSaasService', () => {
       },
     }));
     const service = new CloudflareSaasService();
-    const result = await service.createHostname('booking.acme.ng', '42');
+    const result = await service.createHostname('booking.acme.ng');
 
     expect(fetchMock).toHaveBeenCalledWith(
       'https://api.cloudflare.com/client/v4/zones/zone123/custom_hostnames',
       expect.objectContaining({ method: 'POST' }),
     );
     const body = JSON.parse(fetchMock.mock.calls[0][1].body);
-    expect(body).toMatchObject({ hostname: 'booking.acme.ng', ssl: { method: 'txt', type: 'dv' }, custom_metadata: { tenant: '42' } });
+    expect(body).toEqual({ hostname: 'booking.acme.ng', ssl: { method: 'txt', type: 'dv', settings: { min_tls_version: '1.2' } } });
     expect(result).toMatchObject({ id: 'cf-id-1', status: 'pending', sslStatus: 'pending', cnameTarget: 'zone-tag.my.cloudflare.net' });
     expect(result.verificationRecords).toHaveLength(1);
   });

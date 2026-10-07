@@ -76,24 +76,33 @@ export class CustomDomainCron {
     }
   }
 
+  /**
+   * Delete hostname objects no tenant claims. Custom metadata is an
+   * Enterprise add-on (error 1413), so ownership is decided by matching the
+   * hostname against every tenant's stored customDomain: a hostname nobody
+   * names is left over from a moved-away or cleared domain. Hostnames we do
+   * not recognise as ours but a tenant does name are left alone — adopting
+   * them is a manual step, deleting them would be vandalism.
+   */
   private async sweepOrphans(): Promise<void> {
-    let hostnames: Array<{ id: string; hostname: string; tenantId: string | null }>;
+    let hostnames: Array<{ id: string; hostname: string }>;
     try {
       hostnames = await this.cf.listHostnames();
     } catch (err) {
       this.logger.warn(`listing hostnames failed: ${(err as Error).message}`);
       return;
     }
+    if (!hostnames.length) return;
+
+    const claimed = await this.prisma.tenant.findMany({
+      where: { customDomain: { in: hostnames.map((h) => h.hostname) } },
+      select: { customDomain: true },
+    });
+    const claimedNames = new Set(claimed.map((t: { customDomain: string | null }) => t.customDomain));
 
     for (const hostname of hostnames) {
-      if (!hostname.tenantId) continue; // objects made by hand are left alone
+      if (claimedNames.has(hostname.hostname)) continue;
       try {
-        const owner = await this.prisma.tenant.findUnique({
-          where: { id: BigInt(hostname.tenantId) },
-          select: { id: true, customDomain: true, customHostnameId: true },
-        });
-        if (owner && owner.customHostnameId === hostname.id && owner.customDomain === hostname.hostname) continue;
-
         await this.cf.deleteHostname(hostname.id);
         await this.cf.removeRoute(hostname.hostname);
         this.logger.log(`swept orphan custom hostname ${hostname.hostname}`);
