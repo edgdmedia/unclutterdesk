@@ -5,10 +5,7 @@ import { BookingWizardPage } from '../../public/booking/BookingWizardPage';
 import { BookingConfirmedPage } from '../../public/BookingConfirmedPage';
 import { api, practiceBookingUrl } from '../../../utils/apiClient';
 import { usePracticeBrand } from '../../../context/PracticeBrandContext';
-import { SendingDomainCard } from '../../../components/email/SendingDomainCard';
-import { CustomDomainPanel } from './CustomDomainPanel';
 import { LogoField } from '../../../components/settings/LogoField';
-import { BookingLinkCard } from '../../../components/settings/BookingLinkCard';
 
 type BrandRecord = {
   name?: string;
@@ -135,20 +132,8 @@ export function BrandSettingsPage() {
                 <button onClick={() => void handleSave()} disabled={saving} className="h-[42px] px-[15px] rounded-[13px] bg-[#0F3A53] text-white text-[13px] font-semibold cursor-pointer disabled:opacity-60">{saving ? 'Saving…' : 'Save brand'}</button>
               </Card>
 
-              <BookingLinkCard
-                slug={slug}
-                onSaved={(next) => {
-                  setSlug(next);
-                  void refresh();
-                }}
-              />
-
-              {/* SET-03 → SET-13: the placeholder is gone; this is the live panel. */}
-              <CustomDomainPanel />
             </>
           )}
-
-          <SendingDomainCard />
         </div>
 
         <div className="lg:col-span-7 space-y-4">

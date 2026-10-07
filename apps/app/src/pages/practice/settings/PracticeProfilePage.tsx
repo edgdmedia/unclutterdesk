@@ -58,7 +58,7 @@ export function PracticeProfilePage() {
   }
 
   return (
-    <div className="flex-1 min-w-[1192px] flex flex-col bg-[#F8FAFC]">
+    <div className="flex-1 min-w-0 flex flex-col bg-[#F8FAFC]">
       <header className="h-[88px] bg-white border-b border-[#E2E8F0] px-[26px] flex items-center justify-between gap-5 shrink-0">
         <div>
           <Eyebrow>PRACTICE</Eyebrow>
