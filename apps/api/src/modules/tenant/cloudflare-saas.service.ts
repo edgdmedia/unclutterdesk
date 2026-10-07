@@ -110,6 +110,11 @@ export class CloudflareSaasService {
     const dcv = (result.ssl?.verification_records || result.ssl?.validate_records || []).map(
       (r: any) => ({ name: r.name ?? '', type: r.type ?? '', data: r.data ?? '', target: r.target ?? undefined }),
     );
+    // Older-style answers carry the DCV as plain ssl.txt_name/txt_value with
+    // an empty records list — the live zone did exactly that on first issue.
+    if (!dcv.length && result.ssl?.txt_name && result.ssl?.txt_value) {
+      dcv.push({ name: String(result.ssl.txt_name), type: 'TXT', data: String(result.ssl.txt_value) });
+    }
     const ownership = result.ownership_verification;
     if (ownership?.name && ownership?.value) {
       dcv.push({ name: ownership.name, type: ownership.type || 'TXT', data: ownership.value });
