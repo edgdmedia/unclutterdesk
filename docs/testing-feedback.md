@@ -104,6 +104,7 @@ A running log of what shows up in testing, what we decide about it, and when it'
 | GEN-01 | Design system | Pages set their own widths and hand-write their grids | UX | P2 | Ready |
 | GEN-02 | Design system | The dashboard keeps showing Profile photo and Practice branding cards | UX | P3 | Ready |
 | GEN-03 | Design system | The menu feels disconnected | UX | P2 | Ready |
+| GEN-04 | Design system | Settings is twelve loose pages; unrelated things share a page | UX | P2 | Ready |
 | NOT-12 | Notifications | Practices can't change the wording of their emails | Feature | P2 | Ready |
 | NOT-13 | Notifications | Clients can't choose their reminders | Feature | P1 | Ready |
 | NOT-14 | Notifications | Practices can't see or send a session's reminders | Feature | P2 | Ready |
@@ -638,6 +639,13 @@ A running log of what shows up in testing, what we decide about it, and when it'
 - **Type:** UX · **Priority:** P3 · **Status:** Ready
 - **Observed:** Setup prompts stay on the dashboard after they are done.
 - **Feedback / decision:** Decided 2 Oct 2026. Show each card only until it is done; both stay editable in settings.
+- **Fix:** 
+- **Verified:** 
+
+### GEN-04 · Settings is twelve loose pages; unrelated things share a page
+- **Type:** UX · **Priority:** P2 · **Status:** Ready
+- **Observed:** 6 Oct 2026, live testing. Eleven `/dashboard/settings/*` pages sit as separate sidebar links; the Brand page carried custom domain *and* sending-email settings together ("Custom domain and sending email settings shouldn't be on the same page"), and Availability/Services/Discounts/Team each feel like their own app.
+- **Feedback / decision:** Founder 6 Oct 2026: collapse Settings into one page with a left tab rail (top tabs on mobile), grouped — **Practice** (Profile · Locations · Brand & booking page), **Booking** (Availability · Services & pricing · Discounts), **Domain & email** (Custom domain · Notifications · Sending domain), **Team & billing** (Team · Subscription · Payouts). Sidebar shows a single Settings entry; role/tier gating moves onto the tabs. Forms keeps its own sidebar home (it is a workspace, not a setting). Implemented together with the GEN-03 menu regrouping — plan `docs/superpowers/plans/2026-10-06-settings-hub-and-menu-regroup.md`.
 - **Fix:** 
 - **Verified:** 
 
