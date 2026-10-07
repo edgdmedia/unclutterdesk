@@ -25,7 +25,7 @@ vi.mock('../../context/AuthContext', () => ({
 const { DashboardTour } = await import('../onboarding/DashboardTour');
 const { AccountMenu } = await import('../shell/AccountMenu');
 
-const ANCHOR_IDS = ['booking-link', 'nav-sessions', 'nav-clients', 'nav-availability', 'nav-forms', 'nav-payouts', 'account-menu'];
+const ANCHOR_IDS = ['booking-link', 'nav-sessions', 'nav-clients', 'nav-settings', 'nav-forms', 'nav-payouts', 'account-menu'];
 
 function Anchors() {
   return (

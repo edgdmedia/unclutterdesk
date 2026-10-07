@@ -44,7 +44,6 @@ describe('Brand settings', () => {
     expect(((await screen.findByLabelText('Primary colour')) as HTMLInputElement).value.toLowerCase()).toBe('#1e1b4b');
     expect((screen.getByLabelText('Accent colour') as HTMLInputElement).value.toLowerCase()).toBe('#3b82f6');
     expect((screen.getByRole('img', { name: 'Practice logo' }) as HTMLImageElement).src).toBe(saved.logoUrl);
-    expect((screen.getByLabelText('Booking link') as HTMLInputElement).value).toBe('edgdmedia');
   });
 
   it('saves new colours and a removed logo', async () => {
@@ -57,14 +56,15 @@ describe('Brand settings', () => {
     );
   });
 
-  // SET-03 parked this as "Coming soon"; SET-13 built it. The live panel now
-  // sits here, next to the booking link, exactly where people looked for it.
-  it('offers the live custom domain panel where the placeholder used to be', async () => {
+  // GEN-04: the address and email pages moved to their own tabs; the Brand
+  // page is colour, logo, name and the live booking preview — nothing else.
+  it('no longer carries the booking link, the custom domain or the sending domain', async () => {
     renderWithApp(<BrandSettingsPage />);
+    await screen.findByLabelText('Primary colour');
+    expect(screen.queryByLabelText('Booking link')).toBeNull();
+    expect(screen.queryByRole('button', { name: /save domain/i })).toBeNull();
     expect(screen.queryByText(/coming soon/i)).toBeNull();
-    expect(await screen.findByRole('button', { name: /save domain/i })).toBeTruthy();
-    expect(screen.getByPlaceholderText('book.yourpractice.com')).toBeTruthy();
-    expect(screen.getByText('Your own booking address')).toBeTruthy();
+    expect(screen.queryByText(/Sending domain/i)).toBeNull();
   });
 });
 

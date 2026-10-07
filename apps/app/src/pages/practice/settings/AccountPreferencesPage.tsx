@@ -140,6 +140,8 @@ function timeAgo(iso: string, now: number = Date.now()): string {
 const selectCls =
   'h-[46px] w-full px-[14px] rounded-[14px] bg-[#F8FAFC] border border-[#E2E8F0] text-sm font-semibold text-[#0F172A] outline-none focus:bg-white focus:border-[#94A3B8] cursor-pointer';
 
+const SESSIONS_SHOWN = 5;
+
 const inputCls =
   'h-[46px] w-full px-[14px] rounded-[14px] bg-[#F8FAFC] border border-[#E2E8F0] text-sm font-medium text-[#0F172A] outline-none focus:bg-white focus:border-[#94A3B8]';
 
@@ -229,6 +231,7 @@ export function AccountPreferencesPage() {
   const [pwError, setPwError] = useState<string | null>(null);
 
   const [sessions, setSessions] = useState<ActiveSession[] | null>(null);
+  const [showAllSessions, setShowAllSessions] = useState(false);
   const [sessionError, setSessionError] = useState<string | null>(null);
   // The id being signed out, so only that row shows as busy.
   const [endingSession, setEndingSession] = useState<string | null>(null);
@@ -405,7 +408,7 @@ export function AccountPreferencesPage() {
   }, [prefs]);
 
   return (
-    <div className="flex-1 min-w-[1192px] flex flex-col bg-[#F8FAFC]">
+    <div className="flex-1 min-w-0 flex flex-col bg-[#F8FAFC]">
       <header className="h-[88px] bg-white border-b border-[#E2E8F0] px-[26px] flex items-center gap-5 shrink-0">
         <div>
           <Eyebrow>ACCOUNT</Eyebrow>
@@ -739,7 +742,7 @@ export function AccountPreferencesPage() {
 
             {sessions ? (
               <ul className="mt-3 flex flex-col gap-2.5">
-                {sessions.map((session) => (
+                {(showAllSessions || sessions.length <= SESSIONS_SHOWN ? sessions : sessions.slice(0, SESSIONS_SHOWN)).map((session) => (
                   <li
                     key={session.id}
                     className="flex items-start gap-3 px-3 py-2.5 rounded-[16px] bg-[#F8FAFC] border border-[#E2E8F0]"
@@ -778,6 +781,16 @@ export function AccountPreferencesPage() {
                   </li>
                 ))}
               </ul>
+            ) : null}
+
+            {sessions && sessions.length > SESSIONS_SHOWN ? (
+              <button
+                type="button"
+                onClick={() => setShowAllSessions((v) => !v)}
+                className="mt-2.5 text-[11.5px] font-bold text-[#0F3A53] hover:underline cursor-pointer"
+              >
+                {showAllSessions ? 'Show fewer' : `Show all ${sessions.length} sessions`}
+              </button>
             ) : null}
           </div>
 

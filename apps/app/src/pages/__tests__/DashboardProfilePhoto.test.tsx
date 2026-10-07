@@ -69,7 +69,8 @@ describe('dashboard profile photo', () => {
       expect(post).toHaveBeenCalledWith('/v1/consult/therapist/profile/avatar', { avatarUrl: expect.stringMatching(/^data:image\//) }),
     );
     await waitFor(() => expect(refreshProfile).toHaveBeenCalled());
-    expect((await screen.findAllByRole('status')).some((el) => el.textContent === 'Saved')).toBe(true);
+    // GEN-02: once saved, the card retires; the photo lives on in the menu.
+    await waitFor(() => expect(screen.queryByLabelText('Upload profile photo')).toBeNull());
   });
 
   it('shows the server’s message when the save is refused', async () => {
@@ -83,5 +84,29 @@ describe('dashboard profile photo', () => {
     renderWithApp(<DashboardPage />);
     await screen.findByLabelText('Upload profile photo');
     expect(document.body.textContent).not.toMatch(/2 MB/);
+  });
+
+  // GEN-02: setup prompts that stay after the job is done are noise.
+  it('does not ask for a photo that is already saved', async () => {
+    get.mockImplementation(async (url: string) => {
+      if (url === '/v1/consult/therapist/profile') return { firstName: 'Jane', lastName: 'Smith', specialty: 'Psychologist', avatarUrl: 'https://cdn/x.png' };
+      if (url === '/v1/tenant/brand') return { customDomain: null, customDomainStatus: null, logoUrl: 'https://cdn/logo.png' };
+      if (url === '/v1/tenant/notifications') return [];
+      if (url === '/v1/consult/dashboard/summary') return {
+        revenueThisMonthNaira: 0, monthlyRevenue: [], revenueChangePercent: null,
+        scheduledSessionsCount: 0, totalClientsCount: 0, activeRosterCount: 1, upcomingSessions: [],
+      };
+      return {};
+    });
+    renderWithApp(<DashboardPage />);
+    await waitFor(() => expect(get).toHaveBeenCalledWith('/v1/consult/dashboard/summary'));
+    expect(screen.queryByLabelText('Upload profile photo')).toBeNull();
+    expect(screen.queryByText('PRACTICE BRANDING')).toBeNull();
+    expect(screen.queryByText('Colors & Custom Domain')).toBeNull();
+  });
+
+  it('still asks for branding while no logo exists', async () => {
+    renderWithApp(<DashboardPage />);
+    expect(await screen.findByText('Colors & Custom Domain')).toBeTruthy();
   });
 });

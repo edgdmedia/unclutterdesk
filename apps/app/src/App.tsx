@@ -47,6 +47,10 @@ const AvailabilitySettingsPage = lazy(() => import('./pages/practice/settings/Av
 const MyProfilePage = lazy(() => import('./pages/practice/MyProfilePage').then((m) => ({ default: m.MyProfilePage })));
 const AccountPreferencesPage = lazy(() => import('./pages/practice/settings/AccountPreferencesPage').then((m) => ({ default: m.AccountPreferencesPage })));
 const PracticeProfilePage = lazy(() => import('./pages/practice/settings/PracticeProfilePage').then((m) => ({ default: m.PracticeProfilePage })));
+const SettingsHub = lazy(() => import('./pages/practice/settings/SettingsPage').then((m) => ({ default: m.SettingsHub })));
+const SettingsIndex = lazy(() => import('./pages/practice/settings/SettingsPage').then((m) => ({ default: m.SettingsIndex })));
+const SettingsDomainPage = lazy(() => import('./pages/practice/settings/SettingsDomainPage').then((m) => ({ default: m.SettingsDomainPage })));
+const SettingsEmailPage = lazy(() => import('./pages/practice/settings/SettingsEmailPage').then((m) => ({ default: m.SettingsEmailPage })));
 const LoginPage = lazy(() => import('./pages/auth/LoginPage').then((m) => ({ default: m.LoginPage })));
 const SignupPage = lazy(() => import('./pages/auth/SignupPage').then((m) => ({ default: m.SignupPage })));
 const ForgotPasswordPage = lazy(() => import('./pages/auth/ForgotPasswordPage').then((m) => ({ default: m.ForgotPasswordPage })));
@@ -447,25 +451,27 @@ function AppLayout() {
               <Route path="/dashboard/hours" element={<HoursLogPage />} />
               <Route path="/dashboard/requests" element={<RequestsPage />} />
               <Route path="/dashboard/notifications" element={<NotificationsPage />} />
-              <Route path="/dashboard/settings/notifications" element={<NotificationsPage />} />
+              {/* GEN-04: one Settings page with a tab rail; each tab keeps its old URL. */}
+              <Route path="/dashboard/settings" element={<SettingsHub />}>
+                <Route index element={<SettingsIndex />} />
+                <Route path="profile" element={<PracticeProfilePage />} />
+                <Route path="locations" element={<LocationsSettingsPage />} />
+                <Route path="brand" element={<BrandSettingsPage />} />
+                <Route path="availability" element={<AvailabilitySettingsPage />} />
+                <Route path="services" element={<ServicesSettingsPage />} />
+                <Route path="discounts" element={<DiscountSettingsPage />} />
+                <Route path="domain" element={<SettingsDomainPage />} />
+                <Route path="notifications" element={<NotificationsPage />} />
+                <Route path="sending-domain" element={<SettingsEmailPage />} />
+                <Route path="team" element={<TeamSettingsPage staff={resolvedStaff} onRefresh={refreshStaff} />} />
+                <Route path="subscription" element={<SubscriptionSettingsPage />} />
+                <Route path="account" element={<AccountPreferencesPage />} />
+                <Route path="*" element={<SettingsIndex />} />
+              </Route>
               <Route path="/dashboard/profile" element={<MyProfilePage />} />
-              <Route path="/dashboard/settings/account" element={<AccountPreferencesPage />} />
-              <Route path="/dashboard/settings/availability" element={<AvailabilitySettingsPage />} />
-              <Route path="/dashboard/settings/profile" element={<PracticeProfilePage />} />
-              <Route path="/dashboard/settings/locations" element={<LocationsSettingsPage />} />
-              <Route
-                path="/dashboard/settings/brand"
-                element={
-                  <BrandSettingsPage />
-                }
-              />
-              <Route path="/dashboard/settings/team" element={<TeamSettingsPage staff={resolvedStaff} onRefresh={refreshStaff} />} />
-              <Route path="/dashboard/settings/subscription" element={<SubscriptionSettingsPage />} />
               <Route path="/dashboard/settings/payouts" element={<PayoutSettingsPage />} />
               <Route path="/dashboard/settings/forms" element={<FormsManagerPage />} />
               <Route path="/dashboard/settings/forms/:id" element={<FormEditorPage />} />
-              <Route path="/dashboard/settings/discounts" element={<DiscountSettingsPage />} />
-              <Route path="/dashboard/settings/services" element={<ServicesSettingsPage />} />
               {/* Every other route tree has these; signed-in staff got a 404. */}
               <Route path="/privacy" element={<ExternalRedirect to={LEGAL_URLS.privacy} />} />
               <Route path="/terms" element={<ExternalRedirect to={LEGAL_URLS.terms} />} />

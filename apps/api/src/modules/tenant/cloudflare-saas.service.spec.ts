@@ -98,6 +98,18 @@ describe('CloudflareSaasService', () => {
     delete process.env.CLOUDFLARE_SAAS_CNAME_TARGET;
   });
 
+  it('falls back to ssl.txt_name/txt_value when the records list is empty', async () => {
+    fetchMock.mockResolvedValue(ok({
+      id: 'cf-id-3', status: 'active',
+      ssl: { status: 'pending_validation', method: 'txt', verification_records: [], txt_name: '_acme-challenge.book.acme.ng', txt_value: 'tok-123' },
+    }));
+    const service = new CloudflareSaasService();
+    const result = await service.getVerification('cf-id-3');
+    expect(result.verificationRecords).toEqual([
+      { name: '_acme-challenge.book.acme.ng', type: 'TXT', data: 'tok-123' },
+    ]);
+  });
+
   it('reads status back for the poller', async () => {
     fetchMock.mockResolvedValue(ok({ id: 'cf-id-1', status: 'active', ssl: { status: 'active' } }));
     const service = new CloudflareSaasService();

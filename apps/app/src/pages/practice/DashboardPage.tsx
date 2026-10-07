@@ -27,12 +27,16 @@ export function DashboardPage(props: DashboardPageProps) {
   const [profileName, setProfileName] = useState(userFullName || authUser?.email || '');
   const [profileTitle, setProfileTitle] = useState('Practitioner');
   const [profileAvatar, setProfileAvatar] = useState<string | null>(null);
+  // GEN-02: the card asks for a photo until one is SAVED — not while someone is
+  // mid-upload picking one out.
+  const [photoDone, setPhotoDone] = useState(false);
   const [copied, setCopied] = useState(false);
   const [practiceActive, setPracticeActive] = useState(props.tenantStatus === 'ACTIVE');
   const primaryColor = props.primaryColor || '#0F3A53';
   const secondaryColor = props.secondaryColor || '#E3B341';
   const [customDomain, setCustomDomain] = useState('');
   const [customDomainStatus, setCustomDomainStatus] = useState<string | null>(null);
+  const [brandLogo, setBrandLogo] = useState<string | null>(null);
   const [complimentary, setComplimentary] = useState<{ tier: string; until: string } | null>(null);
 
   const [summary, setSummary] = useState<{
@@ -65,6 +69,8 @@ export function DashboardPage(props: DashboardPageProps) {
   async function savePhoto(dataUrl: string) {
     await api.post('/v1/consult/therapist/profile/avatar', { avatarUrl: dataUrl });
     await refreshProfile();
+    // GEN-02: done means gone — the card retires the moment the server has it.
+    setPhotoDone(true);
   }
 
   useEffect(() => {
@@ -72,7 +78,7 @@ export function DashboardPage(props: DashboardPageProps) {
 
     async function loadDashboardMeta() {
       const [brandRes, profileRes, dashSummaryRes] = await Promise.allSettled([
-        api.get<{ customDomain?: string | null; customDomainStatus?: string | null }>('/v1/tenant/brand'),
+        api.get<{ customDomain?: string | null; customDomainStatus?: string | null; logoUrl?: string | null }>('/v1/tenant/brand'),
         api.get<{ firstName?: string; lastName?: string; specialty?: string; avatarUrl?: string | null }>('/v1/consult/therapist/profile'),
         api.get<{
           revenueThisMonthNaira: number;
@@ -94,6 +100,7 @@ export function DashboardPage(props: DashboardPageProps) {
       if (brandRes.status === 'fulfilled') {
         setCustomDomain(brandRes.value.customDomain || '');
         setCustomDomainStatus(brandRes.value.customDomainStatus ?? null);
+        setBrandLogo(brandRes.value.logoUrl || null);
       }
 
       if (profileRes.status === 'fulfilled') {
@@ -101,7 +108,7 @@ export function DashboardPage(props: DashboardPageProps) {
         const fetchedName = `${p.firstName || ''} ${p.lastName || ''}`.trim();
         if (fetchedName) setProfileName(fetchedName);
         if (p.specialty) setProfileTitle(p.specialty);
-        if (p.avatarUrl) setProfileAvatar(p.avatarUrl);
+        if (p.avatarUrl) { setProfileAvatar(p.avatarUrl); setPhotoDone(true); }
       }
 
 
@@ -437,7 +444,9 @@ export function DashboardPage(props: DashboardPageProps) {
 
         {/* Right Column */}
         <div className="space-y-4 md:space-y-[20px]">
-          {/* Profile Photo Card */}
+          {/* GEN-02: setup prompts retire when the thing they ask for is done.
+              The photo stays editable in My profile. */}
+          {!photoDone ? (
           <div className="os-card p-[22px]">
             <span className="os-eyebrow block mb-3">PROFILE PHOTO</span>
             <div className="flex items-center gap-4 mb-4">
@@ -464,6 +473,7 @@ export function DashboardPage(props: DashboardPageProps) {
               onSave={savePhoto}
             />
           </div>
+          ) : null}
 
           {/* Practice Status Card */}
           <div className="os-card p-[20px_22px]">
@@ -503,7 +513,9 @@ export function DashboardPage(props: DashboardPageProps) {
             </p>
           </div>
 
-          {/* Practice Branding & Settings Shortcut Card */}
+          {!brandLogo ? (
+          /* Practice Branding & Settings Shortcut Card — gone once the practice
+             has a logo; everything it shortcuts stays in Settings. */
           <div className="os-card p-[20px_22px] flex items-center justify-between gap-3">
             <div>
               <span className="os-eyebrow block">PRACTICE BRANDING</span>
@@ -520,6 +532,7 @@ export function DashboardPage(props: DashboardPageProps) {
               <ArrowRight className="h-3.5 w-3.5 text-[#64748B]" />
             </button>
           </div>
+          ) : null}
         </div>
       </div>
     </Page>

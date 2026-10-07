@@ -299,6 +299,24 @@ describe('active sessions', () => {
     expect(screen.getByText('Safari on iPhone')).toBeTruthy();
   });
 
+  // An account shared over years accumulates dozens of rows; the panel used to
+  // render them all.
+  it('shows five devices and offers the rest', async () => {
+    const many = Array.from({ length: 8 }, (_, i) => ({
+      id: `s${i}`, device: `Chrome on Machine ${i}`, ipAddress: '1.2.3.4',
+      lastUsedAt: new Date(Date.now() - i * 3_600_000).toISOString(), current: i === 0,
+    }));
+    sessionsResponse = () => Promise.resolve(many);
+    await renderPage();
+    await screen.findByText('Chrome on Machine 0');
+    const rows = () => document.querySelectorAll('li').length;
+    expect(rows()).toBe(5);
+    fireEvent.click(screen.getByRole('button', { name: 'Show all 8 sessions' }));
+    expect(rows()).toBe(8);
+    fireEvent.click(screen.getByRole('button', { name: /Show fewer/ }));
+    expect(rows()).toBe(5);
+  });
+
   it('marks the device being used, so it is not signed out by mistake', async () => {
     const { container } = renderWithApp(<AccountPreferencesPage />);
     await screen.findByText('Chrome on Mac');

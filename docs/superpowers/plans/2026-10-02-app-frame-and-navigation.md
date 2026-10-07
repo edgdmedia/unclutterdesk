@@ -122,6 +122,8 @@ For each page:
 
 ### Task 4: The regrouped practice menu and avatar menu (GEN-03)
 
+> **Superseded 6 Oct 2026:** the regroup is implemented in `docs/superpowers/plans/2026-10-06-settings-hub-and-menu-regroup.md`, where it is folded together with the Settings hub (GEN-04). The avatar-menu parts still apply.
+
 **Files:** `apps/app/src/components/shell/practiceNav.tsx`, `AccountMenu.tsx`, `__tests__/practiceNav.test.tsx` (extend or create).
 
 **Interfaces:** `practiceNavSections(profile)` returns the sections in the order given in Global Constraints, and `PRACTICE_BOTTOM_NAV` returns Today, Schedule, Sessions, Clients. The avatar menu items are those in Global Constraints.

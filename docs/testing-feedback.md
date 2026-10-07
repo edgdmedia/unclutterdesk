@@ -77,7 +77,7 @@ A running log of what shows up in testing, what we decide about it, and when it'
 | BKG-13 | Booking page | The public profile shows the same long bio twice, and there is no tagline field in the practice profile | Bug | P2 | Fixed |
 | BKG-14 | Booking page | The public profile misses details from the Claude design: About headline, Learn More button, real location names | UX | P2 | Fixed |
 | BKG-15 | Booking page | "Log in" on the practice's page sends clients to the staff login | Bug | P1 | Fixed |
-| SET-13 | Settings | Custom domains should be self-serve via Cloudflare for SaaS | Feature | P2 | Ready |
+| SET-13 | Settings | Custom domains should be self-serve via Cloudflare for SaaS | Feature | P2 | Fixed |
 | VID-01 | Video | The session room is a mock-up, not a real video call | Feature | P0 | Fixed |
 | POR-01 | Client portal | /portal only works on app.unclutterdesk.com, not on the practice's own link | Bug | P1 | Fixed |
 | POR-02 | Client portal | The portal should look like a dashboard, not a plain list | UX | P2 | Fixed |
@@ -102,8 +102,9 @@ A running log of what shows up in testing, what we decide about it, and when it'
 | BKG-13 | Sessions | Past sessions with no outcome stay "Confirmed" forever | Feature | P1 | Ready |
 | VID-02 | Video | "Join session" works any time, even days before | Bug | P1 | Fixed |
 | GEN-01 | Design system | Pages set their own widths and hand-write their grids | UX | P2 | Ready |
-| GEN-02 | Design system | The dashboard keeps showing Profile photo and Practice branding cards | UX | P3 | Ready |
-| GEN-03 | Design system | The menu feels disconnected | UX | P2 | Ready |
+| GEN-02 | Design system | The dashboard keeps showing Profile photo and Practice branding cards | UX | P3 | Fixed |
+| GEN-03 | Design system | The menu feels disconnected | UX | P2 | Fixed |
+| GEN-04 | Design system | Settings is twelve loose pages; unrelated things share a page | UX | P2 | Fixed |
 | NOT-12 | Notifications | Practices can't change the wording of their emails | Feature | P2 | Ready |
 | NOT-13 | Notifications | Clients can't choose their reminders | Feature | P1 | Ready |
 | NOT-14 | Notifications | Practices can't see or send a session's reminders | Feature | P2 | Ready |
@@ -574,7 +575,7 @@ A running log of what shows up in testing, what we decide about it, and when it'
 - **Feedback / decision:** Adopt Cloudflare for SaaS — the Free plan zone includes 100 custom hostnames ($0.10/mo each after, 50k max). Cloudflare cannot fall back to a Pages project (no proxy to Cloudflare-owned hosts), so the app must be served from a Worker with the same Vite build as static assets; the API already resolves ACTIVE custom domains from the Host header. Founder 5 Oct 2026: implement — likely the next working day.
 - **Scope:** Revised after recon: the tenant-router Worker already serves any host (`*.unclutterdesk.com/*` route; `router.ts` treats foreign hosts as SaaS surfaces), so no app redeploy is needed — each provisioned domain gets its own Worker route. (1) Cloudflare service for custom hostnames + routes; (2) provision on save; (3) status/verify via Cloudflare's verdict; (4) 5-minute cron promotes verified domains, retries unprovisioned, sweeps orphans; (5) Settings panel showing the exact DNS records the practice must publish.
 - **Fix:** Code complete on `dev` (plan `docs/superpowers/plans/2026-10-05-self-serve-custom-domains.md`): migration `20261005110000_custom_hostname_id`, `cloudflare-saas.service.ts`, provisioning + CF-aware verify in `tenant.service.ts`, `GET /v1/tenant/brand/custom-domain`, `custom-domain.cron.ts`, `CustomDomainPanel.tsx` on the Brand settings page. All paths no-op when `CLOUDFLARE_API_TOKEN`/`CLOUDFLARE_ZONE_ID` are absent, so dev/CI keep the old behaviour. Suites: 1200 api / 507 app tests green.
-- **Verified:** Awaiting the one-time human steps (add payment method → Enable Cloudflare for SaaS on the zone → create the scoped token → set the three env vars on the VPS — see `docs/CLOUDFLARE_SETUP.md` §5) and the live migration of consult.unclutter.com.ng through the new flow. 
+- **Verified:** Live end-to-end 7 Oct 2026, through the panel itself: consult.unclutter.com.ng provisioned from Settings, the per-hostname Worker route appeared (`consult.unclutter.com.ng/*` → tenant-router), Cloudflare reports hostname **active** + certificate **active**, and https://consult.unclutter.com.ng/ and /book serve correctly branded through the SaaS path — no Pages custom domain. Lessons recorded on the way (all in CLOUDFLARE_SETUP §5): the endpoints accept only a legacy Global API key (scoped tokens and OAuth get 10000/10405) — use a dedicated custom-role member's key, not the owner's; DCV is TXT (not 'cname'); custom_metadata is Enterprise-only (1413); Cloudflare returns the DCV as ssl.txt_name/txt_value, not a records array. Found while checking: the report-only CSP lacks fonts.gstatic.com in font-src — fix before it is ever enforced. 
 
 ## Forms & templates
 
@@ -635,18 +636,32 @@ A running log of what shows up in testing, what we decide about it, and when it'
 - **Verified:** 
 
 ### GEN-02 · The dashboard keeps showing Profile photo and Practice branding cards
-- **Type:** UX · **Priority:** P3 · **Status:** Ready
+- **Type:** UX · **Priority:** P3 · **Status:** Fixed
 - **Observed:** Setup prompts stay on the dashboard after they are done.
-- **Feedback / decision:** Decided 2 Oct 2026. Show each card only until it is done; both stay editable in settings.
-- **Fix:** 
-- **Verified:** 
+- **Feedback / decision:** Decided 2 Oct 2026. Show each card only until it is done; both stay editable in settings. Founder 7 Oct: "PROFILE PHOTO is only on dashboard, that is so wrong, and when it is set, it should stop showing" — same for Practice branding.
+- **Fix:** Both right-column cards now retire on the *saved* state, not the in-flight editor state: the Profile photo card hides once the therapist profile has an `avatarUrl` (server-loaded, or the moment a save succeeds — picking a file for the first time still keeps the card on screen); the Practice branding card hides once the tenant has a `logoUrl`. Both things stay editable where they belong (My profile; Settings → Brand).
+- **Verified:** `DashboardProfilePhoto.test.tsx` — a saved photo and a logoed brand render neither card; an unset practice still gets both; the upload flow's card retires after the server confirms. Suite 521 app tests green. 
+
+### GEN-04 · Settings is twelve loose pages; unrelated things share a page
+- **Type:** UX · **Priority:** P2 · **Status:** Ready
+- **Observed:** 6 Oct 2026, live testing. Eleven `/dashboard/settings/*` pages sit as separate sidebar links; the Brand page carried custom domain *and* sending-email settings together ("Custom domain and sending email settings shouldn't be on the same page"), and Availability/Services/Discounts/Team each feel like their own app.
+- **Feedback / decision:** Founder 6 Oct 2026: collapse Settings into one page with a left tab rail (top tabs on mobile), grouped — **Practice** (Profile · Locations · Brand & booking page), **Booking** (Availability · Services & pricing · Discounts), **Domain & email** (Custom domain · Notifications · Sending domain), **Team & billing** (Team · Subscription · Preferences). Sidebar shows a single Settings entry; role/tier gating moves onto the tabs. Forms keeps its own sidebar home (it is a workspace, not a setting), Payouts keeps a direct link. Implemented with the GEN-03 regrouping — plan `docs/superpowers/plans/2026-10-06-settings-hub-and-menu-regroup.md`.
+- **Fix:** `4166459` + `279dede` on `dev`. `SettingsPage.tsx` is the hub: grouped rail (a compact chip strip under `md`), `settingsTabsFor()` in `practiceNav.tsx` filters by role and tags by plan, `/dashboard/settings` and any unknown tab redirect to the first visible one, and every tab keeps its **old URL** — deep links, notifications and tests never moved. New tabs: Booking address (BookingLinkCard + the custom-domain panel together) and Sending domain (the card moved out of Brand); Brand is now just brand. Embedded pages dropped their `min-w-[1192px]` and the profile's fixed side column became `xl:` so nothing overflows a phone. `SettingsHub.test.tsx` and `SettingsDomainPage.test.tsx` cover the behaviour.
+- **Verified:** 7 Oct 2026 browser check: owners land on Practice profile, rail lists all four groups with the Clinic tag on Team; old deep link `/dashboard/settings/availability` renders in the hub; 390px shows the chip strip with no horizontal scroll (0px at 390 and 1280). 
+
+### SET-14 · The Active sessions panel renders every session the account ever made
+- **Type:** UX · **Priority:** P3 · **Status:** Fixed
+- **Observed:** 7 Oct 2026. Settings → Preferences lists all live sessions in one long column; an old account scrolls forever.
+- **Feedback / decision:** Founder 7 Oct 2026: cap it.
+- **Fix:** The panel shows the five most recently used (the server already orders by last use, current device first) with **Show all N sessions / Show fewer** beneath; per-device sign-out and "Sign out other devices" are unchanged. SET-12 (same browser listed many times) remains open and is the deeper fix.
+- **Verified:** `AccountPreferencesPage.test.tsx` — eight sessions render five rows, expand to eight, collapse again.
 
 ### GEN-03 · The menu feels disconnected
 - **Type:** UX · **Priority:** P2 · **Status:** Ready
 - **Observed:** Hours log and Notifications are main-menu items; settings groups mix concerns.
-- **Feedback / decision:** Decided 2 Oct 2026. Main: Today, Schedule, Sessions, Clients. Forms & assessments: Submissions, Assessments, Forms. Settings: Booking page (Practice profile, Locations, Brand & booking page); Scheduling & pricing (Availability, Services & pricing, Discounts); Team & staff; Reports; Billing (Payouts, Subscription). Avatar menu: My profile, Hours log, Notification settings, Account & security. The bell is in the header (NOT-06).
-- **Fix:** 
-- **Verified:** 
+- **Feedback / decision:** Decided 2 Oct 2026, refined 6 Oct by GEN-04: Settings collapses to ONE sidebar entry (the page itself carries the groups), and Payouts stays a direct link. Main: Today, Schedule, Sessions, Clients. Forms & assessments: Submissions, Assessments, Forms. Then Settings, Reports, Payouts. Hours log and Notifications leave the sidebar for the avatar menu (the bell covers notifications).
+- **Fix:** `4166459` + `279dede` on `dev`. `practiceNav.tsx` rewritten to that shape (tabs as data too, see GEN-04); `AccountMenu.tsx` gained Availability, Notifications and — clinical roles only — Hours log; Analytics relabels to Reports; the tour's Availability stop retargets the Settings entry (`nav-availability` → `nav-settings`); the phone bar is Today, Schedule, Sessions, Clients. Covered by `practiceNav.test.ts` and `DashboardTour.test.tsx`.
+- **Verified:** 7 Oct 2026 browser check (owner, dr-smith workspace): sidebar reads Today · Schedule · Sessions · Clients / Submissions · Assessments · Forms / Settings / Reports · Payouts — no Hours log, no Notifications; 1280 and 390 clean. 
 
 ## Template for new items
 

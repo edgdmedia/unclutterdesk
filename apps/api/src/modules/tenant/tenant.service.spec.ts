@@ -385,14 +385,21 @@ describe('TenantService SET-13 custom domain provisioning', () => {
       customHostnameId: 'cf1', customHostnameError: null,
     });
 
-    const out = await serviceWith(prisma, cf).getCustomDomainStatus(BigInt(1));
+    const service = serviceWith(prisma, cf);
+    (service as any).checkPublishedRecord = vi.fn().mockResolvedValue('missing');
+    const out = await service.getCustomDomainStatus(BigInt(1));
+    expect((service as any).checkPublishedRecord).toHaveBeenCalledTimes(2);
     expect(out).toMatchObject({
       hostname: 'consult.unclutter.com.ng',
       status: 'PENDING',
       cnameTarget: 'tag.my.cloudflare.net',
       cfStatus: { status: 'pending', sslStatus: 'initializing' },
     });
-    expect(out.records).toHaveLength(1);
+    // the routing CNAME row comes first, then Cloudflare's records — each
+    // carries a DNS-verified state for the panel's status column
+    expect(out.records[0]).toMatchObject({ type: 'CNAME', name: 'consult.unclutter.com.ng', value: 'tag.my.cloudflare.net', state: 'missing' });
+    expect(out.records[1]).toMatchObject({ type: 'CNAME', name: 'consult.unclutter.com.ng', value: 'x', state: 'missing' });
+    expect(out.records).toHaveLength(2);
   });
 
   test('verify promotes on Cloudflare verdict without touching public DNS', async () => {
