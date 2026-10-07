@@ -8,7 +8,7 @@ export const DASHBOARD_TOUR_STEPS: TourStep[] = [
   { anchor: 'booking-link', title: 'Your booking link', body: 'Share it with clients, or copy it here. This is where they book and pay.' },
   { anchor: 'nav-sessions', title: 'Sessions', body: 'Every booking lands here. Open one to start the video call, take notes or mark it paid.' },
   { anchor: 'nav-clients', title: 'Clients', body: 'Each client’s history, forms and notes.' },
-  { anchor: 'nav-availability', title: 'Availability', body: 'Set your working hours. Clients can only book times you’ve opened.' },
+  { anchor: 'nav-settings', title: 'Settings', body: 'Availability, services, prices, your own domain — everything you configure lives here. Start with Availability: clients can only book times you’ve opened.' },
   { anchor: 'nav-forms', title: 'Forms', body: 'Your intake and confidentiality forms. Edit the wording to suit your practice.' },
   { anchor: 'nav-payouts', title: 'Payouts', body: 'Where client payments go: Paystack, bank transfer, or both.' },
   { anchor: 'account-menu', title: 'Your account', body: 'Your profile and settings. You can take this tour again from here.' },

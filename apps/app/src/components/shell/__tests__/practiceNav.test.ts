@@ -32,7 +32,7 @@ describe('practiceSections (GEN-03)', () => {
   it('renames Analytics to Reports and keeps the tour ids that still have a home', () => {
     const items = practiceSections({ role: 'OWNER' }, 'clinic').flatMap((s) => s.groups.flatMap((g) => g.items));
     expect(items.find((i) => i.href === '/dashboard/analytics')?.label).toBe('Reports');
-    for (const tour of ['nav-sessions', 'nav-clients', 'nav-forms', 'nav-payouts']) {
+    for (const tour of ['nav-sessions', 'nav-clients', 'nav-forms', 'nav-payouts', 'nav-settings']) {
       expect(items.some((i) => i.tourId === tour)).toBe(true);
     }
   });

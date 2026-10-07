@@ -38,7 +38,7 @@ const FORMS: NavEntry[] = [
 
 // One entry for the whole settings area; the page itself is the tab hub.
 const SETTINGS: NavEntry[] = [
-  { href: '/dashboard/settings', label: 'Settings', icon: Settings },
+  { href: '/dashboard/settings', label: 'Settings', icon: Settings, tourId: 'nav-settings' },
 ];
 
 const INSIGHTS: NavEntry[] = [
