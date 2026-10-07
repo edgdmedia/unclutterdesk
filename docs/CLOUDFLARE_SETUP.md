@@ -143,7 +143,7 @@ A practice's own booking address, provisioned by the platform. The code is in
 `apps/api/src/modules/tenant/cloudflare-saas.service.ts` (hostname + route calls),
 `tenant.service.ts` (provision on save, status, CF-aware verify) and
 `custom-domain.cron.ts` (promote / retry / sweep every 5 minutes); the practice
-sees it all in Settings → Practice profile → Custom domain.
+sees it all in Settings → Brand → Custom domain.
 
 ### One-time (human, dashboard)
 
@@ -153,29 +153,49 @@ sees it all in Settings → Practice profile → Custom domain.
 2. **Fallback origin:** `app.unclutterdesk.com` (already proxied). Traffic only
    lands there if a hostname has no Worker route — the provisioning service
    always creates the route, and Pages answering 403 is the loud failure.
-3. **API token** scoped to this zone: `Cloudflare for SaaS: Edit`,
-   `Workers Routes: Edit`, `Zone: Read`. Put it on the server's API `.env`:
+3. **Credentials.** The custom-hostname endpoints accept **only the legacy
+   Global API key**, verified empirically 5 Oct 2026: a scoped API token with
+   SSL-and-Certificates/Workers-Routes write gets `10000`, and a wrangler
+   OAuth (`cfoat_`) token — the same species an OAuth client would mint —
+   gets `10000` too. Dashboard-only for the fallback origin (`10405` for any
+   token). So: don't use the owner's key. Create a dedicated throwaway
+   Cloudflare account (alias email), invite it to this account as a **Member
+   with a custom role** limited to Cloudflare for SaaS + Workers Routes
+   permissions, let it accept the invite, and generate **that member's**
+   Global API key (My Profile → API Tokens → Global API Key → View). Put the
+   member's identity on the server's API `.env`:
 
 ```
-CLOUDFLARE_API_TOKEN=<token>
+CLOUDFLARE_AUTH_EMAIL=<account email>
+CLOUDFLARE_API_KEY=<global api key>
 CLOUDFLARE_ZONE_ID=d4b3dd0ef46d1eb1625327cdbf39086e
 CLOUDFLARE_WORKER_SCRIPT=unclutterdesk-tenant-router
+CLOUDFLARE_SAAS_CNAME_TARGET=customers.unclutterdesk.com
 ```
 
-   and restart the API. Without these the panel still stores the domain and
+   (`CLOUDFLARE_SAAS_CNAME_TARGET` is the fixed address every practice
+   CNAMEs to: a proxied CNAME record pointing at the fallback origin.
+   Without it the panel shows the TXT records but no CNAME line.)
+
+   (`CLOUDFLARE_API_TOKEN` remains accepted for any endpoint that does
+   support tokens; the key wins when both are present.)
+
+   and restart the API. The key is as strong as the member's role — keep it
+   server-side only, and rotate the member's key if it ever leaks. Without
+   these the panel still stores the domain and
    behaves exactly like before (PENDING + manual verify via public DNS) — dev,
    CI and unenrolled environments are unaffected.
 
 ### Per practice (self-serve)
 
 1. Practice saves `book.theirpractice.com` → the API creates the custom hostname
-   (CNAME-validated certificate) with `custom_metadata.tenant = <tenant id>` and
+   (TXT-validated certificate) with `custom_metadata.tenant = <tenant id>` and
    a Workers route `book.theirpractice.com/*` → the tenant router. The router
    already serves any host: no Pages custom domain per tenant, no DNS record
    on our side.
 2. The panel shows exactly what to publish at their domain provider (the
-   certificate's CNAME validation record + the hostname CNAME to
-   `*.my.cloudflare.net`).
+certificate's TXT validation record + the hostname CNAME to the SaaS
+target).
 3. Once Cloudflare reports the hostname **and** the certificate `active`, the
    cron flips `customDomainStatus=ACTIVE` — and only then. ACTIVE is what makes
    CORS allow the origin, the middleware resolve it, and `tenantWebOrigin()`

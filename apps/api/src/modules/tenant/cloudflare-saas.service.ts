@@ -38,12 +38,23 @@ interface CfJson {
 @Injectable()
 export class CloudflareSaasService {
   private readonly apiToken = process.env.CLOUDFLARE_API_TOKEN || '';
+  private readonly authEmail = process.env.CLOUDFLARE_AUTH_EMAIL || '';
+  private readonly authKey = process.env.CLOUDFLARE_API_KEY || '';
   private readonly zoneId = process.env.CLOUDFLARE_ZONE_ID || '';
   private readonly workerScript = process.env.CLOUDFLARE_WORKER_SCRIPT || 'unclutterdesk-tenant-router';
+  /** The fixed address practices CNAME their domains to (fallback-origin record). */
+  private readonly saasCnameTarget = process.env.CLOUDFLARE_SAAS_CNAME_TARGET || '';
   private readonly apiBase = 'https://api.cloudflare.com/client/v4';
 
+  /**
+   * Custom hostnames are one of the few Cloudflare API areas that reject
+   * scoped API tokens — the endpoints accept only the legacy Global API key
+   * (X-Auth-Email + X-Auth-Key) or OAuth. The zone id and either credential
+   * are required; the token headers stay supported in case the platform
+   * broadens auth for these routes later.
+   */
   configured(): boolean {
-    return Boolean(this.apiToken && this.zoneId);
+    return Boolean(this.zoneId && (this.authKey || this.apiToken));
   }
 
   /**
@@ -53,7 +64,11 @@ export class CloudflareSaasService {
   async createHostname(hostname: string, tenantId: string): Promise<CfHostnameResult> {
     const body = {
       hostname,
-      ssl: { method: 'cname', settings: { min_tls_version: '1.2' } },
+      // DCV by TXT record: the practice publishes one TXT row at their
+      // provider, so the certificate can issue before any traffic switches
+      // over. ('cname' here was rejected as invalid — the API accepts only
+      // http, txt and email for this field.)
+      ssl: { method: 'txt', type: 'dv', settings: { min_tls_version: '1.2' } },
       custom_metadata: { tenant: tenantId },
     };
     const result = await this.call(`/zones/${this.zoneId}/custom_hostnames`, 'POST', body);
@@ -61,10 +76,8 @@ export class CloudflareSaasService {
       id: String(result.id),
       status: String(result.status || 'pending'),
       sslStatus: String(result.ssl?.status || 'pending'),
-      cnameTarget: result.cname_target || result.ssl?.cname?.target || null,
-      verificationRecords: (result.ssl?.verification_records || result.ssl?.validate_records || []).map(
-        (r: any) => ({ name: r.name ?? '', type: r.type ?? '', data: r.data ?? '', target: r.target ?? undefined }),
-      ),
+      cnameTarget: result.cname_target || this.saasCnameTarget || null,
+      verificationRecords: this.mapRecords(result),
     };
   }
 
@@ -80,11 +93,26 @@ export class CloudflareSaasService {
       id: String(result.id),
       status: String(result.status || 'pending'),
       sslStatus: String(result.ssl?.status || 'pending'),
-      cnameTarget: result.cname_target || result.ssl?.cname?.target || null,
-      verificationRecords: (result.ssl?.verification_records || result.ssl?.validate_records || []).map(
-        (r: any) => ({ name: r.name ?? '', type: r.type ?? '', data: r.data ?? '', target: r.target ?? undefined }),
-      ),
+      cnameTarget: result.cname_target || this.saasCnameTarget || null,
+      verificationRecords: this.mapRecords(result),
     };
+  }
+
+  /**
+   * Everything the practice must publish, in one list: the certificate's DCV
+   * record(s) plus the domain-ownership TXT (Cloudflare returns that under
+   * `ownership_verification`, outside `ssl`, and the hostname never activates
+   * without it).
+   */
+  private mapRecords(result: any): CfVerificationRecord[] {
+    const dcv = (result.ssl?.verification_records || result.ssl?.validate_records || []).map(
+      (r: any) => ({ name: r.name ?? '', type: r.type ?? '', data: r.data ?? '', target: r.target ?? undefined }),
+    );
+    const ownership = result.ownership_verification;
+    if (ownership?.name && ownership?.value) {
+      dcv.push({ name: ownership.name, type: ownership.type || 'TXT', data: ownership.value });
+    }
+    return dcv;
   }
 
   /** 1009 "could not find content" means it is already gone — that is success. */
@@ -145,7 +173,9 @@ export class CloudflareSaasService {
       response = await fetch(`${this.apiBase}${path}`, {
         method,
         headers: {
-          Authorization: `Bearer ${this.apiToken}`,
+          ...(this.authKey && this.authEmail
+            ? { 'X-Auth-Email': this.authEmail, 'X-Auth-Key': this.authKey }
+            : { Authorization: `Bearer ${this.apiToken}` }),
           'Content-Type': 'application/json',
         },
         body: body === undefined ? undefined : JSON.stringify(body),

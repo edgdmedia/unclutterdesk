@@ -17,6 +17,8 @@ describe('CloudflareSaasService', () => {
   beforeEach(() => {
     saved = {
       CLOUDFLARE_API_TOKEN: process.env.CLOUDFLARE_API_TOKEN,
+      CLOUDFLARE_AUTH_EMAIL: process.env.CLOUDFLARE_AUTH_EMAIL,
+      CLOUDFLARE_API_KEY: process.env.CLOUDFLARE_API_KEY,
       CLOUDFLARE_ZONE_ID: process.env.CLOUDFLARE_ZONE_ID,
       CLOUDFLARE_WORKER_SCRIPT: process.env.CLOUDFLARE_WORKER_SCRIPT,
     };
@@ -39,6 +41,22 @@ describe('CloudflareSaasService', () => {
     expect(fetchMock).not.toHaveBeenCalled();
   });
 
+  it('sends the legacy Global API key headers when configured — custom hostnames reject tokens', async () => {
+    delete process.env.CLOUDFLARE_API_TOKEN;
+    process.env.CLOUDFLARE_AUTH_EMAIL = 'me@example.com';
+    process.env.CLOUDFLARE_API_KEY = 'legacykey';
+    fetchMock.mockResolvedValue(ok({ id: 'cf-id-9', status: 'pending', ssl: { status: 'pending' } }));
+    const service = new CloudflareSaasService();
+    expect(service.configured()).toBe(true);
+    await service.getStatus('cf-id-9');
+    const headers = fetchMock.mock.calls[0][1].headers;
+    expect(headers['X-Auth-Email']).toBe('me@example.com');
+    expect(headers['X-Auth-Key']).toBe('legacykey');
+    expect(headers.Authorization).toBeUndefined();
+    delete process.env.CLOUDFLARE_AUTH_EMAIL;
+    delete process.env.CLOUDFLARE_API_KEY;
+  });
+
   it('creates the hostname with CNAME validation and maps the verification records', async () => {
     fetchMock.mockResolvedValue(ok({
       id: 'cf-id-1',
@@ -57,9 +75,27 @@ describe('CloudflareSaasService', () => {
       expect.objectContaining({ method: 'POST' }),
     );
     const body = JSON.parse(fetchMock.mock.calls[0][1].body);
-    expect(body).toMatchObject({ hostname: 'booking.acme.ng', ssl: { method: 'cname' }, custom_metadata: { tenant: '42' } });
+    expect(body).toMatchObject({ hostname: 'booking.acme.ng', ssl: { method: 'txt', type: 'dv' }, custom_metadata: { tenant: '42' } });
     expect(result).toMatchObject({ id: 'cf-id-1', status: 'pending', sslStatus: 'pending', cnameTarget: 'zone-tag.my.cloudflare.net' });
     expect(result.verificationRecords).toHaveLength(1);
+  });
+
+  it('lists the domain-ownership TXT with the DCV records and uses the static SaaS CNAME target', async () => {
+    process.env.CLOUDFLARE_SAAS_CNAME_TARGET = 'customers.unclutterdesk.com';
+    fetchMock.mockResolvedValue(ok({
+      id: 'cf-id-2', status: 'pending',
+      cname_target: undefined,
+      ownership_verification: { type: 'TXT', name: '_cf-custom-hostname.book.acme.ng', value: 'own-123' },
+      ssl: { status: 'initializing', verification_records: [{ name: 'txt.book.acme.ng', type: 'TXT', data: 'dcv-456' }] },
+    }));
+    const service = new CloudflareSaasService();
+    const result = await service.getVerification('cf-id-2');
+    expect(result.cnameTarget).toBe('customers.unclutterdesk.com');
+    expect(result.verificationRecords).toEqual([
+      { name: 'txt.book.acme.ng', type: 'TXT', data: 'dcv-456', target: undefined },
+      { name: '_cf-custom-hostname.book.acme.ng', type: 'TXT', data: 'own-123' },
+    ]);
+    delete process.env.CLOUDFLARE_SAAS_CNAME_TARGET;
   });
 
   it('reads status back for the poller', async () => {
