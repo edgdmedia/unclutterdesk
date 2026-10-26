@@ -68,11 +68,11 @@ export class ManualPaymentService {
   async getSettings(tenantId: bigint) {
     const t = await this.prisma.tenant.findUnique({
       where: { id: tenantId },
-      select: { bankTransferPaymentsEnabled: true, manualPaymentDetails: true, subscriptionTier: true, complimentaryUntil: true },
+      select: { manualPaymentsEnabled: true, manualPaymentDetails: true, subscriptionTier: true, complimentaryUntil: true },
     });
     if (!t) throw new NotFoundException('Practice not found');
     return {
-      enabled: t.bankTransferPaymentsEnabled,
+      enabled: t.manualPaymentsEnabled,
       details: cleanDetails(t.manualPaymentDetails),
       onPlan: entitlementsFor(t).bankTransferPayments,
       holdHours: MANUAL_HOLD_HOURS,
@@ -94,7 +94,7 @@ export class ManualPaymentService {
     await this.prisma.tenant.update({
       where: { id: tenantId },
       data: {
-        bankTransferPaymentsEnabled: enabled,
+        manualPaymentsEnabled: enabled,
         manualPaymentDetails: details ? (details as unknown as Prisma.InputJsonValue) : Prisma.DbNull,
       },
     });
