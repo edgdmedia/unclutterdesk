@@ -147,7 +147,9 @@ The source of truth is `apps/api/src/modules/entitlements/entitlements.ts`. This
 | Custom domain for booking pages | ❌ | ❌ | ✅ | ✅ |
 | Staff | — | — | Admin / Receptionist | + Therapists |
 
-- New practices start on Free. There is no trial.
+- New practices start on Free. There is no trial. Practices that existed before v2 keep their plan free for 90 days (with reminders 14 and 3 days before), then move to Free unless they subscribe.
+- A lapsed paid plan keeps working through 7 days' grace and 14 days' notice (with the exact date), then moves to Free; staff other than the owner are paused and come back if the practice renews.
+- Platform admins change a practice's plan only through Complimentary plans (a reason and an end date, or internal with none).
 - The public pricing page shows Starter, Pro and Clinic, plus a line about starting free. From v2 Phase 1 that line becomes "Start with a free therapist profile".
 - In-app upgrade prompts go free → Starter → Pro, never straight to Clinic.
 - When a Free or Starter practice uses its month's bookings, its booking page says "Fully booked this month" (not an error) and the dashboard shows an upgrade prompt.

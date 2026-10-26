@@ -5,8 +5,9 @@ import { ArrowLeft, Loader2, Mail, Phone, MapPin } from 'lucide-react';
 import { api } from '../../utils/apiClient';
 import { Card, CardHeader, Eyebrow, StatusBadge, AvatarChip, useToast } from '@unclutterdesk/ui';
 import { AdminTenantDetail, formatNaira, formatDate } from './adminTypes';
+import { ComplimentaryPlanForm, describePlan, type PlanView } from './ComplimentaryPlanForm';
+import { TIER_NAMES, type Tier } from '../../utils/entitlements';
 
-const TIERS = ['FREE', 'STARTER', 'PRO', 'CLINIC'] as const;
 
 export function AdminTenantDetailPage() {
   const toast = useToast();
@@ -17,26 +18,8 @@ export function AdminTenantDetailPage() {
   const [updating, setUpdating] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  const changeTier = async (tier: string) => {
-    if (!id) return;
-    setUpdating(`tier:${tier}`);
-    setError(null);
-    try {
-      const updated = await api.patch<{ id: string; subscriptionTier: string }>(
-        `/v1/admin/tenants/${id}`,
-        { subscriptionTier: tier },
-      );
-      await mutate(
-        (t) => (t ? { ...t, subscriptionTier: updated.subscriptionTier } : t),
-        { revalidate: false },
-      );
-      toast.success('Plan updated');
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Could not update the plan');
-      setError(err instanceof Error ? err.message : 'Update failed');
-    } finally {
-      setUpdating(null);
-    }
+  const planSaved = (plan: PlanView) => {
+    void mutate((t) => (t ? { ...t, ...plan } : t), { revalidate: false });
   };
 
   const toggleActive = async () => {
@@ -151,7 +134,7 @@ export function AdminTenantDetailPage() {
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mt-6">
         {[
-          { label: 'Subscription tier', value: tenant.subscriptionTier },
+          { label: 'Plan', value: TIER_NAMES[tenant.subscriptionTier as Tier] ?? tenant.subscriptionTier },
           { label: 'Clients', value: String(tenant.clients) },
           { label: 'Bookings', value: String(tenant.bookings) },
           { label: 'Revenue', value: formatNaira(tenant.revenueKobo) },
@@ -169,26 +152,11 @@ export function AdminTenantDetailPage() {
         <CardHeader
           eyebrow="Billing"
           title="Subscription"
-          action={
-            <div className="flex items-center gap-1.5">
-              {TIERS.map((tier) => (
-                <button
-                  key={tier}
-                  type="button"
-                  onClick={() => changeTier(tier)}
-                  disabled={updating === `tier:${tier}` || tenant.subscriptionTier === tier}
-                  className={`h-8 px-3 rounded-[10px] text-[12px] font-bold cursor-pointer transition-colors disabled:cursor-default ${
-                    tenant.subscriptionTier === tier
-                      ? 'bg-[#0F3A53] text-white'
-                      : 'bg-[#F1F5F9] text-[#475569] hover:bg-[#E2E8F0]'
-                  }`}
-                >
-                  {updating === `tier:${tier}` ? '…' : tier}
-                </button>
-              ))}
-            </div>
-          }
+          action={<span className="text-[12px] text-[#64748B]">{describePlan(tenant)}</span>}
         />
+        <div className="mb-4">
+          <ComplimentaryPlanForm tenantId={tenant.id} plan={tenant} onSaved={planSaved} />
+        </div>
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-[13px] text-[#475569]">
           <div className="flex items-center gap-2.5">
             <Mail className="h-4 w-4 text-[#94A3B8]" /> {tenant.publicEmail || 'No public email'}

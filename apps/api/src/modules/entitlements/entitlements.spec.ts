@@ -214,6 +214,7 @@ describe('EntitlementsService', () => {
       upgradeTo: 'STARTER',
       upgradeToName: 'Starter',
       entitlements: { monthlyBookingLimit: 10, platformFeeBps: 500 },
+      requiredTiers: { bankTransferPayments: 'STARTER', customDomain: 'PRO', googleCalendarSync: 'STARTER', staff: 'PRO', therapists: 'CLINIC' },
       usage: { bookingsThisMonth: 10, bookingLimitReached: true },
     });
   });

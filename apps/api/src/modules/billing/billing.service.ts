@@ -181,6 +181,18 @@ export class BillingService {
         proBlockReason: canDowngradeToPro
           ? null
           : 'Group practices with multiple therapists require the Clinic plan.',
+        // Per paid plan: why the practice can't move to it, or null. The app
+        // shows this as-is rather than working out plans itself.
+        planBlocks: Object.fromEntries(
+          SUBSCRIPTION_TIERS.map((t) => [
+            t,
+            canHoldStaff(PRACTICE_ENTITLEMENTS[t], staffCount, therapistCount)
+              ? null
+              : staffCount > 0 && PRACTICE_ENTITLEMENTS[t].staffInviteRoles.length === 0
+                ? `Remove active staff members before moving to ${TIER_NAMES[t]}.`
+                : 'Group practices with multiple therapists require the Clinic plan.',
+          ]),
+        ),
       },
       bankSubaccount,
       history,

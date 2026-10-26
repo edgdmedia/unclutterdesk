@@ -19,6 +19,8 @@ type SubscriptionRecord = {
   canDowngradeToPro?: boolean;
   starterBlockReason?: string | null;
   proBlockReason?: string | null;
+  /** Per paid plan: why the practice can't move to it (staff it can't hold), or null. */
+  planBlocks?: Partial<Record<PaidTier, string | null>>;
 };
 type BillingSummary = { subscription: SubscriptionRecord; history: Array<{ date: string; title: string; detail: string; type: string }> };
 
@@ -64,13 +66,7 @@ function daysLeft(iso: string) {
 
 function getPlanDisabledReason(plan: PaidTier, subscription: SubscriptionRecord) {
   if (plan === subscription.subscriptionTier) return null;
-  if (plan === 'STARTER' && subscription.canDowngradeToStarter === false) {
-    return subscription.starterBlockReason || 'Downgrade blocked';
-  }
-  if (plan === 'PRO' && subscription.subscriptionTier === 'CLINIC' && subscription.canDowngradeToPro === false) {
-    return subscription.proBlockReason || 'Downgrade blocked';
-  }
-  return null;
+  return subscription.planBlocks?.[plan] ?? null;
 }
 
 export function SubscriptionSettingsPage() {
@@ -192,7 +188,7 @@ export function SubscriptionSettingsPage() {
             </p>
           </div>
         ) : null}
-        {subscription?.subscriptionTier === 'FREE' && entitlements ? (
+        {subscription && plans && !plans.some((p) => p.tier === subscription.subscriptionTier) && entitlements ? (
           <div className="rounded-[18px] border border-[#E2E8F0] bg-white px-5 py-4">
             <p className="text-sm font-bold text-[#0F172A]">You're on the free plan</p>
             <p className="mt-1 text-xs font-medium text-[#475569]">

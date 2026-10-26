@@ -7,7 +7,8 @@ import { PendingTransfersCard } from '../../components/payments/PendingTransfers
 import { ImageField } from '../../components/settings/ImageField';
 import { DashboardTour } from '../../components/onboarding/DashboardTour';
 import { api, practiceBookingUrl } from '../../utils/apiClient';
-import { useEntitlements } from '../../utils/entitlements';
+import { TIER_NAMES, useEntitlements, type Tier } from '../../utils/entitlements';
+import { LapseNotice } from '../../components/billing/LapseNotice';
 
 interface DashboardPageProps {
   tenantStatus?: 'ACTIVE' | 'PAUSED';
@@ -244,7 +245,7 @@ export function DashboardPage(props: DashboardPageProps) {
             const days = Math.max(0, Math.ceil((new Date(complimentary.until).getTime() - Date.now()) / 86_400_000));
             // Only in the last two weeks: earlier it is noise.
             if (days > 14) return null;
-            const plan = complimentary.tier === 'CLINIC' ? 'Clinic' : 'Pro';
+            const plan = TIER_NAMES[complimentary.tier as Tier] ?? complimentary.tier;
             return (
               <div className="p-4 rounded-2xl bg-amber-50 border border-amber-200 flex flex-col md:flex-row md:items-center justify-between gap-3">
                 <p className="text-sm font-semibold text-amber-900">
@@ -259,6 +260,8 @@ export function DashboardPage(props: DashboardPageProps) {
               </div>
             );
           })()}
+
+          {['OWNER', 'ADMIN'].includes(String(authUser?.role ?? '')) ? <LapseNotice /> : null}
 
           {plan?.usage.bookingLimitReached && plan.upgradeToName && ['OWNER', 'ADMIN'].includes(String(authUser?.role ?? '')) ? (
             <div className="p-4 rounded-2xl bg-amber-50 border border-amber-200 flex flex-col md:flex-row md:items-center justify-between gap-3">

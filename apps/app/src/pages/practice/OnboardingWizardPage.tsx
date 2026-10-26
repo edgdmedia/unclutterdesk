@@ -134,8 +134,9 @@ function OnboardingWizard({ tenantId }: { tenantId: string }) {
     if (isTherapist) {
       list.push({ key: 'availability', label: 'Services', desc: 'Working hours & rates' });
     }
-    const selectedPlan = sessionStorage.getItem('onboarding_plan') || 'starter';
-    if (selectedPlan !== 'starter') {
+    // Someone who picked a paid plan on the pricing page is told they start
+    // free and where to subscribe; everyone else goes straight on.
+    if (sessionStorage.getItem('onboarding_plan')) {
       list.push({ key: 'subscription', label: 'Your plan', desc: 'Start free, upgrade any time' });
     }
     list.push({ key: 'payout', label: 'Client Payments', desc: 'Paystack or bank transfer' });

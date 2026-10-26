@@ -11,6 +11,7 @@ import {
   profileEntitlementsFromTiers,
   requiredTierFor,
   requiredTierForProfile,
+  requiredTierForStaffRole,
   type PracticeEntitlements,
   type PracticeFeature,
   type ProfileEntitlements,
@@ -70,6 +71,15 @@ export class EntitlementsService {
       upgradeTo,
       upgradeToName: upgradeTo ? TIER_NAMES[upgradeTo] : null,
       entitlements,
+      // The cheapest plan for each gated feature, so the app can tag what's
+      // missing without keeping its own plan ranking.
+      requiredTiers: {
+        bankTransferPayments: requiredTierFor('bankTransferPayments'),
+        customDomain: requiredTierFor('customDomain'),
+        googleCalendarSync: requiredTierFor('googleCalendarSync'),
+        staff: requiredTierForStaffRole('ADMIN'),
+        therapists: requiredTierForStaffRole('THERAPIST'),
+      },
       usage: {
         bookingsThisMonth,
         bookingLimitReached:
