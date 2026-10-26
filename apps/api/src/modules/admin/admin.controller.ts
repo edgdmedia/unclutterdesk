@@ -21,6 +21,7 @@ import {
   cookieOptions,
   csrfCookieOptions,
 } from '../../common/auth.config';
+import type { Tier } from '../entitlements/entitlements';
 
 @ApiTags('Admin')
 @Controller('v1/admin')
@@ -101,7 +102,7 @@ export class AdminController {
   @ApiOperation({ summary: 'Update tenant activation, subscription tier or ecosystem integration' })
   updateTenant(
     @Param('id') id: string,
-    @Body() dto: { isActive?: boolean; subscriptionTier?: 'STARTER' | 'PRO' | 'CLINIC'; ecosystemIntegrationEnabled?: boolean },
+    @Body() dto: { isActive?: boolean; subscriptionTier?: Tier; ecosystemIntegrationEnabled?: boolean },
   ) {
     return this.adminService.updateTenant(BigInt(id), dto);
   }

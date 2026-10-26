@@ -39,7 +39,9 @@ model Tenant {
   address           String?
   category          String?
 
-  subscriptionTier            String  @default("STARTER") // "STARTER", "PRO", "CLINIC"
+  // "FREE", "STARTER", "PRO", "CLINIC". What each includes lives in
+  // apps/api/src/modules/entitlements/entitlements.ts, nowhere else.
+  subscriptionTier            String  @default("FREE")
   /// Clients may pay by bank transfer straight to the practice (Pro and
   /// Clinic only). Off unless the practice turns it on.
   manualPaymentsEnabled       Boolean @default(false)
@@ -65,8 +67,14 @@ model Tenant {
   // "active", "past_due", "cancelled", or null before the first payment.
   subscriptionStatus        String?
   subscriptionRenewsAt      DateTime?
+  // When the first failed renewal arrived. The paid plan is kept for a grace
+  // period (BILLING_GRACE_DAYS, default 7) and then drops to FREE.
+  subscriptionPastDueAt     DateTime?
+  // Set when a lapsed plan could not drop to FREE because the practice still
+  // has staff FREE cannot hold; the owner is told once, not on every run.
+  downgradeBlockedAt        DateTime?
   // Complimentary access from an invite code: the plan in subscriptionTier
-  // lasts until this date, then drops back to STARTER unless the practice
+  // lasts until this date, then drops back to FREE unless the practice
   // has started paying. Null for everyone else.
   complimentaryUntil        DateTime?
   inviteCodeId              BigInt?

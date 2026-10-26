@@ -257,11 +257,14 @@ export class ConsultController {
   }
 
   @Get('public/payment-options')
-  @ApiOperation({ summary: 'How clients can pay this practice (bank details are only given with a booking)' })
+  @ApiOperation({ summary: 'How clients can pay this practice (bank details are only given with a booking), and whether it is fully booked this month' })
   async paymentOptions(@Req() req: TenantRequest) {
     if (!req.tenantId) throw new NotFoundException('Practice not found');
-    const manual = await this.manualPayments.available(req.tenantId);
-    return { online: true, bankTransfer: manual !== null };
+    const [manual, fullyBookedThisMonth] = await Promise.all([
+      this.manualPayments.available(req.tenantId),
+      this.consultService.publicFullyBooked(req.tenantId),
+    ]);
+    return { online: true, bankTransfer: manual !== null, fullyBookedThisMonth };
   }
 
   @Post('public/bookings/:bookingId/transfer-sent')

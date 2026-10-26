@@ -1,6 +1,7 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../../common/prisma/prisma.service';
 import { chargedKobo, collectedKobo } from '../../common/revenue';
+import { isTier, TIERS, type Tier } from '../entitlements/entitlements';
 
 @Injectable()
 export class AdminService {
@@ -208,8 +209,11 @@ export class AdminService {
 
   async updateTenant(
     id: bigint,
-    dto: { isActive?: boolean; subscriptionTier?: 'STARTER' | 'PRO' | 'CLINIC'; ecosystemIntegrationEnabled?: boolean },
+    dto: { isActive?: boolean; subscriptionTier?: Tier; ecosystemIntegrationEnabled?: boolean },
   ) {
+    if (dto.subscriptionTier !== undefined && !isTier(dto.subscriptionTier)) {
+      throw new BadRequestException(`subscriptionTier must be one of ${TIERS.join(', ')}`);
+    }
     if (dto.ecosystemIntegrationEnabled !== undefined && typeof dto.ecosystemIntegrationEnabled !== 'boolean') {
       throw new BadRequestException('ecosystemIntegrationEnabled must be true or false');
     }

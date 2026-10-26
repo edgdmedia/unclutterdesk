@@ -14,7 +14,7 @@ interface AuthProfile {
   tenantId?: string;
   practiceName?: string;
   tenantSlug?: string;
-  /** The practice's plan: STARTER, PRO or CLINIC. */
+  /** The practice's plan: FREE, STARTER, PRO or CLINIC. */
   plan?: string;
   platformRole?: string;
   /** A practice session whose user is also a platform admin. */

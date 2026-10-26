@@ -18,7 +18,7 @@ import { slotsFromPattern, timesInHours, type WeeklyTime } from './hours';
 import { BookingNotifier } from '../notifications/booking-notifier.service';
 import { BookingPaymentSettler } from '../billing/booking-payment-settler.service';
 import { onlineHoldExpiry } from './online-hold';
-import { assertWithinMonthlyLimit } from './booking-limits';
+import { assertWithinMonthlyLimit, monthlyLimitReached } from './booking-limits';
 
 /** A Paystack checkout: the page to send the payer to, and the code its pop-up opens with. */
 type StartedPayment = { url: string; accessCode: string };
@@ -338,6 +338,18 @@ export class ConsultService {
   }
 
   // ── Services & Scheduling ──────────────────────────────────────────────────
+
+  /**
+   * Whether the practice has used this month's bookings. The booking page
+   * says "Fully booked this month" up front instead of failing at the end.
+   */
+  async publicFullyBooked(tenantId: bigint): Promise<boolean> {
+    const tenant = await this.prisma.tenant.findUnique({
+      where: { id: tenantId },
+      select: { subscriptionTier: true, complimentaryUntil: true },
+    });
+    return monthlyLimitReached(this.prisma, tenantId, tenant);
+  }
 
   async getPublicServices(tenantId: bigint) {
     const services = await this.prisma.consultService.findMany({
@@ -1010,7 +1022,7 @@ export class ConsultService {
       discountResult = await this.discountService.validateDiscount(tenantId, dto.discountCode, price);
     }
 
-    await assertWithinMonthlyLimit(this.prisma, tenantId, slot.tenant.subscriptionTier);
+    await assertWithinMonthlyLimit(this.prisma, tenantId, slot.tenant);
 
     // Checked here, never trusted from the page: the practice must offer it now.
     const wantsManual = String(dto.paymentMethod ?? '').toUpperCase() === 'MANUAL';
@@ -1199,7 +1211,7 @@ export class ConsultService {
         reference,
         subaccount: split.paystackSubaccountCode || undefined,
         bearer: 'subaccount',
-        split: split.tier === 'STARTER' ? 5 : 0,
+        split: split.platformFeeBps / 100,
         callback_url: callbackUrl,
       });
       return { url: pTx.authorization_url, accessCode: pTx.access_code };

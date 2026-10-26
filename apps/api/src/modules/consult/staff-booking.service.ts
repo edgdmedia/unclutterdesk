@@ -105,7 +105,7 @@ export class StaffBookingService {
     if (!service) throw new BadRequestException('That service is not offered. Choose another service.');
 
     const tenant = await this.prisma.tenant.findUnique({ where: { id: tenantId } });
-    await assertWithinMonthlyLimit(this.prisma, tenantId, tenant?.subscriptionTier);
+    await assertWithinMonthlyLimit(this.prisma, tenantId, tenant);
 
     const time = await this.resolveTime(tenantId, providerId, service, dto);
 

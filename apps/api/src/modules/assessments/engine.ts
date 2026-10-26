@@ -14,8 +14,11 @@
  * not a diagnosis.
  */
 
+import type { InstrumentTier } from '../entitlements/entitlements';
+
 export type Level = 0 | 1 | 2 | 3 | 4;
-export type Tier = 'STARTER' | 'PRO' | 'CLINIC';
+/** The cheapest plan an instrument is on. Which plans include it is decided in `entitlements.ts`. */
+export type Tier = InstrumentTier;
 export type Comparison = '>=' | '>' | '==' | '<=' | '<';
 
 export interface Band {
@@ -125,12 +128,6 @@ export interface AssessmentResult {
 
 const OPS: Comparison[] = ['>=', '>', '==', '<=', '<'];
 const TIERS: Tier[] = ['STARTER', 'PRO', 'CLINIC'];
-const TIER_RANK: Record<Tier, number> = { STARTER: 0, PRO: 1, CLINIC: 2 };
-
-export function tierIncludes(plan: string | null | undefined, needed: Tier): boolean {
-  const rank = TIER_RANK[(plan || 'STARTER').toUpperCase() as Tier] ?? 0;
-  return rank >= TIER_RANK[needed];
-}
 
 function checkBands(where: string, bands: Band[] | undefined, errors: string[]) {
   if (!bands) return;

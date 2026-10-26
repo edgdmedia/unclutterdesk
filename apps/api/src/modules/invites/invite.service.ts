@@ -4,8 +4,9 @@ import { randomBytes } from 'crypto';
 import { PrismaService } from '../../common/prisma/prisma.service';
 import { appOrigin } from '../../common/origins';
 import { NotificationService } from '../notifications/notification.service';
+import { TIER_NAMES } from '../entitlements/entitlements';
 
-/** The plans an invite can grant. Starter is free already. */
+/** The plans an invite can grant. */
 export const INVITE_TIERS = ['PRO', 'CLINIC'] as const;
 export type InviteTier = (typeof INVITE_TIERS)[number];
 
@@ -26,7 +27,7 @@ export function normalizeInviteCode(code: unknown): string {
 
 /**
  * Invite codes: a platform-issued code that gives a practice a paid plan for a
- * set number of days, after which it drops back to Starter unless the practice
+ * set number of days, after which it drops back to FREE unless the practice
  * has started paying.
  *
  * Separate from DiscountCode, which is a practice's own promotion on the price
@@ -130,7 +131,7 @@ export class InviteService {
     // An invite nobody can redeem would only disappoint whoever opens it.
     const invite = await this.usable(existing.code);
 
-    const plan = invite.tier === 'CLINIC' ? 'Clinic' : 'Pro';
+    const plan = TIER_NAMES[invite.tier as InviteTier] ?? 'Pro';
     const deadline = invite.redeemBy
       ? ` Use it by ${invite.redeemBy.toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'Africa/Lagos' })}.`
       : '';
@@ -254,13 +255,13 @@ export class InviteService {
       const paying = tenant.subscriptionStatus === 'active';
       await this.prisma.tenant.update({
         where: { id: tenant.id },
-        data: paying ? { complimentaryUntil: null } : { subscriptionTier: 'STARTER', complimentaryUntil: null },
+        data: paying ? { complimentaryUntil: null } : { subscriptionTier: 'FREE', complimentaryUntil: null },
       });
       if (!paying) downgraded += 1;
     }
 
     if (due.length > 0) {
-      this.logger.log(`Ended ${due.length} complimentary period(s); ${downgraded} moved back to Starter`);
+      this.logger.log(`Ended ${due.length} complimentary period(s); ${downgraded} moved back to the free plan`);
     }
     return { ended: due.length, downgraded };
   }

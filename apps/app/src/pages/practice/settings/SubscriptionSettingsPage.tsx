@@ -3,15 +3,18 @@ import { Check, TrendingUp } from 'lucide-react';
 import { Eyebrow, useToast } from '@unclutterdesk/ui';
 import { useBrand } from '@unclutterdesk/ui';
 import { api } from '../../../utils/apiClient';
+import { formatFee, TIER_NAMES, useEntitlements, type Tier } from '../../../utils/entitlements';
 
 type SubscriptionRecord = {
-  subscriptionTier: 'STARTER' | 'PRO' | 'CLINIC';
+  subscriptionTier: Tier;
   subscriptionStatus?: string;
   /** Set while the plan comes from an invite code. */
   complimentaryUntil?: string | null;
   nextBillingDate: string | null;
   nextChargeAmount: string;
   currentMonthBookings?: number;
+  /** Null on unlimited plans. */
+  monthlyBookingLimit?: number | null;
   canDowngradeToStarter?: boolean;
   canDowngradeToPro?: boolean;
   starterBlockReason?: string | null;
@@ -28,27 +31,29 @@ type BillingSummary = { subscription: SubscriptionRecord; history: Array<{ date:
  * ₦15,000 and ₦45,000, and Starter was shown as free when it is not. The price
  * on the button someone clicks to buy has to be the price they are charged.
  */
-type Plan = { tier: SubscriptionRecord['subscriptionTier']; name: string; price: string };
+type PaidTier = Exclude<Tier, 'FREE'>;
+type Plan = { tier: PaidTier; name: string; price: string };
 
-/** What each tier includes. Copy, not pricing — the figures come from the API. */
-const PLAN_FEATURES: Record<SubscriptionRecord['subscriptionTier'], string[]> = {
-  STARTER: ['1 Practitioner profile', 'Up to 20 bookings / mo', 'Instant Jitsi WebRTC video'],
+/** What each paid plan includes (spec §5.2). Copy, not pricing — the figures come from the API. */
+const PLAN_FEATURES: Record<PaidTier, string[]> = {
+  STARTER: ['30 bookings a month', 'No platform fee on bookings', 'Google Calendar sync'],
   PRO: [
-    'Unlimited sessions & bookings',
-    '1 Receptionist / Staff login',
-    'Custom Domain (CNAME)',
-    'Daily.co BYOK Cloud Recording',
+    'Unlimited bookings',
+    'Admin and receptionist logins',
+    'Custom domain for your booking page',
+    'PCL-5 and DASS-21 assessments',
+    'Bank transfer payments',
   ],
-  CLINIC: ['Up to 25 Therapist profiles', 'Group Clinic RBAC Roles', 'Supervisor case reviews'],
+  CLINIC: ['Everything in Pro', 'More than one therapist', 'Every assessment in the library'],
 };
 
-const PLAN_TONE: Record<SubscriptionRecord['subscriptionTier'], 'light' | 'dark'> = {
+const PLAN_TONE: Record<PaidTier, 'light' | 'dark'> = {
   STARTER: 'light',
   PRO: 'dark',
   CLINIC: 'light',
 };
 
-const PLAN_NAMES: Record<SubscriptionRecord['subscriptionTier'], string> = { STARTER: 'Starter', PRO: 'Pro', CLINIC: 'Clinic' };
+const PLAN_NAMES = TIER_NAMES;
 
 function formatDate(iso: string) {
   return new Intl.DateTimeFormat('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }).format(new Date(iso));
@@ -58,7 +63,7 @@ function daysLeft(iso: string) {
   return Math.max(0, Math.ceil((new Date(iso).getTime() - Date.now()) / (24 * 60 * 60 * 1000)));
 }
 
-function getPlanDisabledReason(plan: SubscriptionRecord['subscriptionTier'], subscription: SubscriptionRecord) {
+function getPlanDisabledReason(plan: PaidTier, subscription: SubscriptionRecord) {
   if (plan === subscription.subscriptionTier) return null;
   if (plan === 'STARTER' && subscription.canDowngradeToStarter === false) {
     return subscription.starterBlockReason || 'Downgrade blocked';
@@ -82,6 +87,7 @@ export function SubscriptionSettingsPage() {
   const [inviteCode, setInviteCode] = useState('');
   const [redeeming, setRedeeming] = useState(false);
   const [inviteMessage, setInviteMessage] = useState<string | null>(null);
+  const entitlements = useEntitlements();
 
   useEffect(() => {
     let cancelled = false;
@@ -113,7 +119,7 @@ export function SubscriptionSettingsPage() {
     setHistory(refreshed.history);
   }
 
-  async function handleSelectPlan(plan: SubscriptionRecord['subscriptionTier']) {
+  async function handleSelectPlan(plan: PaidTier) {
     if (!subscription || plan === subscription.subscriptionTier) return;
     setSaving(true);
     setError(null);
@@ -140,7 +146,7 @@ export function SubscriptionSettingsPage() {
     setError(null);
     setInviteMessage(null);
     try {
-      const result = await api.post<{ tier: SubscriptionRecord['subscriptionTier']; complimentaryUntil: string }>(
+      const result = await api.post<{ tier: Tier; complimentaryUntil: string }>(
         '/v1/invites/redeem',
         { code: inviteCode.trim() },
       );
@@ -183,8 +189,30 @@ export function SubscriptionSettingsPage() {
               You're on {PLAN_NAMES[subscription.subscriptionTier]} free until {formatDate(subscription.complimentaryUntil)} ({daysLeft(subscription.complimentaryUntil)} days left).
             </p>
             <p className="mt-1 text-xs font-medium text-emerald-800">
-              After that your practice moves to Starter. Subscribe to a plan any time to keep what you have; you won't lose any data either way.
+              After that your practice moves to the free plan. Subscribe to a plan any time to keep what you have; you won't lose any data either way.
             </p>
+          </div>
+        ) : null}
+        {subscription?.subscriptionTier === 'FREE' && entitlements ? (
+          <div className="rounded-[18px] border border-[#E2E8F0] bg-white px-5 py-4">
+            <p className="text-sm font-bold text-[#0F172A]">You're on the free plan</p>
+            <p className="mt-1 text-xs font-medium text-[#475569]">
+              Your therapist profile, clinical notes, intake and booking are all included.
+              {entitlements.entitlements.monthlyBookingLimit !== null
+                ? ` Up to ${entitlements.entitlements.monthlyBookingLimit} bookings a month`
+                : ''}
+              {entitlements.entitlements.platformFeeBps > 0
+                ? `, with a ${formatFee(entitlements.entitlements.platformFeeBps)} platform fee on booking payments.`
+                : '.'}
+              {entitlements.usage.bookingsThisMonth !== null && entitlements.entitlements.monthlyBookingLimit !== null
+                ? ` ${entitlements.usage.bookingsThisMonth} of ${entitlements.entitlements.monthlyBookingLimit} used this month.`
+                : ''}
+            </p>
+            {entitlements.usage.bookingLimitReached && entitlements.upgradeToName ? (
+              <p className="mt-2 text-xs font-bold text-[#B45309]">
+                You've reached this month's bookings. Clients see "Fully booked this month" until you upgrade to {entitlements.upgradeToName} or the month ends.
+              </p>
+            ) : null}
           </div>
         ) : null}
         {loading || !subscription || !plans ? <div className="rounded-[24px] border border-[#E2E8F0] bg-white px-6 py-10 text-sm font-medium text-[#64748B]">Loading subscription...</div> : (
@@ -204,14 +232,14 @@ export function SubscriptionSettingsPage() {
                 return (
                 <button key={plan.key} onClick={() => void handleSelectPlan(plan.key)} disabled={isDisabled} className={`p-6 rounded-[24px] transition-all relative flex flex-col justify-between space-y-4 text-left ${plan.tone === 'dark' ? 'bg-[#0F172A] text-white' : 'bg-white'} ${subscription.subscriptionTier === plan.key ? `border-2 ${plan.tone === 'dark' ? 'border-[#E3B341]' : 'border-[#0F3A53]'}` : 'border border-[#E2E8F0]'} ${isDisabled ? 'cursor-not-allowed opacity-60' : 'cursor-pointer'} disabled:opacity-60`}>
                   <div className="space-y-3">
-                    <div className="flex items-center justify-between"><h3 className="text-[18px] font-extrabold">{plan.name}</h3>{subscription.subscriptionTier === plan.key ? <span className="text-[10px] font-black uppercase tracking-wider">Current</span> : null}</div>
+                    <div className="flex items-center justify-between"><h3 className="text-[18px] font-extrabold">{plan.name}</h3>{subscription.subscriptionTier === plan.key ? <span className="text-[10px] font-black uppercase tracking-wider">Current</span> : entitlements?.upgradeTo === plan.key ? <span className="text-[10px] font-black uppercase tracking-wider">Next step up</span> : null}</div>
                     <div className="text-[28px] font-extrabold">{plan.price}</div>
                     <ul className={`space-y-2 text-xs font-medium pt-2 border-t ${plan.tone === 'dark' ? 'text-slate-300 border-slate-800' : 'text-[#475569] border-[#F1F5F9]'}`}>
                       {plan.features.map((feature) => <li key={feature} className="flex items-center gap-2"><Check className={`h-3.5 w-3.5 ${plan.tone === 'dark' ? 'text-[#E3B341]' : 'text-emerald-600'}`} /> {feature}</li>)}
-                      {plan.key === 'STARTER' && subscription.subscriptionTier === 'STARTER' && subscription.currentMonthBookings !== undefined && (
+                      {subscription.subscriptionTier === plan.key && subscription.monthlyBookingLimit != null && subscription.currentMonthBookings !== undefined && (
                         <li className="flex items-center gap-2 pt-2 text-[#0F3A53] font-bold">
                           <TrendingUp className="h-3.5 w-3.5" />
-                          {subscription.currentMonthBookings} of 20 bookings used this month
+                          {subscription.currentMonthBookings} of {subscription.monthlyBookingLimit} bookings used this month
                         </li>
                       )}
                     </ul>

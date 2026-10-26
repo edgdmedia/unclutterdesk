@@ -90,7 +90,7 @@ describe('invite codes', () => {
       expect(prisma.$queryRaw).not.toHaveBeenCalled();
     });
 
-    // Would otherwise start a clock that later drops a paying practice to Starter.
+    // Would otherwise start a clock that later drops a paying practice to FREE.
     it('is refused for a practice that already pays', async () => {
       const { service, prisma } = makeService({ tenant: { id: TENANT, inviteCodeId: null, subscriptionStatus: 'active' } });
       await expect(service.redeem(TENANT, 'DESK-TEST')).rejects.toThrow(/paid plan/);
@@ -109,13 +109,13 @@ describe('invite codes', () => {
   });
 
   describe('ending complimentary periods', () => {
-    it('moves a practice that has not started paying back to Starter', async () => {
+    it('moves a practice that has not started paying back to FREE, not Starter', async () => {
       const { service, prisma } = makeService();
       prisma.tenant.findMany.mockResolvedValue([{ id: TENANT, subscriptionStatus: null }]);
       const result = await service.expireComplimentary();
       expect(prisma.tenant.update).toHaveBeenCalledWith({
         where: { id: TENANT },
-        data: { subscriptionTier: 'STARTER', complimentaryUntil: null },
+        data: { subscriptionTier: 'FREE', complimentaryUntil: null },
       });
       expect(result).toEqual({ ended: 1, downgraded: 1 });
     });

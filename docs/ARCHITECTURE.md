@@ -1,84 +1,98 @@
-# Unclutter Desk — Technical Architecture & Security Specifications
+# Unclutter Desk — Architecture
 
-**Product Name**: Unclutter Desk  
-**Document Version**: 1.0.0  
-
----
-
-## 1. System Architecture Overview
-
-Unclutter Desk uses a modern, high-performance **Monorepo Architecture** powered by `pnpm`, `NestJS`, `Next.js 14 / Vite React`, and `Prisma ORM` with PostgreSQL.
-
-```
-/Users/olalekan/Projects/unclutter-os/
-├── apps/
-│   ├── api/              # NestJS Multi-Tenant REST API & WebSockets Gateway
-│   └── web/              # Next.js 14 / Vite React White-Label Client Portal & Admin
-├── packages/
-│   ├── shared/           # Shared Types, DTOs, API Contracts & Utilities
-│   └── ui/               # White-Label UI Primitives & CSS Token Engine
-└── prisma/
-    └── schema.prisma     # PostgreSQL Multi-Tenant Database Schema
-```
+How the system is built today. When this file and the code disagree, the code
+is right and this file needs fixing in the same PR.
 
 ---
 
-## 2. Multi-Tenant Data Isolation Strategy
+## 1. Repo layout (pnpm workspace)
 
-### 2.1 Database Isolation via `tenantId`
-Every database model (excluding global system auth users) contains a mandatory `tenantId: BigInt` reference linked to `Tenant.id`.
-
-### 2.2 Prisma Middleware Enforcement
-To eliminate the risk of cross-tenant data leaks, Prisma query extensions automatically inject `tenantId` filter into every read, write, update, and delete operation:
-
-```typescript
-// Prisma Extension for Tenant Filtering
-prisma.$extends({
-  query: {
-    $allModels: {
-      async $allOperations({ model, operation, args, query }) {
-        const tenantId = Context.getTenantId();
-        if (tenantId && isTenantModel(model)) {
-          args.where = { ...args.where, tenantId };
-        }
-        return query(args);
-      },
-    },
-  },
-});
+```
+apps/
+  api/            NestJS REST API: tenants, auth, booking, billing, clinical
+                  features, crons and webhooks
+  app/            Vite + React SPA: practice dashboard (/dashboard/*), client
+                  portal, public booking pages, platform admin (/admin/*)
+  landing/        Astro marketing site (index, privacy, terms, 404)
+  tenant-router/  Cloudflare Worker on *.unclutterdesk.com: proxies the SPA,
+                  404s unknown practices, adds X-Robots-Tag: noindex
+packages/
+  shared/         Shared TypeScript types and helpers
+  ui/             Shared React components
+prisma/
+  schema.prisma   The schema. Migrations live in prisma/migrations
 ```
 
----
+There are no WebSockets, no Redis and no job queue.
 
-## 3. White-Label Design System & CSS Token Engine
+## 2. Runtime
 
-### 3.1 Custom Property Injection
-When a client portal loads, the `BrandProvider` fetches the tenant's brand configuration (`logoUrl`, `primaryColor`, `secondaryColor`) and injects it into `:root`:
+| Piece | Where it runs |
+|---|---|
+| API | One VPS, pm2 with **one instance on purpose**: the rate limiter is in memory and crons run in-process. Running more than one needs Redis and a job runner first |
+| App, landing | Cloudflare Pages |
+| Practice subdomains | `tenant-router` Worker, serving the same SPA bundle |
+| Custom domains | Cloudflare for SaaS custom hostnames |
+| Database | PostgreSQL via Prisma. IDs are `BigInt`; money is `*Kobo` `BigInt` |
 
-```tsx
-export function BrandProvider({ brand, children }: { brand: TenantBrand; children: ReactNode }) {
-  useEffect(() => {
-    if (!brand) return;
-    const root = document.documentElement;
-    root.style.setProperty('--brand-primary', brand.primaryColor || '#0F3A53');
-    root.style.setProperty('--brand-secondary', brand.secondaryColor || '#E3B341');
-  }, [brand]);
+Background work is `@Cron` jobs inside the API (bookings every 5 min, custom
+domains every 5 min, invite-code expiry hourly, lapsed subscriptions daily).
+Notification dispatch goes through the `NotificationDispatch` table.
 
-  return <BrandContext.Provider value={brand}>{children}</BrandContext.Provider>;
-}
-```
+## 3. Multi-tenancy
 
----
+- Tenant-scoped rows carry `tenantId`. There is **no Postgres RLS and no Prisma
+  middleware**: every service query filters by `tenantId` itself.
+  `tenant-isolation.spec.ts` and `roles.spec.ts` guard this.
+- The SPA works out the practice from the hostname and sends `X-Tenant-Slug`.
+  `TenantMiddleware` resolves it (slug, then ACTIVE custom domain, then `Host`).
+- Signed-in requests take the tenant from the JWT via `authenticatedTenantId(req)`,
+  never from the header.
 
-## 4. Security & Compliance (HIPAA / GDPR / Data Protection)
+## 4. Auth and permissions
 
-1. **Session & Media Encryption**:
-   - All video and audio streams run over WebRTC with Datagram Transport Layer Security (DTLS) and Secure Real-time Transport Protocol (SRTP).
-   - Database connections enforce SSL/TLS with encrypted storage at rest.
+- The JWT carries `sub`, `profileId`, `tenantId`, `type`, `sid`, and `roles` only
+  for platform admins. **Practice roles are not in the JWT.**
+- `RolesGuard` reads `Profile.role` + `Profile.permissions` from the database.
+  Every authenticated route needs a `@Permissions(...)` annotation; the build
+  fails without one.
 
-2. **Session Security & Account Lockout**:
-   - Account lockout after 5 failed login attempts (15-minute cooldown).
-   - Explicit authentication check on all protected controller routes using NestJS `JwtAuthGuard` and `RolesGuard`.
+## 5. Plans and entitlements
 
-3. **Data Retention & Soft Deletion**:
-   - Clinical intake records and session logs use soft deletion (`deletedAt`) to preserve medical audit trails required by health regulators.
+- `Tenant.subscriptionTier` is one of `FREE`, `STARTER`, `PRO`, `CLINIC`. New
+  practices start on `FREE`.
+- **What each plan includes lives in one table:**
+  `apps/api/src/modules/entitlements/entitlements.ts` (`ENTITLEMENTS`,
+  `entitlementsFor(tenant)`). Booking limits, the platform fee, custom domains,
+  staff invites, assessments, Google Calendar push and bank-transfer payments
+  all read it. `entitlements.spec.ts` fails the build if a tier is compared with
+  a string anywhere else in the API.
+- A feature the plan lacks fails with HTTP 402
+  `{ code: 'ENTITLEMENT_REQUIRED', feature, requiredTier }`.
+- `GET /v1/tenant/entitlements` returns the plan, what it includes and this
+  month's booking usage, so the app can show a feature as locked before the API
+  refuses it (`apps/app/src/utils/entitlements.ts`).
+- A paid plan changes only from a signature-verified Paystack webhook. A
+  cancelled subscription drops to `FREE` when its paid month ends; a failed
+  renewal drops after a grace period (`BILLING_GRACE_DAYS`, default 7). A
+  practice with staff `FREE` cannot hold keeps its plan and the owner is told.
+- Invite codes grant `PRO` or `CLINIC` for a set number of days, then the
+  practice returns to `FREE` unless it is paying.
+
+## 6. Video
+
+Rooms are created on Daily.co while its monthly budget lasts, then on 8x8's
+Jitsi as a Service, then as a plain meet.jit.si link (`video-router.service.ts`).
+A therapist with Google Calendar connected (Starter and up) can use Google Meet
+links instead.
+
+## 7. Security
+
+- Clinical note narrative fields (the four SOAP fields) are encrypted in the
+  application with AES-256-GCM (`common/field-encryption.ts`). Losing
+  `FIELD_ENCRYPTION_KEY` loses those notes. Intake answers, assessment answers
+  and session summaries are stored as plaintext today.
+- Backups are encrypted with AES-256 before they leave the server. The database
+  volume itself is not encrypted at rest.
+- Account lockout after repeated failed logins; CSRF protection on cookie
+  sessions.

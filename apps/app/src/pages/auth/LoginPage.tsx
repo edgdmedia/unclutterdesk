@@ -76,7 +76,7 @@ export function LoginPage() {
       footer="© 2026 Unclutter Desk"
       stats={[
         { value: '1,240+', label: 'practices in Nigeria' },
-        { value: '0%', label: 'platform fee on payouts' },
+        { value: '0%', label: 'platform fee from Starter up' },
       ]}
     >
       <div className="text-[29px] font-bold tracking-[-0.03em] text-[#0F172A]">Welcome back</div>

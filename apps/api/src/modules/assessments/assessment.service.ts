@@ -1,15 +1,16 @@
-import { BadRequestException, ForbiddenException, Injectable, Logger, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { createHash, randomBytes } from 'crypto';
 import { PrismaService } from '../../common/prisma/prisma.service';
 import { tenantWebOrigin } from '../../common/origins';
 import { NotificationService } from '../notifications/notification.service';
 import { InstrumentService, type StoredInstrument } from './instrument.service';
-import { publicDefinition, score, tierIncludes, validateAnswers, type AssessmentResult } from './engine';
+import { publicDefinition, score, validateAnswers, type AssessmentResult } from './engine';
+import { entitlementsFor, instrumentAllowed, TIER_NAMES, type Entitlements } from '../entitlements/entitlements';
+import { EntitlementError } from '../entitlements/entitlement.error';
 
 const hashToken = (token: string) => createHash('sha256').update(token).digest('hex');
 
-const PLAN_NAME = { STARTER: 'Starter', PRO: 'Pro', CLINIC: 'Clinic' } as const;
 
 type AssignmentWithParties = Prisma.AssessmentAssignmentGetPayload<{
   include: {
@@ -34,15 +35,20 @@ export class AssessmentService {
     private readonly instruments: InstrumentService,
   ) {}
 
-  private async plan(tenantId: bigint) {
-    const tenant = await this.prisma.tenant.findUnique({ where: { id: tenantId }, select: { subscriptionTier: true } });
-    return tenant?.subscriptionTier ?? 'STARTER';
+  private async plan(tenantId: bigint): Promise<Entitlements> {
+    const tenant = await this.prisma.tenant.findUnique({
+      where: { id: tenantId },
+      select: { subscriptionTier: true, complimentaryUntil: true },
+    });
+    return entitlementsFor(tenant);
   }
 
-  private assertOnPlan(plan: string, inst: StoredInstrument) {
-    if (!tierIncludes(plan, inst.definition.tier)) {
-      throw new ForbiddenException(
-        `${inst.definition.shortName} is part of the ${PLAN_NAME[inst.definition.tier]} plan. Upgrade in Settings → Subscription to use it.`,
+  private assertOnPlan(plan: Entitlements, inst: StoredInstrument) {
+    if (!instrumentAllowed(plan, inst.definition.tier)) {
+      throw new EntitlementError(
+        'assessmentRank',
+        inst.definition.tier,
+        `${inst.definition.shortName} is part of the ${TIER_NAMES[inst.definition.tier]} plan. Upgrade in Settings → Subscription to use it.`,
       );
     }
   }
@@ -60,7 +66,7 @@ export class AssessmentService {
     return instruments.map((inst) => ({
       ...publicDefinition(inst.definition),
       enabled: on.has(inst.key),
-      onPlan: tierIncludes(plan, inst.definition.tier),
+      onPlan: instrumentAllowed(plan, inst.definition.tier),
     }));
   }
 

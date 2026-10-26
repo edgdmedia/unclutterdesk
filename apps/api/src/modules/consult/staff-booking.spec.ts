@@ -182,9 +182,19 @@ describe('what is checked', () => {
     expect(tx.consultBooking.create).not.toHaveBeenCalled();
   });
 
-  it('the Starter monthly limit applies', async () => {
+  it.each([
+    ['FREE', 10, 'Starter'],
+    ['STARTER', 30, 'Pro'],
+  ])('the %s monthly limit (%i) applies and points at the next plan up', async (tier, monthCount, next) => {
+    const { service } = setup({ tier, monthCount });
+    const err = await service.createForClient(TENANT, OWNER, { ...base, payment: 'NONE' }).catch((e) => e);
+    expect(err.getStatus()).toBe(409);
+    expect(err.getResponse()).toMatchObject({ code: 'MONTHLY_BOOKING_LIMIT', message: expect.stringContaining(`${next} plan`) });
+  });
+
+  it('Starter is not limited at 20 any more', async () => {
     const { service } = setup({ tier: 'STARTER', monthCount: 20 });
-    await expect(service.createForClient(TENANT, OWNER, { ...base, payment: 'NONE' })).rejects.toThrow(/Monthly booking limit/);
+    await expect(service.createForClient(TENANT, OWNER, { ...base, payment: 'NONE' })).resolves.toBeDefined();
   });
 
   it('a time is required', async () => {

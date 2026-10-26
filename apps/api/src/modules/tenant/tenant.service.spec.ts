@@ -39,20 +39,20 @@ describe('TenantService custom domain flow', () => {
     ).rejects.toBeInstanceOf(BadRequestException);
   });
 
-  test('rejects custom domains for starter tier', async () => {
+  test.each(['FREE', 'STARTER', null])('rejects custom domains on %s with a 402 entitlement error', async (tier) => {
     const prisma = createPrismaMock();
     const service = new TenantService(prisma, notificationsMock());
 
     prisma.tenant.findUnique.mockResolvedValue({
       id: BigInt(1),
-      subscriptionTier: 'STARTER',
+      subscriptionTier: tier,
     });
 
     await expect(
       service.updateTenantBrand(BigInt(1), {
         customDomain: 'booking.example.com',
       }),
-    ).rejects.toBeInstanceOf(ForbiddenException);
+    ).rejects.toMatchObject({ status: 402, response: { code: 'ENTITLEMENT_REQUIRED', feature: 'customDomain', requiredTier: 'PRO' } });
   });
 
 });

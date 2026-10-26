@@ -10,8 +10,8 @@ const PRESETS = [
 
 const VALUE_CARDS = [
   { title: "100% White-Label Portal", body: "Your brand, your booking link, your client experience. Launch with your own practice subdomain and connect a custom domain for a fully branded front door.", icon1: true, icon2: false, icon3: false },
-  { title: "Telehealth, Notes, and Assessments", body: "Run secure Jitsi or Google Meet sessions, capture SOAP notes with live autosave, and keep PHQ-9 and GAD-7 results attached to the client record.", icon1: false, icon2: true, icon3: false },
-  { title: "Direct Paystack Bank Payouts", body: "Take bookings, collect payments, and route payouts directly to your bank account with no platform commission on session revenue.", icon1: false, icon2: false, icon3: true }
+  { title: "Telehealth, Notes, and Assessments", body: "Run secure video sessions in the browser, capture SOAP notes with live autosave, and keep PHQ-9 and GAD-7 results attached to the client record.", icon1: false, icon2: true, icon3: false },
+  { title: "Direct Paystack Bank Payouts", body: "Take bookings, collect payments, and route payouts directly to your bank account. Paid plans take no commission on session revenue.", icon1: false, icon2: false, icon3: true }
 ];
 
 const TABS = [
@@ -42,19 +42,19 @@ const TRUST_STRIP = ["No card required", "NDPR compliant", "Paystack verified"];
 
 const PLANS = [
   {
-    tier: "STARTER", price: "₦5,000", fee: "/month", cta: "Start 14-day trial", dark: false, popular: false,
+    tier: "STARTER", price: "₦5,000", fee: "/month", cta: "Start free, upgrade any time", dark: false, popular: false,
     blurb: "For a solo practitioner getting started with a branded practice workflow.",
-    features: ["1 practitioner", "Up to 25 bookings per month", "Jitsi telehealth", "Google Calendar sync", "Email support"]
+    features: ["1 practitioner", "30 bookings a month", "No platform fee on bookings", "Video sessions, notes and intake", "PHQ-9 and GAD-7 assessments", "Google Calendar sync"]
   },
   {
-    tier: "PRO SOLO", price: "₦15,000", fee: "/month", cta: "Start 14-day trial", dark: true, popular: true,
+    tier: "PRO", price: "₦15,000", fee: "/month", cta: "Start free, upgrade any time", dark: true, popular: true,
     blurb: "For a growing private practice ready to own its brand and client experience.",
-    features: ["Unlimited sessions", "Custom domain (CNAME)", "1 receptionist login", "Auto-scored PHQ-9 and GAD-7", "0% payout fee"]
+    features: ["Unlimited bookings", "Custom domain for your booking page", "Admin and receptionist logins", "Adds PCL-5 and DASS-21 assessments", "Bank transfer payments", "No platform fee on bookings"]
   },
   {
     tier: "CLINIC", price: "From ₦45,000", fee: "/month", cta: "Talk to sales", ctaHref: SALES_MAILTO, dark: false, popular: false,
     blurb: "For multi-therapist clinics that need shared visibility and operational support.",
-    features: ["2-5 therapists", "Owner/admin/therapist/reception roles", "Clinic-wide revenue analytics", "Priority support", "Dedicated onboarding"]
+    features: ["Everything in Pro", "Multiple therapists", "Owner/admin/therapist/reception roles", "Every assessment in the library", "Dedicated onboarding"]
   }
 ];
 
@@ -75,12 +75,12 @@ const SALES_MAILTO =
   '&body=Practice%20name%3A%0APractitioners%3A%0APreferred%20start%20date%3A%0A';
 
 const FAQS = [
-  ["What is included in each plan?", "Starter includes core scheduling, Jitsi telehealth, and email support. Pro Solo adds unlimited sessions, custom domain, and auto-scored assessments. Clinic plans include team access, role management, and analytics."],
-  ["Can I upgrade or downgrade my plan?", "Yes, you can upgrade or downgrade anytime. Changes take effect at the next billing cycle."],
-  ["Do you store clinical notes securely?", "Yes. All clinical notes are encrypted at rest and meet NDPR requirements for therapist-client confidentiality."],
+  ["What is included in each plan?", "Every plan includes booking, video sessions, clinical notes, intake forms, an hours log and PHQ-9 and GAD-7 assessments. The free plan takes 10 bookings a month with a 5% fee on online payments. Starter raises that to 30 bookings with no fee and adds Google Calendar sync. Pro adds unlimited bookings, a custom domain, admin and receptionist logins, bank transfer payments and the PCL-5 and DASS-21. Clinic adds more therapists and every assessment."],
+  ["Can I upgrade or downgrade my plan?", "Yes. An upgrade starts as soon as Paystack confirms payment. If you cancel, you keep your plan to the end of the month you've paid for, then move to the free plan."],
+  ["Do you store clinical notes securely?", "Yes. Clinical notes are encrypted at rest by the application (AES-256-GCM), so they can't be read from the disk or a backup."],
   ["How does Paystack payout work?", "Payments from clients are processed through Paystack and settled to your bank account within 24 hours."],
-  ["Do you offer a free trial?", "Yes, all plans include a 14-day free trial with no credit card required."],
-  ["What happens if I cancel my subscription?", "Your data remains accessible for download for 30 days after cancellation. No additional charges apply."]
+  ["Is there a free plan?", "Yes. Every practice starts free, with no card required: up to 10 bookings a month and a 5% platform fee on online payments. Upgrade to Starter or Pro when you need more. There is no time-limited trial."],
+  ["What happens if I cancel my subscription?", "Your practice moves to the free plan at the end of the month you've paid for. Your clients, notes and bookings stay where they are, and no further charges are made."]
 ];
 
 function tint(hex: string, amount: number) {
@@ -164,14 +164,14 @@ export function LandingPage() {
             Practice Management & Telehealth for Therapists in Nigeria
           </div>
           <h1 className="m-0 text-[36px] md:text-[46px] leading-[1.08] font-[800] tracking-[-0.035em] text-[#0F172A] text-balance">
-            Your own branded therapy practice. Zero platform fees.
+            Your own branded therapy practice. Start free.
           </h1>
           <p className="m-0 text-[15px] md:text-[16.5px] leading-[1.62] text-[#64748B] max-w-[620px] text-pretty">
             Give your clients a branded booking experience under your own domain. Manage scheduling, live SOAP notes, PHQ-9 and GAD-7 assessments, secure telehealth sessions, and direct Paystack payouts from one calm workspace.
           </p>
           <div className="flex flex-col sm:flex-row items-center justify-center gap-3 pt-1 w-full sm:w-auto">
             <a href={registerUrl} className="w-full sm:w-auto h-[52px] px-7 rounded-[16px] bg-[#24614F] border-none text-white text-[15px] font-[700] flex items-center justify-center gap-2.5 shadow-[0_10px_26px_rgba(36,97,79,0.26)] hover:bg-[#1C4E3F] transition-colors cursor-pointer">
-              Start Free 14-Day Trial
+              Start free
               <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14"></path><path d="m13 6 6 6-6 6"></path></svg>
             </a>
             {/*
@@ -441,7 +441,7 @@ export function LandingPage() {
       <section id="pricing" className="px-4 py-12 md:py-[80px] md:px-10 bg-[#F8FAFC] text-center">
         <div className="text-[9px] font-[900] tracking-[0.22em] text-[#94A3B8]">PRICING</div>
         <h2 className="mt-3 mb-2 text-[26px] md:text-[34px] font-[800] tracking-[-0.035em] text-[#0F172A]">Simple, transparent pricing. No hidden fees.</h2>
-        <p className="m-0 text-[15px] text-[#64748B]">Every plan keeps 0% of your session revenue. Cancel any time.</p>
+        <p className="m-0 text-[15px] text-[#64748B]">Start free, no card needed: up to 10 bookings a month with a 5% fee on online payments. Paid plans take 0% of your session revenue. Cancel any time.</p>
 
         <div className="max-w-[1200px] mx-auto mt-11 flex flex-col md:grid md:grid-cols-3 gap-5 items-stretch">
           {PLANS.map((pl, i) => {
@@ -540,7 +540,7 @@ export function LandingPage() {
         <div className="max-w-[1240px] mx-auto rounded-[24px] md:rounded-[32px] bg-gradient-to-br from-[#24614F] to-[#1C4E3F] p-8 md:p-[64px] text-center shadow-[0_24px_80px_rgba(15,23,42,0.18)]">
           <div className="text-[9px] font-[900] tracking-[0.22em] text-[#7DB8A5]">NO CREDIT CARD REQUIRED</div>
           <h2 className="mt-3.5 mb-2.5 text-[28px] md:text-[34px] font-[800] tracking-[-0.035em] text-[#F8FAFC] text-balance">Launch your branded booking portal today.</h2>
-          <p className="mt-0 mb-6 text-[15px] text-[#CBD5E1] max-w-[600px] mx-auto">Start your 14-day trial and give clients a calmer, more professional way to book, pay, and meet with your practice.</p>
+          <p className="mt-0 mb-6 text-[15px] text-[#CBD5E1] max-w-[600px] mx-auto">Start free and give clients a calmer, more professional way to book, pay, and meet with your practice.</p>
           <a href={registerUrl} className="inline-flex items-center justify-center h-[52px] px-[30px] rounded-[16px] bg-white border-none text-[#24614F] text-[15px] font-[800] shadow-[0_12px_30px_rgba(0,0,0,0.18)] hover:bg-gray-50 transition-colors cursor-pointer">Start Free 14-Day Trial</a>
         </div>
       </section>

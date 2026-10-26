@@ -8,8 +8,8 @@ import { SUBSCRIPTION_PLANS, formatNaira } from './subscription-plans';
 
 function makeService() {
   const prisma: any = {
-    tenant: { findUnique: vi.fn(), update: vi.fn(), updateMany: vi.fn() },
-    profile: { findFirst: vi.fn(), count: vi.fn().mockResolvedValue(0) },
+    tenant: { findUnique: vi.fn(), findMany: vi.fn().mockResolvedValue([]), update: vi.fn(), updateMany: vi.fn() },
+    profile: { findFirst: vi.fn(), findMany: vi.fn().mockResolvedValue([]), count: vi.fn().mockResolvedValue(0) },
     consultBooking: { updateMany: vi.fn().mockResolvedValue({ count: 1 }) },
   };
   const paystack: any = { initializeTransaction: vi.fn() };
@@ -166,11 +166,14 @@ describe('BillingService.handleWebhook — subscriptions', () => {
     await service.handleWebhook('invoice.payment_failed', {
       subscription: { subscription_code: 'SUB_1' },
     });
-    // Losing access to clinical records over a failed card is worse than a
-    // month of unpaid service.
-    const call = prisma.tenant.updateMany.mock.calls[0][0];
-    expect(call.data).toEqual({ subscriptionStatus: 'past_due' });
-    expect(call.data).not.toHaveProperty('subscriptionTier');
+    // Not downgraded on the spot: the paid plan runs through a grace period,
+    // which starts at the first failure and is not restarted by later ones.
+    const calls = prisma.tenant.updateMany.mock.calls.map((c: any) => c[0]);
+    expect(calls).toContainEqual({
+      where: { paystackSubscriptionCode: 'SUB_1', subscriptionPastDueAt: null },
+      data: { subscriptionStatus: 'past_due', subscriptionPastDueAt: expect.any(Date) },
+    });
+    for (const call of calls) expect(call.data).not.toHaveProperty('subscriptionTier');
   });
 
   it('records a cancelled subscription', async () => {
@@ -235,5 +238,75 @@ describe('PaystackService.verifyWebhookSignature', () => {
   it('rejects a signature of the wrong length without throwing', () => {
     expect(() => paystack.verifyWebhookSignature('short', Buffer.from('{}'))).not.toThrow();
     expect(paystack.verifyWebhookSignature('short', Buffer.from('{}'))).toBe(false);
+  });
+});
+
+describe('lapsed subscriptions drop to FREE', () => {
+  let service: BillingService, prisma: any;
+  const env = { ...process.env };
+  const notifications: any = { notify: vi.fn().mockResolvedValue([]) };
+
+  beforeEach(() => {
+    ({ prisma } = makeService());
+    service = new BillingService(prisma, {} as any, {} as any, notifications);
+    notifications.notify.mockClear();
+    prisma.tenant.findUnique.mockResolvedValue({ id: 1n, subscriptionTier: 'STARTER', downgradeBlockedAt: null });
+    prisma.profile.findMany.mockResolvedValue([{ id: 7n }]);
+  });
+
+  afterEach(() => {
+    process.env = { ...env };
+  });
+
+  it('moves the practice to FREE when Paystack disables the subscription', async () => {
+    prisma.tenant.findMany.mockResolvedValue([{ id: 1n }]);
+    await service.handleWebhook('subscription.disable', { subscription_code: 'SUB_1' });
+    expect(prisma.tenant.update).toHaveBeenCalledWith({
+      where: { id: 1n },
+      data: { subscriptionTier: 'FREE', subscriptionPastDueAt: null, downgradeBlockedAt: null },
+    });
+    expect(notifications.notify).toHaveBeenCalledWith(expect.objectContaining({ type: 'billing.downgraded', profileIds: [7n] }));
+  });
+
+  it('honours the paid month on not_renew: only lapsed practices are looked up, by renewal date', async () => {
+    const now = new Date('2026-11-10T00:00:00Z');
+    await service.enforceLapsedSubscriptions(now);
+    const where = prisma.tenant.findMany.mock.calls[0][0].where;
+    expect(where.subscriptionTier).toEqual({ not: 'FREE' });
+    expect(where.complimentaryUntil).toBeNull();
+    expect(where.OR[0]).toEqual({
+      subscriptionStatus: 'cancelled',
+      OR: [{ subscriptionRenewsAt: null }, { subscriptionRenewsAt: { lte: now } }],
+    });
+  });
+
+  it.each([
+    [undefined, '2026-11-03T00:00:00.000Z'],
+    ['3', '2026-11-07T00:00:00.000Z'],
+  ])('past_due drops after the grace period (BILLING_GRACE_DAYS=%s)', async (grace, cutoff) => {
+    if (grace) process.env.BILLING_GRACE_DAYS = grace;
+    await service.enforceLapsedSubscriptions(new Date('2026-11-10T00:00:00Z'));
+    const where = prisma.tenant.findMany.mock.calls[0][0].where;
+    expect(where.OR[1]).toEqual({ subscriptionStatus: 'past_due', subscriptionPastDueAt: { lte: new Date(cutoff) } });
+  });
+
+  it('keeps the plan, flags it and tells the owner once when staff would be stranded', async () => {
+    prisma.profile.count.mockResolvedValue(2);
+    expect(await service.downgradeToFree(1n, 'payment failed')).toBe(false);
+    expect(prisma.tenant.update).toHaveBeenCalledWith({ where: { id: 1n }, data: { downgradeBlockedAt: expect.any(Date) } });
+    expect(notifications.notify).toHaveBeenCalledWith(expect.objectContaining({ type: 'billing.downgrade_blocked' }));
+
+    prisma.tenant.update.mockClear();
+    notifications.notify.mockClear();
+    prisma.tenant.findUnique.mockResolvedValue({ id: 1n, subscriptionTier: 'STARTER', downgradeBlockedAt: new Date() });
+    expect(await service.downgradeToFree(1n, 'payment failed')).toBe(false);
+    expect(prisma.tenant.update).not.toHaveBeenCalled();
+    expect(notifications.notify).not.toHaveBeenCalled();
+  });
+
+  it('leaves a practice already on FREE alone', async () => {
+    prisma.tenant.findUnique.mockResolvedValue({ id: 1n, subscriptionTier: 'FREE', downgradeBlockedAt: null });
+    expect(await service.downgradeToFree(1n, 'subscription ended')).toBe(false);
+    expect(prisma.tenant.update).not.toHaveBeenCalled();
   });
 });

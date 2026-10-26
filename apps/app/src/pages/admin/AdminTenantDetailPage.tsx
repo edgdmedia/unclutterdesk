@@ -6,7 +6,7 @@ import { api } from '../../utils/apiClient';
 import { Card, CardHeader, Eyebrow, StatusBadge, AvatarChip, useToast } from '@unclutterdesk/ui';
 import { AdminTenantDetail, formatNaira, formatDate } from './adminTypes';
 
-const TIERS = ['STARTER', 'PRO', 'CLINIC'] as const;
+const TIERS = ['FREE', 'STARTER', 'PRO', 'CLINIC'] as const;
 
 export function AdminTenantDetailPage() {
   const toast = useToast();

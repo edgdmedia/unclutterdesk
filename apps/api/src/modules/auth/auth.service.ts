@@ -18,6 +18,7 @@ import { InviteService } from '../invites/invite.service';
 import { DefaultFormsService } from '../intake/default-forms.service';
 import { effectivePermissions } from '../../common/permissions';
 import { appOrigin } from '../../common/origins';
+import { effectiveTier } from '../entitlements/entitlements';
 
 const BCRYPT_ROUNDS = 12;
 
@@ -143,6 +144,7 @@ export class AuthService {
         data: {
           name: dto.practiceName || `${dto.firstName || 'Practice'} Therapy`,
           slug: `${cleanSlug || 'practice'}-${Date.now().toString().slice(-4)}`,
+          subscriptionTier: 'FREE',
           isActive: true,
         },
       });
@@ -1125,7 +1127,7 @@ export class AuthService {
     // Required, not optional: a caller that forgets the include would otherwise
     // hand back tenantSlug: null, which is worse than the inconsistency this
     // replaces — silently wrong instead of visibly absent.
-    tenant: { name: string; slug: string; subscriptionTier?: string | null } | null;
+    tenant: { name: string; slug: string; subscriptionTier?: string | null; complimentaryUntil?: Date | null } | null;
     consultTherapistProfile: unknown | null;
   }, platformRole?: string | null) {
     return {
@@ -1145,7 +1147,7 @@ export class AuthService {
       practiceName: profile.tenant?.name ?? null,
       tenantSlug: profile.tenant?.slug ?? null,
       // The practice's plan, so the app can mark what is and is not included.
-      plan: profile.tenant?.subscriptionTier ?? 'STARTER',
+      plan: effectiveTier(profile.tenant),
       isTherapist: !!profile.consultTherapistProfile,
       // Lets the app offer "Platform admin" to someone who is both.
       platformAdmin: Boolean(platformRole),

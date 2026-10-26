@@ -5,6 +5,8 @@ import { google } from 'googleapis';
 import { PrismaService } from '../../common/prisma/prisma.service';
 import { tenantWebOrigin } from '../../common/origins';
 import { joinLinkFor } from '../video/room-links';
+import { entitlementsFor, requiredTierFor } from '../entitlements/entitlements';
+import { EntitlementError } from '../entitlements/entitlement.error';
 
 @Injectable()
 export class CalendarService {
@@ -59,6 +61,13 @@ export class CalendarService {
    * exactly once, which stops a captured state being replayed.
    */
   async generateAuthUrl(tenantId: string, profileId: string, userId: string): Promise<string> {
+    const tenant = await this.prisma.tenant.findUnique({
+      where: { id: BigInt(tenantId) },
+      select: { subscriptionTier: true, complimentaryUntil: true },
+    });
+    if (!entitlementsFor(tenant).googleCalendarSync) {
+      throw new EntitlementError('googleCalendarSync', requiredTierFor('googleCalendarSync'));
+    }
     const nonce = randomBytes(32).toString('hex');
     const expiresAt = new Date(Date.now() + CalendarService.OAUTH_STATE_TTL_MS);
 
@@ -168,6 +177,9 @@ export class CalendarService {
     });
 
     if (!booking || booking.status !== 'CONFIRMED') return;
+    // A connection made on a paid plan stays stored after a downgrade, but
+    // nothing is pushed until the practice is back on a plan that includes it.
+    if (!entitlementsFor(booking.tenant).googleCalendarSync) return;
     const refreshToken = booking.availability.therapist.googleRefreshToken;
     if (!refreshToken) return;
 
