@@ -1,8 +1,0 @@
-- generic [ref=f1e6]:
-  - generic [ref=f1e7]:
-    - link "Back to practice page" [ref=f1e8]:
-      - /url: /booking/dr-smith
-    - generic [ref=f1e16]:
-      - generic [ref=f1e17]: PUBLIC REVIEW
-      - heading "Share your experience with the practice" [level=1] [ref=f1e18]
-  - generic [ref=f1e19]: Internal server error
