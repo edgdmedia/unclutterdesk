@@ -143,7 +143,7 @@ The source of truth is `apps/api/src/modules/entitlements/entitlements.ts`. This
 | Google Calendar push | ❌ | ✅ | ✅ | ✅ |
 | Assessments | PHQ-9, GAD-7 | PHQ-9, GAD-7 | + PCL-5, DASS-21 | all |
 | Clinical notes, hours log, intake | ✅ | ✅ | ✅ | ✅ |
-| Bank transfer payments | ❌ | ❌ | ✅ | ✅ |
+| Bank transfer payments | ❌ | ✅ | ✅ | ✅ |
 | Custom domain for booking pages | ❌ | ❌ | ✅ | ✅ |
 | Staff | — | — | Admin / Receptionist | + Therapists |
 

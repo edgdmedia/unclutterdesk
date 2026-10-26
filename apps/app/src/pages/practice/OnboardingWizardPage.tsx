@@ -1180,7 +1180,7 @@ function OnboardingWizard({ tenantId }: { tenantId: string }) {
                         </>
                       ) : (
                         <p className="text-xs text-[#64748B] leading-relaxed">
-                          Bank transfer is part of the Pro and Clinic plans. You can turn it on later in Settings → Payouts.
+                          Bank transfer is part of the Starter plan and above. You can turn it on later in Settings → Payouts.
                         </p>
                       )}
                     </div>

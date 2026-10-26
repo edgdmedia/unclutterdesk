@@ -68,13 +68,13 @@ export class ManualPaymentService {
   async getSettings(tenantId: bigint) {
     const t = await this.prisma.tenant.findUnique({
       where: { id: tenantId },
-      select: { manualPaymentsEnabled: true, manualPaymentDetails: true, subscriptionTier: true, complimentaryUntil: true },
+      select: { bankTransferPaymentsEnabled: true, manualPaymentDetails: true, subscriptionTier: true, complimentaryUntil: true },
     });
     if (!t) throw new NotFoundException('Practice not found');
     return {
-      enabled: t.manualPaymentsEnabled,
+      enabled: t.bankTransferPaymentsEnabled,
       details: cleanDetails(t.manualPaymentDetails),
-      onPlan: entitlementsFor(t).manualPayments,
+      onPlan: entitlementsFor(t).bankTransferPayments,
       holdHours: MANUAL_HOLD_HOURS,
     };
   }
@@ -85,7 +85,7 @@ export class ManualPaymentService {
     const details = dto.details !== undefined ? cleanDetails(dto.details) : current.details;
     if (enabled) {
       if (!current.onPlan) {
-        throw new EntitlementError('manualPayments', requiredTierFor('manualPayments'), 'Bank transfer payments are part of the Pro and Clinic plans.');
+        throw new EntitlementError('bankTransferPayments', requiredTierFor('bankTransferPayments'), 'Bank transfer payments are part of the Starter plan and above.');
       }
       if (!details?.bankName || !details.accountName || !/^\d{10}$/.test(details.accountNumber)) {
         throw new BadRequestException('Add the bank name, account name and a 10-digit account number before turning this on.');
@@ -94,7 +94,7 @@ export class ManualPaymentService {
     await this.prisma.tenant.update({
       where: { id: tenantId },
       data: {
-        manualPaymentsEnabled: enabled,
+        bankTransferPaymentsEnabled: enabled,
         manualPaymentDetails: details ? (details as unknown as Prisma.InputJsonValue) : Prisma.DbNull,
       },
     });

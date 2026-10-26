@@ -276,11 +276,15 @@ export class BillingService {
     }
   }
 
-  /** Active staff (everyone but the owner and clients) and therapists, which decide the smallest plan a practice fits. */
+  /**
+   * Active staff (everyone but the owner and clients) and active therapists,
+   * which decide the smallest plan a practice fits. Inactive memberships —
+   * including staff paused by a downgrade — never block a downgrade (§5.4a).
+   */
   private staffCounts(tenantId: bigint): Promise<[number, number]> {
     return Promise.all([
-      this.prisma.profile.count({ where: { tenantId, role: { notIn: ['CLIENT', 'OWNER'] } } }),
-      this.prisma.profile.count({ where: { tenantId, role: 'THERAPIST' } }),
+      this.prisma.profile.count({ where: { tenantId, status: 'active', role: { notIn: ['CLIENT', 'OWNER'] } } }),
+      this.prisma.profile.count({ where: { tenantId, status: 'active', role: 'THERAPIST' } }),
     ]);
   }
 

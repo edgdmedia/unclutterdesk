@@ -36,13 +36,12 @@ type Plan = { tier: PaidTier; name: string; price: string };
 
 /** What each paid plan includes (spec §5.2). Copy, not pricing — the figures come from the API. */
 const PLAN_FEATURES: Record<PaidTier, string[]> = {
-  STARTER: ['30 bookings a month', 'No platform fee on bookings', 'Google Calendar sync'],
+  STARTER: ['30 bookings a month', 'No platform fee on bookings', 'Bank transfer payments', 'Google Calendar sync'],
   PRO: [
     'Unlimited bookings',
     'Admin and receptionist logins',
     'Custom domain for your booking page',
     'PCL-5 and DASS-21 assessments',
-    'Bank transfer payments',
   ],
   CLINIC: ['Everything in Pro', 'More than one therapist', 'Every assessment in the library'],
 };

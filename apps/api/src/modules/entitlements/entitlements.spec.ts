@@ -22,10 +22,10 @@ import { EntitlementError } from './entitlement.error';
 
 /** Spec §5.2, written out row by row so a change to the table is a deliberate change here too. */
 const PLAN_TABLE: Record<Tier, Record<string, unknown>> = {
-  FREE:    { monthlyBookingLimit: 10,   platformFeeBps: 500, customDomain: false, staffInviteRoles: [],                                    assessmentRank: 0, googleCalendarSync: false, manualPayments: false, downloadablePdf: false, introVideo: false },
-  STARTER: { monthlyBookingLimit: 30,   platformFeeBps: 0,   customDomain: false, staffInviteRoles: [],                                    assessmentRank: 0, googleCalendarSync: true,  manualPayments: false, downloadablePdf: true,  introVideo: true },
-  PRO:     { monthlyBookingLimit: null, platformFeeBps: 0,   customDomain: true,  staffInviteRoles: ['ADMIN', 'RECEPTIONIST'],             assessmentRank: 1, googleCalendarSync: true,  manualPayments: true,  downloadablePdf: true,  introVideo: true },
-  CLINIC:  { monthlyBookingLimit: null, platformFeeBps: 0,   customDomain: true,  staffInviteRoles: ['ADMIN', 'RECEPTIONIST', 'THERAPIST'], assessmentRank: 2, googleCalendarSync: true,  manualPayments: true,  downloadablePdf: true,  introVideo: true },
+  FREE:    { monthlyBookingLimit: 10,   platformFeeBps: 500, customDomain: false, staffInviteRoles: [],                                    assessmentRank: 0, googleCalendarSync: false, bankTransferPayments: false, downloadablePdf: false, introVideo: false },
+  STARTER: { monthlyBookingLimit: 30,   platformFeeBps: 0,   customDomain: false, staffInviteRoles: [],                                    assessmentRank: 0, googleCalendarSync: true,  bankTransferPayments: true, downloadablePdf: true,  introVideo: true },
+  PRO:     { monthlyBookingLimit: null, platformFeeBps: 0,   customDomain: true,  staffInviteRoles: ['ADMIN', 'RECEPTIONIST'],             assessmentRank: 1, googleCalendarSync: true,  bankTransferPayments: true,  downloadablePdf: true,  introVideo: true },
+  CLINIC:  { monthlyBookingLimit: null, platformFeeBps: 0,   customDomain: true,  staffInviteRoles: ['ADMIN', 'RECEPTIONIST', 'THERAPIST'], assessmentRank: 2, googleCalendarSync: true,  bankTransferPayments: true,  downloadablePdf: true,  introVideo: true },
 };
 
 describe('the plan table', () => {
@@ -47,7 +47,7 @@ describe('the plan table', () => {
   it.each([
     ['customDomain', 'PRO'],
     ['googleCalendarSync', 'STARTER'],
-    ['manualPayments', 'PRO'],
+    ['bankTransferPayments', 'STARTER'],
     ['downloadablePdf', 'STARTER'],
     ['introVideo', 'STARTER'],
     ['staffInviteRoles', 'PRO'],

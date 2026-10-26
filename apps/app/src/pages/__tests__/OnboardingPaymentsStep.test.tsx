@@ -69,7 +69,7 @@ describe('Onboarding: how clients pay', () => {
     expect(await screen.findByText(/On the Free plan, a 5% platform fee/i)).toBeTruthy();
     expect(screen.queryByText(/0%/)).toBeNull();
     expect(screen.queryByText(/telehealth/i)).toBeNull();
-    expect(screen.getByText(/bank transfer is part of the Pro and Clinic plans/i)).toBeTruthy();
+    expect(screen.getByText(/bank transfer is part of the Starter plan and above/i)).toBeTruthy();
     expect(screen.queryByLabelText('Let clients pay by bank transfer')).toBeNull();
   });
 
@@ -80,11 +80,11 @@ describe('Onboarding: how clients pay', () => {
     expect(screen.queryByText(/5% platform fee/i)).toBeNull();
   });
 
-  it('tells Starter practices there is no platform fee, though bank transfer is still Pro and Clinic', async () => {
-    network({ onPlan: false, tier: 'STARTER' });
+  it('tells Starter practices there is no platform fee, and offers bank transfer', async () => {
+    network({ onPlan: true, tier: 'STARTER' });
     renderStep();
     expect(await screen.findByText(/no platform fee on your plan/i)).toBeTruthy();
-    expect(screen.getByText(/bank transfer is part of the Pro and Clinic plans/i)).toBeTruthy();
+    expect(screen.queryByText(/bank transfer is part of/i)).toBeNull();
   });
 
   it('turns on bank transfer, filled from the payout account', async () => {

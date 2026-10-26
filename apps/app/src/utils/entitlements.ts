@@ -11,7 +11,7 @@ export type Entitlements = {
   staffInviteRoles: Array<'ADMIN' | 'RECEPTIONIST' | 'THERAPIST'>;
   assessmentRank: number;
   googleCalendarSync: boolean;
-  manualPayments: boolean;
+  bankTransferPayments: boolean;
   profileFeatures: { downloadablePdf: boolean; introVideo: boolean };
 };
 

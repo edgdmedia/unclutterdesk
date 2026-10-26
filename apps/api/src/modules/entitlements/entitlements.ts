@@ -24,8 +24,8 @@ export interface Entitlements {
   /** Compared with an instrument's minimum plan (see `instrumentAllowed`). */
   assessmentRank: number;
   googleCalendarSync: boolean;
-  /** Manual bank-transfer payments for bookings. Pro and above (decided 26 Oct 2026). */
-  manualPayments: boolean;
+  /** Bank-transfer (manual) payments for bookings. Starter and above; FREE is Paystack only (spec D8). */
+  bankTransferPayments: boolean;
   profileFeatures: { downloadablePdf: boolean; introVideo: boolean };
 }
 
@@ -39,7 +39,7 @@ export const ENTITLEMENTS: Record<Tier, Entitlements> = {
     staffInviteRoles: [],
     assessmentRank: 0,
     googleCalendarSync: false,
-    manualPayments: false,
+    bankTransferPayments: false,
     profileFeatures: { downloadablePdf: false, introVideo: false },
   },
   STARTER: {
@@ -49,7 +49,7 @@ export const ENTITLEMENTS: Record<Tier, Entitlements> = {
     staffInviteRoles: [],
     assessmentRank: 0,
     googleCalendarSync: true,
-    manualPayments: false,
+    bankTransferPayments: true,
     profileFeatures: { downloadablePdf: true, introVideo: true },
   },
   PRO: {
@@ -59,7 +59,7 @@ export const ENTITLEMENTS: Record<Tier, Entitlements> = {
     staffInviteRoles: ['ADMIN', 'RECEPTIONIST'],
     assessmentRank: 1,
     googleCalendarSync: true,
-    manualPayments: true,
+    bankTransferPayments: true,
     profileFeatures: { downloadablePdf: true, introVideo: true },
   },
   CLINIC: {
@@ -69,7 +69,7 @@ export const ENTITLEMENTS: Record<Tier, Entitlements> = {
     staffInviteRoles: ['ADMIN', 'RECEPTIONIST', 'THERAPIST'],
     assessmentRank: 2,
     googleCalendarSync: true,
-    manualPayments: true,
+    bankTransferPayments: true,
     profileFeatures: { downloadablePdf: true, introVideo: true },
   },
 };

@@ -44,12 +44,12 @@ const PLANS = [
   {
     tier: "STARTER", price: "₦5,000", fee: "/month", cta: "Start free, upgrade any time", dark: false, popular: false,
     blurb: "For a solo practitioner getting started with a branded practice workflow.",
-    features: ["1 practitioner", "30 bookings a month", "No platform fee on bookings", "Video sessions, notes and intake", "PHQ-9 and GAD-7 assessments", "Google Calendar sync"]
+    features: ["1 practitioner", "30 bookings a month", "No platform fee on bookings", "Bank transfer payments", "Video sessions, notes and intake", "PHQ-9 and GAD-7 assessments", "Google Calendar sync"]
   },
   {
     tier: "PRO", price: "₦15,000", fee: "/month", cta: "Start free, upgrade any time", dark: true, popular: true,
     blurb: "For a growing private practice ready to own its brand and client experience.",
-    features: ["Unlimited bookings", "Custom domain for your booking page", "Admin and receptionist logins", "Adds PCL-5 and DASS-21 assessments", "Bank transfer payments", "No platform fee on bookings"]
+    features: ["Unlimited bookings", "Custom domain for your booking page", "Admin and receptionist logins", "Adds PCL-5 and DASS-21 assessments", "No platform fee on bookings"]
   },
   {
     tier: "CLINIC", price: "From ₦45,000", fee: "/month", cta: "Talk to sales", ctaHref: SALES_MAILTO, dark: false, popular: false,
@@ -75,7 +75,7 @@ const SALES_MAILTO =
   '&body=Practice%20name%3A%0APractitioners%3A%0APreferred%20start%20date%3A%0A';
 
 const FAQS = [
-  ["What is included in each plan?", "Every plan includes booking, video sessions, clinical notes, intake forms, an hours log and PHQ-9 and GAD-7 assessments. The free plan takes 10 bookings a month with a 5% fee on online payments. Starter raises that to 30 bookings with no fee and adds Google Calendar sync. Pro adds unlimited bookings, a custom domain, admin and receptionist logins, bank transfer payments and the PCL-5 and DASS-21. Clinic adds more therapists and every assessment."],
+  ["What is included in each plan?", "Every plan includes booking, video sessions, clinical notes, intake forms, an hours log and PHQ-9 and GAD-7 assessments. The free plan takes 10 bookings a month with a 5% fee on online payments. Starter raises that to 30 bookings with no fee and adds bank transfer payments and Google Calendar sync. Pro adds unlimited bookings, a custom domain, admin and receptionist logins and the PCL-5 and DASS-21. Clinic adds more therapists and every assessment."],
   ["Can I upgrade or downgrade my plan?", "Yes. An upgrade starts as soon as Paystack confirms payment. If you cancel, you keep your plan to the end of the month you've paid for, then move to the free plan."],
   ["Do you store clinical notes securely?", "Yes. Clinical notes are encrypted at rest by the application (AES-256-GCM), so they can't be read from the disk or a backup."],
   ["How does Paystack payout work?", "Payments from clients are processed through Paystack and settled to your bank account within 24 hours."],
@@ -153,7 +153,7 @@ export function LandingPage() {
         </nav>
         <div className="flex items-center gap-3 ml-auto md:ml-0">
           <a href={loginUrl} className="flex items-center justify-center h-11 px-[18px] rounded-[14px] bg-white border border-[#CBD5E1] text-[#24614F] text-[14px] font-[700] hover:bg-gray-50 transition-colors">Log in</a>
-          <a href={registerUrl} className="flex items-center justify-center h-11 px-[22px] rounded-[14px] bg-[#24614F] border-none text-white text-[14px] font-[700] shadow-[0_6px_18px_rgba(36,97,79,0.22)] hover:bg-[#1C4E3F] transition-colors">Start free trial</a>
+          <a href={registerUrl} className="flex items-center justify-center h-11 px-[22px] rounded-[14px] bg-[#24614F] border-none text-white text-[14px] font-[700] shadow-[0_6px_18px_rgba(36,97,79,0.22)] hover:bg-[#1C4E3F] transition-colors">Start free</a>
         </div>
       </header>
 
@@ -541,7 +541,7 @@ export function LandingPage() {
           <div className="text-[9px] font-[900] tracking-[0.22em] text-[#7DB8A5]">NO CREDIT CARD REQUIRED</div>
           <h2 className="mt-3.5 mb-2.5 text-[28px] md:text-[34px] font-[800] tracking-[-0.035em] text-[#F8FAFC] text-balance">Launch your branded booking portal today.</h2>
           <p className="mt-0 mb-6 text-[15px] text-[#CBD5E1] max-w-[600px] mx-auto">Start free and give clients a calmer, more professional way to book, pay, and meet with your practice.</p>
-          <a href={registerUrl} className="inline-flex items-center justify-center h-[52px] px-[30px] rounded-[16px] bg-white border-none text-[#24614F] text-[15px] font-[800] shadow-[0_12px_30px_rgba(0,0,0,0.18)] hover:bg-gray-50 transition-colors cursor-pointer">Start Free 14-Day Trial</a>
+          <a href={registerUrl} className="inline-flex items-center justify-center h-[52px] px-[30px] rounded-[16px] bg-white border-none text-[#24614F] text-[15px] font-[800] shadow-[0_12px_30px_rgba(0,0,0,0.18)] hover:bg-gray-50 transition-colors cursor-pointer">Start free</a>
         </div>
       </section>
 

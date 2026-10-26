@@ -310,3 +310,12 @@ describe('lapsed subscriptions drop to FREE', () => {
     expect(prisma.tenant.update).not.toHaveBeenCalled();
   });
 });
+
+describe('staff counts for downgrades', () => {
+  it('count only active memberships, so inactive staff never block a move to a smaller plan', async () => {
+    const { service, prisma } = makeService();
+    prisma.tenant.findUnique.mockResolvedValue({ id: 1n, subscriptionTier: 'PRO', downgradeBlockedAt: null });
+    await service.downgradeToFree(1n, 'subscription ended');
+    for (const [args] of prisma.profile.count.mock.calls) expect(args.where.status).toBe('active');
+  });
+});

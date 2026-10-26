@@ -34,8 +34,8 @@ describe('the hold on a bank-transfer booking', () => {
 
 describe('practice settings', () => {
   it('are refused on Starter, whose bookings carry the platform fee', async () => {
-    const { service } = manualService({ subscriptionTier: 'STARTER', manualPaymentsEnabled: false });
-    await expect(service.updateSettings(TENANT, { enabled: true, details: DETAILS })).rejects.toThrow(/Pro and Clinic/);
+    const { service } = manualService({ subscriptionTier: 'FREE', manualPaymentsEnabled: false });
+    await expect(service.updateSettings(TENANT, { enabled: true, details: DETAILS })).rejects.toThrow(/Starter plan and above/);
   });
 
   it('need complete bank details before turning on', async () => {
