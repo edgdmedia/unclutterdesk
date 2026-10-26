@@ -74,7 +74,7 @@ All confirmed by Olalekan on 26 Oct 2026.
 
 | ID | Decision | Choice |
 |---|---|---|
-| D1 | Public profile URL | `https://profiles.unclutterdesk.com/{handle}` until the final domain is bought. Moving later is config + 301s (§4.1) |
+| D1 | Public profile URL | `https://profiles.unclutterdesk.com/{handle}` until the move to `therapysts.com/{handle}` (D22). Moving is config + 301s (§4.1, §4.1b) |
 | D2 | Who owns a profile | The **person** (`User`), not the practice (`Tenant`). One profile per user; globally unique handle |
 | D3 | Where profiles are edited | Inside the Desk dashboard (`app.unclutterdesk.com`) |
 | D4 | Booking on a profile | Three options: **none**, **Desk booking** (opt-in), or **external link**. Desk booking is the default suggestion |
@@ -93,7 +93,7 @@ All confirmed by Olalekan on 26 Oct 2026.
 | D17 | Lapsed paid practices | 7 days' grace, then 14 days' notice with the exact date, then FREE. All staff except the owner are paused (and later reactivated only if the downgrade paused them). Upcoming sessions with paused therapists are surfaced to the owner (§5.4a) |
 | D18 | Staff-entered bookings on the limit | Today or past dates: never blocked (they count). Future dates: follow the limit like online bookings (§5.5) |
 | D19 | Several places of practice | One profile per person, with a "Where I practise" list of every practice they can be booked at, each with its own Book button; one is main (§6.1, §6.9) |
-| D20 | Solo practices | A solo practice's address and the owner's profile address show the same page from one renderer. Decided once, when the profile is first published: practices without published reviews show the profile; practices showing reviews keep their page and are asked; opt-out available; clinics keep the practice page (§6.16) |
+| D20 | Solo practices | A solo practice's address and the owner's profile address show the same page from one renderer. Decided **once**, when the profile is first published: automatic if the practice has no published reviews; otherwise the therapist is asked. After that only the therapist changes it; later reviews never do. Opt-out available; clinics keep the practice page (§6.16) |
 | D21 | Clinic listings | Opt-in clinic listings at `/clinic/{slug}` with the directory (Phase 4) |
 | D22 | Domains | **Decided: one brand, two domains.** `therapysts.com` = landing page, profiles, directory. `therapysts.app` = the platform (sign-in and dashboard at the bare domain), API and practices. Until the domains are bought and checked, v2 runs on `unclutterdesk.com` / `profiles.unclutterdesk.com`; every origin is configurable from Phase 1 so the move is config, DNS and redirects (§4.1a, §4.1b) |
 
@@ -185,7 +185,8 @@ Rules for the move:
 - **One site on `therapysts.com`:** merge `apps/landing` into `apps/profiles` (one Astro app, one deployment, one reserved-path list covering marketing pages and handles, §6.2). Build `apps/profiles` in Phase 1 so it can absorb the landing pages; do the merge as part of the move.
 - **Redirects after the move** (permanent): `profiles.unclutterdesk.com/*` → `therapysts.com/*`; `{slug}.unclutterdesk.com/*` → `{slug}.therapysts.app/*`; `app.unclutterdesk.com/*` → `therapysts.app/*`; `unclutterdesk.com` → `therapysts.com`. Keep them for at least 12 months.
 - **External items to update at the move:** Paystack, Google OAuth and Daily.co callback and webhook URLs; Resend sending domain and the `no-reply@` sender; the Cloudflare for SaaS CNAME target (existing custom domains keep working via a fallback or are re-pointed with owner notice).
-- **Timing:** before public launch, while there are no external customers to migrate. **Buy the domains before the first outside customer sets up a custom domain:** their DNS points at the CNAME target, and "re-point with owner notice" only stays cheap while the only custom domain is Olalekan's own. Prerequisites (Olalekan): buy `therapysts.com` and `therapysts.app`; run trademark checks on "Therapysts" (WIPO Global Brand Database, Nigeria's Trademarks Registry).
+- **Timing:** before public launch, while there are no external customers to migrate. Prerequisites (Olalekan): buy `therapysts.com` and `therapysts.app`; run trademark checks on "Therapysts" (WIPO Global Brand Database, Nigeria's Trademarks Registry).
+- **Buy both domains before the first outside customer sets up a custom domain**, not just before launch. Each customer's DNS points at the custom-domain CNAME target, so re-pointing stays cheap only while the only custom domain is Olalekan's own (`consult.unclutter.com.ng`). From the moment the domains are bought, set `CUSTOM_DOMAIN_CNAME_TARGET` to a hostname on `therapysts.app`, so later customers never need to re-point.
 
 ### 4.2 New app: `apps/profiles`
 
@@ -230,7 +231,7 @@ These don't exist today and Phase 1 needs them:
 | Templates, taxonomy, reports, takedowns, verification queue, directory, unclaimed listings | `apps/app` → `/admin/profiles/*` |
 | Public profile pages, directory search (Phase 4) | `apps/profiles` |
 | API | `apps/api/src/modules/entitlements/`, `.../practitioner-profile/`, `.../storage/`, `.../jobs/`, `.../audit/`, `.../verification/` (Phase 3), `.../directory/` (Phase 4) |
-| Booking | Unchanged: `{slug}.<TENANT_ROOT_DOMAIN>/book` (deep-linked, §7.1) |
+| Booking | Unchanged: `{slug}.{TENANT_ROOT_DOMAIN}/book` (deep-linked, §7.1) |
 
 ---
 
@@ -338,6 +339,7 @@ Notes:
 - **Migration** (data only; no email, no tenant IDs):
   - **Edit the existing, unmerged migration** `20261026090000_free_tier` rather than adding a new one. It has never reached `main` or production, and no shared database has run it. Reset any dev database that ran it (`prisma migrate reset`).
   - Unpaid STARTER practices **stay on STARTER** with `complimentaryUntil = now() + 90 days` and `complimentaryReason = MIGRATION`. They are **not** set to FREE. The existing expiry cron already handles a complimentary period with no invite code, and drops them to FREE when it ends.
+  - Existing invite-code practices (with `complimentaryUntil` and `inviteCodeId` set) get `complimentaryReason = INVITE_CODE`, so every non-paid plan has a recorded reason.
   - The migration runs safely on fresh, local and CI databases (no hard-coded tenants).
 - **Emails** (a migration can't send email): the cron queues them through `NotificationDispatch` with a `dedupeKey`:
   - "You have Starter free until {date}" for each practice with `complimentaryReason = MIGRATION` (dedupe key per tenant + period end);
@@ -352,6 +354,7 @@ Notes:
   - Later changes go through the admin "Complimentary plans" screen (§12).
 - The expiry cron (invite codes and migration periods) drops practices to **FREE** (not STARTER) unless they hold a paid subscription.
 - STARTER and above now require an active Paystack subscription or a complimentary period. Lapsed subscriptions follow §5.4a.
+- **Admin plan changes** go only through the admin "Complimentary plans" screen (§12), which always sets `complimentaryReason` and either `complimentaryUntil` or `INTERNAL`. The direct `subscriptionTier` edit in `admin.service.ts` / the tenant detail page is removed or routed through that screen.
 - **Renewal date:** `subscription.create` must always store `subscriptionRenewsAt`. On `not_renew`/`disable`, if `subscriptionRenewsAt` is missing, fetch it from Paystack. **Never downgrade immediately** because the date is unknown: the practice keeps its plan until the end of the period it paid for (if Paystack can't answer, assume one month from the last successful charge).
 - Remove all trial copy from landing, signup and onboarding (see §5.7 for the test). Update landing pricing to §5.3.
 
@@ -420,6 +423,7 @@ Already correct, keep as built: empty/unknown plans fall back to FREE; FREE rank
 | 4 | Bank transfer still Pro/Clinic only | Open it to Starter in the entitlements table, `manual-payment.service.ts`, the plan table UI and landing copy (§5.3) |
 | 5 | Migration drops unpaid Starter practices straight to Free; no no-end-date flag | Edit `20261026090000_free_tier` per §5.4: keep STARTER with a 90-day `complimentaryUntil`; add `complimentaryReason`; cron-queued emails and 14-/3-day reminders; payment clears both fields; add the `set-internal-tenant` script (run after deploy) |
 | 4a | Lapse logic includes practices with `complimentaryUntil: null`, so an INTERNAL practice would only be safe while it has no Paystack status | Exclude `complimentaryReason = INTERNAL` explicitly in `enforceLapsedSubscriptions`; test it |
+| 6a | Admins can set `subscriptionTier` directly (`admin.service.ts`), which under the new rules drops to Free without a subscription or complimentary period | Route admin plan changes through the Complimentary plans screen (§5.4, §12); backfill `complimentaryReason = INVITE_CODE` for existing invite-code practices in the edited migration |
 | 7 | `staffCounts()` counts inactive staff, so a practice with one paused receptionist can never drop to Free | Count only active non-owner, non-client memberships (§5.4a) |
 
 **Also before Phase 1:**
@@ -432,7 +436,6 @@ Already correct, keep as built: empty/unknown plans fall back to FREE; FREE rank
 | 8 | A lapsed practice with staff keeps its paid plan forever | Implement §5.4a (grace → notice → Free, pause staff with `pausedByDowngradeAt`, upcoming-sessions view, reactivate only downgrade-paused staff) |
 | 9 | `not_renew` with no `subscriptionRenewsAt` downgrades immediately | Always store the renewal date on `subscription.create`; fetch from Paystack if missing; never downgrade immediately (§5.4) |
 | — | Staff-entered bookings blocked at the limit | Apply the §5.5 split: today/past never blocked; future dates follow the limit |
-| 10 | Admins can still set a practice's plan directly in the admin panel (`PATCH /v1/admin/tenants/:id` `subscriptionTier`). A plan set there with no subscription or complimentary period now drops to Free | Route admin plan changes through the "Complimentary plans" screen (§12): the admin sets the tier together with `complimentaryReason` and `complimentaryUntil` (or INTERNAL with no end date). Remove the direct tier buttons from the tenant detail page |
 
 **Minor:**
 - `hasEntitlement('platformFeeBps')` returns a misleading answer (FREE "has" it because its fee is above zero). Replace with an explicit `platformFeeBps(tenant)` lookup and remove numeric keys from `hasEntitlement`.
@@ -580,7 +583,7 @@ model ProfileTemplate {                    // admin-editable content (§6.6)
 
 Also add to `Tenant`:
 - `onboardingIntent` (enum `PROFILE | PRACTICE`, default `PRACTICE`);
-- `homePage` (enum `PROFILE | PRACTICE`, nullable; null = not decided yet, set once when the owner's profile is first published, see §6.16) — what a solo practice shows at `/`.
+- `homePage` (enum `PROFILE | PRACTICE`, nullable; set once when the owner's profile is first published, then only by the therapist; see §6.16) — what a solo practice shows at `/`.
 
 Add to `ConsultTherapistProfile`: `allowProfileBooking Boolean @default(true)` — the practice's consent to appear as a place on this therapist's profile (§6.9).
 
@@ -599,7 +602,7 @@ Notes:
 
 **Handle rules:** lowercase; 3–30 chars; `[a-z0-9-]`; no leading/trailing hyphen. Suggest one from the name. Changing a handle writes `PractitionerHandleHistory`; old handles 301 forever.
 
-**Reserved handles** (handles sit at the root of `profiles.unclutterdesk.com`, so they mustn't collide with the site's own paths): everything in `reserved-slugs.ts`, plus `join`, `search`, `verification`, `specialty`, `language`, `in`, `online`, `terms`, `privacy`, `report`, `sitemap`, `sitemap.xml`, `robots.txt`, `assets`, `_astro`, `api`, `admin`, `directory`, `clinic`, `claim`, `remove`.
+**Reserved handles** (handles sit at the root of the profiles origin, so they mustn't collide with the site's own paths): everything in `reserved-slugs.ts`, plus `join`, `search`, `verification`, `specialty`, `language`, `in`, `online`, `terms`, `privacy`, `report`, `sitemap`, `sitemap.xml`, `robots.txt`, `assets`, `_astro`, `api`, `admin`, `directory`, `clinic`, `claim`, `remove`.
 
 Also reserve every **marketing** path now, because the landing page and profiles will share `therapysts.com` (§4.1b), so they share one path space: `pricing`, `features`, `about`, `blog`, `help`, `support`, `contact`, `login`, `signin`, `signup`, `register`, `start`, `app`, `dashboard`, `careers`, `press`, `legal`, `security`, `status`, `docs`, `faq`, `for-clinics`, `for-therapists`, `enterprise`. Keep the list in one shared file so marketing pages and handles can't collide later.
 
@@ -610,11 +613,9 @@ Also reserve every **marketing** path now, because the landing page and profiles
 - if the handle is free but the slug is taken, create the practice with a short suffix (`{handle}-2`, `-3`…) inside the same transaction, so signup never fails on a slug collision;
 - when the therapist later switches booking on (§6.9), show the booking address and let them **rename the slug** (availability-checked), since the slug then becomes their client-facing booking URL.
 
-**Unverified signups release their names.** Signup creates the user, practice and profile in one transaction *before* the 6-digit code is entered, so anyone could claim a handle with an email they don't own and never verify it. An account whose email isn't verified within **7 days** (configurable) releases its **handle and practice slug**: a daily job deletes the unverified signup (`User`, the `Tenant` it created, its `Profile`, `ConsultTherapistProfile` and `PractitionerProfile`), which never got past the code step and holds no data. The same rule covers existing Desk signup, which has the same problem with practice slugs. **Check first** that an unverified account can't sign in or create data (bookings, clients, notes); if it can, report before building. Never delete a tenant that has any other member, client or booking.
-
 ### 6.3 Friendly URL & link previews
 
-- `profilePath(handle)` → `https://profiles.unclutterdesk.com/{handle}`.
+- `profilePath(handle)` → `${PROFILE_PUBLIC_ORIGIN}/{handle}` (v2: `profiles.unclutterdesk.com`; after the move: `therapysts.com`).
 - **Preview (Open Graph) images are generated on save, never on request.** On publish, and on any change to photo, name, kind, headline or theme, enqueue a `BackgroundJob` that renders the image in the **API** (Node, e.g. satori + resvg; no Worker size limit), uploads it to R2, and sets `previewImageKey`. The page's `og:image` points at the R2 URL. A profile shared widely on WhatsApp never touches the API.
 - Until the first image exists, fall back to a static default image per theme stored in R2.
 
@@ -672,9 +673,16 @@ Templates help therapists know what to write: **prompts and example wording per 
 
 ### 6.8 Profile-first signup (inside Desk)
 
-- Entry points: `profiles.unclutterdesk.com/join` ("Create your free therapist profile") and a link from the Desk landing page. Both send the therapist to `app.unclutterdesk.com/signup?intent=profile`.
+- Entry points: `{PROFILE_PUBLIC_ORIGIN}/join` ("Create your free therapist profile") and a link from the landing page. Both send the therapist to `{APP_ORIGIN}/signup?intent=profile`.
 - Signup asks for name, email, password, handle (§6.2), kind, and template (optional). It creates in **one transaction**: `User`, `Tenant` (FREE, slug per §6.2, `onboardingIntent = PROFILE`), `Profile` (OWNER), `ConsultTherapistProfile`, `PractitionerProfile` (DRAFT).
 - **Email verification uses Desk's existing 6-digit code step** (`/verify-email`); after the code is entered, the therapist lands in the profile editor. No change to Desk's sign-in rules.
+- **Unverified signups release their handle and slug after 7 days.** Signup creates the user, practice and profile before the code is entered, so anyone could hold a handle like `chente` with an email they don't own. This applies to **all owner self-signups** (profile signup, `/v1/auth/register`, `/v1/tenant/register`), which have the same problem with practice slugs today.
+  - **In scope:** accounts whose email is unverified 7 days after signup **and** that were created by an owner self-signup.
+  - **Out of scope (never removed):** clients who signed up during booking; clients created by staff without a login; staff invited to a practice.
+  - **Safety check:** remove only if nothing exists beyond what signup itself created — no bookings, clients, services, Paystack subaccount, payments, notes or staff. If anything else is attached, **skip and flag it for an admin** instead.
+  - Remove the user, practice, profiles and `PractitionerProfile` **in one transaction**; free the handle and slug (no handle-history reservation); log what was removed (and write to `AdminAuditLog` once it exists).
+  - On day 5, email once: "Verify your email, or your handle will be released in 2 days."
+  - Run inside an **existing daily cron**, not a new one.
 - **Profile-first dashboard** (`onboardingIntent = PROFILE`):
   - Home shows the profile editor, completeness, share and stats.
   - Desk's practice features (clients, sessions, services, availability) sit under a clear "Set up booking" entry, visible but not pushed.
@@ -708,7 +716,7 @@ What a profile-first therapist's practice address shows at `/` is covered by the
 
 ### 6.11 Public profile page (`apps/profiles`)
 
-`/{handle}` on `profiles.unclutterdesk.com`:
+`/{handle}` on the profiles origin (`PROFILE_PUBLIC_ORIGIN`):
 - Renders §6.4 sections in the chosen theme, **as plain text** (§4.3). Primary CTA per booking mode; secondary "Share".
 - Footer: "Create your free therapist profile" (signup with `?ref=profile&handle=`), "Report this profile", terms.
 - `noindex` while `status ≠ PUBLISHED`; `410` for SUSPENDED; 301 for old handles; 404 otherwise.
@@ -764,25 +772,27 @@ On publish/update/unpublish/handle change/takedown/booking-mode change: enqueue 
 
 ### 6.16 Solo practices: one page, two addresses
 
-For a solo therapist, the person and the practice are the same thing to a client. Their practice address (`name.unclutterdesk.com`, or their custom domain on Pro) and their profile address (`profilePath(handle)`) show **the same page, from one renderer**.
+For a solo therapist, the person and the practice are the same thing to a client. Their practice address (`{slug}.{TENANT_ROOT_DOMAIN}`, or their custom domain on Pro) and their profile address (`profilePath(handle)`) show **the same page, from one renderer**.
 
 **Definition of solo:** the practice has exactly **one active therapist membership** (role OWNER or THERAPIST with a `ConsultTherapistProfile`), and it is the owner. ADMIN and RECEPTIONIST staff **don't** make a practice non-solo. (The existing staff-count code treats all non-owner roles alike; solo detection must not reuse it.)
 
-**What `/` shows on a practice address** (`Tenant.homePage`):
+**The reviews question is decided once.** When the owner's profile is **first published**:
+- if the practice has **no published client reviews**, set `homePage = PROFILE`;
+- otherwise leave `homePage` null and show a dashboard prompt: "Show your therapist profile here instead? Your profile doesn't show client reviews (D13), so they'd no longer appear on this page." Choosing it sets `homePage = PROFILE`; declining sets `homePage = PRACTICE`.
 
-**Decided once, then left to the therapist.** Whether the practice shows published client reviews is checked **once**, when the owner's profile is **first published**, and the result is stored in `homePage`. It is never re-evaluated: otherwise a practice whose `/` shows the profile would flip back to the practice page the day it published its first review.
+After that, **only the therapist changes `homePage`** (in settings). Publishing reviews later never changes what `/` shows.
 
-- At first publish, if `homePage` is null: **no published client reviews** → set `homePage = PROFILE`; **published reviews** → set `homePage = PRACTICE` and show the dashboard prompt: "Show your therapist profile here instead? Your profile doesn't show client reviews (D13), so they'd no longer appear on this page." Choosing it sets `homePage = PROFILE`.
-- After that, **only the therapist changes `homePage`** (the prompt above, or the opt-out setting). Reviews published later change nothing.
+**What `/` shows on a practice address:**
 
-| Situation | `/` shows |
-|---|---|
-| `homePage` null (owner's profile never published) | The practice page |
-| `homePage = PROFILE`, practice solo, owner's profile PUBLISHED | The owner's profile |
-| `homePage = PRACTICE` (reviews at first publish, or opt-out) | The practice page, always |
-| Not solo (clinic), or profile not published (any `homePage`) | The practice page. A clinic's page lists its therapists, each linking to their profile |
+| `homePage` | Solo and profile published | Otherwise (clinic, or profile not published) |
+|---|---|---|
+| `PROFILE` | The owner's profile | The practice page |
+| `PRACTICE` (opt-out, or declined the prompt) | The practice page | The practice page |
+| null (profile never published, or prompt not yet answered) | The practice page | The practice page |
 
-When a second therapist becomes active, `/` switches to the practice page automatically; when the practice drops back to one, it switches back (if `homePage = PROFILE`). Profile-first practices (§6.8) follow the same rules; there is no separate redirect.
+A clinic's practice page lists its therapists, each linking to their profile.
+
+When a second therapist becomes active, `/` switches to the practice page automatically; when the practice drops back to one, it switches back if `homePage = PROFILE`. Profile-first practices (§6.8) follow the same rules; there is no separate redirect.
 
 **Everything except `/` is unchanged on the practice address:** `/book`, client login, `/session/:id`, `/set-password`, `/assessment/:token`, pay links, review forms.
 
@@ -798,16 +808,31 @@ When a second therapist becomes active, `/` switches to the practice page automa
   The profiles app receives the serving context (practice host or profiles host) from the router via a header set only on the service binding, never from the client.
 - **Search:** `<link rel="canonical">` always points to `profilePath(handle)`. Practice subdomains keep `noindex`, so Google lists the profile address once.
 - **Custom domains are not redirected.** A Pro therapist paying for `chente.com` keeps clients on `chente.com`; the page is served there with the canonical tag. **Check first** that custom-domain traffic (Cloudflare for SaaS) passes through `tenant-router`; if it doesn't, report before building.
-- **Client sign-in on custom domains. Check first:** on a custom domain such as `chente.com`, the API's sign-in cookies (set on `api.unclutterdesk.com`) are **third-party**, and Safari blocks them. Since solo profiles are now served on custom domains, more clients will start booking there. Test client sign-up and sign-in through the booking flow on a custom domain in **Safari** (macOS and iOS). If it fails, `tenant-router` serves the client-facing API routes first-party at `{customDomain}/api/` (proxying to the API, with cookies scoped to the custom domain), and the SPA uses that base on custom domains. This depends on the same tenant-router question as above; report the result before building.
 - **Freshness:** when solo status changes (a therapist activated or deactivated), `homePage` changes, or the profile is published/unpublished, enqueue a `BackgroundJob` that clears the router's `exists` cache entry and the cached `/` page for that practice host (and its custom domain). The `exists` lookup is cached for ~60 s at most.
+
+**Client sign-in on custom domains**
+
+On a custom domain such as `chente.com`, the API's sign-in cookies (on `api.unclutterdesk.com`, later `api.therapysts.app`) are **third-party**, and Safari blocks them. This affects booking and client sign-in on custom domains today, and §6.16 sends more clients there.
+
+1. **Check first:** before building §6.16, test client sign-in and a full booking on a custom domain in Safari (macOS and iOS).
+2. **If it fails, serve the API under the custom domain.** `tenant-router` forwards `chente.com/api/...` to the API, so the cookies belong to `chente.com`. Rules:
+   - **Forward only client-facing routes:** client sign-in/sign-up/refresh/logout, password set/reset, public booking and availability, the client's sessions and video join, payments and pay links, intake and assessments by token. **Never** admin, platform or practice-dashboard routes. Use an explicit allow-list.
+   - The router passes the practice to the API in a header the browser can't set (added only by the router, after stripping any incoming copy), and the API takes the practice from that header for proxied requests.
+   - The API accepts the custom domain as an origin **only while `customDomainStatus = ACTIVE`**.
+   - **Rewrite cookies:** the API sets `COOKIE_DOMAIN = '.unclutterdesk.com'` in production, which a browser would reject on `chente.com`. On proxied responses the router **removes the `Domain` attribute** from every `Set-Cookie`, making the cookies host-only on `chente.com`.
+   - **The frontend must call the proxy.** `apiClient.ts` uses one fixed API address (`VITE_API_URL`, or the `api.unclutterdesk.com` fallback). Decide the API base from the page's own host, the same way the app already works out which practice it's serving: on a custom domain, call `https://{host}/api`; elsewhere, `API_ORIGIN`.
+   - **CSRF keeps working:** once the cookies belong to `chente.com`, the page reads the CSRF cookie from `document.cookie` as it does today.
+   - Reserve `/api` on practice hosts so it never reaches the app or a page.
+   - Cookies are per domain, so a client signed in on `chente.com` isn't automatically signed in on `{slug}.{TENANT_ROOT_DOMAIN}`. That's accepted.
+   - **Test:** a full client sign-in and booking work through the proxy in Safari, including the CSRF header; admin and dashboard routes are refused through the proxy.
 
 **Phase 1 acceptance**
 - [ ] A new therapist signs up (including the 6-digit code), picks a template and theme, and publishes a profile in under 10 minutes (manual test script)
 - [ ] Handle/slug checks across both namespaces; slug suffix on collision; slug rename when switching booking on; `profiles` and `directory` reserved after a DB check
-- [ ] Signups not verified within 7 days release their handle and practice slug (profile and Desk signup); tenants with any other member, client or booking are never deleted
 - [ ] Profile-first dashboard mode works; switching on Desk booking moves the tenant to the full practice view
-- [ ] Solo practices (§6.16): `/` serves the owner's published profile through the service binding, on subdomains and custom domains; `homePage` decided once at first publish (reviews then → practice page + prompt; later reviews change nothing); opt-out works; clinics keep the practice page; switching on second-therapist activation and back; admin/receptionist staff don't affect solo status; all other paths unchanged
-- [ ] Client sign-in on a custom domain works in Safari (tested; first-party `/api/` proxy built if it didn't)
+- [ ] Solo practices (§6.16): `/` serves the owner's published profile through the service binding, on subdomains and custom domains; `homePage` set once at first publish (PROFILE without reviews, prompt with reviews); later reviews never change `/`; opt-out works; clinics keep the practice page; switching on second-therapist activation and back; admin/receptionist staff don't affect solo status; all other paths unchanged
+- [ ] Custom-domain client sign-in tested in Safari; if the `/api` proxy is needed: allow-listed routes only, router-set practice header, ACTIVE-only origin, `Domain` stripped from `Set-Cookie`, frontend picks the API base from its host, full sign-in + booking with CSRF works through the proxy
+- [ ] Unverified signups older than 7 days release their handle and slug (only owner self-signups with nothing attached; others flagged for admin)
 - [ ] Proxied page: cookies and `Authorization` stripped, no `Set-Cookie` passed back, assets and site links absolute on the profiles origin, Book button goes to the same host's `/book`, canonical points to the profile address
 - [ ] All three booking modes work; several places per profile with one main; per-place consent; Free offers Paystack only; external URL validated
 - [ ] Templates and guidance editable in admin; unchanged-template-text warning works
@@ -929,7 +954,7 @@ A public place to find published profiles. Profiles remain the product; the dire
 
 **Builds on:** Phases 1–3, `apps/profiles`, taxonomy, `ConsultServiceFormat` prices.
 
-### 9.1 Pages (on `profiles.unclutterdesk.com`)
+### 9.1 Pages (on the profiles origin)
 
 - `/` becomes the directory: free-text search, filters, results. Card: photo, name, kind, verified badge (if any), headline, primary specialties, languages, city/online, fee range, "accepting new clients". Keep a clear "Create your free profile" link for therapists.
 - SEO landing pages for single-dimension filters with ≥ 3 claimed results: `/specialty/{key}`, `/language/{key}`, `/in/{country}/{city}`, `/online`. Multi-filter combinations use query params and are `noindex`.
@@ -1058,7 +1083,7 @@ Design implications: keep public DTOs allow-listed and taxonomy controlled (not 
 - **Templates:** create/edit `ProfileTemplate` content
 - **Taxonomy:** add/rename/deactivate terms (renames keep `key`)
 - **Guidance text:** edit section guidance and writing tips
-- **Complimentary plans:** view and set `complimentaryReason` / `complimentaryUntil`. This is the **only** way an admin changes a practice's plan; there is no direct tier setter (§5.7 #10)
+- **Complimentary plans:** view and set `complimentaryReason` / `complimentaryUntil`. **This is the only way admins change a practice's plan:** every change sets `complimentaryReason` and either a `complimentaryUntil` date or `INTERNAL`. Remove the direct `subscriptionTier` edit on the tenant detail page (`admin.service.ts`), or route it through this screen; otherwise a plan set there without a subscription or complimentary period silently drops to Free
 - **Free-payment review** (Phase 2, §7.3)
 - **Verification queue** and **professional bodies** (Phase 3)
 - **Directory insights** (Phase 4): searches with zero results, most-searched specialties and languages
@@ -1115,7 +1140,7 @@ Design implications: keep public DTOs allow-listed and taxonomy controlled (not 
 | 4 | **3 Verification** (optional badge) | Claude Code | Enter CASSON, NAPC, ANEPCO details; act as first reviewer |
 | 5 | **4 Directory & search** | Claude Code | Approve directory design; decide when there are enough profiles to launch it |
 | 6 | **5 Unclaimed listings & claiming** | Claude Code | Add the first unclaimed listings; review claims |
-| — | **Domain move** to therapysts.com / therapysts.app (§4.1b) — after Phase 1's config work, **before public launch** | Claude Code | Buy both domains; trademark checks on "Therapysts"; approve the cut-over date |
+| — | **Domain move** to therapysts.com / therapysts.app (§4.1b) — after Phase 1's config work, **before public launch** | Claude Code | Buy both domains **before the first outside customer sets up a custom domain**; trademark checks on "Therapysts"; approve the cut-over date |
 
 Phases 0–2 are the core and ship first. Phases 3–5 follow in order. Each phase ends with green CI, updated `LAUNCH_FEATURE_MATRIX.md`, and a short PR summary listing anything that differed from this spec.
 
