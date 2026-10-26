@@ -372,6 +372,18 @@ export class ConsultController {
     return this.sessions.rescheduleByStaff(authenticatedTenantId(req), this.actor(req), BigInt(bookingId), BigInt(dto.availabilityId));
   }
 
+  @Permissions('practice.admin')
+  @Post('practice/sessions/:bookingId/reassign-to-me')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @ApiBearerAuth('access-token')
+  @ApiOperation({ summary: "Take over a session in one of your own open slots (e.g. before a therapist is paused)" })
+  reassignSessionToMe(@Req() req: any, @Param('bookingId') bookingId: string, @Body() dto: { availabilityId?: string }) {
+    if (!/^\d+$/.test(bookingId) || !/^\d+$/.test(String(dto?.availabilityId ?? ''))) {
+      throw new NotFoundException('Session not found');
+    }
+    return this.sessions.rescheduleByStaff(authenticatedTenantId(req), this.actor(req), BigInt(bookingId), BigInt(dto.availabilityId), { toOwnSlot: true });
+  }
+
   @Permissions('sessions.summary')
   @Patch('practice/sessions/:bookingId/summary')
   @UseGuards(JwtAuthGuard, RolesGuard)

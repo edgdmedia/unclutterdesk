@@ -9,7 +9,7 @@ const DETAILS = { bankName: 'GTBank', accountName: 'Calm Practice Ltd', accountN
 function manualService(tenant: Record<string, unknown> = {}) {
   const prisma: any = {
     tenant: {
-      findUnique: vi.fn().mockResolvedValue({ manualPaymentsEnabled: true, manualPaymentDetails: DETAILS, subscriptionTier: 'PRO', ...tenant }),
+      findUnique: vi.fn().mockResolvedValue({ manualPaymentsEnabled: true, manualPaymentDetails: DETAILS, subscriptionTier: 'PRO', subscriptionStatus: 'active', ...tenant }),
       update: vi.fn(),
     },
     consultBooking: { updateMany: vi.fn().mockResolvedValue({ count: 1 }), findUnique: vi.fn().mockResolvedValue(null), findMany: vi.fn() },
@@ -49,8 +49,8 @@ describe('practice settings', () => {
   });
 
   // A practice that drops to Starter keeps its switch, but stops offering transfers.
-  it('stop applying if the practice leaves Pro', async () => {
-    const { service } = manualService({ subscriptionTier: 'STARTER' });
+  it('stop applying if the practice drops to the free plan', async () => {
+    const { service } = manualService({ subscriptionTier: 'FREE', subscriptionStatus: null });
     expect(await service.available(TENANT)).toBeNull();
   });
 });
@@ -130,7 +130,7 @@ describe('booking with a bank transfer', () => {
           id: 3n, tenantId: TENANT, isActive: true, startsAt, endsAt: new Date(startsAt.getTime() + 50 * 60_000),
           service: { id: 4n, title: 'Therapy', priceKobo: 2_500_000n, durationMinutes: 50 },
           therapist: { videoProvider: 'JITSI', profile: { firstName: 'Jane', lastName: 'Smith' } },
-          tenant: { subscriptionTier: 'PRO', name: 'Practice', slug: 'p' },
+          tenant: { subscriptionTier: 'PRO', subscriptionStatus: 'active', name: 'Practice', slug: 'p' },
         }),
       },
       consultBooking: { count: vi.fn().mockResolvedValue(0) },

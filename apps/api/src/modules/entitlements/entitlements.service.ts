@@ -1,30 +1,59 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../../common/prisma/prisma.service';
+import { countMonthlyBookings } from '../consult/booking-limits';
 import { EntitlementError } from './entitlement.error';
 import {
+  PLAN_SELECT,
   TIER_NAMES,
   effectiveTier,
-  entitlementsFor,
-  hasEntitlement,
   nextTier,
+  practiceEntitlements,
+  profileEntitlementsFromTiers,
   requiredTierFor,
-  type EntitlementKey,
-  type Entitlements,
+  requiredTierForProfile,
+  type PracticeEntitlements,
+  type PracticeFeature,
+  type ProfileEntitlements,
+  type ProfileFeature,
 } from './entitlements';
 
 @Injectable()
 export class EntitlementsService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async forTenant(tenantId: bigint): Promise<Entitlements> {
-    return entitlementsFor(await this.load(tenantId));
+  async forPractice(tenantId: bigint): Promise<PracticeEntitlements> {
+    return practiceEntitlements(await this.load(tenantId));
   }
 
-  /** Throws a 402 `EntitlementError` when the practice's plan does not include `key`. */
-  async assert(tenantId: bigint, key: EntitlementKey, message?: string): Promise<void> {
-    const entitlements = await this.forTenant(tenantId);
-    if (!hasEntitlement(entitlements, key)) {
-      throw new EntitlementError(key, requiredTierFor(key), message);
+  /** Throws a 402 `EntitlementError` when the practice's plan does not include `feature`. */
+  async assertPractice(tenantId: bigint, feature: PracticeFeature, message?: string): Promise<void> {
+    if (!(await this.forPractice(tenantId))[feature]) {
+      throw new EntitlementError(feature, requiredTierFor(feature), message);
+    }
+  }
+
+  /**
+   * Profile entitlements for a person: the best effective plan among the
+   * practices where they are an **active** OWNER or THERAPIST. ADMIN,
+   * RECEPTIONIST and CLIENT memberships never count, nor do inactive or
+   * closing practices. No qualifying membership → FREE.
+   */
+  async forProfile(userId: bigint): Promise<ProfileEntitlements> {
+    const memberships = await this.prisma.profile.findMany({
+      where: {
+        userId,
+        status: 'active',
+        role: { in: ['OWNER', 'THERAPIST'] },
+        tenant: { isActive: true, closureRequestedAt: null },
+      },
+      select: { tenant: { select: PLAN_SELECT } },
+    });
+    return profileEntitlementsFromTiers(memberships.map((m) => effectiveTier(m.tenant)));
+  }
+
+  async assertProfile(userId: bigint, feature: ProfileFeature, message?: string): Promise<void> {
+    if (!(await this.forProfile(userId))[feature]) {
+      throw new EntitlementError(feature, requiredTierForProfile(feature), message, 'profile');
     }
   }
 
@@ -32,13 +61,8 @@ export class EntitlementsService {
   async summary(tenantId: bigint) {
     const tenant = await this.load(tenantId);
     const tier = effectiveTier(tenant);
-    const entitlements = entitlementsFor(tenant);
-    let bookingsThisMonth: number | null = null;
-    if (entitlements.monthlyBookingLimit !== null) {
-      bookingsThisMonth = await this.prisma.consultBooking.count({
-        where: { tenantId, createdAt: { gte: monthStart() }, status: { not: 'CANCELLED' } },
-      });
-    }
+    const entitlements = practiceEntitlements(tenant);
+    const bookingsThisMonth = entitlements.monthlyBookingLimit === null ? null : await countMonthlyBookings(this.prisma, tenantId);
     const upgradeTo = nextTier(tier);
     return {
       tier,
@@ -55,19 +79,8 @@ export class EntitlementsService {
   }
 
   private async load(tenantId: bigint) {
-    const tenant = await this.prisma.tenant.findUnique({
-      where: { id: tenantId },
-      select: { subscriptionTier: true, complimentaryUntil: true },
-    });
+    const tenant = await this.prisma.tenant.findUnique({ where: { id: tenantId }, select: PLAN_SELECT });
     if (!tenant) throw new NotFoundException('Practice tenant not found');
     return tenant;
   }
-}
-
-/** Midnight on the first of this month, server time — the window booking limits count over. */
-export function monthStart(now: Date = new Date()): Date {
-  const start = new Date(now);
-  start.setDate(1);
-  start.setHours(0, 0, 0, 0);
-  return start;
 }

@@ -8,7 +8,7 @@ import { CalendarService } from '../calendar/calendar.service';
 import { formatNaira } from '../billing/subscription-plans';
 import { BookingNotifier } from '../notifications/booking-notifier.service';
 import { FRONT_DESK } from '../../common/roles';
-import { entitlementsFor, requiredTierFor } from '../entitlements/entitlements';
+import { PLAN_SELECT, practiceEntitlements, requiredTierFor } from '../entitlements/entitlements';
 import { EntitlementError } from '../entitlements/entitlement.error';
 
 /** How long a bank-transfer booking holds its slot. */
@@ -68,13 +68,13 @@ export class ManualPaymentService {
   async getSettings(tenantId: bigint) {
     const t = await this.prisma.tenant.findUnique({
       where: { id: tenantId },
-      select: { manualPaymentsEnabled: true, manualPaymentDetails: true, subscriptionTier: true, complimentaryUntil: true },
+      select: { manualPaymentsEnabled: true, manualPaymentDetails: true, ...PLAN_SELECT },
     });
     if (!t) throw new NotFoundException('Practice not found');
     return {
       enabled: t.manualPaymentsEnabled,
       details: cleanDetails(t.manualPaymentDetails),
-      onPlan: entitlementsFor(t).bankTransferPayments,
+      onPlan: practiceEntitlements(t).bankTransferPayments,
       holdHours: MANUAL_HOLD_HOURS,
     };
   }

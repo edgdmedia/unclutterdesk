@@ -162,8 +162,18 @@ export class SessionDirectoryService {
     return { id: b.id.toString(), status };
   }
 
-  /** Staff move a session to another open slot of the same practitioner. */
-  async rescheduleByStaff(tenantId: bigint, actor: SessionActor, bookingId: bigint, newAvailabilityId: bigint) {
+  /**
+   * Staff move a session to another open slot of the same practitioner. With
+   * `toOwnSlot`, the slot may instead be the actor's own: how an owner takes
+   * over a session from a therapist who is about to be paused (§5.4a).
+   */
+  async rescheduleByStaff(
+    tenantId: bigint,
+    actor: SessionActor,
+    bookingId: bigint,
+    newAvailabilityId: bigint,
+    opts: { toOwnSlot?: boolean } = {},
+  ) {
     if (!actor.viewAll) {
       throw new ForbiddenException('Ask the front desk or a practice admin to move a session.');
     }
@@ -183,7 +193,9 @@ export class SessionDirectoryService {
       if (!slot || !slot.isActive || slot.startsAt <= new Date()) {
         throw new BadRequestException('That time is no longer open. Choose another.');
       }
-      if (slot.providerProfileId !== oldSlot?.providerProfileId) {
+      if (opts.toOwnSlot) {
+        if (slot.providerProfileId !== actor.profileId) throw new BadRequestException('Pick one of your own open times.');
+      } else if (slot.providerProfileId !== oldSlot?.providerProfileId) {
         throw new BadRequestException('Pick an open time from the same practitioner.');
       }
       if (slot.serviceId !== null && slot.serviceId !== b.serviceId) {

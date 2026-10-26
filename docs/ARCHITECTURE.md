@@ -61,23 +61,43 @@ Notification dispatch goes through the `NotificationDispatch` table.
 
 - `Tenant.subscriptionTier` is one of `FREE`, `STARTER`, `PRO`, `CLINIC`. New
   practices start on `FREE`.
-- **What each plan includes lives in one table:**
-  `apps/api/src/modules/entitlements/entitlements.ts` (`ENTITLEMENTS`,
-  `entitlementsFor(tenant)`). Booking limits, the platform fee, custom domains,
-  staff invites, assessments, Google Calendar push and bank-transfer payments
-  all read it. `entitlements.spec.ts` fails the build if a tier is compared with
-  a string anywhere else in the API.
+- **What each plan includes lives in one place:**
+  `apps/api/src/modules/entitlements/entitlements.ts`, in two scopes. Practice
+  entitlements (`practiceEntitlements(tenant)`: booking limit, platform fee,
+  bank transfer, custom domain, staff invites, assessments, Google Calendar)
+  come from the practice's plan. Profile entitlements (PDF, intro video) come
+  from the best plan among the practices where the person is an active OWNER
+  or THERAPIST (`EntitlementsService.forProfile`).
+- `effectiveTier(tenant)` is the plan in force: a paid tier needs a Paystack
+  subscription (active, or lapsing) or a complimentary plan in force;
+  otherwise, or if the stored value is empty or unknown, it is `FREE`. Queries
+  select `PLAN_SELECT` so no field is forgotten.
+- `entitlements.spec.ts` fails the build if a tier is compared with a string,
+  or `subscriptionTier` is read, anywhere else in the API.
 - A feature the plan lacks fails with HTTP 402
-  `{ code: 'ENTITLEMENT_REQUIRED', feature, requiredTier }`.
-- `GET /v1/tenant/entitlements` returns the plan, what it includes and this
-  month's booking usage, so the app can show a feature as locked before the API
-  refuses it (`apps/app/src/utils/entitlements.ts`).
-- A paid plan changes only from a signature-verified Paystack webhook. A
-  cancelled subscription drops to `FREE` when its paid month ends; a failed
-  renewal drops after a grace period (`BILLING_GRACE_DAYS`, default 7). A
-  practice with staff `FREE` cannot hold keeps its plan and the owner is told.
-- Invite codes grant `PRO` or `CLINIC` for a set number of days, then the
-  practice returns to `FREE` unless it is paying.
+  `{ code: 'ENTITLEMENT_REQUIRED', scope, feature, requiredTier }`.
+- `GET /v1/tenant/entitlements` (practice) and `GET /v1/me/profile-entitlements`
+  (person) let the app show a feature as locked before the API refuses it
+  (`apps/app/src/utils/entitlements.ts`).
+- **Booking limits** count bookings created since midnight on the 1st in
+  Africa/Lagos time (`common/lagos-time.ts`), excluding cancelled ones. Staff
+  entries for today or earlier are never blocked; future ones follow the limit.
+- **Complimentary plans** (`complimentaryReason`): `INVITE_CODE`, `MIGRATION`
+  (90 days of Starter for practices that existed before v2), `INTERNAL` (no end
+  date when `complimentaryUntil` is null: the founder's and the demo practice).
+  An hourly cron ends expired periods (to `FREE` unless paying) and queues the
+  "free until" and 14-/3-day reminder emails. A payment clears both fields.
+  `pnpm tsx scripts/set-internal-tenant.ts --tenant <id> --tier <tier>` sets
+  INTERNAL. Admins change plans only through Complimentary plans
+  (`POST /v1/admin/tenants/:id/complimentary`).
+- **Paid plans** change only from a signature-verified Paystack webhook. A
+  failed renewal, or the end of a paid period after cancellation, starts the
+  lapse timeline (`billing/subscription-lapse.service.ts`): grace
+  (`BILLING_GRACE_DAYS`, 7), then notice with the exact date
+  (`BILLING_NOTICE_DAYS`, 14), then `FREE` with every active membership except
+  the owner paused (`Profile.pausedByDowngradeAt`). Paying again stops it and
+  reactivates only the paused memberships. Nothing is ever downgraded on the
+  spot; a missing renewal date is fetched from Paystack.
 
 ## 6. Video
 

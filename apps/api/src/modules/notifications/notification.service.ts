@@ -365,6 +365,15 @@ export class NotificationService implements OnModuleInit, OnModuleDestroy {
     return res.count;
   }
 
+  /** Cancels every pending reminder whose dedupe key starts with `prefix` (e.g. one per owner of a practice). */
+  async cancelRemindersWithPrefix(prefix: string): Promise<number> {
+    const res = await this.prisma.notificationDispatch.updateMany({
+      where: { dedupeKey: { startsWith: prefix }, status: 'PENDING' },
+      data: { status: 'CANCELLED' },
+    });
+    return res.count;
+  }
+
   async processDueReminders(limit = 50): Promise<number> {
     const due = await this.prisma.notificationDispatch.findMany({
       where: { status: 'PENDING', triggerAt: { lte: new Date() } },

@@ -4,7 +4,9 @@ import { randomBytes } from 'crypto';
 import { PrismaService } from '../../common/prisma/prisma.service';
 import { appOrigin } from '../../common/origins';
 import { NotificationService } from '../notifications/notification.service';
-import { TIER_NAMES } from '../entitlements/entitlements';
+import { effectiveTier, PLAN_SELECT, PRACTICE_ENTITLEMENTS, TIER_NAMES } from '../entitlements/entitlements';
+import { formatLagosDate } from '../../common/lagos-time';
+import { complimentaryKey } from './complimentary-emails';
 
 /** The plans an invite can grant. */
 export const INVITE_TIERS = ['PRO', 'CLINIC'] as const;
@@ -14,6 +16,14 @@ type Tx = Prisma.TransactionClient | PrismaService;
 
 const EMAIL = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
 const MAX_MESSAGE = 1000;
+
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+/** What moving to FREE takes away, said the same way in every reminder. */
+const FREE_PLAN_CHANGES = (() => {
+  const free = PRACTICE_ENTITLEMENTS.FREE;
+  return `The free plan takes ${free.monthlyBookingLimit} bookings a month with a ${free.platformFeeBps / 100}% fee on online payments, and has no Google Calendar sync and no bank transfer payments. Your clients, notes and bookings stay where they are.`;
+})();
 
 /** Where an invite link lands: signup, with the code already filled in. */
 export function inviteSignupLink(code: string) {
@@ -100,7 +110,7 @@ export class InviteService {
       orderBy: { createdAt: 'desc' },
       include: {
         tenants: {
-          select: { id: true, name: true, slug: true, subscriptionTier: true, complimentaryUntil: true },
+          select: { id: true, name: true, slug: true, ...PLAN_SELECT },
           orderBy: { createdAt: 'desc' },
         },
         sends: {
@@ -231,7 +241,7 @@ export class InviteService {
     const until = new Date(Date.now() + invite.durationDays * 24 * 60 * 60 * 1000);
     await tx.tenant.update({
       where: { id: tenantId },
-      data: { subscriptionTier: invite.tier, complimentaryUntil: until, inviteCodeId: invite.id },
+      data: { subscriptionTier: invite.tier, complimentaryUntil: until, complimentaryReason: 'INVITE_CODE', inviteCodeId: invite.id },
     });
 
     this.logger.log(`Tenant ${tenantId} redeemed invite ${code}: ${invite.tier} until ${until.toISOString()}`);
@@ -255,7 +265,9 @@ export class InviteService {
       const paying = tenant.subscriptionStatus === 'active';
       await this.prisma.tenant.update({
         where: { id: tenant.id },
-        data: paying ? { complimentaryUntil: null } : { subscriptionTier: 'FREE', complimentaryUntil: null },
+        data: paying
+          ? { complimentaryUntil: null, complimentaryReason: null }
+          : { subscriptionTier: 'FREE', complimentaryUntil: null, complimentaryReason: null },
       });
       if (!paying) downgraded += 1;
     }
@@ -264,6 +276,72 @@ export class InviteService {
       this.logger.log(`Ended ${due.length} complimentary period(s); ${downgraded} moved back to the free plan`);
     }
     return { ended: due.length, downgraded };
+  }
+
+  /**
+   * Queues the emails for complimentary periods still running (§5.4): "you
+   * have {plan} free until {date}" for migration periods, and reminders 14
+   * and 3 days before any migration or invite-code period ends. Idempotent
+   * through dedupe keys, so the hourly cron can call it every time.
+   * INTERNAL plans have no end date and get none.
+   */
+  async queueComplimentaryEmails(now = new Date()) {
+    const running = await this.prisma.tenant.findMany({
+      where: { complimentaryUntil: { gt: now }, complimentaryReason: { in: ['MIGRATION', 'INVITE_CODE'] } },
+      select: { id: true, ...PLAN_SELECT },
+    });
+    let queued = 0;
+    for (const t of running) {
+      const until = t.complimentaryUntil!;
+      const plan = TIER_NAMES[effectiveTier(t, now)];
+      const date = formatLagosDate(until);
+      const owners = await this.prisma.profile.findMany({ where: { tenantId: t.id, role: 'OWNER' }, select: { id: true } });
+      const daysLeft = (until.getTime() - now.getTime()) / DAY_MS;
+      const steps: Array<{ step: 'granted' | 'reminder14' | 'reminder3'; triggerAt: Date; title: string; message: string }> = [];
+      if (t.complimentaryReason === 'MIGRATION') {
+        steps.push({
+          step: 'granted',
+          triggerAt: now,
+          title: `You have ${plan} free until ${date}`,
+          message: `There's no charge for your ${plan} plan until ${date}. After that your practice moves to the free plan unless you subscribe. ${FREE_PLAN_CHANGES}`,
+        });
+      }
+      // A period too short for the 14-day reminder gets only the 3-day one.
+      if (daysLeft > 3) {
+        steps.push({
+          step: 'reminder14',
+          triggerAt: new Date(Math.max(now.getTime(), until.getTime() - 14 * DAY_MS)),
+          title: `Your free ${plan} plan ends on ${date}`,
+          message: `On ${date} your practice moves to the free plan unless you subscribe. ${FREE_PLAN_CHANGES}`,
+        });
+      }
+      steps.push({
+        step: 'reminder3',
+        triggerAt: new Date(Math.max(now.getTime(), until.getTime() - 3 * DAY_MS)),
+        title: `3 days left on your free ${plan} plan`,
+        message: `On ${date} your practice moves to the free plan unless you subscribe. ${FREE_PLAN_CHANGES}`,
+      });
+      for (const owner of owners) {
+        for (const s of steps) {
+          await this.notifications.queueReminder(
+            {
+              tenantId: t.id,
+              profileId: owner.id,
+              type: `billing.complimentary_${s.step}`,
+              title: s.title,
+              message: s.message,
+              link: '/dashboard/settings/subscription',
+              actionLabel: 'See plans',
+              channels: { in_app: true, email: true },
+              triggerAt: s.triggerAt,
+            },
+            complimentaryKey(t.id, until, s.step, owner.id),
+          );
+          queued += 1;
+        }
+      }
+    }
+    return { practices: running.length, queued };
   }
 
   // ── Helpers ────────────────────────────────────────────────────────────
@@ -301,7 +379,7 @@ export class InviteService {
     note: string | null;
     isActive: boolean;
     createdAt: Date;
-    tenants: Array<{ id: bigint; name: string; slug: string; subscriptionTier: string; complimentaryUntil: Date | null }>;
+    tenants: Array<{ id: bigint; name: string; slug: string; subscriptionTier: string; subscriptionStatus: string | null; complimentaryUntil: Date | null; complimentaryReason: string | null }>;
     sends: Array<Parameters<InviteService['sendView']>[0]>;
   }) {
     return {
@@ -319,7 +397,7 @@ export class InviteService {
         id: t.id.toString(),
         name: t.name,
         slug: t.slug,
-        tier: t.subscriptionTier,
+        tier: effectiveTier(t),
         complimentaryUntil: t.complimentaryUntil?.toISOString() ?? null,
       })),
       sends: c.sends.map((send) => this.sendView(send)),

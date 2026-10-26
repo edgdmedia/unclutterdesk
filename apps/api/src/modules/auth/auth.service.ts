@@ -8,7 +8,7 @@ import {
   Logger, Optional } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcryptjs';
-import { createHash, randomBytes } from 'crypto';
+import { createHash, randomBytes, randomInt } from 'crypto';
 import { PrismaService } from '../../common/prisma/prisma.service';
 import { JwtPayload } from './jwt.strategy';
 import { DeviceInfo, SessionService } from './session.service';
@@ -18,7 +18,7 @@ import { InviteService } from '../invites/invite.service';
 import { DefaultFormsService } from '../intake/default-forms.service';
 import { effectivePermissions } from '../../common/permissions';
 import { appOrigin } from '../../common/origins';
-import { effectiveTier } from '../entitlements/entitlements';
+import { effectiveTier, NEW_PRACTICE_TIER, type PlanFields } from '../entitlements/entitlements';
 
 const BCRYPT_ROUNDS = 12;
 
@@ -144,7 +144,7 @@ export class AuthService {
         data: {
           name: dto.practiceName || `${dto.firstName || 'Practice'} Therapy`,
           slug: `${cleanSlug || 'practice'}-${Date.now().toString().slice(-4)}`,
-          subscriptionTier: 'FREE',
+          subscriptionTier: NEW_PRACTICE_TIER,
           isActive: true,
         },
       });
@@ -284,7 +284,7 @@ export class AuthService {
   }
 
   private async createEmailVerificationCode(userId: bigint) {
-    const code = Math.floor(100000 + Math.random() * 900000).toString();
+    const code = verificationCode();
     const tokenHash = this.hashToken(code);
     const expiresAt = new Date(
       Date.now() + this.parseDuration(process.env.EMAIL_VERIFICATION_EXPIRES_IN, 30 * 60 * 1000),
@@ -1127,7 +1127,7 @@ export class AuthService {
     // Required, not optional: a caller that forgets the include would otherwise
     // hand back tenantSlug: null, which is worse than the inconsistency this
     // replaces — silently wrong instead of visibly absent.
-    tenant: { name: string; slug: string; subscriptionTier?: string | null; complimentaryUntil?: Date | null } | null;
+    tenant: ({ name: string; slug: string } & PlanFields) | null;
     consultTherapistProfile: unknown | null;
   }, platformRole?: string | null) {
     return {
@@ -1404,4 +1404,13 @@ export class AuthService {
     await this.sessions.startSession(sessionId, userId, refreshToken, device);
     return { accessToken, refreshToken, profile: this.practiceProfile(profile, user?.platformRole) };
   }
+}
+
+/**
+ * A 6-digit email verification code from the crypto RNG (spec §5.2), zero
+ * padded so every code is equally likely. It used to use a non-cryptographic
+ * generator, and only ever produced 100000-999999.
+ */
+export function verificationCode(): string {
+  return randomInt(0, 1_000_000).toString().padStart(6, '0');
 }

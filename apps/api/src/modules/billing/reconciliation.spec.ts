@@ -24,6 +24,10 @@ function makeBilling(tier = 'FREE', subaccount: string | null = 'ACCT_x') {
       findUnique: vi.fn().mockResolvedValue({
         id: TENANT,
         subscriptionTier: tier,
+        // A paid plan needs a subscription to count (§5.4).
+        subscriptionStatus: tier === 'FREE' ? null : 'active',
+        complimentaryUntil: null,
+        complimentaryReason: null,
         bankSubaccount: subaccount ? { paystackCode: subaccount } : null,
       }),
     },

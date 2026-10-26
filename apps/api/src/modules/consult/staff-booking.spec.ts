@@ -81,7 +81,7 @@ function setup(over: Record<string, any> = {}) {
         tenant: { name: 'Smith Therapy', slug: 'dr-smith', customDomain: null, customDomainStatus: null },
       }),
     },
-    tenant: { findUnique: vi.fn().mockResolvedValue({ id: TENANT, subscriptionTier: over.tier ?? 'PRO', name: 'Smith Therapy', slug: 'dr-smith' }) },
+    tenant: { findUnique: vi.fn().mockResolvedValue({ id: TENANT, subscriptionTier: over.tier ?? 'PRO', subscriptionStatus: 'active', name: 'Smith Therapy', slug: 'dr-smith' }) },
     $transaction: vi.fn(async (fn: any) => fn(tx)),
   };
   const consult: any = {

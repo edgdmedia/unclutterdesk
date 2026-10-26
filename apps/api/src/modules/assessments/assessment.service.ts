@@ -6,7 +6,7 @@ import { tenantWebOrigin } from '../../common/origins';
 import { NotificationService } from '../notifications/notification.service';
 import { InstrumentService, type StoredInstrument } from './instrument.service';
 import { publicDefinition, score, validateAnswers, type AssessmentResult } from './engine';
-import { entitlementsFor, instrumentAllowed, TIER_NAMES, type Entitlements } from '../entitlements/entitlements';
+import { instrumentAllowed, PLAN_SELECT, practiceEntitlements, TIER_NAMES, type PracticeEntitlements } from '../entitlements/entitlements';
 import { EntitlementError } from '../entitlements/entitlement.error';
 
 const hashToken = (token: string) => createHash('sha256').update(token).digest('hex');
@@ -35,15 +35,12 @@ export class AssessmentService {
     private readonly instruments: InstrumentService,
   ) {}
 
-  private async plan(tenantId: bigint): Promise<Entitlements> {
-    const tenant = await this.prisma.tenant.findUnique({
-      where: { id: tenantId },
-      select: { subscriptionTier: true, complimentaryUntil: true },
-    });
-    return entitlementsFor(tenant);
+  private async plan(tenantId: bigint): Promise<PracticeEntitlements> {
+    const tenant = await this.prisma.tenant.findUnique({ where: { id: tenantId }, select: PLAN_SELECT });
+    return practiceEntitlements(tenant);
   }
 
-  private assertOnPlan(plan: Entitlements, inst: StoredInstrument) {
+  private assertOnPlan(plan: PracticeEntitlements, inst: StoredInstrument) {
     if (!instrumentAllowed(plan, inst.definition.tier)) {
       throw new EntitlementError(
         'assessmentRank',

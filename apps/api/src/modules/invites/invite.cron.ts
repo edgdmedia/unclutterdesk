@@ -8,13 +8,21 @@ export class InviteCron {
 
   constructor(private readonly invites: InviteService) {}
 
-  /** Hourly, so a practice keeps its trial plan at most an hour past its end date. */
+  /**
+   * Hourly, so a practice keeps a complimentary plan at most an hour past its
+   * end date; also queues the "free until" and 14-/3-day reminder emails.
+   */
   @Cron(CronExpression.EVERY_HOUR)
   async endComplimentaryPeriods() {
     try {
       await this.invites.expireComplimentary();
     } catch (err) {
       this.logger.error('Failed to end complimentary periods', err as Error);
+    }
+    try {
+      await this.invites.queueComplimentaryEmails();
+    } catch (err) {
+      this.logger.error('Failed to queue complimentary plan emails', err as Error);
     }
   }
 }

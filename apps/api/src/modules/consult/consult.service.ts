@@ -19,6 +19,7 @@ import { BookingNotifier } from '../notifications/booking-notifier.service';
 import { BookingPaymentSettler } from '../billing/booking-payment-settler.service';
 import { onlineHoldExpiry } from './online-hold';
 import { assertWithinMonthlyLimit, monthlyLimitReached } from './booking-limits';
+import { PLAN_SELECT } from '../entitlements/entitlements';
 
 /** A Paystack checkout: the page to send the payer to, and the code its pop-up opens with. */
 type StartedPayment = { url: string; accessCode: string };
@@ -346,7 +347,7 @@ export class ConsultService {
   async publicFullyBooked(tenantId: bigint): Promise<boolean> {
     const tenant = await this.prisma.tenant.findUnique({
       where: { id: tenantId },
-      select: { subscriptionTier: true, complimentaryUntil: true },
+      select: PLAN_SELECT,
     });
     return monthlyLimitReached(this.prisma, tenantId, tenant);
   }

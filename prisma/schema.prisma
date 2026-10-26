@@ -67,16 +67,17 @@ model Tenant {
   // "active", "past_due", "cancelled", or null before the first payment.
   subscriptionStatus        String?
   subscriptionRenewsAt      DateTime?
-  // When the first failed renewal arrived. The paid plan is kept for a grace
-  // period (BILLING_GRACE_DAYS, default 7) and then drops to FREE.
-  subscriptionPastDueAt     DateTime?
-  // Set when a lapsed plan could not drop to FREE because the practice still
-  // has staff FREE cannot hold; the owner is told once, not on every run.
-  downgradeBlockedAt        DateTime?
-  // Complimentary access from an invite code: the plan in subscriptionTier
-  // lasts until this date, then drops back to FREE unless the practice
-  // has started paying. Null for everyone else.
+  // Lapse timeline (spec §5.4a). Day 0 is when a renewal failed or the paid
+  // period ended after cancellation; the plan is kept through a grace period
+  // and a notice period, and the practice moves to FREE at downgradeAt. Both
+  // are cleared when the practice pays again.
+  subscriptionLapsedAt      DateTime?
+  downgradeAt               DateTime?
+  // A complimentary plan: the tier in subscriptionTier, free until this date,
+  // then FREE unless the practice has started paying. Null for everyone else,
+  // except INTERNAL, where a null date means no end date.
   complimentaryUntil        DateTime?
+  complimentaryReason       ComplimentaryReason?
   inviteCodeId              BigInt?
   inviteCode                InviteCode?               @relation(fields: [inviteCodeId], references: [id], onDelete: SetNull)
   enabledAssessments        TenantAssessment[]
@@ -117,6 +118,14 @@ model Tenant {
   @@index([slug])
   @@index([customDomain])
   @@index([complimentaryUntil])
+}
+
+/// Why a practice has a complimentary plan (spec §5.4).
+enum ComplimentaryReason {
+  INVITE_CODE
+  MIGRATION
+  /// Olalekan's own practice. With a null complimentaryUntil, no end date.
+  INTERNAL
 }
 
 /// A platform-issued code that gives a practice a plan for free for a while,
@@ -222,6 +231,11 @@ model Profile {
 
   // ONB-06: when this person took the dashboard walkthrough. Once, any device.
   tourCompletedAt DateTime?
+
+  // Set when a downgrade to FREE paused this membership (spec §5.4a). Only
+  // these are reactivated when the practice pays again; people the owner
+  // set to inactive by hand stay inactive.
+  pausedByDowngradeAt DateTime?
 
   // A pending "set your password" invite for a client the practice added.
   accountTokenHash      String?   @unique

@@ -115,7 +115,7 @@ describe('invite codes', () => {
       const result = await service.expireComplimentary();
       expect(prisma.tenant.update).toHaveBeenCalledWith({
         where: { id: TENANT },
-        data: { subscriptionTier: 'FREE', complimentaryUntil: null },
+        data: { subscriptionTier: 'FREE', complimentaryUntil: null, complimentaryReason: null },
       });
       expect(result).toEqual({ ended: 1, downgraded: 1 });
     });
@@ -124,7 +124,7 @@ describe('invite codes', () => {
       const { service, prisma } = makeService();
       prisma.tenant.findMany.mockResolvedValue([{ id: TENANT, subscriptionStatus: 'active' }]);
       await service.expireComplimentary();
-      expect(prisma.tenant.update).toHaveBeenCalledWith({ where: { id: TENANT }, data: { complimentaryUntil: null } });
+      expect(prisma.tenant.update).toHaveBeenCalledWith({ where: { id: TENANT }, data: { complimentaryUntil: null, complimentaryReason: null } });
     });
 
     it('only looks at periods that have ended', async () => {

@@ -48,6 +48,9 @@ async function main() {
       address: '14 Admiralty Way, Lekki Phase 1',
       category: 'Clinical psychology',
       subscriptionTier: 'PRO',
+      // A plan needs a subscription or a complimentary period (spec §5.4);
+      // the local demo practice has no end date.
+      complimentaryReason: 'INTERNAL',
       isActive: true,
     }
   });

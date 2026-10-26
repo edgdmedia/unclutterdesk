@@ -37,6 +37,7 @@ describe('BillingService.startSubscriptionCheckout', () => {
       id: 1n,
       publicEmail: 'practice@example.com',
       subscriptionTier: 'STARTER',
+      subscriptionStatus: 'active',
     });
     prisma.profile.findFirst.mockResolvedValue({ email: 'owner@example.com' });
     paystack.initializeTransaction.mockResolvedValue({
@@ -162,25 +163,79 @@ describe('BillingService.handleWebhook — subscriptions', () => {
     expect(prisma.tenant.update).not.toHaveBeenCalled();
   });
 
-  it('flags a failed renewal without downgrading the practice', async () => {
-    await service.handleWebhook('invoice.payment_failed', {
-      subscription: { subscription_code: 'SUB_1' },
-    });
-    // Not downgraded on the spot: the paid plan runs through a grace period,
-    // which starts at the first failure and is not restarted by later ones.
+  it('flags a failed renewal and starts the lapse timeline, without downgrading', async () => {
+    const lapse = { startLapse: vi.fn().mockResolvedValue(true), stopLapse: vi.fn() };
+    service = new BillingService(prisma, {} as any, {} as any, undefined, undefined, undefined, lapse as any);
+    prisma.tenant.findMany.mockResolvedValue([{ id: 7n, subscriptionRenewsAt: null, updatedAt: new Date() }]);
+    await service.handleWebhook('invoice.payment_failed', { subscription: { subscription_code: 'SUB_1' } });
     const calls = prisma.tenant.updateMany.mock.calls.map((c: any) => c[0]);
-    expect(calls).toContainEqual({
-      where: { paystackSubscriptionCode: 'SUB_1', subscriptionPastDueAt: null },
-      data: { subscriptionStatus: 'past_due', subscriptionPastDueAt: expect.any(Date) },
-    });
+    expect(calls).toContainEqual({ where: { paystackSubscriptionCode: 'SUB_1' }, data: { subscriptionStatus: 'past_due' } });
     for (const call of calls) expect(call.data).not.toHaveProperty('subscriptionTier');
+    expect(lapse.startLapse).toHaveBeenCalledWith(7n, expect.any(Date));
   });
 
-  it('records a cancelled subscription', async () => {
-    await service.handleWebhook('subscription.disable', { subscription_code: 'SUB_1' });
-    expect(prisma.tenant.updateMany.mock.calls[0][0].data).toMatchObject({
-      subscriptionStatus: 'cancelled',
+  describe('cancellation never downgrades on the spot (§5.4)', () => {
+    let lapse: any, paystack: any;
+    beforeEach(() => {
+      lapse = { startLapse: vi.fn().mockResolvedValue(true), stopLapse: vi.fn() };
+      paystack = { fetchSubscription: vi.fn() };
+      service = new BillingService(prisma, paystack, {} as any, undefined, undefined, undefined, lapse);
     });
+
+    it.each(['subscription.disable', 'subscription.not_renew'])('%s keeps the plan to the end of the paid period', async (event) => {
+      const periodEnd = new Date(Date.now() + 10 * 86_400_000);
+      prisma.tenant.findMany.mockResolvedValue([{ id: 7n, subscriptionRenewsAt: periodEnd, updatedAt: new Date() }]);
+      await service.handleWebhook(event, { subscription_code: 'SUB_1' });
+      expect(prisma.tenant.update).toHaveBeenCalledWith({ where: { id: 7n }, data: { subscriptionStatus: 'cancelled', subscriptionRenewsAt: periodEnd } });
+      for (const [args] of prisma.tenant.update.mock.calls) expect(args.data).not.toHaveProperty('subscriptionTier');
+      // The period hasn't ended: the daily job starts the lapse then.
+      expect(lapse.startLapse).not.toHaveBeenCalled();
+    });
+
+    it('fetches a missing renewal date from Paystack instead of downgrading', async () => {
+      const next = new Date(Date.now() + 5 * 86_400_000);
+      prisma.tenant.findMany.mockResolvedValue([{ id: 7n, subscriptionRenewsAt: null, updatedAt: new Date() }]);
+      paystack.fetchSubscription.mockResolvedValue({ next_payment_date: next.toISOString() });
+      await service.handleWebhook('subscription.not_renew', { subscription_code: 'SUB_1' });
+      expect(paystack.fetchSubscription).toHaveBeenCalledWith('SUB_1');
+      expect(prisma.tenant.update.mock.calls[0][0].data.subscriptionRenewsAt).toEqual(next);
+      expect(lapse.startLapse).not.toHaveBeenCalled();
+    });
+
+    it('assumes a month from the last charge when Paystack cannot answer either', async () => {
+      const lastCharge = new Date();
+      prisma.tenant.findMany.mockResolvedValue([{ id: 7n, subscriptionRenewsAt: null, updatedAt: lastCharge }]);
+      paystack.fetchSubscription.mockRejectedValue(new Error('down'));
+      await service.handleWebhook('subscription.disable', { subscription_code: 'SUB_1' });
+      const end = prisma.tenant.update.mock.calls[0][0].data.subscriptionRenewsAt as Date;
+      expect(end.getTime()).toBeGreaterThan(lastCharge.getTime() + 27 * 86_400_000);
+      expect(lapse.startLapse).not.toHaveBeenCalled();
+    });
+
+    it('starts the lapse at the period end when that has already passed', async () => {
+      const ended = new Date(Date.now() - 86_400_000);
+      prisma.tenant.findMany.mockResolvedValue([{ id: 7n, subscriptionRenewsAt: ended, updatedAt: new Date() }]);
+      await service.handleWebhook('subscription.disable', { subscription_code: 'SUB_1' });
+      expect(lapse.startLapse).toHaveBeenCalledWith(7n, ended);
+    });
+  });
+
+  it('a payment clears the complimentary period and its reason, and stops any lapse', async () => {
+    const lapse = { startLapse: vi.fn(), stopLapse: vi.fn().mockResolvedValue(undefined) };
+    const notifications: any = { cancelRemindersWithPrefix: vi.fn().mockResolvedValue(1) };
+    service = new BillingService(prisma, {} as any, {} as any, notifications, undefined, undefined, lapse as any);
+    prisma.tenant.findUnique.mockResolvedValue({ complimentaryUntil: new Date('2027-01-24T10:00:00Z') });
+    await service.handleWebhook('charge.success', { reference: 'subscription-7-1', plan: { plan_code: 'PLN_clinic' } });
+    expect(prisma.tenant.update.mock.calls[0][0].data).toMatchObject({ complimentaryUntil: null, complimentaryReason: null });
+    expect(notifications.cancelRemindersWithPrefix).toHaveBeenCalledWith('complimentary:7:2027-01-24:');
+    expect(lapse.stopLapse).toHaveBeenCalledWith(7n);
+  });
+
+  it('fetches the renewal date from Paystack when subscription.create lacks one', async () => {
+    const paystack: any = { fetchSubscription: vi.fn().mockResolvedValue({ next_payment_date: '2026-02-01T00:00:00Z' }) };
+    service = new BillingService(prisma, paystack, {} as any);
+    await service.handleWebhook('subscription.create', { customer: { customer_code: 'CUS_1' }, subscription_code: 'SUB_1' });
+    expect(prisma.tenant.updateMany.mock.calls[0][0].data.subscriptionRenewsAt).toEqual(new Date('2026-02-01T00:00:00Z'));
   });
 
   it('stores the subscription code and token on creation', async () => {
@@ -241,81 +296,13 @@ describe('PaystackService.verifyWebhookSignature', () => {
   });
 });
 
-describe('lapsed subscriptions drop to FREE', () => {
-  let service: BillingService, prisma: any;
-  const env = { ...process.env };
-  const notifications: any = { notify: vi.fn().mockResolvedValue([]) };
-
-  beforeEach(() => {
-    ({ prisma } = makeService());
-    service = new BillingService(prisma, {} as any, {} as any, notifications);
-    notifications.notify.mockClear();
-    prisma.tenant.findUnique.mockResolvedValue({ id: 1n, subscriptionTier: 'STARTER', downgradeBlockedAt: null });
-    prisma.profile.findMany.mockResolvedValue([{ id: 7n }]);
-  });
-
-  afterEach(() => {
-    process.env = { ...env };
-  });
-
-  it('moves the practice to FREE when Paystack disables the subscription', async () => {
-    prisma.tenant.findMany.mockResolvedValue([{ id: 1n }]);
-    await service.handleWebhook('subscription.disable', { subscription_code: 'SUB_1' });
-    expect(prisma.tenant.update).toHaveBeenCalledWith({
-      where: { id: 1n },
-      data: { subscriptionTier: 'FREE', subscriptionPastDueAt: null, downgradeBlockedAt: null },
-    });
-    expect(notifications.notify).toHaveBeenCalledWith(expect.objectContaining({ type: 'billing.downgraded', profileIds: [7n] }));
-  });
-
-  it('honours the paid month on not_renew: only lapsed practices are looked up, by renewal date', async () => {
-    const now = new Date('2026-11-10T00:00:00Z');
-    await service.enforceLapsedSubscriptions(now);
-    const where = prisma.tenant.findMany.mock.calls[0][0].where;
-    expect(where.subscriptionTier).toEqual({ not: 'FREE' });
-    expect(where.complimentaryUntil).toBeNull();
-    expect(where.OR[0]).toEqual({
-      subscriptionStatus: 'cancelled',
-      OR: [{ subscriptionRenewsAt: null }, { subscriptionRenewsAt: { lte: now } }],
-    });
-  });
-
-  it.each([
-    [undefined, '2026-11-03T00:00:00.000Z'],
-    ['3', '2026-11-07T00:00:00.000Z'],
-  ])('past_due drops after the grace period (BILLING_GRACE_DAYS=%s)', async (grace, cutoff) => {
-    if (grace) process.env.BILLING_GRACE_DAYS = grace;
-    await service.enforceLapsedSubscriptions(new Date('2026-11-10T00:00:00Z'));
-    const where = prisma.tenant.findMany.mock.calls[0][0].where;
-    expect(where.OR[1]).toEqual({ subscriptionStatus: 'past_due', subscriptionPastDueAt: { lte: new Date(cutoff) } });
-  });
-
-  it('keeps the plan, flags it and tells the owner once when staff would be stranded', async () => {
-    prisma.profile.count.mockResolvedValue(2);
-    expect(await service.downgradeToFree(1n, 'payment failed')).toBe(false);
-    expect(prisma.tenant.update).toHaveBeenCalledWith({ where: { id: 1n }, data: { downgradeBlockedAt: expect.any(Date) } });
-    expect(notifications.notify).toHaveBeenCalledWith(expect.objectContaining({ type: 'billing.downgrade_blocked' }));
-
-    prisma.tenant.update.mockClear();
-    notifications.notify.mockClear();
-    prisma.tenant.findUnique.mockResolvedValue({ id: 1n, subscriptionTier: 'STARTER', downgradeBlockedAt: new Date() });
-    expect(await service.downgradeToFree(1n, 'payment failed')).toBe(false);
-    expect(prisma.tenant.update).not.toHaveBeenCalled();
-    expect(notifications.notify).not.toHaveBeenCalled();
-  });
-
-  it('leaves a practice already on FREE alone', async () => {
-    prisma.tenant.findUnique.mockResolvedValue({ id: 1n, subscriptionTier: 'FREE', downgradeBlockedAt: null });
-    expect(await service.downgradeToFree(1n, 'subscription ended')).toBe(false);
-    expect(prisma.tenant.update).not.toHaveBeenCalled();
-  });
-});
-
 describe('staff counts for downgrades', () => {
   it('count only active memberships, so inactive staff never block a move to a smaller plan', async () => {
     const { service, prisma } = makeService();
-    prisma.tenant.findUnique.mockResolvedValue({ id: 1n, subscriptionTier: 'PRO', downgradeBlockedAt: null });
-    await service.downgradeToFree(1n, 'subscription ended');
+    prisma.tenant.findUnique.mockResolvedValue({ id: 1n, bankSubaccount: null, subscriptionTier: 'PRO', subscriptionStatus: 'active', complimentaryUntil: null, complimentaryReason: null, createdAt: new Date(), updatedAt: new Date() });
+    prisma.consultBooking.count = vi.fn().mockResolvedValue(0);
+    await service.getBillingSummary(1n);
+    expect(prisma.profile.count).toHaveBeenCalled();
     for (const [args] of prisma.profile.count.mock.calls) expect(args.where.status).toBe('active');
   });
 });

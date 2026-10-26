@@ -29,7 +29,7 @@ describe('TenantService custom domain flow', () => {
 
     prisma.tenant.findUnique.mockResolvedValue({
       id: BigInt(1),
-      subscriptionTier: 'PRO',
+      subscriptionTier: 'PRO', subscriptionStatus: 'active',
     });
 
     await expect(
@@ -45,7 +45,7 @@ describe('TenantService custom domain flow', () => {
 
     prisma.tenant.findUnique.mockResolvedValue({
       id: BigInt(1),
-      subscriptionTier: tier,
+      subscriptionTier: tier, subscriptionStatus: 'active',
     });
 
     await expect(
@@ -310,7 +310,7 @@ describe('TenantService SET-13 custom domain provisioning', () => {
   test('a new domain creates the hostname and the worker route', async () => {
     const prisma = createPrismaMock();
     const cf = cfMock();
-    prisma.tenant.findUnique.mockResolvedValue({ id: BigInt(1), subscriptionTier: 'PRO', customDomain: null, customHostnameId: null });
+    prisma.tenant.findUnique.mockResolvedValue({ id: BigInt(1), subscriptionTier: 'PRO', subscriptionStatus: 'active', customDomain: null, customHostnameId: null });
     prisma.tenant.update.mockResolvedValue({ id: BigInt(1), customDomain: 'book.acme.ng' });
 
     await serviceWith(prisma, cf).updateTenantBrand(BigInt(1), { customDomain: 'book.acme.ng' });
@@ -324,7 +324,7 @@ describe('TenantService SET-13 custom domain provisioning', () => {
   test('a changed domain deletes the old hostname and route first', async () => {
     const prisma = createPrismaMock();
     const cf = cfMock();
-    prisma.tenant.findUnique.mockResolvedValue({ id: BigInt(1), subscriptionTier: 'PRO', customDomain: 'book.old.ng', customHostnameId: 'cf0' });
+    prisma.tenant.findUnique.mockResolvedValue({ id: BigInt(1), subscriptionTier: 'PRO', subscriptionStatus: 'active', customDomain: 'book.old.ng', customHostnameId: 'cf0' });
     prisma.tenant.update.mockResolvedValue({ id: BigInt(1), customDomain: 'book.acme.ng' });
 
     await serviceWith(prisma, cf).updateTenantBrand(BigInt(1), { customDomain: 'book.acme.ng' });
@@ -337,7 +337,7 @@ describe('TenantService SET-13 custom domain provisioning', () => {
   test('re-saving the same domain leaves Cloudflare alone', async () => {
     const prisma = createPrismaMock();
     const cf = cfMock();
-    prisma.tenant.findUnique.mockResolvedValue({ id: BigInt(1), subscriptionTier: 'PRO', customDomain: 'book.acme.ng', customHostnameId: 'cf1' });
+    prisma.tenant.findUnique.mockResolvedValue({ id: BigInt(1), subscriptionTier: 'PRO', subscriptionStatus: 'active', customDomain: 'book.acme.ng', customHostnameId: 'cf1' });
     prisma.tenant.update.mockResolvedValue({ id: BigInt(1), customDomain: 'book.acme.ng' });
 
     await serviceWith(prisma, cf).updateTenantBrand(BigInt(1), { customDomain: 'book.acme.ng' });
@@ -351,7 +351,7 @@ describe('TenantService SET-13 custom domain provisioning', () => {
     const prisma = createPrismaMock();
     const cf = cfMock();
     cf.createHostname.mockRejectedValue(new Error('Cloudflare 12021: quota reached'));
-    prisma.tenant.findUnique.mockResolvedValue({ id: BigInt(1), subscriptionTier: 'PRO', customDomain: null, customHostnameId: null });
+    prisma.tenant.findUnique.mockResolvedValue({ id: BigInt(1), subscriptionTier: 'PRO', subscriptionStatus: 'active', customDomain: null, customHostnameId: null });
     prisma.tenant.update.mockResolvedValue({ id: BigInt(1), customDomain: 'book.acme.ng' });
 
     await expect(serviceWith(prisma, cf).updateTenantBrand(BigInt(1), { customDomain: 'book.acme.ng' })).resolves.toBeTruthy();
@@ -364,7 +364,7 @@ describe('TenantService SET-13 custom domain provisioning', () => {
     const prisma = createPrismaMock();
     const cf = cfMock();
     cf.configured = () => false;
-    prisma.tenant.findUnique.mockResolvedValue({ id: BigInt(1), subscriptionTier: 'PRO', customDomain: null, customHostnameId: null });
+    prisma.tenant.findUnique.mockResolvedValue({ id: BigInt(1), subscriptionTier: 'PRO', subscriptionStatus: 'active', customDomain: null, customHostnameId: null });
     prisma.tenant.update.mockResolvedValue({ id: BigInt(1), customDomain: 'book.acme.ng' });
 
     await serviceWith(prisma, cf).updateTenantBrand(BigInt(1), { customDomain: 'book.acme.ng' });

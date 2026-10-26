@@ -183,6 +183,22 @@ describe('rescheduleByStaff', () => {
       await expect(service.rescheduleByStaff(TENANT, DESK, 900n, 301n)).rejects.toThrow();
     }
   });
+  it("lets an owner take a therapist's session into one of their own open slots (§5.4a)", async () => {
+    const owner = { ...DESK, profileId: 1n };
+    const t = tx({ slot: slot({ providerProfileId: 1n }), oldProvider: 66n });
+    const { service, prisma } = make();
+    prisma.$transaction = vi.fn(async (fn: any) => fn(t));
+    await service.rescheduleByStaff(TENANT, owner, 900n, 301n, { toOwnSlot: true });
+    expect(t.consultBooking.update).toHaveBeenCalledWith({ where: { id: 900n }, data: { availabilityId: 301n } });
+  });
+  it("refuses a 'take over' into someone else's slot", async () => {
+    const owner = { ...DESK, profileId: 1n };
+    const t = tx({ slot: slot({ providerProfileId: 66n }), oldProvider: 77n });
+    const { service, prisma } = make();
+    prisma.$transaction = vi.fn(async (fn: any) => fn(t));
+    await expect(service.rescheduleByStaff(TENANT, owner, 900n, 301n, { toOwnSlot: true })).rejects.toThrow(/your own open times/i);
+    expect(t.consultBooking.update).not.toHaveBeenCalled();
+  });
   it('refuses a completed or cancelled session', async () => {
     for (const status of ['COMPLETED', 'CANCELLED']) {
       const t = tx({ booking: { status } });

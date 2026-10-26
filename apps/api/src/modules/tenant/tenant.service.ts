@@ -12,7 +12,7 @@ import { isPlatformHostname, isReservedSlug, normalizeSlug } from './reserved-sl
 import { apiOrigin, appOrigin, ROOT_DOMAIN, tenantWebOrigin } from '../../common/origins';
 import { EmergencyContactInput, emergencyContactData, emergencyContactOf, emergencyContactText } from './emergency-contact';
 import { GRANTABLE, PERMISSIONS } from '../../common/permissions';
-import { entitlementsFor, requiredTierFor, requiredTierForStaffRole, TIER_NAMES } from '../entitlements/entitlements';
+import { NEW_PRACTICE_TIER, PLAN_SELECT, PRACTICE_ENTITLEMENTS, practiceEntitlements, requiredTierFor, requiredTierForStaffRole, TIER_NAMES } from '../entitlements/entitlements';
 import { EntitlementError } from '../entitlements/entitlement.error';
 
 const RESERVED_SLUG_MESSAGE = 'That booking handle is reserved. Try another one.';
@@ -185,7 +185,7 @@ export class TenantService {
 
     // A new practice starts on FREE, which has no custom domain; one is added
     // from Settings after upgrading.
-    if (dto.customDomain && !entitlementsFor({ subscriptionTier: 'FREE' }).customDomain) {
+    if (dto.customDomain && !PRACTICE_ENTITLEMENTS[NEW_PRACTICE_TIER].customDomain) {
       throw new EntitlementError('customDomain', requiredTierFor('customDomain'));
     }
 
@@ -193,7 +193,7 @@ export class TenantService {
       data: {
         name: dto.name.trim(),
         slug,
-        subscriptionTier: 'FREE',
+        subscriptionTier: NEW_PRACTICE_TIER,
         customDomain: this.validateCustomDomain(dto.customDomain),
         customDomainStatus: 'PENDING',
         logoUrl: cleanLogoUrl(dto.logoUrl) ?? null,
@@ -307,9 +307,9 @@ export class TenantService {
     if (dto.customDomain !== undefined) {
       const tenant = await this.prisma.tenant.findUnique({
         where: { id: tenantId },
-        select: { id: true, subscriptionTier: true, complimentaryUntil: true, customDomain: true, customHostnameId: true },
+        select: { id: true, ...PLAN_SELECT, customDomain: true, customHostnameId: true },
       });
-      if (dto.customDomain && !entitlementsFor(tenant).customDomain) {
+      if (dto.customDomain && !practiceEntitlements(tenant).customDomain) {
         const required = requiredTierFor('customDomain');
         throw new EntitlementError('customDomain', required, `Custom domain requires the ${TIER_NAMES[required]} plan.`);
       }
@@ -888,7 +888,7 @@ export class TenantService {
     const tenant = await this.prisma.tenant.findUnique({ where: { id: tenantId } });
     if (!tenant) throw new NotFoundException('Practice tenant not found');
 
-    const { staffInviteRoles } = entitlementsFor(tenant);
+    const { staffInviteRoles } = practiceEntitlements(tenant);
     if (!staffInviteRoles.includes(dto.role)) {
       const required = requiredTierForStaffRole(dto.role);
       throw new EntitlementError(

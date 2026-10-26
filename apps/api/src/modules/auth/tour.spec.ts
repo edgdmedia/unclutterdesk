@@ -19,7 +19,7 @@ const BASE_PROFILE = {
   permissions: [],
   avatarUrl: null,
   tourCompletedAt: null,
-  tenant: { name: 'Smith Therapy', slug: 'smith-therapy', subscriptionTier: 'PRO' },
+  tenant: { name: 'Smith Therapy', slug: 'smith-therapy', subscriptionTier: 'PRO', subscriptionStatus: 'active' },
   consultTherapistProfile: { id: 9n },
   user: { platformRole: null },
 };

@@ -42,7 +42,7 @@ const PROFILE = {
   role: 'OWNER',
   status: 'active',
   avatarUrl: null,
-  tenant: { name: 'Ada Therapy', slug: 'ada-therapy', subscriptionTier: 'PRO' },
+  tenant: { name: 'Ada Therapy', slug: 'ada-therapy', subscriptionTier: 'PRO', subscriptionStatus: 'active' },
   consultTherapistProfile: { id: 9n },
 };
 

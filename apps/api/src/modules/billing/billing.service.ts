@@ -24,12 +24,14 @@ import { appOrigin } from '../../common/origins';
 import {
   canHoldStaff,
   effectiveTier,
-  entitlementsFor,
-  ENTITLEMENTS,
-  isFreeTier,
+  PLAN_SELECT,
+  PRACTICE_ENTITLEMENTS,
   platformFeeKobo,
+  practiceEntitlements,
   TIER_NAMES,
 } from '../entitlements/entitlements';
+import { SubscriptionLapseService } from './subscription-lapse.service';
+import { complimentaryPrefix } from '../invites/complimentary-emails';
 import { countMonthlyBookings } from '../consult/booking-limits';
 
 @Injectable()
@@ -43,6 +45,7 @@ export class BillingService {
     @Optional() private readonly notifications?: NotificationService,
     @Optional() private readonly bookingNotifier?: BookingNotifier,
     @Optional() private readonly settler?: BookingPaymentSettler,
+    @Optional() private readonly lapse?: SubscriptionLapseService,
   ) {}
 
   async getBankSubaccount(tenantId: bigint) {
@@ -133,10 +136,10 @@ export class BillingService {
         date: tenant.updatedAt.toISOString(),
         title: `${TIER_NAMES[effectiveTier(tenant)]} plan active`,
         detail: tenant.complimentaryUntil
-          ? `${tenant.subscriptionTier} from an invite code, free until ${tenant.complimentaryUntil.toISOString().slice(0, 10)}.`
+          ? `${TIER_NAMES[effectiveTier(tenant)]} free until ${tenant.complimentaryUntil.toISOString().slice(0, 10)}.`
           : subscription.nextBillingDate
-            ? `Current subscription is ${tenant.subscriptionTier}. Next charge ${subscription.nextChargeAmount} on ${subscription.nextBillingDate}.`
-            : `Current plan is ${tenant.subscriptionTier}. No payment has been taken yet.`,
+            ? `Current subscription is ${TIER_NAMES[effectiveTier(tenant)]}. Next charge ${subscription.nextChargeAmount} on ${subscription.nextBillingDate}.`
+            : `Current plan is ${TIER_NAMES[effectiveTier(tenant)]}. No payment has been taken yet.`,
         type: 'subscription',
       },
       ...(tenant.bankSubaccount
@@ -157,13 +160,13 @@ export class BillingService {
       },
     ].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
-    const monthlyBookingLimit = entitlementsFor(tenant).monthlyBookingLimit;
+    const monthlyBookingLimit = practiceEntitlements(tenant).monthlyBookingLimit;
     const currentMonthBookings = monthlyBookingLimit === null ? 0 : await countMonthlyBookings(this.prisma, tenantId);
 
     const [staffCount, therapistCount] = await this.staffCounts(tenantId);
 
-    const canDowngradeToStarter = canHoldStaff(ENTITLEMENTS.STARTER, staffCount, therapistCount);
-    const canDowngradeToPro = canHoldStaff(ENTITLEMENTS.PRO, staffCount, therapistCount);
+    const canDowngradeToStarter = canHoldStaff(PRACTICE_ENTITLEMENTS.STARTER, staffCount, therapistCount);
+    const canDowngradeToPro = canHoldStaff(PRACTICE_ENTITLEMENTS.PRO, staffCount, therapistCount);
 
     return {
       subscription: {
@@ -263,7 +266,7 @@ export class BillingService {
    */
   private async assertDowngradeAllowed(tenantId: bigint, plan: SubscriptionTier) {
     const [staffCount, therapistCount] = await this.staffCounts(tenantId);
-    const target = ENTITLEMENTS[plan];
+    const target = PRACTICE_ENTITLEMENTS[plan];
     if (staffCount > 0 && target.staffInviteRoles.length === 0) {
       throw new BadRequestException(
         `Cannot move to ${TIER_NAMES[plan]}: your practice has active staff members. Remove them first.`,
@@ -316,7 +319,7 @@ export class BillingService {
 
     const tenant = await this.prisma.tenant.findUnique({
       where: { id: tenantId },
-      select: { id: true, publicEmail: true, subscriptionTier: true },
+      select: { id: true, publicEmail: true, ...PLAN_SELECT },
     });
     if (!tenant) throw new NotFoundException('Practice tenant not found');
 
@@ -353,7 +356,7 @@ export class BillingService {
         amount: formatNaira(definition.amountKobo),
         // The tier is unchanged until Paystack confirms; say so plainly rather
         // than letting the client assume the upgrade already happened.
-        currentTier: tenant.subscriptionTier,
+        currentTier: effectiveTier(tenant),
         message: 'Complete payment to activate this plan.',
       };
     } catch (error) {
@@ -371,23 +374,32 @@ export class BillingService {
     const renewsAt = new Date();
     renewsAt.setUTCMonth(renewsAt.getUTCMonth() + 1);
 
+    // A complimentary period ends with the payment, so its reminders go too.
+    const before = await this.prisma.tenant.findUnique({ where: { id: tenantId }, select: { complimentaryUntil: true } });
+    if (before?.complimentaryUntil) {
+      await this.notifications?.cancelRemindersWithPrefix(complimentaryPrefix(tenantId, before.complimentaryUntil));
+    }
+
     await this.prisma.tenant.update({
       where: { id: tenantId },
       data: {
         subscriptionTier: plan,
         subscriptionStatus: 'active',
         subscriptionRenewsAt: renewsAt,
-        subscriptionPastDueAt: null,
-        downgradeBlockedAt: null,
-        // Paying now: any invite period is superseded, and must not later
-        // be "ended" by moving the practice back to FREE.
+        // Paying now: any complimentary plan is superseded, and must not later
+        // be "ended" by moving the practice back to FREE. Clearing the reason
+        // too matters: a paying INTERNAL practice must not be skipped by the
+        // lapse timeline for ever (§5.4).
         complimentaryUntil: null,
+        complimentaryReason: null,
         ...(data?.customer?.customer_code
           ? { paystackCustomerCode: data.customer.customer_code }
           : {}),
       },
     });
 
+    // Paying stops any lapse and reactivates staff the downgrade paused.
+    await this.lapse?.stopLapse(tenantId);
     this.logger.log(`Tenant ${tenantId} subscription activated on ${plan}`);
   }
 
@@ -431,8 +443,8 @@ export class BillingService {
       include: { bankSubaccount: true },
     });
 
-    const entitlements = entitlementsFor(tenant);
-    const feeKobo = platformFeeKobo(entitlements, amountKobo);
+    const entitlements = practiceEntitlements(tenant);
+    const feeKobo = platformFeeKobo(entitlements.platformFeeBps, amountKobo);
     const therapistPayoutKobo = amountKobo - feeKobo;
 
     return {
@@ -487,15 +499,17 @@ export class BillingService {
       const customerCode: string | undefined = data?.customer?.customer_code;
       if (!customerCode) return;
 
+      // The renewal date is always stored: the lapse timeline counts from it.
+      const renewsAt = data?.next_payment_date
+        ? new Date(data.next_payment_date)
+        : await this.renewalDateFromPaystack(data?.subscription_code);
       await this.prisma.tenant.updateMany({
         where: { paystackCustomerCode: customerCode },
         data: {
           paystackSubscriptionCode: data?.subscription_code ?? null,
           paystackSubscriptionToken: data?.email_token ?? null,
           subscriptionStatus: 'active',
-          ...(data?.next_payment_date
-            ? { subscriptionRenewsAt: new Date(data.next_payment_date) }
-            : {}),
+          ...(renewsAt ? { subscriptionRenewsAt: renewsAt } : {}),
         },
       });
       return;
@@ -504,17 +518,13 @@ export class BillingService {
     if (event === 'invoice.payment_failed') {
       const code: string | undefined = data?.subscription?.subscription_code;
       if (!code) return;
-      // The paid plan is kept through a grace period; `enforceLapsedSubscriptions`
-      // moves the practice to FREE after it. FREE keeps clinical notes, clients
-      // and bookings, so nothing a practice relies on is locked away.
-      await this.prisma.tenant.updateMany({
-        where: { paystackSubscriptionCode: code, subscriptionPastDueAt: null },
-        data: { subscriptionStatus: 'past_due', subscriptionPastDueAt: new Date() },
-      });
+      // Not downgraded: day 0 of the lapse timeline (§5.4a). The plan is kept
+      // through grace and notice, and paying again at any point stops it.
       await this.prisma.tenant.updateMany({
         where: { paystackSubscriptionCode: code },
         data: { subscriptionStatus: 'past_due' },
       });
+      for (const t of await this.tenantsWithSubscription(code)) await this.lapse?.startLapse(t.id, new Date());
       this.logger.warn(`Subscription ${code} marked past_due after a failed payment`);
       return;
     }
@@ -522,123 +532,54 @@ export class BillingService {
     if (event === 'subscription.disable' || event === 'subscription.not_renew') {
       const code: string | undefined = data?.subscription_code;
       if (!code) return;
-      await this.prisma.tenant.updateMany({
-        where: { paystackSubscriptionCode: code },
-        data: { subscriptionStatus: 'cancelled' },
-      });
-      // `disable` means the subscription has ended: drop now. `not_renew`
-      // means it will not renew, so the month already paid for is honoured and
-      // the practice drops when it runs out.
-      if (event === 'subscription.disable') {
-        const tenants = await this.prisma.tenant.findMany({
-          where: { paystackSubscriptionCode: code },
-          select: { id: true },
+      // Never downgraded on the spot (§5.4): the practice keeps its plan to
+      // the end of the period it paid for, which is day 0 of the lapse
+      // timeline. A missing renewal date is fetched from Paystack.
+      for (const t of await this.tenantsWithSubscription(code)) {
+        const periodEnd =
+          t.subscriptionRenewsAt ??
+          (data?.next_payment_date ? new Date(data.next_payment_date) : null) ??
+          (await this.renewalDateFromPaystack(code)) ??
+          this.assumedPeriodEnd(t.updatedAt);
+        await this.prisma.tenant.update({
+          where: { id: t.id },
+          data: { subscriptionStatus: 'cancelled', subscriptionRenewsAt: periodEnd },
         });
-        for (const t of tenants) await this.downgradeToFree(t.id, 'subscription ended');
-      } else {
-        await this.enforceLapsedSubscriptions();
+        if (periodEnd <= new Date()) await this.lapse?.startLapse(t.id, periodEnd);
+        // Otherwise the daily lapse job starts it when the period ends.
       }
       return;
     }
   }
 
-  /**
-   * Moves practices whose paid plan has lapsed to FREE: a cancelled
-   * subscription once its paid month is over, and a failed renewal once the
-   * grace period has passed. Run daily, and straight after `not_renew`.
-   * Invite-code periods and plans set by a platform admin (no Paystack status)
-   * are left alone.
-   */
-  async enforceLapsedSubscriptions(now: Date = new Date()) {
-    const graceCutoff = new Date(now.getTime() - billingGraceDays() * 24 * 60 * 60 * 1000);
-    const lapsed = await this.prisma.tenant.findMany({
-      where: {
-        subscriptionTier: { not: 'FREE' },
-        complimentaryUntil: null,
-        OR: [
-          { subscriptionStatus: 'cancelled', OR: [{ subscriptionRenewsAt: null }, { subscriptionRenewsAt: { lte: now } }] },
-          { subscriptionStatus: 'past_due', subscriptionPastDueAt: { lte: graceCutoff } },
-        ],
-      },
-      select: { id: true, subscriptionStatus: true },
+  private tenantsWithSubscription(code: string) {
+    return this.prisma.tenant.findMany({
+      where: { paystackSubscriptionCode: code },
+      select: { id: true, subscriptionRenewsAt: true, updatedAt: true },
     });
-    let downgraded = 0;
-    for (const t of lapsed) {
-      const reason = t.subscriptionStatus === 'past_due' ? 'payment failed' : 'subscription ended';
-      if (await this.downgradeToFree(t.id, reason)) downgraded += 1;
-    }
-    if (lapsed.length) this.logger.log(`Lapsed subscriptions: ${downgraded} of ${lapsed.length} moved to FREE`);
-    return { lapsed: lapsed.length, downgraded };
   }
 
-  /**
-   * Moves one practice to FREE, unless it still has staff FREE cannot hold —
-   * then it keeps its plan, is flagged, and the owner and admins are told once
-   * what to do. Returns whether the plan changed.
-   */
-  async downgradeToFree(tenantId: bigint, reason: string): Promise<boolean> {
-    const tenant = await this.prisma.tenant.findUnique({
-      where: { id: tenantId },
-      select: { id: true, subscriptionTier: true, downgradeBlockedAt: true },
-    });
-    if (!tenant || isFreeTier(tenant)) return false;
-
-    const [staffCount, therapistCount] = await this.staffCounts(tenantId);
-    const leads = await this.prisma.profile.findMany({
-      where: { tenantId, role: { in: ['OWNER', 'ADMIN'] }, status: 'active' },
-      select: { id: true },
-    });
-
-    if (!canHoldStaff(ENTITLEMENTS.FREE, staffCount, therapistCount)) {
-      if (tenant.downgradeBlockedAt) return false;
-      await this.prisma.tenant.update({ where: { id: tenantId }, data: { downgradeBlockedAt: new Date() } });
-      this.logger.warn(`Tenant ${tenantId} lapsed (${reason}) but has staff; plan kept and owner notified`);
-      await this.notifyLeads(tenantId, leads, {
-        type: 'billing.downgrade_blocked',
-        title: 'Your subscription has lapsed',
-        message:
-          'Your paid plan has ended, but your practice still has team members the free plan cannot hold. Renew your subscription, or remove staff, to keep things running smoothly.',
-      });
-      return false;
-    }
-
-    await this.prisma.tenant.update({
-      where: { id: tenantId },
-      data: { subscriptionTier: 'FREE', subscriptionPastDueAt: null, downgradeBlockedAt: null },
-    });
-    this.logger.log(`Tenant ${tenantId} moved to FREE (${reason})`);
-    await this.notifyLeads(tenantId, leads, {
-      type: 'billing.downgraded',
-      title: 'Your practice is now on the free plan',
-      message:
-        'Your paid subscription has ended. Your clients, notes and bookings are all still here; the free plan includes 10 bookings a month. Upgrade any time from Settings → Subscription.',
-    });
-    return true;
-  }
-
-  private async notifyLeads(
-    tenantId: bigint,
-    leads: Array<{ id: bigint }>,
-    n: { type: string; title: string; message: string },
-  ) {
-    if (!leads.length || !this.notifications) return;
+  /** `next_payment_date` from Paystack, or null if it can't be had. */
+  private async renewalDateFromPaystack(code: string | undefined): Promise<Date | null> {
+    if (!code) return null;
     try {
-      await this.notifications.notify({
-        tenantId,
-        profileIds: leads.map((l) => l.id),
-        ...n,
-        link: '/dashboard/settings/subscription',
-        actionLabel: 'View plans',
-        channels: { in_app: true, email: true, push: false },
-      });
+      const sub = await this.paystack.fetchSubscription(code);
+      const next = sub?.next_payment_date ?? sub?.data?.next_payment_date;
+      return next ? new Date(next) : null;
     } catch (err) {
-      this.logger.warn(`Could not send ${n.type} to tenant ${tenantId}: ${(err as Error).message}`);
+      this.logger.warn(`Could not fetch subscription ${code} from Paystack: ${(err as Error).message}`);
+      return null;
     }
   }
-}
 
-/** Days a failed renewal keeps its paid plan before dropping to FREE. */
-export function billingGraceDays(): number {
-  const days = Number(process.env.BILLING_GRACE_DAYS);
-  return Number.isFinite(days) && days >= 0 ? days : 7;
+  /**
+   * When neither we nor Paystack know the period end, assume one month from
+   * the last change to the practice's billing record (in practice, the last
+   * successful charge), rather than ending a paid month early.
+   */
+  private assumedPeriodEnd(lastCharge: Date): Date {
+    const end = new Date(lastCharge);
+    end.setUTCMonth(end.getUTCMonth() + 1);
+    return end;
+  }
 }
