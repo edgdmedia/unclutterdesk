@@ -676,7 +676,8 @@ Templates help therapists know what to write: **prompts and example wording per 
 - Entry points: `{PROFILE_PUBLIC_ORIGIN}/join` ("Create your free therapist profile") and a link from the landing page. Both send the therapist to `{APP_ORIGIN}/signup?intent=profile`.
 - Signup asks for name, email, password, handle (§6.2), kind, and template (optional). It creates in **one transaction**: `User`, `Tenant` (FREE, slug per §6.2, `onboardingIntent = PROFILE`), `Profile` (OWNER), `ConsultTherapistProfile`, `PractitionerProfile` (DRAFT).
 - **Email verification uses Desk's existing 6-digit code step** (`/verify-email`); after the code is entered, the therapist lands in the profile editor. No change to Desk's sign-in rules.
-- **Unverified signups release their handle and slug after 7 days.** Signup creates the user, practice and profile before the code is entered, so anyone could hold a handle like `chente` with an email they don't own. This applies to **all owner self-signups** (profile signup, `/v1/auth/register`, `/v1/tenant/register`), which have the same problem with practice slugs today.
+- **Unverified signups release their handle and slug after 7 days.** Signup creates the user, practice and profile before the code is entered, so anyone could hold a handle like `chente` with an email they don't own. This applies to **all owner self-signups** (profile signup and `/v1/auth/register`), which have the same problem with practice slugs today.
+- **`POST /v1/tenant/register` becomes platform-admin only.** Today it needs no account or verification, isn't rate-limited, and nothing in the app calls it, so anyone can claim a practice slug through it. Keep it as an admin tool for setting up a practice directly (e.g. a clinic onboarded in person), behind `PlatformAdminGuard`.
   - **In scope:** accounts whose email is unverified 7 days after signup **and** that were created by an owner self-signup.
   - **Out of scope (never removed):** clients who signed up during booking; clients created by staff without a login; staff invited to a practice.
   - **Safety check:** remove only if nothing exists beyond what signup itself created — no bookings, clients, services, Paystack subaccount, payments, notes or staff. If anything else is attached, **skip and flag it for an admin** instead.
@@ -749,10 +750,11 @@ On publish/update/unpublish/handle change/takedown/booking-mode change: enqueue 
 
 - **Triggers:** there's no single "deactivated" event in the code, only separate paths. Route every one of them through one `onMembershipEnded(profileId)` handler:
   1. the therapist status toggle (set to inactive);
-  2. removing a staff member;
-  3. a downgrade pausing staff (§5.4a);
-  4. a platform admin setting `Tenant.isActive = false` (applies to every therapist in that practice, including the owner);
-  5. a practice closure (`closureRequestedAt` / the closure flow; applies to everyone in the practice).
+  2. a downgrade pausing staff (§5.4a);
+  3. a platform admin setting `Tenant.isActive = false` (applies to every therapist in that practice, including the owner);
+  4. a practice closure (`closureRequestedAt` / the closure flow; applies to everyone in the practice).
+
+  There is **no "remove a staff member" action** in the app today (therapists are only switched inactive). When one is built, it must call the same handler.
 
   Add a test for each path. Profile entitlements also ignore inactive and closed practices (§5.1).
 - On each trigger:
@@ -767,7 +769,28 @@ On publish/update/unpublish/handle change/takedown/booking-mode change: enqueue 
 ### 6.15 Terms, reports & takedown (D11)
 
 - Terms of use (new section in `terms.astro`): profile content is the practitioner's responsibility; impersonation and misleading content are not allowed; the platform may remove profiles that break the terms.
-- "Report this profile" (impersonation, misleading content, unsafe content, other) → `PlatformRequest` with `type = PROFILE_REPORT` and the handle; appears in admin.
+- "Report this profile" (impersonation, misleading content, unsafe content, other) → a new **`ProfileReport`** table, not `PlatformRequest` (which requires a practice and must not be loosened, and a report about a therapist must never be stored in their own practice's records):
+  ```prisma
+  enum ProfileReportType   { IMPERSONATION MISLEADING UNSAFE OTHER REMOVAL_REQUEST }
+  enum ProfileReportStatus { OPEN ACTIONED DISMISSED }
+  model ProfileReport {
+    id             BigInt   @id @default(autoincrement())
+    profileId      BigInt?               // null if the profile has since been deleted
+    handle         String                // as reported
+    type           ProfileReportType
+    details        String?               // plain text
+    reporterName   String?
+    reporterEmail  String?               // removal requests only; never shown publicly
+    relationship   String?               // removal requests: "this is me" / "acting for them"
+    status         ProfileReportStatus @default(OPEN)
+    reviewerUserId BigInt?
+    reviewNote     String?
+    createdAt      DateTime @default(now())
+    reviewedAt     DateTime?
+    @@index([status, createdAt])
+  }
+  ```
+  Its own admin queue (§12). Phase 5 removal requests (§10.4) reuse it with `type = REMOVAL_REQUEST`.
 - Admin can hide or suspend a profile with a reason, written to `AdminAuditLog`; the practitioner is notified by email.
 
 ### 6.16 Solo practices: one page, two addresses
@@ -812,10 +835,13 @@ When a second therapist becomes active, `/` switches to the practice page automa
 
 **Client sign-in on custom domains**
 
-On a custom domain such as `chente.com`, the API's sign-in cookies (on `api.unclutterdesk.com`, later `api.therapysts.app`) are **third-party**, and Safari blocks them. This affects booking and client sign-in on custom domains today, and §6.16 sends more clients there.
+On a custom domain such as `chente.com`, the API's sign-in cookies (on `api.unclutterdesk.com`, later `api.therapysts.app`) are **third-party**, and browsers block them. The page also can't read the CSRF cookie set for `.unclutterdesk.com`, so every write request fails in **any** browser.
 
-1. **Check first:** before building §6.16, test client sign-in and a full booking on a custom domain in Safari (macOS and iOS).
-2. **If it fails, serve the API under the custom domain.** `tenant-router` forwards `chente.com/api/...` to the API, so the cookies belong to `chente.com`. Rules:
+**Confirmed broken today (tested 27 Oct 2026 in Microsoft Edge on `consult.unclutter.com.ng`):** client sign-in succeeds, the dashboard flashes, then the client is signed out; a booking fails with "Your session has expired". The same flow **works** on the practice's `*.unclutterdesk.com` subdomain. So this is specific to custom domains, affects every Pro custom domain now, and is **not** limited to Safari.
+
+**Build the proxy as the first item of Phase 1** (before anything else in §6.16, since custom-domain booking is broken regardless of solo profiles). Custom-domain traffic already passes through `tenant-router` (each custom domain gets a Worker route via `cloudflare-saas.service.ts`).
+
+**Serve the API under the custom domain.** `tenant-router` forwards `chente.com/api/...` to the API, so the cookies belong to `chente.com`. Rules:
    - **Forward only client-facing routes:** client sign-in/sign-up/refresh/logout, password set/reset, public booking and availability, the client's sessions and video join, payments and pay links, intake and assessments by token. **Never** admin, platform or practice-dashboard routes. Use an explicit allow-list.
    - The router passes the practice to the API in a header the browser can't set (added only by the router, after stripping any incoming copy), and the API takes the practice from that header for proxied requests.
    - The API accepts the custom domain as an origin **only while `customDomainStatus = ACTIVE`**.
@@ -831,16 +857,17 @@ On a custom domain such as `chente.com`, the API's sign-in cookies (on `api.uncl
 - [ ] Handle/slug checks across both namespaces; slug suffix on collision; slug rename when switching booking on; `profiles` and `directory` reserved after a DB check
 - [ ] Profile-first dashboard mode works; switching on Desk booking moves the tenant to the full practice view
 - [ ] Solo practices (§6.16): `/` serves the owner's published profile through the service binding, on subdomains and custom domains; `homePage` set once at first publish (PROFILE without reviews, prompt with reviews); later reviews never change `/`; opt-out works; clinics keep the practice page; switching on second-therapist activation and back; admin/receptionist staff don't affect solo status; all other paths unchanged
-- [ ] Custom-domain client sign-in tested in Safari; if the `/api` proxy is needed: allow-listed routes only, router-set practice header, ACTIVE-only origin, `Domain` stripped from `Set-Cookie`, frontend picks the API base from its host, full sign-in + booking with CSRF works through the proxy
+- [ ] **First item:** custom-domain `/api` proxy built: allow-listed routes only, router-set practice header, ACTIVE-only origin, `Domain` stripped from `Set-Cookie`, frontend picks the API base from its host, full sign-in + booking with CSRF works through the proxy on `consult.unclutter.com.ng` in Edge, Safari (macOS and iOS) and Chrome
 - [ ] Unverified signups older than 7 days release their handle and slug (only owner self-signups with nothing attached; others flagged for admin)
 - [ ] Proxied page: cookies and `Authorization` stripped, no `Set-Cookie` passed back, assets and site links absolute on the profiles origin, Book button goes to the same host's `/book`, canonical points to the profile address
 - [ ] All three booking modes work; several places per profile with one main; per-place consent; Free offers Paystack only; external URL validated
 - [ ] Templates and guidance editable in admin; unchanged-template-text warning works
 - [ ] Themes pass contrast tests; preview images generated on save into R2 and served from R2
 - [ ] Security (§4.3): cache ignores cookies; renderer never reads them; credentialed requests from the profiles origin are rejected; CSP present; script/HTML payloads render inert
-- [ ] Leaving a practice removes only that place (via every exit path), promotes a new main place, falls back to NONE when none remain, and purges the page
+- [ ] Leaving a practice removes only that place (via each of the four existing exit paths), promotes a new main place, falls back to NONE when none remain, and purges the page
 - [ ] Share link, QR and PDF use `profilePath()`; PDF gated by profile entitlements
-- [ ] Report → admin → takedown works end to end and is audited; terms updated
+- [ ] Report → `ProfileReport` queue → takedown works end to end and is audited; `PlatformRequest` unchanged; terms updated
+- [ ] `POST /v1/tenant/register` is platform-admin only
 - [ ] Public page SSR, readable without JS, Lighthouse accessibility ≥ 95
 
 ---
@@ -1046,7 +1073,7 @@ Update every access rule and test that assumes `userId` is non-null.
 
 ### 10.4 Removal (no account needed)
 
-- `POST /v1/directory/removal-requests` with handle, requester name, email and relationship ("this is me" / "acting for them"). Rate-limited + honeypot.
+- `POST /v1/directory/removal-requests` with handle, requester name, email and relationship ("this is me" / "acting for them"), stored as a `ProfileReport` with `type = REMOVAL_REQUEST` (§6.15). Rate-limited + honeypot.
 - The listing is **hidden immediately**, pending admin review; admin confirms deletion within 7 days and adds the name to `DoNotRelist`.
 - Claimed profiles can't be removed this way; such requests become reports (§6.15).
 
@@ -1079,7 +1106,7 @@ Design implications: keep public DTOs allow-listed and taxonomy controlled (not 
 ## 12. Admin (`/admin/profiles`)
 
 - **Profiles:** search, view, hide/suspend/restore with reason
-- **Reports:** `PROFILE_REPORT` queue
+- **Reports:** `ProfileReport` queue (reports and, from Phase 5, removal requests)
 - **Templates:** create/edit `ProfileTemplate` content
 - **Taxonomy:** add/rename/deactivate terms (renames keep `key`)
 - **Guidance text:** edit section guidance and writing tips
