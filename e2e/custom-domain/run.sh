@@ -23,8 +23,6 @@ APP_PORT="${E2E_APP_PORT:-4173}"
 export E2E_ROUTER_PORT="${E2E_ROUTER_PORT:-8787}"
 rand() { node -e "console.log(require('crypto').randomBytes(16).toString('hex'))"; }
 ROUTER_SECRET="$(rand)"
-# The test client's password: made fresh each run, never stored in the repo.
-export E2E_CLIENT_PASSWORD="${E2E_CLIENT_PASSWORD:-Aa1!$(rand)}"
 LOGS="${E2E_LOG_DIR:-$ROOT/e2e/custom-domain/.logs}"
 mkdir -p "$LOGS"
 

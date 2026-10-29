@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto';
 import { expect, test, type Page } from '@playwright/test';
 
 /**
@@ -8,9 +9,9 @@ import { expect, test, type Page } from '@playwright/test';
  * out, and booking failed with "session expired": the API's cookies were
  * third-party on the custom domain and the CSRF cookie unreadable.
  */
-const EMAIL = 'e2e.client@example.com';
-/** Made fresh by run.sh for each run and given to the fixtures too. */
-const PASSWORD = process.env.E2E_CLIENT_PASSWORD ?? '';
+/** A new client every run, signing up through the app: nothing stored in the repo. */
+const EMAIL = `e2e.client.${Date.now()}@example.com`;
+const SECRET = `Aa1!${randomUUID()}`;
 const SERVICE = 'E2E free consultation';
 
 /** fetch from the page, as the app does: same origin, cookies included. */
@@ -33,15 +34,20 @@ async function call(page: Page, method: string, path: string, opts: { body?: unk
   );
 }
 
-test('a client signs in and books through the custom-domain proxy, with CSRF', async ({ page, context, baseURL }) => {
+test('a client signs up, stays signed in and books through the custom-domain proxy, with CSRF', async ({ page, context, baseURL }) => {
   const host = new URL(baseURL!).hostname;
-  expect(PASSWORD, 'E2E_CLIENT_PASSWORD is set (run.sh does)').not.toBe('');
 
-  // ── Sign in through the app's own form ────────────────────────────────
+  // ── Sign up through the app's own form, which then signs in ───────────
+  // client-signup needs the practice to resolve from the custom domain
+  // through the proxy. (Which header names it is unit-tested in the API.)
   await page.goto('/login');
+  await page.getByRole('button', { name: 'Create account', exact: true }).click();
+  await page.getByLabel('First name').fill('Ada');
+  await page.getByLabel('Last name').fill('Client');
   await page.getByLabel('Email').fill(EMAIL);
-  await page.getByLabel('Password').fill(PASSWORD);
-  await page.getByRole('button', { name: 'Sign in and continue' }).click();
+  await page.getByLabel('Phone').fill('08031234567');
+  await page.getByLabel('Password').fill(SECRET);
+  await page.getByRole('button', { name: 'Create account and continue' }).click();
   await expect(page).toHaveURL(/\/portal$/);
 
   // The cookies belong to the custom domain: host-only, the refresh cookie

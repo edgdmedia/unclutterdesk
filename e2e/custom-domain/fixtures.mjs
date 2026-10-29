@@ -1,29 +1,25 @@
 /**
  * Data for the custom-domain proxy end-to-end test (spec §6.16): a practice
- * whose ACTIVE custom domain is E2E_HOST, its owner-therapist, a client who
- * can sign in, a free online service and an open slot tomorrow. Self-contained
- * (no seed), and safe to run twice.
+ * whose ACTIVE custom domain is E2E_HOST, its owner-therapist, a free online
+ * service and an open slot tomorrow. Self-contained (no seed), and safe to
+ * run twice. The test creates its own client by signing up through the app,
+ * so no credential, even a throwaway one, lives in the repo.
  *
- *   DATABASE_URL=... E2E_CLIENT_PASSWORD=... node e2e/custom-domain/fixtures.mjs
- *
- * The client's password comes from the environment (run.sh makes a random
- * one per run), so no credential, even a throwaway one, lives in the repo.
+ *   DATABASE_URL=... node e2e/custom-domain/fixtures.mjs
  */
+import { randomBytes } from 'node:crypto';
 import { PrismaClient } from '@prisma/client';
 import bcrypt from 'bcryptjs';
 
 export const E2E = {
   host: process.env.E2E_HOST || 'chente.test',
   slug: 'e2e-chente',
-  clientEmail: 'e2e.client@example.com',
-  clientPassword: process.env.E2E_CLIENT_PASSWORD,
   serviceTitle: 'E2E free consultation',
 };
 
 const prisma = new PrismaClient();
 
 async function main() {
-  if (!E2E.clientPassword) throw new Error('Set E2E_CLIENT_PASSWORD (run.sh does).');
   const tenant = await prisma.tenant.upsert({
     where: { slug: E2E.slug },
     update: { customDomain: E2E.host, customDomainStatus: 'ACTIVE', isActive: true },
@@ -38,12 +34,13 @@ async function main() {
     },
   });
 
-  const password = await bcrypt.hash(E2E.clientPassword, 10);
+  // Nobody signs in as the owner in this test: an unguessable hash, made fresh.
+  const ownerHash = await bcrypt.hash(randomBytes(24).toString('hex'), 10);
 
   const ownerUser = await prisma.user.upsert({
     where: { email: 'e2e.owner@example.com' },
     update: {},
-    create: { email: 'e2e.owner@example.com', username: 'e2e-owner', password },
+    create: { email: 'e2e.owner@example.com', username: 'e2e-owner', password: ownerHash },
   });
   let owner = await prisma.profile.findFirst({ where: { tenantId: tenant.id, userId: ownerUser.id } });
   if (!owner) {
@@ -67,29 +64,6 @@ async function main() {
     update: {},
     create: { profileId: owner.id, tenantId: tenant.id, publicUsername: 'chente', offersOnline: true },
   });
-
-  const clientUser = await prisma.user.upsert({
-    where: { email: E2E.clientEmail },
-    update: { password, failedLoginAttempts: 0, lockedUntil: null },
-    create: { email: E2E.clientEmail, username: 'e2e-client', password },
-  });
-  const client = await prisma.profile.findFirst({ where: { tenantId: tenant.id, userId: clientUser.id } });
-  if (!client) {
-    await prisma.profile.create({
-      data: {
-        tenantId: tenant.id,
-        userId: clientUser.id,
-        username: 'e2e-client',
-        email: E2E.clientEmail,
-        type: 'user',
-        role: 'CLIENT',
-        firstName: 'Ada',
-        lastName: 'Client',
-        emailVerified: true,
-        emailVerifiedAt: new Date(),
-      },
-    });
-  }
 
   let service = await prisma.consultService.findFirst({ where: { tenantId: tenant.id, title: E2E.serviceTitle } });
   if (!service) {
