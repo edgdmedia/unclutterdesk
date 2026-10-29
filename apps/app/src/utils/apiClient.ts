@@ -14,7 +14,37 @@
 
 // '' in development: same origin, through the dev server's /v1 proxy (vite.config).
 const DEFAULT_API_BASE = import.meta.env.DEV ? '' : 'https://api.unclutterdesk.com';
-export const API_BASE = import.meta.env.VITE_API_URL || DEFAULT_API_BASE;
+/** The configured API origin, used everywhere except a practice's custom domain. */
+const CONFIGURED_API_BASE = import.meta.env.VITE_API_URL || DEFAULT_API_BASE;
+
+/** The zone practice subdomains live under ({slug}.<root>). */
+const TENANT_ROOT_DOMAIN = (import.meta.env.VITE_TENANT_ROOT_DOMAIN || 'unclutterdesk.com').toLowerCase();
+
+/**
+ * Whether this page is on a practice's own domain (e.g. chente.com), rather
+ * than our zone, a local host or a Pages preview. Worked out from the host,
+ * the same way the app works out which practice it's serving.
+ */
+export function isPracticeCustomDomain(hostname: string): boolean {
+  const host = hostname.toLowerCase();
+  if (!host || host === 'localhost' || host.endsWith('.localhost')) return false;
+  if (/^\d{1,3}(\.\d{1,3}){3}$/.test(host) || host.includes(':')) return false;
+  if (host.endsWith('.pages.dev')) return false;
+  return host !== TENANT_ROOT_DOMAIN && !host.endsWith(`.${TENANT_ROOT_DOMAIN}`);
+}
+
+/**
+ * Where API calls go from this page. On a practice's custom domain the API is
+ * served first-party at {host}/api by the tenant router, so sign-in cookies
+ * belong to that domain (spec §6.16); a third-party API origin there is
+ * blocked by browsers. Everywhere else, the configured API origin.
+ */
+export function resolveApiBase(hostname: string, origin: string): string {
+  return isPracticeCustomDomain(hostname) ? `${origin}/api` : CONFIGURED_API_BASE;
+}
+
+export const API_BASE =
+  typeof window === 'undefined' ? CONFIGURED_API_BASE : resolveApiBase(window.location.hostname, window.location.origin);
 
 const RESERVED_SUBDOMAINS = new Set([
   'www', 'app', 'os', 'admin', 'api', 'book', 'mail', 'docs', 'help', 'blog',

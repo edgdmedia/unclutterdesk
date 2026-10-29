@@ -24,7 +24,7 @@ These are the features that define the launch offer and should be completed, ver
 
 1. Branded booking portal
 2. Practice subdomain
-3. Custom domain setup
+3. Custom domain setup, with client sign-in and booking working on the custom domain itself (served through the tenant router's `/api` proxy, spec §6.16)
 4. Booking and availability management
 5. Cancellation policy and booking rules
 

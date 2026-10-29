@@ -20,4 +20,7 @@
     "ORIGIN_HOST": "app-unclutterdesk.pages.dev",
     "API_BASE": "https://api.unclutterdesk.com"
   }
+  // Secret, not a var: ROUTER_PROXY_SECRET, shared with the API for the
+  // custom-domain /api proxy (spec §6.16). Set with
+  //   pnpm exec wrangler secret put ROUTER_PROXY_SECRET
 }

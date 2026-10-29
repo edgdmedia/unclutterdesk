@@ -102,6 +102,11 @@ PAYSTACK_PLAN_STARTER=PLN_an5ij398kgugwr4
 PAYSTACK_PLAN_PRO=PLN_f4ncmm3xmcy7b90
 PAYSTACK_PLAN_CLINIC=PLN_leght05vpcu41ad
 
+# Shared with the tenant router (a Worker secret there). The API trusts the
+# router's custom-domain /api proxy headers only with this. See
+# docs/CLOUDFLARE_SETUP.md §5 "Client sign-in on custom domains".
+ROUTER_PROXY_SECRET=<same long random value as the Worker secret>
+
 # Lapsed paid plans (spec §5.4a). Optional; these are the defaults.
 # BILLING_GRACE_DAYS=7
 # BILLING_NOTICE_DAYS=14
