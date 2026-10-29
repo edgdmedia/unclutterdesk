@@ -12,6 +12,8 @@ import { isPlatformHostname, isReservedSlug, normalizeSlug } from './reserved-sl
 import { apiOrigin, appOrigin, ROOT_DOMAIN, tenantWebOrigin } from '../../common/origins';
 import { EmergencyContactInput, emergencyContactData, emergencyContactOf, emergencyContactText } from './emergency-contact';
 import { GRANTABLE, PERMISSIONS } from '../../common/permissions';
+import { NEW_PRACTICE_TIER, PLAN_SELECT, PRACTICE_ENTITLEMENTS, practiceEntitlements, requiredTierFor, requiredTierForStaffRole, TIER_NAMES } from '../entitlements/entitlements';
+import { EntitlementError } from '../entitlements/entitlement.error';
 
 const RESERVED_SLUG_MESSAGE = 'That booking handle is reserved. Try another one.';
 
@@ -181,10 +183,17 @@ export class TenantService {
     const existing = await this.prisma.tenant.findUnique({ where: { slug } });
     if (existing) throw new BadRequestException('This practice slug is already taken');
 
+    // A new practice starts on FREE, which has no custom domain; one is added
+    // from Settings after upgrading.
+    if (dto.customDomain && !PRACTICE_ENTITLEMENTS[NEW_PRACTICE_TIER].customDomain) {
+      throw new EntitlementError('customDomain', requiredTierFor('customDomain'));
+    }
+
     const tenant = await this.prisma.tenant.create({
       data: {
         name: dto.name.trim(),
         slug,
+        subscriptionTier: NEW_PRACTICE_TIER,
         customDomain: this.validateCustomDomain(dto.customDomain),
         customDomainStatus: 'PENDING',
         logoUrl: cleanLogoUrl(dto.logoUrl) ?? null,
@@ -298,11 +307,11 @@ export class TenantService {
     if (dto.customDomain !== undefined) {
       const tenant = await this.prisma.tenant.findUnique({
         where: { id: tenantId },
-        select: { id: true, subscriptionTier: true, customDomain: true, customHostnameId: true },
+        select: { id: true, ...PLAN_SELECT, customDomain: true, customHostnameId: true },
       });
-      const tier = (tenant?.subscriptionTier || 'STARTER').toUpperCase();
-      if (dto.customDomain && tier === 'STARTER') {
-        throw new ForbiddenException('Custom domain requires a Pro subscription.');
+      if (dto.customDomain && !practiceEntitlements(tenant).customDomain) {
+        const required = requiredTierFor('customDomain');
+        throw new EntitlementError('customDomain', required, `Custom domain requires the ${TIER_NAMES[required]} plan.`);
       }
       previousDomain = { customDomain: tenant?.customDomain ?? null, customHostnameId: tenant?.customHostnameId ?? null };
     }
@@ -879,19 +888,15 @@ export class TenantService {
     const tenant = await this.prisma.tenant.findUnique({ where: { id: tenantId } });
     if (!tenant) throw new NotFoundException('Practice tenant not found');
 
-    const tier = (tenant.subscriptionTier || 'STARTER').toUpperCase();
-
-    // STARTER (Free) tier: Cannot invite additional therapists or receptionists
-    if (tier === 'STARTER') {
-      throw new BadRequestException(
-        'Staff invitations and team features require a Pro or Group Clinic subscription plan. Upgrade your plan to invite team members.',
-      );
-    }
-
-    // PRO tier: Max receptionist/admin staff, secondary therapists require CLINIC tier
-    if (tier === 'PRO' && dto.role === 'THERAPIST') {
-      throw new BadRequestException(
-        'Multi-therapist practice management requires the Group Clinic subscription plan.',
+    const { staffInviteRoles } = practiceEntitlements(tenant);
+    if (!staffInviteRoles.includes(dto.role)) {
+      const required = requiredTierForStaffRole(dto.role);
+      throw new EntitlementError(
+        'staffInviteRoles',
+        required,
+        staffInviteRoles.length === 0
+          ? `Staff invitations and team features need the ${TIER_NAMES[required]} plan. Upgrade your plan to invite team members.`
+          : `Inviting more therapists needs the ${TIER_NAMES[required]} plan.`,
       );
     }
 

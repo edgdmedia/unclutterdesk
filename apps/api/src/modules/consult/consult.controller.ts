@@ -257,11 +257,14 @@ export class ConsultController {
   }
 
   @Get('public/payment-options')
-  @ApiOperation({ summary: 'How clients can pay this practice (bank details are only given with a booking)' })
+  @ApiOperation({ summary: 'How clients can pay this practice (bank details are only given with a booking), and whether it is fully booked this month' })
   async paymentOptions(@Req() req: TenantRequest) {
     if (!req.tenantId) throw new NotFoundException('Practice not found');
-    const manual = await this.manualPayments.available(req.tenantId);
-    return { online: true, bankTransfer: manual !== null };
+    const [manual, fullyBookedThisMonth] = await Promise.all([
+      this.manualPayments.available(req.tenantId),
+      this.consultService.publicFullyBooked(req.tenantId),
+    ]);
+    return { online: true, bankTransfer: manual !== null, fullyBookedThisMonth };
   }
 
   @Post('public/bookings/:bookingId/transfer-sent')
@@ -367,6 +370,18 @@ export class ConsultController {
       throw new NotFoundException('Session not found');
     }
     return this.sessions.rescheduleByStaff(authenticatedTenantId(req), this.actor(req), BigInt(bookingId), BigInt(dto.availabilityId));
+  }
+
+  @Permissions('practice.admin')
+  @Post('practice/sessions/:bookingId/reassign-to-me')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @ApiBearerAuth('access-token')
+  @ApiOperation({ summary: "Take over a session in one of your own open slots (e.g. before a therapist is paused)" })
+  reassignSessionToMe(@Req() req: any, @Param('bookingId') bookingId: string, @Body() dto: { availabilityId?: string }) {
+    if (!/^\d+$/.test(bookingId) || !/^\d+$/.test(String(dto?.availabilityId ?? ''))) {
+      throw new NotFoundException('Session not found');
+    }
+    return this.sessions.rescheduleByStaff(authenticatedTenantId(req), this.actor(req), BigInt(bookingId), BigInt(dto.availabilityId), { toOwnSlot: true });
   }
 
   @Permissions('sessions.summary')

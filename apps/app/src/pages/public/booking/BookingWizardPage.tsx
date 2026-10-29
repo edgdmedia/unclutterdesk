@@ -66,13 +66,15 @@ export function BookingWizardPage({ previewSlug }: { previewSlug?: string } = {}
         profileHref="/"
         subtitle={practiceHeaderLine(data.practice)}
       />
-      {data.status === 'ready' && practice ? (
+      {data.status === 'ready' && practice && !data.fullyBooked ? (
         <Wizard data={data} />
       ) : (
         <div className="flex-1 overflow-y-auto px-4 py-4 min-[601px]:px-8 min-[601px]:py-7">
           <div className="max-w-[640px] mx-auto">
             {data.status === 'error' ? (
               <AlertBanner title="We couldn't load this practice's booking page">Check your connection and refresh the page.</AlertBanner>
+            ) : data.status === 'ready' && data.fullyBooked ? (
+              <FullyBooked name={practice?.name} />
             ) : (
               <StepCard step={1} title={TITLES[1]}>
                 <ServiceStep status="loading" services={[]} slots={[]} selectedId={null} onChoose={() => {}} />
@@ -81,6 +83,18 @@ export function BookingWizardPage({ previewSlug }: { previewSlug?: string } = {}
           </div>
         </div>
       )}
+    </div>
+  );
+}
+
+/** Not an error: the practice has taken all the online bookings its plan allows this month. */
+function FullyBooked({ name }: { name?: string }) {
+  return (
+    <div role="status" className="rounded-[20px] bg-white border border-[#E2E8F0] px-5 py-6 text-center">
+      <h2 className="text-[18px] font-bold text-[#0F172A]">Fully booked this month</h2>
+      <p className="mt-1.5 text-[14px] text-[#475569]">
+        {name || 'This practice'} isn't taking new online bookings until next month. Please check back then, or contact the practice directly.
+      </p>
     </div>
   );
 }

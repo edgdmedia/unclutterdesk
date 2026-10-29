@@ -25,9 +25,19 @@ const { OnboardingWizardPage } = await import('../practice/OnboardingWizardPage'
 // Therapist on Starter: details, brand, availability, payout, link. Payout is index 3.
 const PAYOUT_STEP = 3;
 
-function network({ onPlan, enabled = false }: { onPlan: boolean; enabled?: boolean }) {
+const PLAN = {
+  FREE: { tier: 'FREE', tierName: 'Free', platformFeeBps: 500 },
+  STARTER: { tier: 'STARTER', tierName: 'Starter', platformFeeBps: 0 },
+  PRO: { tier: 'PRO', tierName: 'Pro', platformFeeBps: 0 },
+} as const;
+
+function network({ onPlan, enabled = false, tier = onPlan ? 'PRO' : 'FREE' }: { onPlan: boolean; enabled?: boolean; tier?: keyof typeof PLAN }) {
   get.mockImplementation(async (url: string) => {
     if (url === '/v1/consult/manual-payments/settings') return { enabled, details: null, onPlan, holdHours: 48 };
+    if (url === '/v1/tenant/entitlements') {
+      const p = PLAN[tier];
+      return { tier: p.tier, tierName: p.tierName, upgradeTo: null, upgradeToName: null, entitlements: { platformFeeBps: p.platformFeeBps }, usage: {} };
+    }
     if (url.startsWith('/v1/billing/resolve-account')) return { account_name: 'CALM ROOMS LTD' };
     if (url.startsWith('/v1/tenant/check-slug')) return { available: true };
     return {};
@@ -51,15 +61,15 @@ beforeEach(() => {
 afterEach(cleanup);
 
 describe('Onboarding: how clients pay', () => {
-  it('says Paystack processes payments and quotes the Starter fee truthfully', async () => {
+  it('says Paystack processes payments and quotes the free plan fee truthfully', async () => {
     network({ onPlan: false });
     renderStep();
     expect(await screen.findByRole('heading', { name: 'How clients pay' })).toBeTruthy();
     expect(screen.getByText(/processed securely by Paystack/i)).toBeTruthy();
-    expect(await screen.findByText(/5% platform fee/i)).toBeTruthy();
+    expect(await screen.findByText(/On the Free plan, a 5% platform fee/i)).toBeTruthy();
     expect(screen.queryByText(/0%/)).toBeNull();
     expect(screen.queryByText(/telehealth/i)).toBeNull();
-    expect(screen.getByText(/bank transfer is part of the Pro and Clinic plans/i)).toBeTruthy();
+    expect(screen.getByText(/bank transfer is part of the Starter plan and above/i)).toBeTruthy();
     expect(screen.queryByLabelText('Let clients pay by bank transfer')).toBeNull();
   });
 
@@ -68,6 +78,13 @@ describe('Onboarding: how clients pay', () => {
     renderStep();
     expect(await screen.findByText(/no platform fee on your plan/i)).toBeTruthy();
     expect(screen.queryByText(/5% platform fee/i)).toBeNull();
+  });
+
+  it('tells Starter practices there is no platform fee, and offers bank transfer', async () => {
+    network({ onPlan: true, tier: 'STARTER' });
+    renderStep();
+    expect(await screen.findByText(/no platform fee on your plan/i)).toBeTruthy();
+    expect(screen.queryByText(/bank transfer is part of/i)).toBeNull();
   });
 
   it('turns on bank transfer, filled from the payout account', async () => {

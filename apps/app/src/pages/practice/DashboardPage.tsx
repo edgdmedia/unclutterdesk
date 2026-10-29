@@ -7,6 +7,8 @@ import { PendingTransfersCard } from '../../components/payments/PendingTransfers
 import { ImageField } from '../../components/settings/ImageField';
 import { DashboardTour } from '../../components/onboarding/DashboardTour';
 import { api, practiceBookingUrl } from '../../utils/apiClient';
+import { TIER_NAMES, useEntitlements, type Tier } from '../../utils/entitlements';
+import { LapseNotice } from '../../components/billing/LapseNotice';
 
 interface DashboardPageProps {
   tenantStatus?: 'ACTIVE' | 'PAUSED';
@@ -38,6 +40,7 @@ export function DashboardPage(props: DashboardPageProps) {
   const [customDomainStatus, setCustomDomainStatus] = useState<string | null>(null);
   const [brandLogo, setBrandLogo] = useState<string | null>(null);
   const [complimentary, setComplimentary] = useState<{ tier: string; until: string } | null>(null);
+  const plan = useEntitlements();
 
   const [summary, setSummary] = useState<{
     revenueThisMonthNaira: number;
@@ -242,11 +245,11 @@ export function DashboardPage(props: DashboardPageProps) {
             const days = Math.max(0, Math.ceil((new Date(complimentary.until).getTime() - Date.now()) / 86_400_000));
             // Only in the last two weeks: earlier it is noise.
             if (days > 14) return null;
-            const plan = complimentary.tier === 'CLINIC' ? 'Clinic' : 'Pro';
+            const plan = TIER_NAMES[complimentary.tier as Tier] ?? complimentary.tier;
             return (
               <div className="p-4 rounded-2xl bg-amber-50 border border-amber-200 flex flex-col md:flex-row md:items-center justify-between gap-3">
                 <p className="text-sm font-semibold text-amber-900">
-                  Your free {plan} plan ends in {days} {days === 1 ? 'day' : 'days'}. After that your practice moves to Starter.
+                  Your free {plan} plan ends in {days} {days === 1 ? 'day' : 'days'}. After that your practice moves to the free plan.
                 </p>
                 <button
                   onClick={() => navigate('/dashboard/settings/subscription')}
@@ -257,6 +260,22 @@ export function DashboardPage(props: DashboardPageProps) {
               </div>
             );
           })()}
+
+          {['OWNER', 'ADMIN'].includes(String(authUser?.role ?? '')) ? <LapseNotice /> : null}
+
+          {plan?.usage.bookingLimitReached && plan.upgradeToName && ['OWNER', 'ADMIN'].includes(String(authUser?.role ?? '')) ? (
+            <div className="p-4 rounded-2xl bg-amber-50 border border-amber-200 flex flex-col md:flex-row md:items-center justify-between gap-3">
+              <p className="text-sm font-semibold text-amber-900">
+                You've used all {plan.entitlements.monthlyBookingLimit} bookings on {plan.tierName} this month. Clients see "Fully booked this month" until next month, or until you move to {plan.upgradeToName}.
+              </p>
+              <button
+                onClick={() => navigate('/dashboard/settings/subscription')}
+                className="h-9 px-4 rounded-[10px] bg-amber-900 text-white text-xs font-bold cursor-pointer shrink-0"
+              >
+                See {plan.upgradeToName}
+              </button>
+            </div>
+          ) : null}
 
           {/* Practice Setup Onboarding Banner */}
           {needsOnboarding && (

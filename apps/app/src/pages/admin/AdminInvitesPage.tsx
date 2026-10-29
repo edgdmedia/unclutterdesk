@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { TIER_NAMES, type Tier } from '../../utils/entitlements';
 import { Link } from 'react-router-dom';
 import useSWR from 'swr';
 import { Copy, Check, Loader2, Mail, Ticket } from 'lucide-react';
@@ -51,7 +52,7 @@ export function inviteLink(code: string) {
 
 /**
  * Invite codes for early testers: each gives a practice a paid plan for a set
- * number of days, then it moves back to Starter unless it has subscribed.
+ * number of days, then it moves to Free unless it has subscribed.
  */
 export function AdminInvitesPage() {
   const toast = useToast();
@@ -151,7 +152,7 @@ export function AdminInvitesPage() {
       <Eyebrow>Platform console</Eyebrow>
       <h1 className="mt-1 text-[26px] font-bold tracking-[-0.03em] text-[#0F172A]">Invite codes</h1>
       <p className="mt-1 text-[13.5px] text-[#64748B]">
-        Give testers a paid plan free for a while. When it ends, their practice moves to Starter unless they have subscribed.
+        Give testers a paid plan free for a while. When it ends, their practice moves to Free unless they have subscribed.
       </p>
 
       {error ? (
@@ -218,7 +219,7 @@ export function AdminInvitesPage() {
                       </span>
                     </div>
                     <p className="mt-1 text-xs font-medium text-[#475569]">
-                      {invite.tier === 'CLINIC' ? 'Clinic' : 'Pro'} free for {invite.durationDays} days · used {invite.usedCount}
+                      {TIER_NAMES[invite.tier as Tier] ?? invite.tier} free for {invite.durationDays} days · used {invite.usedCount}
                       {invite.maxUses !== null ? ` of ${invite.maxUses}` : ''}
                       {invite.redeemBy ? ` · redeem by ${formatDate(invite.redeemBy)}` : ''}
                       {invite.note ? ` · ${invite.note}` : ''}
@@ -317,7 +318,7 @@ export function AdminInvitesPage() {
                       <li key={p.id} className="flex items-center justify-between gap-3 text-xs">
                         <Link to={`/admin/tenants/${p.id}`} className="font-semibold text-[#0F3A53] hover:underline truncate">{p.name}</Link>
                         <span className="text-[#64748B] shrink-0">
-                          {p.complimentaryUntil ? `${p.tier === 'CLINIC' ? 'Clinic' : 'Pro'} until ${formatDate(p.complimentaryUntil)}` : `Ended · now ${p.tier.charAt(0)}${p.tier.slice(1).toLowerCase()}`}
+                          {p.complimentaryUntil ? `${TIER_NAMES[p.tier as Tier] ?? p.tier} until ${formatDate(p.complimentaryUntil)}` : `Ended · now ${TIER_NAMES[p.tier as Tier] ?? p.tier}`}
                         </span>
                       </li>
                     ))}

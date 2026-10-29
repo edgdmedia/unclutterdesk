@@ -5,6 +5,7 @@ import { Check, Copy, ArrowRight, ArrowLeft, Loader2, Sparkles, Building2, Calen
 import { UnclutterLockup, Eyebrow } from '@unclutterdesk/ui';
 import { useAuth } from '../../context/AuthContext';
 import { api, getBookingUrl } from '../../utils/apiClient';
+import { formatFee, useEntitlements } from '../../utils/entitlements';
 import { ManualPaymentFields, type ManualPaymentForm } from '../../components/payments/ManualPaymentSettingsCard';
 import { dropLegacyOnboardingDraft, onboardingDraftKey } from '../../utils/onboardingDraft';
 import { isPracticeAccount } from '../../utils/accounts';
@@ -133,9 +134,10 @@ function OnboardingWizard({ tenantId }: { tenantId: string }) {
     if (isTherapist) {
       list.push({ key: 'availability', label: 'Services', desc: 'Working hours & rates' });
     }
-    const selectedPlan = sessionStorage.getItem('onboarding_plan') || 'starter';
-    if (selectedPlan !== 'starter') {
-      list.push({ key: 'subscription', label: 'Subscription', desc: 'Start your free trial' });
+    // Someone who picked a paid plan on the pricing page is told they start
+    // free and where to subscribe; everyone else goes straight on.
+    if (sessionStorage.getItem('onboarding_plan')) {
+      list.push({ key: 'subscription', label: 'Your plan', desc: 'Start free, upgrade any time' });
     }
     list.push({ key: 'payout', label: 'Client Payments', desc: 'Paystack or bank transfer' });
     list.push({ key: 'link', label: 'Complete', desc: 'Your practice is live' });
@@ -199,6 +201,7 @@ function OnboardingWizard({ tenantId }: { tenantId: string }) {
   // Bank transfer settings live on the server, not in the draft: whether the
   // plan allows them decides what this step can offer, and the fee it quotes.
   const [transfer, setTransfer] = useState<{ enabled: boolean; onPlan: boolean; holdHours: number } | null>(null);
+  const plan = useEntitlements();
   const [transferOn, setTransferOn] = useState(false);
   const [transferForm, setTransferForm] = useState<ManualPaymentForm>({ bankName: '', accountName: '', accountNumber: '', instructions: '' });
 
@@ -581,8 +584,8 @@ function OnboardingWizard({ tenantId }: { tenantId: string }) {
     } else if (stepKey === 'availability') {
       if (!(await saveAvailability())) return;
     } else if (stepKey === 'subscription') {
-      // Nothing to confirm here: the trial starts without a card. Choosing a
-      // paid plan sends the practice to Paystack from billing settings.
+      // Nothing to confirm here: every practice starts on the free plan.
+      // Choosing a paid plan sends the practice to Paystack from billing settings.
     } else if (stepKey === 'payout') {
       if (!(await savePayoutAccount())) return;
       if (!(await saveTransferSettings())) return;
@@ -1043,9 +1046,9 @@ function OnboardingWizard({ tenantId }: { tenantId: string }) {
               <div className="flex-1 flex flex-col max-w-[560px] mx-auto w-full space-y-8 py-4">
                 <div className="text-center space-y-1">
                   <span className="os-eyebrow block">STEP {steps.findIndex((s) => s.key === 'subscription') + 1} OF {steps.length}</span>
-                  <h2 className="text-[28px] font-bold tracking-tight text-[#0F172A]">Start your 14-day free trial</h2>
+                  <h2 className="text-[28px] font-bold tracking-tight text-[#0F172A]">You're starting on the free plan</h2>
                   <p className="text-xs sm:text-sm text-[#64748B] font-medium leading-relaxed">
-                    Everything is unlocked for 14 days. No card required now, and you can cancel any time before the trial ends.
+                    No card required. Booking, clinical notes and intake are included; upgrade when you need more.
                   </p>
                 </div>
 
@@ -1055,9 +1058,9 @@ function OnboardingWizard({ tenantId }: { tenantId: string }) {
                        No payment details needed to start
                      </p>
                      <p className="text-[12px] text-[#64748B] max-w-[420px] mx-auto leading-relaxed">
-                       Your trial runs for 14 days with everything enabled. When it ends,
-                       choose a plan in Billing settings and pay securely with Paystack —
-                       card, bank transfer or USSD.
+                       The free plan takes up to 10 bookings a month, with a 5% platform fee on
+                       online payments. Starter (30 bookings, no fee) and Pro (unlimited) are in
+                       Settings → Subscription, paid securely with Paystack — card, bank transfer or USSD.
                      </p>
                    </div>
                 </div>
@@ -1084,11 +1087,11 @@ function OnboardingWizard({ tenantId }: { tenantId: string }) {
                       <p className="text-xs text-[#64748B] leading-relaxed">
                         Clients pay when they book. Paystack pays each payment into this account on its settlement schedule.
                       </p>
-                      {transfer && (
+                      {plan && (
                         <p className="text-xs font-semibold text-[#475569] leading-relaxed">
-                          {transfer.onPlan
+                          {plan.entitlements.platformFeeBps === 0
                             ? "No platform fee on your plan. Paystack's own processing fee applies to each payment."
-                            : "On the Starter plan, a 5% platform fee is taken from each online payment. Paystack's own processing fee also applies."}
+                            : `On the ${plan.tierName} plan, a ${formatFee(plan.entitlements.platformFeeBps)} platform fee is taken from each online payment. Paystack's own processing fee also applies.`}
                         </p>
                       )}
                     </div>
@@ -1178,7 +1181,7 @@ function OnboardingWizard({ tenantId }: { tenantId: string }) {
                         </>
                       ) : (
                         <p className="text-xs text-[#64748B] leading-relaxed">
-                          Bank transfer is part of the Pro and Clinic plans. You can turn it on later in Settings → Payouts.
+                          Bank transfer is part of the Starter plan and above. You can turn it on later in Settings → Payouts.
                         </p>
                       )}
                     </div>

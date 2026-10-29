@@ -2,6 +2,8 @@ import React, { useCallback, useEffect, useState } from 'react';
 import { Check, Copy, RefreshCw, ShieldAlert, ShieldCheck, X } from 'lucide-react';
 import { Eyebrow, useToast } from '@unclutterdesk/ui';
 import { api } from '../../../utils/apiClient';
+import { useEntitlements } from '../../../utils/entitlements';
+import { Link } from 'react-router-dom';
 
 type DomainRecord = { type: string; name: string; value: string; state: 'verified' | 'missing' | 'unknown' };
 type DomainStatus = {
@@ -28,6 +30,10 @@ export function CustomDomainPanel() {
   const [domain, setDomain] = useState('');
   const [busy, setBusy] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
+  const plan = useEntitlements();
+  // Locked only once the plan is known not to include it; a domain already
+  // set stays visible so the practice can see and remove it.
+  const locked = plan?.entitlements.customDomain === false && !state?.hostname;
 
   const load = useCallback(() => {
     return api.get<DomainStatus>('/v1/tenant/brand/custom-domain')
@@ -114,6 +120,16 @@ export function CustomDomainPanel() {
         </span>
       </div>
 
+      {locked ? (
+        <div className="mt-4 rounded-[16px] bg-[#F8FAFC] border border-[#E2E8F0] px-4 py-3.5 flex flex-wrap items-center justify-between gap-3">
+          <p className="text-[13px] font-medium text-[#475569]">
+            A custom domain is part of the Pro plan. You're on {plan?.tierName}.
+          </p>
+          <Link to="/dashboard/settings/subscription" className="h-[38px] px-4 rounded-[12px] text-white text-[13px] font-bold flex items-center" style={{ backgroundColor: '#0F3A53' }}>
+            See plans
+          </Link>
+        </div>
+      ) : (
       <div className="flex gap-3 mt-4">
         <input
           className={inputCls}
@@ -133,6 +149,7 @@ export function CustomDomainPanel() {
           {busy ? 'Working…' : 'Save domain'}
         </button>
       </div>
+      )}
       {state?.error ? (
         <p className="mt-2 text-[12.5px] font-medium text-[#B42318]">{state.error}</p>
       ) : null}

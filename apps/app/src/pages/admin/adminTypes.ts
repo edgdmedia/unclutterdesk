@@ -17,6 +17,9 @@ export interface AdminTenant {
   category: string | null;
   city: string | null;
   subscriptionTier: string;
+  subscriptionStatus?: string | null;
+  complimentaryReason?: string | null;
+  complimentaryUntil?: string | null;
   isActive: boolean;
   primaryColor: string;
   secondaryColor: string;

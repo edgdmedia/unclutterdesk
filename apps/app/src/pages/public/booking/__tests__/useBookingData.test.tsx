@@ -17,10 +17,10 @@ let reload: () => Promise<unknown> = async () => [];
 function Probe() {
   const d = useBookingData('smith');
   reload = d.reloadSlots;
-  return <p>{d.status === 'ready' ? `ready ${d.practice?.name} ${d.services.length} ${d.slots.length} ${d.reviews.count} ${d.bankTransfer}` : d.status}</p>;
+  return <p>{d.status === 'ready' ? `ready ${d.practice?.name} ${d.services.length} ${d.slots.length} ${d.reviews.count} ${d.bankTransfer} ${d.fullyBooked}` : d.status}</p>;
 }
 
-function network({ servicesFail = false } = {}) {
+function network({ servicesFail = false, fullyBooked = false } = {}) {
   get.mockImplementation(async (url: string) => {
     if (url === '/v1/tenant/public/info/smith') return practice;
     if (url === '/v1/consult/public/services') {
@@ -29,7 +29,7 @@ function network({ servicesFail = false } = {}) {
     }
     if (url === '/v1/consult/public/availability') return slots;
     if (url === '/v1/intake/public/reviews') return { averageRating: 4.9, count: 32 };
-    if (url === '/v1/consult/public/payment-options') return { online: true, bankTransfer: true };
+    if (url === '/v1/consult/public/payment-options') return { online: true, bankTransfer: true, fullyBookedThisMonth: fullyBooked };
     throw new Error(`unexpected ${url}`);
   });
 }
@@ -42,7 +42,13 @@ describe('useBookingData', () => {
     network();
     renderWithApp(<Probe />);
     expect(screen.getByText('loading')).toBeTruthy();
-    expect(await screen.findByText('ready Smith Therapy 1 1 32 true')).toBeTruthy();
+    expect(await screen.findByText('ready Smith Therapy 1 1 32 true false')).toBeTruthy();
+  });
+
+  it('says when the practice is fully booked this month', async () => {
+    network({ fullyBooked: true });
+    renderWithApp(<Probe />);
+    expect(await screen.findByText('ready Smith Therapy 1 1 32 true true')).toBeTruthy();
   });
 
   it('reports an error when the booking data cannot load', async () => {
@@ -61,6 +67,6 @@ describe('useBookingData', () => {
       fresh = await reload();
     });
     expect(fresh).toEqual([]);
-    await waitFor(() => expect(screen.getByText('ready Smith Therapy 1 0 32 true')).toBeTruthy());
+    await waitFor(() => expect(screen.getByText('ready Smith Therapy 1 0 32 true false')).toBeTruthy());
   });
 });

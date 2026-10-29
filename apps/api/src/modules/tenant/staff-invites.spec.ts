@@ -35,7 +35,7 @@ function makeService(over: Record<string, any> = {}) {
       findUnique: vi.fn().mockResolvedValue({
         id: TENANT,
         name: 'Ada Therapy',
-        subscriptionTier: 'CLINIC',
+        subscriptionTier: 'CLINIC', subscriptionStatus: 'active',
       }),
     },
     ...over,
@@ -260,7 +260,7 @@ describe('sending the invitation', () => {
 
   it('sends nothing when the plan does not allow staff at all', async () => {
     const { service, notifications, prisma } = makeService();
-    prisma.tenant.findUnique.mockResolvedValue({ id: TENANT, name: 'Solo', subscriptionTier: 'STARTER' });
+    prisma.tenant.findUnique.mockResolvedValue({ id: TENANT, name: 'Solo', subscriptionTier: 'STARTER', subscriptionStatus: 'active' });
     await expect(service.inviteStaffMember(TENANT, dto)).rejects.toThrow();
     expect(notifications.sendEmail).not.toHaveBeenCalled();
   });
