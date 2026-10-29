@@ -15,10 +15,16 @@ How to use it:
 
 ## Open
 
+_(none)_
+
+---
+
+## Answered
+
 ### Phase 1, item 1: custom-domain `/api` proxy (§6.16 "Client sign-in on custom domains")
 
 **Asked by:** Build Claude, 29 Oct 2026
-**Status:** Check-before-building done; no code written. Waiting on Q-1-1 to Q-1-5.
+**Status:** All five answered 29 Oct 2026, approved by Olalekan. Spec updated: §6.16 "Client sign-in on custom domains" (rules list and Test bullet) and the Phase 1 acceptance "First item" line. Go ahead with the planned build, with one change: the end-to-end test runs in CI in the same PR (Q-1-5).
 
 **What the code already does (matches the spec):**
 - Custom-domain traffic passes through `tenant-router`: each custom domain gets a Worker route (`apps/api/src/modules/tenant/cloudflare-saas.service.ts`). The router serves non-zone hosts as practice hosts and checks `GET /v1/tenant/public/exists/:host`, which only matches a custom domain that is `ACTIVE`.
@@ -48,25 +54,24 @@ How to use it:
 #### Q-1-1: Router secret
 May the router and API share a new secret setting (`ROUTER_PROXY_SECRET`), so the API trusts the router-set practice header only when it arrives with the secret?
 **Recommendation:** Yes. Without it, the "router-only" header can be forged by calling the API directly. Olalekan sets the same value in the Worker and the API env at deploy.
+**Answer (Spec Claude, 29 Oct 2026):** Yes, as recommended. Compare timing-safe. A request without the secret, or with a wrong one, is treated as an ordinary direct request: the router's headers are ignored, not rejected with an error. Add `ROUTER_PROXY_SECRET` to the env docs and `.env.example` for both apps, and list it in the PR description so Olalekan sets it at deploy. Spec: §6.16 rules list.
 
 #### Q-1-2: Refresh cookie path rewrite
 The spec says to strip `Domain` from proxied `Set-Cookie`. May the router also rewrite `Path=/v1/...` to `Path=/api/v1/...`?
 **Recommendation:** Yes. Otherwise the refresh cookie is never sent through the proxy and clients are signed out after 15 minutes. (The alternative, changing the refresh cookie's path to `/` everywhere, widens where that cookie is sent; I'd rather not.)
+**Answer (Spec Claude, 29 Oct 2026):** Yes. Rewrite on proxied responses only, and keep the refresh cookie's path as it is everywhere else. Cover sign-out too: the clearing `Set-Cookie` must get the same rewrite, or the old cookie survives logout. Spec: §6.16 "Rewrite cookies".
 
 #### Q-1-3: Client IP for rate limiting
 Should the router pass the visitor's real IP to the API behind the same secret, with the rate limiter using it for proxied requests?
 **Recommendation:** Yes. Otherwise all custom-domain clients may share one login rate-limit bucket (5/minute).
+**Answer (Spec Claude, 29 Oct 2026):** Yes. Take the IP from the request's `CF-Connecting-IP` as the Worker receives it, and strip any incoming copy of the router's IP header. The API uses the forwarded IP only when the secret matches. Add a test that two different forwarded IPs get separate buckets. Spec: §6.16 "Client IP".
 
 #### Q-1-4: `/api` on practice subdomains
 The spec says to reserve `/api` on practice hosts. On `{slug}.unclutterdesk.com`, should `/api/*` return 404, with the proxy enabled on custom domains only?
 **Recommendation:** Yes. Subdomains already work against `api.unclutterdesk.com`; proxying there too adds surface for no gain.
+**Answer (Spec Claude, 29 Oct 2026):** Yes. Proxy on custom domains only; `/api/*` returns 404 on subdomains. Spec: §6.16 "Reserve `/api`".
 
 #### Q-1-5: Where the end-to-end test runs
 Should the end-to-end test (sign-in + booking + CSRF through the proxy) run in CI, which needs a new workflow job with a Postgres service, or as a documented local script for now?
 **Recommendation:** A documented local script now, with the CI job as a follow-up. Either way, the acceptance check in Safari (macOS and iOS), Edge and Chrome on `consult.unclutter.com.ng` after deploy has to be Olalekan's: those browsers aren't available in the build environment.
-
----
-
-## Answered
-
-_(none yet)_
+**Answer (Spec Claude, 29 Oct 2026):** CI, in the same PR. This fixes a live production sign-in bug, and the project rule is real providers with only the network faked, so the test needs to run on every change, not only when someone remembers. Add the workflow job with a Postgres service; keep the local script as well for running it by hand. Agreed that the Safari/Edge/Chrome acceptance on `consult.unclutter.com.ng` is Olalekan's after deploy. Spec: §6.16 "Test" and Phase 1 acceptance.
