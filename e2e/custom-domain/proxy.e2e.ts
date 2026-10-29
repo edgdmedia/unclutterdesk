@@ -9,7 +9,8 @@ import { expect, test, type Page } from '@playwright/test';
  * third-party on the custom domain and the CSRF cookie unreadable.
  */
 const EMAIL = 'e2e.client@example.com';
-const PASSWORD = 'E2e-Client-Pass1!';
+/** Made fresh by run.sh for each run and given to the fixtures too. */
+const PASSWORD = process.env.E2E_CLIENT_PASSWORD ?? '';
 const SERVICE = 'E2E free consultation';
 
 /** fetch from the page, as the app does: same origin, cookies included. */
@@ -34,6 +35,7 @@ async function call(page: Page, method: string, path: string, opts: { body?: unk
 
 test('a client signs in and books through the custom-domain proxy, with CSRF', async ({ page, context, baseURL }) => {
   const host = new URL(baseURL!).hostname;
+  expect(PASSWORD, 'E2E_CLIENT_PASSWORD is set (run.sh does)').not.toBe('');
 
   // ── Sign in through the app's own form ────────────────────────────────
   await page.goto('/login');

@@ -4,7 +4,10 @@
  * can sign in, a free online service and an open slot tomorrow. Self-contained
  * (no seed), and safe to run twice.
  *
- *   DATABASE_URL=... E2E_HOST=chente.test node e2e/custom-domain/fixtures.mjs
+ *   DATABASE_URL=... E2E_CLIENT_PASSWORD=... node e2e/custom-domain/fixtures.mjs
+ *
+ * The client's password comes from the environment (run.sh makes a random
+ * one per run), so no credential, even a throwaway one, lives in the repo.
  */
 import { PrismaClient } from '@prisma/client';
 import bcrypt from 'bcryptjs';
@@ -13,13 +16,14 @@ export const E2E = {
   host: process.env.E2E_HOST || 'chente.test',
   slug: 'e2e-chente',
   clientEmail: 'e2e.client@example.com',
-  clientPassword: 'E2e-Client-Pass1!',
+  clientPassword: process.env.E2E_CLIENT_PASSWORD,
   serviceTitle: 'E2E free consultation',
 };
 
 const prisma = new PrismaClient();
 
 async function main() {
+  if (!E2E.clientPassword) throw new Error('Set E2E_CLIENT_PASSWORD (run.sh does).');
   const tenant = await prisma.tenant.upsert({
     where: { slug: E2E.slug },
     update: { customDomain: E2E.host, customDomainStatus: 'ACTIVE', isActive: true },

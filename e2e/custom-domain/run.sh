@@ -6,7 +6,7 @@
 #
 # Needs a Postgres server you can create a database on:
 #
-#   E2E_DATABASE_URL=postgresql://postgres:postgres@localhost:5432/e2e \
+#   E2E_DATABASE_URL=postgresql://postgres@localhost:5432/e2e \
 #     e2e/custom-domain/run.sh
 #
 # The database named in E2E_DATABASE_URL is dropped and recreated. CI runs
@@ -21,7 +21,10 @@ export E2E_HOST="${E2E_HOST:-chente.test}"
 API_PORT="${E2E_API_PORT:-3050}"
 APP_PORT="${E2E_APP_PORT:-4173}"
 export E2E_ROUTER_PORT="${E2E_ROUTER_PORT:-8787}"
-ROUTER_SECRET="e2e-router-secret-$(node -e "console.log(require('crypto').randomBytes(8).toString('hex'))")"
+rand() { node -e "console.log(require('crypto').randomBytes(16).toString('hex'))"; }
+ROUTER_SECRET="$(rand)"
+# The test client's password: made fresh each run, never stored in the repo.
+export E2E_CLIENT_PASSWORD="${E2E_CLIENT_PASSWORD:-Aa1!$(rand)}"
 LOGS="${E2E_LOG_DIR:-$ROOT/e2e/custom-domain/.logs}"
 mkdir -p "$LOGS"
 
@@ -56,8 +59,7 @@ NODE_OPTIONS="--max-old-space-size=4096" pnpm --filter @unclutterdesk/api exec n
 (
   cd apps/api
   NODE_ENV=production PORT="$API_PORT" \
-  JWT_SECRET="e2e-jwt-$RANDOM-$RANDOM-0123456789" REFRESH_SECRET="e2e-refresh-$RANDOM-$RANDOM-0123456789" \
-  FIELD_ENCRYPTION_KEY="$(node -e "console.log(require('crypto').randomBytes(32).toString('hex'))")" \
+  JWT_SECRET="$(rand)" REFRESH_SECRET="$(rand)" FIELD_ENCRYPTION_KEY="$(rand)$(rand)" \
   ROUTER_PROXY_SECRET="$ROUTER_SECRET" \
   exec node dist/src/main.js
 ) > "$LOGS/api.log" 2>&1 &
