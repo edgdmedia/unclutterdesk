@@ -1,10 +1,13 @@
 import { Injectable, NestMiddleware, NotFoundException } from '@nestjs/common';
 import { Request, Response, NextFunction } from 'express';
 import { PrismaService } from '../prisma/prisma.service';
+import type { RouterProxied } from './router-proxy.middleware';
 
 export interface TenantRequest extends Request {
   tenant?: any;
   tenantId?: bigint;
+  /** Set by RouterProxyMiddleware for requests proxied from a practice custom domain. */
+  routerProxy?: RouterProxied;
 }
 
 @Injectable()
@@ -25,7 +28,12 @@ export class TenantMiddleware implements NestMiddleware {
 
     let tenant = null;
 
-    if (tenantHeaderSlug) {
+    if (req.routerProxy) {
+      // Proxied from a custom domain (spec §6.16): the router named the
+      // practice, and only an ACTIVE custom domain counts. Nothing the
+      // browser sent can point the request at a different practice.
+      tenant = await this.activeCustomDomain(req.routerProxy.practiceHost);
+    } else if (tenantHeaderSlug) {
       // The app sends the practice it is serving, read from the page's own
       // address. Browsers call api.unclutterdesk.com, so the Host header here
       // never names a practice; without this, public booking calls could not

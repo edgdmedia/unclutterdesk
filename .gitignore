@@ -39,3 +39,10 @@ deploy/*.pub
 # Local agent/tool scratch folders
 .superpowers/
 .layout-screens/
+
+# End-to-end test output
+e2e/custom-domain/.logs/
+test-results/
+playwright-report/
+.wrangler/
+.dev.vars

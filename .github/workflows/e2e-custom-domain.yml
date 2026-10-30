@@ -1,0 +1,94 @@
+name: E2E Custom-Domain Proxy
+
+# A client signs in and books on a practice custom domain, with the API served
+# first-party at {host}/api by the tenant router (spec §6.16). This fixed a
+# live sign-in bug, so it runs on every change to the pieces involved.
+on:
+  workflow_dispatch: {}
+  push:
+    branches:
+      - main
+    paths:
+      - 'apps/api/**'
+      - 'apps/app/**'
+      - 'apps/tenant-router/**'
+      - 'prisma/**'
+      - 'e2e/custom-domain/**'
+      - 'package.json'
+      - 'pnpm-lock.yaml'
+      - '.github/workflows/e2e-custom-domain.yml'
+  pull_request:
+    branches:
+      - main
+    paths:
+      - 'apps/api/**'
+      - 'apps/app/**'
+      - 'apps/tenant-router/**'
+      - 'prisma/**'
+      - 'e2e/custom-domain/**'
+      - 'package.json'
+      - 'pnpm-lock.yaml'
+      - '.github/workflows/e2e-custom-domain.yml'
+
+concurrency:
+  group: e2e-custom-domain-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  e2e:
+    name: Sign-in + booking through the custom-domain proxy
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_DB: postgres
+          # A throwaway database on the runner: no password to keep anywhere.
+          POSTGRES_HOST_AUTH_METHOD: trust
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Generate Prisma Client
+        run: pnpm exec prisma generate --schema prisma/schema.prisma
+
+      - name: Install Chromium for Playwright
+        run: pnpm exec playwright install --with-deps chromium
+
+      - name: Run the end-to-end test
+        env:
+          E2E_DATABASE_URL: postgresql://postgres@localhost:5432/e2e
+          E2E_LOG_DIR: ${{ runner.temp }}/e2e-logs
+        run: e2e/custom-domain/run.sh
+
+      - name: Keep logs and traces on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-custom-domain
+          path: |
+            ${{ runner.temp }}/e2e-logs
+            test-results
+          retention-days: 7

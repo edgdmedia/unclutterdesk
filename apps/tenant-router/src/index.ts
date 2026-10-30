@@ -13,7 +13,8 @@
  *
  * See docs/CLOUDFLARE_SETUP.md §1.
  */
-import { decide, originRequest, type RouterConfig } from './router';
+import { decide, isCustomDomainHost, originRequest, type RouterConfig } from './router';
+import { apiNotFound, apiRequest, clientResponse, isAllowedClientRoute, isApiPath, stripApiPrefix } from './api-proxy';
 import { lookupTenant } from './tenants';
 import { practiceNotFoundResponse } from './not-found';
 
@@ -22,8 +23,16 @@ export interface Env {
   ORIGIN_HOST: string;
   /** Zone apex. */
   APEX_HOST: string;
-  /** API base used to check whether a practice address exists. */
+  /** API base used to check whether a practice address exists, and the /api proxy's target. */
   API_BASE: string;
+  /**
+   * Shared with the API (a Worker secret, never a var). With it the API trusts
+   * the proxy's practice and client-IP headers; without it the proxy still
+   * forwards, but the API treats requests as ordinary direct ones.
+   */
+  ROUTER_PROXY_SECRET?: string;
+  /** Only for the local end-to-end test: "http:" to reach a local app server. */
+  ORIGIN_PROTOCOL?: string;
 }
 
 export default {
@@ -31,9 +40,18 @@ export default {
     const config: RouterConfig = {
       apexHost: env.APEX_HOST,
       originHost: env.ORIGIN_HOST,
+      originProtocol: env.ORIGIN_PROTOCOL === 'http:' ? 'http:' : 'https:',
     };
 
     const url = new URL(request.url);
+
+    // /api is reserved on every host this Worker serves: it never reaches the
+    // app. Only a practice's custom domain proxies it (spec §6.16); practice
+    // subdomains keep calling the API origin directly, so they get a 404.
+    if (isApiPath(url.pathname)) {
+      return proxyClientApi(request, url, env);
+    }
+
     const decision = decide(url.hostname, config);
 
     switch (decision.kind) {
@@ -87,3 +105,17 @@ export default {
     }
   },
 };
+
+async function proxyClientApi(request: Request, url: URL, env: Env): Promise<Response> {
+  if (!isCustomDomainHost(url.hostname, env.APEX_HOST)) return apiNotFound();
+  if (!isAllowedClientRoute(request.method, stripApiPrefix(url.pathname))) return apiNotFound();
+  // Only an ACTIVE custom domain exists to the API's lookup; the API checks
+  // again on every request, so a lookup that fails open costs nothing.
+  const tenant = await lookupTenant(url.hostname, env.API_BASE, caches.default);
+  if (!tenant.exists) return apiNotFound();
+
+  const response = await fetch(
+    apiRequest(request, { apiBase: env.API_BASE, practiceHost: url.hostname.toLowerCase(), secret: env.ROUTER_PROXY_SECRET }),
+  );
+  return clientResponse(response);
+}

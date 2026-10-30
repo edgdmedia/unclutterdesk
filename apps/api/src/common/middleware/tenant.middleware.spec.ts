@@ -99,4 +99,39 @@ describe('TenantMiddleware', () => {
     await middleware.use(req, {} as Response, vi.fn() as unknown as NextFunction);
     expect(prisma.tenant.findFirst.mock.calls[0][0].where.customDomainStatus).toBe('ACTIVE');
   });
+
+  /*
+   * Proxied from a custom domain (spec §6.16): the router named the practice,
+   * and that is the only thing that counts. A header the browser set can't
+   * point the request at another practice, and only an ACTIVE domain resolves.
+   */
+  it('takes the practice from the router on proxied requests, ACTIVE custom domains only', async () => {
+    const { middleware, prisma } = makeMiddleware();
+    prisma.tenant.findFirst.mockResolvedValueOnce({ id: 9n, slug: 'chente' });
+    const req = {
+      path: '/v1/auth/login',
+      headers: { host: 'api.unclutterdesk.com', 'x-tenant-slug': 'someone-else' },
+      routerProxy: { practiceHost: 'chente.com', clientIp: '1.2.3.4' },
+    } as unknown as TenantRequest;
+    const next = vi.fn() as unknown as NextFunction;
+
+    await middleware.use(req, {} as Response, next);
+
+    expect(prisma.tenant.findFirst).toHaveBeenCalledWith({ where: { customDomain: 'chente.com', customDomainStatus: 'ACTIVE' } });
+    expect(prisma.tenant.findUnique).not.toHaveBeenCalled();
+    expect(req.tenantId).toBe(9n);
+  });
+
+  it('resolves no practice on a proxied request for a domain that is not ACTIVE', async () => {
+    const { middleware, prisma } = makeMiddleware();
+    prisma.tenant.findFirst.mockResolvedValueOnce(null);
+    const req = {
+      path: '/v1/auth/login',
+      headers: { host: 'api.unclutterdesk.com', 'x-tenant-slug': 'dr-smith' },
+      routerProxy: { practiceHost: 'pending.example', clientIp: null },
+    } as unknown as TenantRequest;
+    await middleware.use(req, {} as Response, vi.fn() as unknown as NextFunction);
+    expect(req.tenantId).toBeUndefined();
+    expect(prisma.tenant.findUnique).not.toHaveBeenCalled();
+  });
 });

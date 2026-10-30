@@ -5,6 +5,17 @@ export interface RouterConfig {
   apexHost: string;
   /** Where the app bundle actually lives, e.g. "app-unclutterdesk.pages.dev". */
   originHost: string;
+  /** "https:" in production; "http:" only for the local end-to-end test. */
+  originProtocol?: 'https:' | 'http:';
+}
+
+/**
+ * A host outside our zone: a practice custom domain arriving through
+ * Cloudflare for SaaS. The client API proxy runs only on these (spec §6.16).
+ */
+export function isCustomDomainHost(hostname: string, apexHost: string): boolean {
+  const host = hostname.toLowerCase();
+  return host !== apexHost && !host.endsWith(`.${apexHost}`);
 }
 
 /**
@@ -47,7 +58,7 @@ export function decide(hostname: string, config: RouterConfig): Decision {
   // handle it anyway so the Worker is correct if the route is ever widened.
   if (host === apexHost) return { kind: 'redirect', to: `https://${apexHost}/` };
 
-  if (!host.endsWith(`.${apexHost}`)) {
+  if (isCustomDomainHost(host, apexHost)) {
     // Not our zone at all. A custom domain arriving via Cloudflare for SaaS is
     // a real tenant surface, so serve it — and it should be indexable. It is
     // also a practice address, so an unconfigured domain pointed at us 404s.
@@ -75,9 +86,8 @@ export function decide(hostname: string, config: RouterConfig): Decision {
  */
 export function originRequest(request: Request, config: RouterConfig): Request {
   const url = new URL(request.url);
-  url.protocol = 'https:';
-  url.hostname = config.originHost;
-  url.port = '';
+  url.protocol = config.originProtocol ?? 'https:';
+  url.host = config.originHost;
 
   // The Host header is derived from the URL and cannot be set manually in
   // Workers; passing the original host through would make Pages reject the
