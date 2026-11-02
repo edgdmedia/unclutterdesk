@@ -138,11 +138,29 @@ export class CloudflareSaasService {
    * duplicate route pattern.
    */
   async ensureRoute(hostname: string): Promise<void> {
-    const pattern = `${hostname}/*`;
+    await this.ensureRoutes([`${hostname}/*`]);
+  }
+
+  /**
+   * Make sure each route pattern exists and points at the tenant router,
+   * listing the zone's routes once. Returns the patterns it had to create.
+   *
+   * Routes are owned here, not by Wrangler: a `wrangler deploy` replaces the
+   * Worker's routes with the ones in wrangler.jsonc, which once deleted every
+   * practice's custom-domain route and took those sites down. wrangler.jsonc
+   * now lists none, and the custom-domain cron calls this to restore any route
+   * that goes missing.
+   */
+  async ensureRoutes(patterns: string[]): Promise<string[]> {
     const list = await this.callRaw(`/zones/${this.zoneId}/workers/routes`, 'GET');
-    const existing: any[] = list.result || [];
-    if (existing.some((r) => r.pattern === pattern)) return;
-    await this.call(`/zones/${this.zoneId}/workers/routes`, 'POST', { pattern, script: this.workerScript });
+    const existing = new Set(((list.result || []) as any[]).map((r) => r.pattern));
+    const created: string[] = [];
+    for (const pattern of new Set(patterns)) {
+      if (existing.has(pattern)) continue;
+      await this.call(`/zones/${this.zoneId}/workers/routes`, 'POST', { pattern, script: this.workerScript });
+      created.push(pattern);
+    }
+    return created;
   }
 
   async removeRoute(hostname: string): Promise<void> {

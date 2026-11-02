@@ -19,7 +19,7 @@ Every production address in the code is a setting with today's address as its de
 ## 2. Files edited by hand
 
 These can't read a setting. Each is a listed exception in `apps/api/src/domain-literals.spec.ts`.
-- `apps/tenant-router/wrangler.jsonc`: the route pattern and zone, `APEX_HOST`, `API_BASE`, `MARKETING_URL`. The apex rule changes too (§4.1b: the bare `.app` domain is the app).
+- `apps/tenant-router/wrangler.jsonc`: `APEX_HOST`, `API_BASE`, `MARKETING_URL`. The Worker routes aren't in this file: the API's custom-domain cron creates `*.<TENANT_ROOT_DOMAIN>/*` from the setting, in the zone named by `CLOUDFLARE_ZONE_ID`, so set that to the new zone. Delete the old zone's routes by hand afterwards. The apex rule changes too (§4.1b: the bare `.app` domain is the app).
 - `apps/app/public/_headers`: the CSP `connect-src` API host.
 - `deploy/nginx/api-unclutterdesk.com.conf`: `server_name` and the certificate paths, plus a new certificate.
 - The defaults in the three config modules (`apps/api/src/common/origins.ts`, `apps/app/src/config/domains.ts`, `apps/landing/src/config/domains.ts`) and `apps/landing/astro.config.mjs`, once the new domains are the only ones. Then update any test that asserts an old address.

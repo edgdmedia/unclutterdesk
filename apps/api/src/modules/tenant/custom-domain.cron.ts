@@ -1,5 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { Cron, CronExpression } from '@nestjs/schedule';
+import { TENANT_ROOT_DOMAIN } from '../../common/origins';
 import { PrismaService } from '../../common/prisma/prisma.service';
 import { CloudflareSaasService } from './cloudflare-saas.service';
 import { TenantService } from './tenant.service';
@@ -11,7 +12,8 @@ import { TenantService } from './tenant.service';
  * pointing its DNS at us and waiting for Cloudflare to issue the certificate.
  * This cron notices: it promotes verified domains, retries domains whose
  * first provisioning attempt failed (quota blips, a dead token that came
- * back), and sweeps hostname objects whose owning tenant has moved on.
+ * back), sweeps hostname objects whose owning tenant has moved on, and puts
+ * back any Worker route that has gone missing.
  *
  * Nothing here can mark a domain ACTIVE without Cloudflare saying both the
  * hostname and its certificate are active — the same rule the verify button
@@ -33,6 +35,7 @@ export class CustomDomainCron {
     await this.promoteVerified();
     await this.retryUnprovisioned();
     await this.sweepOrphans();
+    await this.restoreRoutes();
   }
 
   private async promoteVerified(): Promise<void> {
@@ -109,6 +112,29 @@ export class CustomDomainCron {
       } catch (err) {
         this.logger.warn(`sweep of ${hostname.hostname} failed: ${(err as Error).message}`);
       }
+    }
+  }
+
+  /**
+   * Every provisioned practice domain, and the practice subdomains, need a
+   * Worker route; without one Cloudflare sends the request to the fallback
+   * origin and the site answers 522. Routes live only in Cloudflare (no longer
+   * in wrangler.jsonc), so this is what puts one back if it is ever removed.
+   */
+  private async restoreRoutes(): Promise<void> {
+    const provisioned = await this.prisma.tenant.findMany({
+      where: { customDomain: { not: null }, customHostnameId: { not: null } },
+      select: { customDomain: true },
+    });
+    const patterns = [
+      `*.${TENANT_ROOT_DOMAIN}/*`,
+      ...provisioned.map((t: { customDomain: string | null }) => `${t.customDomain}/*`),
+    ];
+    try {
+      const created = await this.cf.ensureRoutes(patterns);
+      for (const pattern of created) this.logger.warn(`restored missing Worker route ${pattern}`);
+    } catch (err) {
+      this.logger.warn(`checking Worker routes failed: ${(err as Error).message}`);
     }
   }
 }
