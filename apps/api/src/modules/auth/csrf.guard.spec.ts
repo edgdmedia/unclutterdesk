@@ -89,7 +89,6 @@ describe('CsrfGuard', () => {
       '/v1/auth/reset-password',
       '/v1/auth/refresh',
       '/v1/admin/auth/login',
-      '/v1/tenant/register',
     ];
 
     for (const path of exempt) {
@@ -121,6 +120,7 @@ describe('CsrfGuard', () => {
   // route whose path merely contained one of these fragments was exempt.
   describe('routes the old substring matching wrongly exempted', () => {
     const shouldBeProtected = [
+      '/v1/tenant/register', // was explicitly exempt; now guarded by PlatformAdminGuard
       '/v1/tenant/staff/invite', // matched '/invite' — adds staff to a practice
       '/v1/tenant/brand/custom-domain/verify',
       '/v1/privacy/clients/12/erase',
