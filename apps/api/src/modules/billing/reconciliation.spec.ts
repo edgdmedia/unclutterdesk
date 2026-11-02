@@ -18,12 +18,16 @@ import { chargedKobo, collectedKobo } from '../../common/revenue';
  */
 const TENANT = 1n;
 
-function makeBilling(tier = 'STARTER', subaccount: string | null = 'ACCT_x') {
+function makeBilling(tier = 'FREE', subaccount: string | null = 'ACCT_x') {
   const prisma: any = {
     tenant: {
       findUnique: vi.fn().mockResolvedValue({
         id: TENANT,
         subscriptionTier: tier,
+        // A paid plan needs a subscription to count (§5.4).
+        subscriptionStatus: tier === 'FREE' ? null : 'active',
+        complimentaryUntil: null,
+        complimentaryReason: null,
         bankSubaccount: subaccount ? { paystackCode: subaccount } : null,
       }),
     },
@@ -39,7 +43,7 @@ function transactionCharge(amount: number, splitPercent?: number) {
 describe('the payout split', () => {
   it('adds back up to the amount charged, exactly', async () => {
     for (const amount of [500000n, 450000n, 999999n, 1n, 33333n, 7n]) {
-      const split = await makeBilling('STARTER').calculateSplitPayout(TENANT, amount);
+      const split = await makeBilling('FREE').calculateSplitPayout(TENANT, amount);
       const total = BigInt(split.platformFeeKobo) + BigInt(split.therapistPayoutKobo);
       expect(total, `${amount} kobo did not reconcile`).toBe(amount);
     }
@@ -48,19 +52,19 @@ describe('the payout split', () => {
   it('never invents or loses a kobo to rounding', async () => {
     // 5% of an odd amount rounds; the payout is the remainder, not a second
     // rounded figure, so the pair cannot drift apart.
-    const split = await makeBilling('STARTER').calculateSplitPayout(TENANT, 999999n);
+    const split = await makeBilling('FREE').calculateSplitPayout(TENANT, 999999n);
     expect(split.platformFeeKobo).toBe('50000');
     expect(split.therapistPayoutKobo).toBe('949999');
     expect(BigInt(split.platformFeeKobo) + BigInt(split.therapistPayoutKobo)).toBe(999999n);
   });
 
   it('takes five percent on the free tier', async () => {
-    const split = await makeBilling('STARTER').calculateSplitPayout(TENANT, 1000000n);
+    const split = await makeBilling('FREE').calculateSplitPayout(TENANT, 1000000n);
     expect(split.platformFeeKobo).toBe('50000');
   });
 
   it('takes nothing on a paid tier', async () => {
-    for (const tier of ['PRO', 'CLINIC']) {
+    for (const tier of ['STARTER', 'PRO', 'CLINIC']) {
       const split = await makeBilling(tier).calculateSplitPayout(TENANT, 1000000n);
       expect(split.platformFeeKobo, `${tier} was charged a platform fee`).toBe('0');
       expect(split.therapistPayoutKobo).toBe('1000000');
@@ -81,7 +85,7 @@ describe('what reaches Paystack', () => {
    */
   it('equals the booking amount, not the sum of two rounded halves', async () => {
     for (const amount of [500000n, 450000n, 999999n, 33333n]) {
-      const split = await makeBilling('STARTER').calculateSplitPayout(TENANT, amount);
+      const split = await makeBilling('FREE').calculateSplitPayout(TENANT, amount);
       const charge = Number(split.therapistPayoutKobo) + Number(split.platformFeeKobo);
       expect(charge, `${amount} kobo reached Paystack as ${charge}`).toBe(Number(amount));
     }
@@ -96,8 +100,8 @@ describe('what reaches Paystack', () => {
    */
   it('agrees with the transaction_charge paystack.service would send', async () => {
     for (const amount of [500000n, 450000n, 999999n, 33333n, 7n]) {
-      const split = await makeBilling('STARTER').calculateSplitPayout(TENANT, amount);
-      const wire = transactionCharge(Number(amount), 5);
+      const split = await makeBilling('FREE').calculateSplitPayout(TENANT, amount);
+      const wire = transactionCharge(Number(amount), split.platformFeeBps / 100);
       expect(wire, `fee disagreed at ${amount} kobo`).toBe(Number(split.platformFeeKobo));
     }
   });
@@ -130,7 +134,7 @@ describe('a discounted booking', () => {
   });
 
   it('splits the discounted price, not the list price', async () => {
-    const split = await makeBilling('STARTER').calculateSplitPayout(TENANT, chargedKobo(discounted));
+    const split = await makeBilling('FREE').calculateSplitPayout(TENANT, chargedKobo(discounted));
     expect(BigInt(split.platformFeeKobo) + BigInt(split.therapistPayoutKobo)).toBe(450000n);
     expect(split.platformFeeKobo).toBe('22500'); // 5% of 4,500 naira
   });

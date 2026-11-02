@@ -1,4 +1,5 @@
 import React, { useMemo, useState, useEffect } from 'react';
+import { TIER_NAMES, type Tier } from '../../utils/entitlements';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { ArrowRight, Building, Check, Lock, Mail, Sparkles, User, Users, X } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
@@ -10,7 +11,7 @@ import { api } from '../../utils/apiClient';
 type InvitePreview = { code: string; tier: string; durationDays: number };
 
 function planName(tier: string) {
-  return tier === 'CLINIC' ? 'Clinic' : tier === 'PRO' ? 'Pro' : tier;
+  return TIER_NAMES[tier as Tier] ?? tier;
 }
 
 const PASSWORD_RULES = [
@@ -119,9 +120,9 @@ export function SignupPage() {
   return (
     <AuthSplitShell
       variant="signup"
-      headline="Start your free 14-day trial"
+      headline="Start free with Unclutter Desk"
       tagline="Build your white-label booking portal, manage clients, write clinical SOAP notes, and hold telehealth sessions."
-      footer="No credit card required. Cancel anytime."
+      footer="Free to start, no card needed. Upgrade to Starter or Pro when you're ready."
       bullets={[
         'Your booking page live in minutes',
         'Paystack payouts straight to your bank',

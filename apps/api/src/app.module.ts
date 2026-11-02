@@ -22,6 +22,7 @@ import { InviteModule } from './modules/invites/invite.module';
 import { AssessmentModule } from './modules/assessments/assessment.module';
 import { VideoModule } from './modules/video/video.module';
 import { RequestModule } from './modules/requests/request.module';
+import { EntitlementsModule } from './modules/entitlements/entitlements.module';
 
 @Module({
   imports: [
@@ -56,6 +57,7 @@ import { RequestModule } from './modules/requests/request.module';
     AssessmentModule,
     VideoModule,
     RequestModule,
+    EntitlementsModule,
   ],
   controllers: [HealthController],
   providers: [

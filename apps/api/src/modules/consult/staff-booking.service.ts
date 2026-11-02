@@ -104,10 +104,12 @@ export class StaffBookingService {
     const service = await this.prisma.consultService.findFirst({ where: { id: serviceId, tenantId, isActive: true }, include: { formats: true } });
     if (!service) throw new BadRequestException('That service is not offered. Choose another service.');
 
-    const tenant = await this.prisma.tenant.findUnique({ where: { id: tenantId } });
-    await assertWithinMonthlyLimit(this.prisma, tenantId, tenant?.subscriptionTier);
-
     const time = await this.resolveTime(tenantId, providerId, service, dto);
+
+    // §5.5: a session today (Lagos time) is never blocked by the month's
+    // limit, though it counts; a future one follows the limit.
+    const tenant = await this.prisma.tenant.findUnique({ where: { id: tenantId } });
+    await assertWithinMonthlyLimit(this.prisma, tenantId, tenant, { sessionStartsAt: time.startsAt });
 
     // SET-06: the format follows the time and the therapist, decided here.
     const tf = {

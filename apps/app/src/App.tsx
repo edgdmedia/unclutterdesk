@@ -1,4 +1,5 @@
 import React, { lazy, Suspense, useState, useCallback, useMemo } from 'react';
+import { UpgradePrompt } from './components/billing/UpgradePrompt';
 import { CLIENT_PORTAL_ROUTES, ClientBrandProvider } from './routes/clientRoutes';
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { SWRConfig } from 'swr';
@@ -63,6 +64,7 @@ const PlatformAdminLayout = lazy(() => import('./pages/admin/PlatformAdminLayout
 const AdminOverviewPage = lazy(() => import('./pages/admin/AdminOverviewPage').then((m) => ({ default: m.AdminOverviewPage })));
 const AdminTenantsPage = lazy(() => import('./pages/admin/AdminTenantsPage').then((m) => ({ default: m.AdminTenantsPage })));
 const AdminInvitesPage = lazy(() => import('./pages/admin/AdminInvitesPage').then((m) => ({ default: m.AdminInvitesPage })));
+const AdminComplimentaryPage = lazy(() => import('./pages/admin/AdminComplimentaryPage').then((m) => ({ default: m.AdminComplimentaryPage })));
 const AdminRequestsPage = lazy(() => import('./pages/admin/AdminRequestsPage').then((m) => ({ default: m.AdminRequestsPage })));
 const AdminVideoUsagePage = lazy(() => import('./pages/admin/AdminVideoUsagePage').then((m) => ({ default: m.AdminVideoUsagePage })));
 const AdminAssessmentsPage = lazy(() => import('./pages/admin/AdminAssessmentsPage').then((m) => ({ default: m.AdminAssessmentsPage })));
@@ -416,7 +418,6 @@ function AppLayout() {
   return (
     <BrandProvider brand={practiceBrand}>
       <PracticeShell
-        plan={profile?.plan?.toLowerCase()}
         banner={
           privateDataError ? (
             <div role="alert" className="mx-4 mt-4 rounded-[14px] border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-medium text-rose-700 md:mx-[26px]">
@@ -515,6 +516,7 @@ function AdminShell() {
           <Route path="/admin/tenants" element={<AdminTenantsPage />} />
           <Route path="/admin/tenants/:id" element={<AdminTenantDetailPage />} />
           <Route path="/admin/invites" element={<AdminInvitesPage />} />
+          <Route path="/admin/complimentary" element={<AdminComplimentaryPage />} />
           <Route path="/admin/requests" element={<AdminRequestsPage />} />
           <Route path="/admin/assessments" element={<AdminAssessmentsPage />} />
           <Route path="/admin/video" element={<AdminVideoUsagePage />} />
@@ -612,6 +614,7 @@ export function App() {
           >
           <PracticeBrandProvider>
             <AppLayout />
+            <UpgradePrompt />
           </PracticeBrandProvider>
         </SWRConfig>
       </AuthProvider>

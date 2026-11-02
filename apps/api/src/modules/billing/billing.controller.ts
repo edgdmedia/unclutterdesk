@@ -12,6 +12,7 @@ import {
 import { Request } from 'express';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { BillingService } from './billing.service';
+import { SubscriptionLapseService } from './subscription-lapse.service';
 import { PaystackService } from './paystack.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { RolesGuard } from '../../common/roles.guard';
@@ -23,6 +24,7 @@ import { authenticatedTenantId } from '../../common/authenticated-tenant';
 export class BillingController {
   constructor(
     private readonly billingService: BillingService,
+    private readonly lapseService: SubscriptionLapseService,
     private readonly paystackService: PaystackService,
   ) {}
 
@@ -77,6 +79,15 @@ export class BillingController {
   })
   getPlans() {
     return this.billingService.listPlans();
+  }
+
+  @Permissions('practice.admin')
+  @Get('lapse')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @ApiBearerAuth('access-token')
+  @ApiOperation({ summary: 'A lapsing plan: when it moves to Free, and upcoming sessions with staff who will be paused' })
+  lapse(@Req() req: any) {
+    return this.lapseService.status(authenticatedTenantId(req));
   }
 
   @Permissions('practice.admin')

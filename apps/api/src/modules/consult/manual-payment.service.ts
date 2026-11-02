@@ -1,4 +1,4 @@
-import { BadRequestException, ForbiddenException, Injectable, Logger, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '../../common/prisma/prisma.service';
 import { tenantWebOrigin } from '../../common/origins';
@@ -8,6 +8,8 @@ import { CalendarService } from '../calendar/calendar.service';
 import { formatNaira } from '../billing/subscription-plans';
 import { BookingNotifier } from '../notifications/booking-notifier.service';
 import { FRONT_DESK } from '../../common/roles';
+import { PLAN_SELECT, practiceEntitlements, requiredTierFor } from '../entitlements/entitlements';
+import { EntitlementError } from '../entitlements/entitlement.error';
 
 /** How long a bank-transfer booking holds its slot. */
 export const MANUAL_HOLD_HOURS = 48;
@@ -20,7 +22,6 @@ export interface ManualPaymentDetails {
   instructions?: string | null;
 }
 
-const PAID_PLANS = ['PRO', 'CLINIC'];
 
 /** The reference a client puts on their transfer, so staff can match it. */
 export const transferReference = (bookingId: bigint) => `UD-${bookingId.toString()}`;
@@ -67,13 +68,13 @@ export class ManualPaymentService {
   async getSettings(tenantId: bigint) {
     const t = await this.prisma.tenant.findUnique({
       where: { id: tenantId },
-      select: { manualPaymentsEnabled: true, manualPaymentDetails: true, subscriptionTier: true },
+      select: { manualPaymentsEnabled: true, manualPaymentDetails: true, ...PLAN_SELECT },
     });
     if (!t) throw new NotFoundException('Practice not found');
     return {
       enabled: t.manualPaymentsEnabled,
       details: cleanDetails(t.manualPaymentDetails),
-      onPlan: PAID_PLANS.includes((t.subscriptionTier || 'STARTER').toUpperCase()),
+      onPlan: practiceEntitlements(t).bankTransferPayments,
       holdHours: MANUAL_HOLD_HOURS,
     };
   }
@@ -84,7 +85,7 @@ export class ManualPaymentService {
     const details = dto.details !== undefined ? cleanDetails(dto.details) : current.details;
     if (enabled) {
       if (!current.onPlan) {
-        throw new ForbiddenException('Bank transfer payments are part of the Pro and Clinic plans.');
+        throw new EntitlementError('bankTransferPayments', requiredTierFor('bankTransferPayments'), 'Bank transfer payments are part of the Starter plan and above.');
       }
       if (!details?.bankName || !details.accountName || !/^\d{10}$/.test(details.accountNumber)) {
         throw new BadRequestException('Add the bank name, account name and a 10-digit account number before turning this on.');

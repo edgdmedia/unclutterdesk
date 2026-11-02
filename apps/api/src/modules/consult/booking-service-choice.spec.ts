@@ -36,7 +36,7 @@ function makeService({
         endsAt: new Date(startsAt.getTime() + slotMinutes * 60_000),
         service: slotService,
         therapist: { videoProvider: 'JITSI', profile: { firstName: 'Jane', lastName: 'Smith' } },
-        tenant: { subscriptionTier: 'PRO', name: 'Practice' },
+        tenant: { subscriptionTier: 'PRO', subscriptionStatus: 'active', name: 'Practice' },
       }),
     },
     consultService: { findFirst: vi.fn().mockResolvedValue(chosen) },

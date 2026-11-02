@@ -38,7 +38,7 @@ export function ManualPaymentFields({ value, onChange }: { value: ManualPaymentF
   );
 }
 
-/** Let clients pay by bank transfer straight to the practice. Pro and Clinic only; off by default. */
+/** Let clients pay by bank transfer straight to the practice. Starter and above; off by default. */
 export function ManualPaymentSettingsCard({ color }: { color: string }) {
   const toast = useToast();
   const [settings, setSettings] = useState<Settings | null>(null);
@@ -94,7 +94,7 @@ export function ManualPaymentSettingsCard({ color }: { color: string }) {
 
       {!settings.onPlan ? (
         <p className="text-sm text-[#475569]">
-          Available on the Pro and Clinic plans. <Link to="/dashboard/settings/subscription" className="font-bold underline" style={{ color }}>See plans</Link>
+          Available on the Starter plan and above. <Link to="/dashboard/settings/subscription" className="font-bold underline" style={{ color }}>See plans</Link>
         </p>
       ) : (
         <form onSubmit={(e) => void save(settings.enabled, e)} className="space-y-3">

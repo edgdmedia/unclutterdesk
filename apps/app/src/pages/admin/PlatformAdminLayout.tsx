@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { Outlet, useLocation } from 'react-router-dom';
-import { Building2, ClipboardList, Inbox, LayoutDashboard, ShieldCheck, Ticket, Video } from 'lucide-react';
+import { BadgePercent, Building2, ClipboardList, Inbox, LayoutDashboard, ShieldCheck, Ticket, Video } from 'lucide-react';
 import { AppShell, UnclutterMark, type SidebarSection } from '@unclutterdesk/ui';
 import { RouterLink } from '../../components/shell/RouterLink';
 import { AdminAccountMenu } from '../../components/shell/AdminAccountMenu';
@@ -10,6 +10,7 @@ const ADMIN_NAV = [
   { href: '/admin', label: 'Overview', icon: LayoutDashboard },
   { href: '/admin/tenants', label: 'Tenants', icon: Building2 },
   { href: '/admin/invites', label: 'Invite codes', icon: Ticket },
+  { href: '/admin/complimentary', label: 'Complimentary plans', icon: BadgePercent },
   { href: '/admin/assessments', label: 'Assessment library', icon: ClipboardList },
   { href: '/admin/requests', label: 'Requests', icon: Inbox },
   { href: '/admin/video', label: 'Video usage', icon: Video },

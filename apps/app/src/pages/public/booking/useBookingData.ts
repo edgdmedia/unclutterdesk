@@ -29,6 +29,8 @@ export interface BookingData {
   slots: Slot[];
   reviews: Reviews;
   bankTransfer: boolean;
+  /** The practice has used this month's bookings on its plan: show "Fully booked", not the wizard. */
+  fullyBooked: boolean;
   /** Fetches the times again, e.g. before moving on from step 2 or before paying. */
   reloadSlots: () => Promise<Slot[]>;
 }
@@ -45,6 +47,7 @@ export function useBookingData(slug: string, previewSlug?: string): BookingData 
   const [slots, setSlots] = useState<Slot[]>([]);
   const [reviews, setReviews] = useState<Reviews>({ averageRating: null, count: 0 });
   const [bankTransfer, setBankTransfer] = useState(false);
+  const [fullyBooked, setFullyBooked] = useState(false);
 
   const get = useCallback(
     <T,>(path: string) =>
@@ -60,7 +63,10 @@ export function useBookingData(slug: string, previewSlug?: string): BookingData 
       get<PublicService[]>('/v1/consult/public/services'),
       get<Slot[]>('/v1/consult/public/availability'),
       get<Reviews>('/v1/intake/public/reviews').catch(() => ({ averageRating: null, count: 0 })),
-      get<{ bankTransfer?: boolean }>('/v1/consult/public/payment-options').catch(() => ({ bankTransfer: false })),
+      get<{ bankTransfer?: boolean; fullyBookedThisMonth?: boolean }>('/v1/consult/public/payment-options').catch(() => ({
+        bankTransfer: false,
+        fullyBookedThisMonth: false,
+      })),
     ])
       .then(([p, s, a, r, options]) => {
         if (cancelled) return;
@@ -69,6 +75,7 @@ export function useBookingData(slug: string, previewSlug?: string): BookingData 
         setSlots(a ?? []);
         setReviews({ averageRating: r?.averageRating ?? null, count: r?.count ?? 0 });
         setBankTransfer(Boolean(options?.bankTransfer));
+        setFullyBooked(Boolean(options?.fullyBookedThisMonth));
         setStatus('ready');
       })
       .catch(() => {
@@ -85,5 +92,5 @@ export function useBookingData(slug: string, previewSlug?: string): BookingData 
     return fresh;
   }, [get]);
 
-  return { status, practice, services, slots, reviews, bankTransfer, reloadSlots };
+  return { status, practice, services, slots, reviews, bankTransfer, fullyBooked, reloadSlots };
 }

@@ -34,7 +34,7 @@ function make({ booking = null as any, slots = [] as any[] } = {}) {
         endsAt: new Date(startsAt.getTime() + 50 * 60_000),
         service: null,
         therapist: { videoProvider: 'JITSI', profile: { firstName: 'Sarah', lastName: 'Smith' } },
-        tenant: { subscriptionTier: 'PRO', name: 'Smith Therapy', slug: 'smith' },
+        tenant: { subscriptionTier: 'PRO', subscriptionStatus: 'active', name: 'Smith Therapy', slug: 'smith' },
       }),
       findMany: vi.fn().mockResolvedValue(slots),
     },

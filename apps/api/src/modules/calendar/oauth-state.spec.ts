@@ -19,6 +19,7 @@ function makeService() {
       deleteMany: vi.fn().mockResolvedValue({ count: 1 }),
     },
     consultTherapistProfile: { update: vi.fn(), updateMany: vi.fn().mockResolvedValue({ count: 1 }) },
+    tenant: { findUnique: vi.fn().mockResolvedValue({ subscriptionTier: 'STARTER', subscriptionStatus: 'active', complimentaryUntil: null }) },
   };
   const service = new CalendarService(prisma);
   // Stand in for Google's token exchange.

@@ -1,11 +1,13 @@
 import { describe, expect, it } from 'vitest';
-import { activeNavKey, practiceSections, planIncludes, settingsTabsFor } from '../practiceNav';
+import { activeNavKey, practiceSections, settingsTabsFor } from '../practiceNav';
+import { summary } from '../../../test/entitlementSummary';
 
+const CLINIC = summary({ customDomain: true, bankTransferPayments: true, googleCalendarSync: true, staffInviteRoles: ['ADMIN', 'RECEPTIONIST', 'THERAPIST'] });
 const hrefsOf = (s: ReturnType<typeof practiceSections>) => s.flatMap((x) => x.groups.flatMap((g) => g.items.map((i) => i.href)));
 
 describe('practiceSections (GEN-03)', () => {
   it('gives owners the regrouped menu: Main, Forms & assessments, Settings, Reports, Payouts', () => {
-    const sections = practiceSections({ role: 'OWNER' }, 'clinic');
+    const sections = practiceSections({ role: 'OWNER' }, CLINIC);
     expect(sections.map((s) => s.key)).toEqual(['main', 'forms', 'settings', 'insights']);
     const hrefs = hrefsOf(sections);
     expect(hrefs).toEqual([
@@ -23,14 +25,14 @@ describe('practiceSections (GEN-03)', () => {
   });
 
   it('the settings area is ONE entry, and Notifications and Hours log are not in the sidebar', () => {
-    const hrefs = hrefsOf(practiceSections({ role: 'OWNER' }, 'clinic'));
+    const hrefs = hrefsOf(practiceSections({ role: 'OWNER' }, CLINIC));
     expect(hrefs).not.toContain('/dashboard/hours');
     expect(hrefs).not.toContain('/dashboard/notifications');
     expect(hrefs.filter((h) => h === '/dashboard/settings')).toHaveLength(1);
   });
 
   it('renames Analytics to Reports and keeps the tour ids that still have a home', () => {
-    const items = practiceSections({ role: 'OWNER' }, 'clinic').flatMap((s) => s.groups.flatMap((g) => g.items));
+    const items = practiceSections({ role: 'OWNER' }, CLINIC).flatMap((s) => s.groups.flatMap((g) => g.items));
     expect(items.find((i) => i.href === '/dashboard/analytics')?.label).toBe('Reports');
     for (const tour of ['nav-sessions', 'nav-clients', 'nav-forms', 'nav-payouts', 'nav-settings']) {
       expect(items.some((i) => i.tourId === tour)).toBe(true);
@@ -38,22 +40,14 @@ describe('practiceSections (GEN-03)', () => {
   });
 
   it('receptionists keep the same menu shape; deep settings are gated by tabs, not the sidebar', () => {
-    const hrefs = hrefsOf(practiceSections({ role: 'RECEPTIONIST', type: 'receptionist' }, 'clinic'));
+    const hrefs = hrefsOf(practiceSections({ role: 'RECEPTIONIST', type: 'receptionist' }, CLINIC));
     expect(hrefs).not.toContain('/dashboard/hours');
     expect(hrefs).toContain('/dashboard/settings');
   });
 
-  it('tags features outside the plan, and only those', () => {
-    const items = practiceSections({ role: 'OWNER' }, 'starter').flatMap((s) => s.groups.flatMap((g) => g.items));
-    expect(items.find((i) => i.href === '/dashboard/settings/forms')?.badge).toBeTruthy();
-    expect(items.find((i) => i.href === '/dashboard/settings')?.badge).toBeFalsy();
-    const clinic = practiceSections({ role: 'OWNER' }, 'clinic').flatMap((s) => s.groups.flatMap((g) => g.items));
-    expect(clinic.every((i) => !i.badge)).toBe(true);
-  });
-
-  it('keeps planIncludes as it was', () => {
-    expect(planIncludes('pro', 'pro')).toBe(true);
-    expect(planIncludes('starter', 'clinic')).toBe(false);
+  it('tags nothing the API does not gate: Forms is on every plan', () => {
+    const items = practiceSections({ role: 'OWNER' }, summary()).flatMap((s) => s.groups.flatMap((g) => g.items));
+    expect(items.every((i) => !i.badge)).toBe(true);
   });
 });
 
@@ -87,10 +81,14 @@ describe('settingsTabsFor (GEN-04)', () => {
     }
   });
 
-  it('tags tabs outside the plan', () => {
-    const tabs = settingsTabsFor({ role: 'OWNER' }, 'starter');
-    expect(tabs.find((t) => t.href.endsWith('/team'))?.badgeTier).toBe('clinic');
+  it('tags tabs the plan does not include, with the plan that does', () => {
+    const tabs = settingsTabsFor({ role: 'OWNER' }, summary());
+    expect(tabs.find((t) => t.href.endsWith('/team'))?.badgeTier).toBe('Pro');
+    expect(tabs.find((t) => t.href.endsWith('/domain'))?.badgeTier).toBe('Pro');
+    expect(tabs.find((t) => t.href.endsWith('/brand'))?.badgeTier).toBeUndefined();
     expect(tabs.find((t) => t.href.endsWith('/profile'))?.badgeTier).toBeUndefined();
+    const clinic = settingsTabsFor({ role: 'OWNER' }, CLINIC);
+    expect(clinic.every((t) => !t.badgeTier)).toBe(true);
   });
 });
 

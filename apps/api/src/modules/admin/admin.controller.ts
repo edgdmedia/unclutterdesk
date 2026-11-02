@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Patch, Body, Param, Query, Req, Res, UseGuards, NotFoundException, BadRequestException } from '@nestjs/common';
+import { Controller, Get, Post, Patch, Delete, Body, Param, Query, Req, Res, UseGuards, NotFoundException, BadRequestException } from '@nestjs/common';
 import { Request } from 'express';
 import { ApiTags, ApiOperation } from '@nestjs/swagger';
 import { Response } from 'express';
@@ -98,12 +98,33 @@ export class AdminController {
 
   @Patch('tenants/:id')
   @UseGuards(PlatformAdminGuard)
-  @ApiOperation({ summary: 'Update tenant activation, subscription tier or ecosystem integration' })
+  @ApiOperation({ summary: 'Update tenant activation or ecosystem integration (plans change through complimentary plans)' })
   updateTenant(
     @Param('id') id: string,
-    @Body() dto: { isActive?: boolean; subscriptionTier?: 'STARTER' | 'PRO' | 'CLINIC'; ecosystemIntegrationEnabled?: boolean },
+    @Body() dto: { isActive?: boolean; ecosystemIntegrationEnabled?: boolean },
   ) {
     return this.adminService.updateTenant(BigInt(id), dto);
+  }
+
+  @Get('complimentary-plans')
+  @UseGuards(PlatformAdminGuard)
+  @ApiOperation({ summary: 'Practices with a complimentary plan' })
+  complimentaryPlans() {
+    return this.adminService.complimentaryPlans();
+  }
+
+  @Post('tenants/:id/complimentary')
+  @UseGuards(PlatformAdminGuard)
+  @ApiOperation({ summary: "Set a practice's plan: tier, reason and end date (or INTERNAL with none)" })
+  setComplimentary(@Req() req: any, @Param('id') id: string, @Body() dto: { tier?: string; reason?: string; until?: string | null }) {
+    return this.adminService.setComplimentary(BigInt(id), req?.user?.userId, dto ?? {});
+  }
+
+  @Delete('tenants/:id/complimentary')
+  @UseGuards(PlatformAdminGuard)
+  @ApiOperation({ summary: 'End a complimentary plan now (FREE unless paying)' })
+  endComplimentary(@Req() req: any, @Param('id') id: string) {
+    return this.adminService.endComplimentary(BigInt(id), req?.user?.userId);
   }
 
   @Get('invites')

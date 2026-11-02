@@ -126,6 +126,11 @@ export class PaystackService {
     return this.request('POST', '/subscription', dto);
   }
 
+  /** A subscription's details, including `next_payment_date` (the end of the period already paid for). */
+  async fetchSubscription(code: string) {
+    return this.request('GET', `/subscription/${encodeURIComponent(code)}`);
+  }
+
   async disableSubscription(dto: {
     code: string;
     token: string;

@@ -35,3 +35,7 @@ update-check/
 *.pk
 *.pem
 deploy/*.pub
+
+# Local agent/tool scratch folders
+.superpowers/
+.layout-screens/

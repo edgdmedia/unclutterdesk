@@ -40,7 +40,7 @@ function makeService({ claimCount = 1 }: { claimCount?: number } = {}) {
         startsAt: new Date('2026-10-01T10:00:00Z'),
         service: { id: 2n, title: 'Therapy', priceKobo: 0n },
         therapist: { videoProvider: 'JITSI', profile: { firstName: 'Jane', lastName: 'Smith' } },
-        tenant: { subscriptionTier: 'PRO', name: 'Practice' },
+        tenant: { subscriptionTier: 'PRO', subscriptionStatus: 'active', name: 'Practice' },
       }),
     },
     consultBooking: { count: vi.fn().mockResolvedValue(0) },

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { BUILTIN_INSTRUMENTS, DASS_21, GAD_7, PCL_5, PHQ_9 } from './builtin-instruments';
-import { publicDefinition, score, tierIncludes, validateAnswers, validateDefinition, type InstrumentDefinition } from './engine';
+import { publicDefinition, score, validateAnswers, validateDefinition, type InstrumentDefinition } from './engine';
 
 /** Answers every item with `value`, then applies any overrides. */
 function answers(def: InstrumentDefinition, value: number, overrides: Record<string, number> = {}) {
@@ -185,13 +185,5 @@ describe('answers', () => {
     const cleaned = validateAnswers(PHQ_9, { ...answers(PHQ_9, 1), injected: 99 }) as Record<string, number>;
     expect(cleaned).not.toHaveProperty('injected');
     expect(Object.keys(cleaned)).toHaveLength(9);
-  });
-});
-
-describe('plans', () => {
-  it.each([
-    ['STARTER', 'STARTER', true], ['STARTER', 'PRO', false], ['PRO', 'PRO', true], ['CLINIC', 'PRO', true], [null, 'PRO', false],
-  ] as const)('%s includes %s: %s', (plan, needed, expected) => {
-    expect(tierIncludes(plan, needed)).toBe(expected);
   });
 });

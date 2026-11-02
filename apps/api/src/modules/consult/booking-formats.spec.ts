@@ -13,7 +13,7 @@ const onlineSlot = {
   id: 3n, tenantId: TENANT, providerProfileId: 7n, serviceId: null, startsAt: new Date('2026-10-09T09:00:00Z'), endsAt: new Date('2026-10-09T09:50:00Z'),
   channel: 'VIDEO', allowsOnline: true, allowsInPerson: false, locationId: null, customised: false, isActive: true, location: null,
   therapist: { credentials: null, specialty: null, offersOnline: true, offersInPerson: false, workLocations: [], profile: { firstName: 'Jane', lastName: 'Smith', avatarUrl: null } },
-  service: null, tenant: { subscriptionTier: 'PRO', slug: 'p' },
+  service: null, tenant: { subscriptionTier: 'PRO', subscriptionStatus: 'active', slug: 'p' },
 };
 const bothSlot = { ...onlineSlot, id: 4n, allowsInPerson: true, locationId: 4n, channel: 'IN_PERSON', location: { id: 4n, name: 'Lekki clinic', city: 'Lagos', address: '12 Admiralty Way', directions: 'Gate 2' }, therapist: { ...onlineSlot.therapist, offersInPerson: true, workLocations: [{ locationId: 4n }] } };
 

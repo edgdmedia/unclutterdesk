@@ -20,7 +20,7 @@ function setup(plan = 'STARTER') {
     tenantAssessment: { findMany: vi.fn().mockResolvedValue([]), findUnique: vi.fn(), upsert: vi.fn(), deleteMany: vi.fn() },
     profile: { findFirst: vi.fn(), findMany: vi.fn().mockResolvedValue([{ id: 7n }]) },
     tenant: {
-      findUnique: vi.fn().mockResolvedValue({ name: 'Calm Practice', slug: 'calm', customDomain: null, customDomainStatus: null, subscriptionTier: plan }),
+      findUnique: vi.fn().mockResolvedValue({ name: 'Calm Practice', slug: 'calm', customDomain: null, customDomainStatus: null, subscriptionTier: plan, subscriptionStatus: 'active' }),
     },
     assessmentAssignment: { create: vi.fn(), findUnique: vi.fn(), findFirst: vi.fn(), findMany: vi.fn(), updateMany: vi.fn() },
     assessmentResponse: { create: vi.fn().mockResolvedValue({ id: 99n }), findMany: vi.fn() },

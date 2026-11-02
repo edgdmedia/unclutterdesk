@@ -213,6 +213,43 @@ interface InternalRequestOptions extends RequestOptions {
   _retried?: boolean;
 }
 
+/** An error from the API, with its status and the body the API sent. Still an Error, so `.message` works as before. */
+export class ApiError extends Error {
+  constructor(
+    message: string,
+    readonly status: number,
+    readonly body: Record<string, unknown> | null,
+  ) {
+    super(message);
+    this.name = 'ApiError';
+  }
+
+  get code(): string | undefined {
+    return typeof this.body?.code === 'string' ? this.body.code : undefined;
+  }
+
+  /** Set on a 402 the plan doesn't cover: which plan would, and what for. */
+  get entitlement(): EntitlementRequired | null {
+    if (this.status !== 402 || this.code !== 'ENTITLEMENT_REQUIRED') return null;
+    return {
+      requiredTier: String(this.body?.requiredTier ?? ''),
+      feature: String(this.body?.feature ?? ''),
+      scope: this.body?.scope === 'profile' ? 'profile' : 'practice',
+      message: this.message,
+    };
+  }
+}
+
+export type EntitlementRequired = { requiredTier: string; feature: string; scope: 'practice' | 'profile'; message: string };
+
+/** Fired on window for every 402 ENTITLEMENT_REQUIRED, so one prompt can offer the upgrade wherever the call was made. */
+export const ENTITLEMENT_REQUIRED_EVENT = 'unclutter:entitlement-required';
+
+function announceEntitlementRequired(detail: EntitlementRequired) {
+  if (typeof window === 'undefined') return;
+  window.dispatchEvent(new CustomEvent<EntitlementRequired>(ENTITLEMENT_REQUIRED_EVENT, { detail }));
+}
+
 export async function apiRequest<T = unknown>(
   path: string,
   options: InternalRequestOptions = {},
@@ -249,13 +286,16 @@ export async function apiRequest<T = unknown>(
 
   if (!response.ok) {
     let message = `API error ${response.status}`;
+    let body: Record<string, unknown> | null = null;
     try {
-      const err = await response.json();
-      message = err?.message || message;
+      body = await response.json();
+      message = (body?.message as string) || message;
     } catch {
       // ignore JSON parse failure on error body
     }
-    throw new Error(message);
+    const error = new ApiError(message, response.status, body);
+    if (error.entitlement) announceEntitlementRequired(error.entitlement);
+    throw error;
   }
 
   // 204 No Content

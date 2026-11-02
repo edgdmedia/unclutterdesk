@@ -182,8 +182,8 @@ import LegalPage from '../layouts/LegalPage.astro';
         <tr><td>Contabo (Germany)</td><td>Application server and database hosting</td><td>All data described above</td></tr>
         <tr><td>Google (Calendar &amp; Meet)</td><td>Calendar sync and meeting links, only if a therapist connects their Google account</td><td>Appointment time, title and attendee email addresses</td></tr>
         <tr><td>Google (Gmail SMTP)</td><td>Sending transactional email</td><td>Recipient email address and message content</td></tr>
-        <tr><td>Jitsi Meet (8x8)</td><td>Default video sessions — see section 6</td><td>Room identifier; audio and video pass through their infrastructure</td></tr>
-        <tr><td>Daily.co</td><td>Optional branded video rooms, where a practice enables it</td><td>Room identifier and session metadata</td></tr>
+        <tr><td>Daily.co</td><td>Video sessions (first choice) — see section 6</td><td>Room identifier, participant display name, an internal participant ID and session metadata; audio and video pass through their infrastructure</td></tr>
+        <tr><td>8x8 (Jitsi as a Service, and meet.jit.si)</td><td>Video sessions when Daily.co is unavailable — see section 6</td><td>Room identifier, participant display name and an internal participant ID; audio and video pass through their infrastructure</td></tr>
         <tr><td>Termii</td><td>SMS notifications, where enabled</td><td>Phone number and message content</td></tr>
       </tbody>
     </table>
@@ -196,17 +196,20 @@ import LegalPage from '../layouts/LegalPage.astro';
   <h2 id="video">6. Video sessions</h2>
   <div class="callout">
     <p>
-      By default, session links use <strong>Jitsi Meet at meet.jit.si</strong>, a
-      free public service operated by 8x8. Sessions are not recorded by Unclutter
-      Desk, and we never receive session audio or video — but the call itself runs
-      on infrastructure we do not control, under
+      Session rooms are created on <strong>Daily.co</strong>. If Daily.co is
+      unavailable or its monthly capacity is used up, rooms are created on
+      <strong>8x8's Jitsi as a Service</strong>, and as a last resort the session
+      link points to a room on <strong>meet.jit.si</strong>, a free public
+      service also operated by 8x8. Sessions are not recorded by Unclutter Desk,
+      and we never receive session audio or video — but the call itself runs on
+      infrastructure we do not control, under
+      <a href="https://www.daily.co/legal/terms-of-service/" rel="noopener noreferrer">Daily.co's</a> or
       <a href="https://8x8.vc/terms" rel="noopener noreferrer">8x8's terms</a>.
     </p>
     <p>
       Practices should tell clients which video service they use and satisfy
-      themselves that it is appropriate for clinical sessions. A practice that
-      needs a dedicated provider can configure Daily.co or use Google Meet
-      instead.
+      themselves that it is appropriate for clinical sessions. A therapist on a
+      paid plan who connects Google Calendar can use Google Meet links instead.
     </p>
   </div>
 

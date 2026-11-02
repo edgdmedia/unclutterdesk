@@ -1,4 +1,5 @@
 import { useMemo, useState, type ReactNode } from 'react';
+import { useEntitlements } from '../../utils/entitlements';
 import { useLocation } from 'react-router-dom';
 import { AppShell } from '@unclutterdesk/ui';
 import { NotificationBell } from './NotificationBell';
@@ -27,8 +28,9 @@ function writeFlag(key: string, value: string) {
   }
 }
 
-export function PracticeShell({ plan, banner, children }: { plan?: string; banner?: ReactNode; children: ReactNode }) {
+export function PracticeShell({ banner, children }: { banner?: ReactNode; children: ReactNode }) {
   const { profile } = useAuth();
+  const plan = useEntitlements();
   const location = useLocation();
   const [collapsed, setCollapsed] = useState(() => readFlag(COLLAPSED_KEY) === '1');
   const [practiceOpen, setPracticeOpen] = useState(() => readFlag(PRACTICE_OPEN_KEY) !== '0');

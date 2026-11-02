@@ -3,6 +3,7 @@ import {
   Home, IdCard, LayoutDashboard, Mail, MapPin, Palette, Settings, UserCog, Users, type LucideIcon,
 } from 'lucide-react';
 import type { SidebarSection } from '@unclutterdesk/ui';
+import { includesFeature, TIER_NAMES, type EntitlementSummary, type GatedFeature } from '../../utils/entitlements';
 
 export interface NavProfile {
   role?: string | null;
@@ -15,7 +16,8 @@ interface NavEntry {
   icon: LucideIcon;
   /** Element id for the guided tour. */
   tourId?: string;
-  tier?: 'pro' | 'clinic';
+  /** A feature the plan gates; tagged with the plan that includes it when the practice's plan doesn't. */
+  requires?: GatedFeature;
   clinicalOnly?: boolean;
 }
 
@@ -33,7 +35,7 @@ const MAIN: NavEntry[] = [
 const FORMS: NavEntry[] = [
   { href: '/dashboard/submissions', label: 'Submissions', icon: ClipboardCheck },
   { href: '/dashboard/assessments', label: 'Assessments', icon: ClipboardList },
-  { href: '/dashboard/settings/forms', label: 'Forms', icon: FileText, tier: 'pro', tourId: 'nav-forms' },
+  { href: '/dashboard/settings/forms', label: 'Forms', icon: FileText, tourId: 'nav-forms' },
 ];
 
 // One entry for the whole settings area; the page itself is the tab hub.
@@ -57,26 +59,26 @@ export interface SettingsTab {
   label: string;
   icon: LucideIcon;
   group: string;
-  /** Set when the tab sits outside the practice's plan — shown as a tag. */
-  badgeTier?: 'pro' | 'clinic';
+  /** The plan that includes this tab, when the practice's plan doesn't — shown as a tag. */
+  badgeTier?: string;
 }
 
 interface TabDefinition extends Omit<SettingsTab, 'badgeTier'> {
-  tier?: 'pro' | 'clinic';
+  requires?: GatedFeature;
   ownerOnly?: boolean;
 }
 
 const SETTINGS_TABS: TabDefinition[] = [
   { href: '/dashboard/settings/profile', label: 'Practice profile', icon: IdCard, group: 'Practice', ownerOnly: true },
   { href: '/dashboard/settings/locations', label: 'Locations', icon: MapPin, group: 'Practice', ownerOnly: true },
-  { href: '/dashboard/settings/brand', label: 'Brand & booking page', icon: Palette, group: 'Practice', tier: 'pro', ownerOnly: true },
+  { href: '/dashboard/settings/brand', label: 'Brand & booking page', icon: Palette, group: 'Practice', ownerOnly: true },
   { href: '/dashboard/settings/availability', label: 'Availability', icon: CalendarClock, group: 'Booking' },
   { href: '/dashboard/settings/services', label: 'Services & pricing', icon: Settings, group: 'Booking', ownerOnly: true },
-  { href: '/dashboard/settings/discounts', label: 'Discounts & promos', icon: BarChart3, group: 'Booking', tier: 'pro', ownerOnly: true },
-  { href: '/dashboard/settings/domain', label: 'Custom domain', icon: Globe, group: 'Domain & email', tier: 'pro', ownerOnly: true },
+  { href: '/dashboard/settings/discounts', label: 'Discounts & promos', icon: BarChart3, group: 'Booking', ownerOnly: true },
+  { href: '/dashboard/settings/domain', label: 'Custom domain', icon: Globe, group: 'Domain & email', requires: 'customDomain', ownerOnly: true },
   { href: '/dashboard/settings/notifications', label: 'Notifications', icon: Bell, group: 'Domain & email', ownerOnly: true },
-  { href: '/dashboard/settings/sending-domain', label: 'Sending domain', icon: Mail, group: 'Domain & email', tier: 'pro', ownerOnly: true },
-  { href: '/dashboard/settings/team', label: 'Team & staff', icon: Users, group: 'Team & billing', tier: 'clinic', ownerOnly: true },
+  { href: '/dashboard/settings/sending-domain', label: 'Sending domain', icon: Mail, group: 'Domain & email', ownerOnly: true },
+  { href: '/dashboard/settings/team', label: 'Team & staff', icon: Users, group: 'Team & billing', requires: 'staff', ownerOnly: true },
   { href: '/dashboard/settings/subscription', label: 'Subscription', icon: CreditCard, group: 'Team & billing', ownerOnly: true },
   { href: '/dashboard/settings/account', label: 'Preferences', icon: UserCog, group: 'Team & billing' },
 ];
@@ -89,11 +91,14 @@ export const PRACTICE_BOTTOM_NAV: { href: string; label: string; icon: LucideIco
   { href: '/dashboard/clients', label: 'Clients', icon: Users, tourId: 'nav-clients' },
 ];
 
-const PLAN_RANK: Record<string, number> = { starter: 0, pro: 1, clinic: 2 };
-
-/** Whether a practice on `plan` has features tagged `tier`. */
-export function planIncludes(plan: string | undefined, tier: string): boolean {
-  return (PLAN_RANK[(plan || 'starter').toLowerCase()] ?? 0) >= (PLAN_RANK[tier.toLowerCase()] ?? 0);
+/**
+ * The plan to tag a gated entry with, or undefined when the practice's plan
+ * includes it (or its plan isn't known yet). Read from the entitlements
+ * response, never from plan names (spec §5.1).
+ */
+export function missingPlanFor(requires: GatedFeature | undefined, plan: EntitlementSummary | null | undefined): string | undefined {
+  if (!requires || !plan || includesFeature(plan, requires)) return undefined;
+  return TIER_NAMES[plan.requiredTiers[requires]];
 }
 
 const isRole = (p: NavProfile | null | undefined, role: string) =>
@@ -106,19 +111,19 @@ const isOwnerOrAdmin = (p: NavProfile | null | undefined) => isRole(p, 'OWNER') 
  * preferences; the practice itself is the owner's to configure. Plan gating
  * stays visible (a tag, not a removal) so owners can see what they're on.
  */
-export function settingsTabsFor(profile: NavProfile | null | undefined, plan?: string): SettingsTab[] {
+export function settingsTabsFor(profile: NavProfile | null | undefined, plan?: EntitlementSummary | null): SettingsTab[] {
   return SETTINGS_TABS
     .filter((t) => !t.ownerOnly || isOwnerOrAdmin(profile))
-    .map(({ ownerOnly, tier, ...tab }) => ({
+    .map(({ ownerOnly, requires, ...tab }) => ({
       ...tab,
-      badgeTier: tier && plan && !planIncludes(plan, tier) ? tier : undefined,
+      badgeTier: missingPlanFor(requires, plan),
     }));
 }
 
-function PlanTag({ tier }: { tier: 'pro' | 'clinic' }) {
+function PlanTag({ tier }: { tier: string }) {
   return (
     <span
-      title={`Part of the ${tier === 'clinic' ? 'Clinic' : 'Pro'} plan`}
+      title={`Part of the ${tier} plan`}
       className="h-[16px] px-1.5 rounded-[4px] text-[8.5px] font-extrabold flex items-center justify-center uppercase tracking-wider bg-[#1E293B] text-[#94A3B8] border border-white/5"
     >
       {tier}
@@ -127,7 +132,7 @@ function PlanTag({ tier }: { tier: 'pro' | 'clinic' }) {
 }
 
 /** The practice sidebar for this person: filtered by role, tagged by plan. */
-export function practiceSections(profile: NavProfile | null | undefined, plan: string | undefined): SidebarSection[] {
+export function practiceSections(profile: NavProfile | null | undefined, plan: EntitlementSummary | null | undefined): SidebarSection[] {
   const receptionist = isRole(profile, 'RECEPTIONIST');
   const toItem = (e: NavEntry) => ({
     key: e.href,
@@ -135,7 +140,7 @@ export function practiceSections(profile: NavProfile | null | undefined, plan: s
     href: e.href,
     icon: <e.icon />,
     // Only for features outside the practice's plan, as an upgrade hint.
-    badge: e.tier && !planIncludes(plan, e.tier) ? <PlanTag tier={e.tier} /> : undefined,
+    badge: missingPlanFor(e.requires, plan) ? <PlanTag tier={missingPlanFor(e.requires, plan)!} /> : undefined,
     tourId: e.tourId,
   });
   return [

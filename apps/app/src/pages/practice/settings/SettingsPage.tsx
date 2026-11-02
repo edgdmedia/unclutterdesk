@@ -2,6 +2,7 @@ import React from 'react';
 import { NavLink, Navigate, Outlet } from 'react-router-dom';
 import { useAuth } from '../../../context/AuthContext';
 import { settingsTabsFor, type SettingsTab } from '../../../components/shell/practiceNav';
+import { useEntitlements } from '../../../utils/entitlements';
 
 /**
  * GEN-04: Settings is one page. What used to be a dozen sidebar links is a
@@ -11,7 +12,8 @@ import { settingsTabsFor, type SettingsTab } from '../../../components/shell/pra
  */
 export function SettingsHub() {
   const { profile } = useAuth();
-  const tabs = settingsTabsFor(profile as never, (profile as { plan?: string } | null)?.plan);
+  const plan = useEntitlements();
+  const tabs = settingsTabsFor(profile as never, plan);
   if (!tabs.length) return null;
   const groups = [...new Set(tabs.map((t) => t.group))];
 
@@ -40,7 +42,7 @@ export function SettingsHub() {
 /** `/dashboard/settings` itself, and any tab that does not exist: first tab wins. */
 export function SettingsIndex() {
   const { profile } = useAuth();
-  const tabs = settingsTabsFor(profile as never, (profile as { plan?: string } | null)?.plan);
+  const tabs = settingsTabsFor(profile as never);
   const first = tabs[0];
   return <Navigate to={first ? first.href.replace('/dashboard/settings/', '') : 'profile'} replace />;
 }

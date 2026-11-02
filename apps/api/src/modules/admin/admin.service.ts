@@ -1,10 +1,21 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Injectable, Logger, NotFoundException, Optional } from '@nestjs/common';
 import { PrismaService } from '../../common/prisma/prisma.service';
 import { chargedKobo, collectedKobo } from '../../common/revenue';
+import { isPaidTier, isTier, PLAN_SELECT, planView } from '../entitlements/entitlements';
+import { NotificationService } from '../notifications/notification.service';
+import { complimentaryPrefix } from '../invites/complimentary-emails';
+
+const REASONS = ['INVITE_CODE', 'MIGRATION', 'INTERNAL'] as const;
+type ComplimentaryReason = (typeof REASONS)[number];
 
 @Injectable()
 export class AdminService {
-  constructor(private readonly prisma: PrismaService) {}
+  private readonly logger = new Logger(AdminService.name);
+
+  constructor(
+    private readonly prisma: PrismaService,
+    @Optional() private readonly notifications?: NotificationService,
+  ) {}
 
   /**
    * The demo practice holds synthetic clients, bookings and a priced service.
@@ -97,7 +108,7 @@ export class AdminService {
       customDomain: t.customDomain,
       category: t.category,
       city: t.city,
-      subscriptionTier: t.subscriptionTier,
+      ...planView(t),
       isActive: t.isActive,
       primaryColor: t.primaryColor,
       secondaryColor: t.secondaryColor,
@@ -172,7 +183,7 @@ export class AdminService {
       address: tenant.address,
       publicEmail: tenant.publicEmail,
       publicPhone: tenant.publicPhone,
-      subscriptionTier: tenant.subscriptionTier,
+      ...planView(tenant),
       isActive: tenant.isActive,
       ecosystemIntegrationEnabled: tenant.ecosystemIntegrationEnabled,
       primaryColor: tenant.primaryColor,
@@ -206,10 +217,18 @@ export class AdminService {
     };
   }
 
+  /**
+   * Activation and ecosystem integration. There is no direct plan setter: a
+   * plan set by hand, with no subscription or complimentary period, would
+   * quietly count as FREE. Plans change through `setComplimentary` (§5.7 #10).
+   */
   async updateTenant(
     id: bigint,
-    dto: { isActive?: boolean; subscriptionTier?: 'STARTER' | 'PRO' | 'CLINIC'; ecosystemIntegrationEnabled?: boolean },
+    dto: { isActive?: boolean; ecosystemIntegrationEnabled?: boolean; subscriptionTier?: unknown },
   ) {
+    if ('subscriptionTier' in dto) {
+      throw new BadRequestException('Change a plan from Complimentary plans, with a reason and an end date.');
+    }
     if (dto.ecosystemIntegrationEnabled !== undefined && typeof dto.ecosystemIntegrationEnabled !== 'boolean') {
       throw new BadRequestException('ecosystemIntegrationEnabled must be true or false');
     }
@@ -217,7 +236,6 @@ export class AdminService {
       where: { id },
       data: {
         ...(dto.isActive !== undefined ? { isActive: dto.isActive } : {}),
-        ...(dto.subscriptionTier ? { subscriptionTier: dto.subscriptionTier } : {}),
         ...(dto.ecosystemIntegrationEnabled !== undefined
           ? { ecosystemIntegrationEnabled: dto.ecosystemIntegrationEnabled }
           : {}),
@@ -226,8 +244,72 @@ export class AdminService {
     return {
       id: tenant.id.toString(),
       isActive: tenant.isActive,
-      subscriptionTier: tenant.subscriptionTier,
+      ...planView(tenant),
       ecosystemIntegrationEnabled: tenant.ecosystemIntegrationEnabled,
     };
+  }
+
+  // ── Complimentary plans (§12) ──
+
+  /** Practices with a complimentary plan, soonest end first; INTERNAL (no end date) last. */
+  async complimentaryPlans() {
+    const tenants = await this.prisma.tenant.findMany({
+      where: { complimentaryReason: { not: null } },
+      select: { id: true, name: true, slug: true, ...PLAN_SELECT },
+      orderBy: [{ complimentaryUntil: { sort: 'asc', nulls: 'last' } }],
+    });
+    return tenants.map((t) => ({ id: t.id.toString(), name: t.name, slug: t.slug, ...planView(t) }));
+  }
+
+  /**
+   * The only way an admin changes a practice's plan: a tier with a reason
+   * and an end date, or INTERNAL with no end date. Replaces any running
+   * complimentary period (its queued emails are cancelled), and stops a
+   * lapse in progress.
+   */
+  async setComplimentary(id: bigint, actorUserId: string | undefined, dto: { tier?: unknown; reason?: unknown; until?: unknown }) {
+    const tier = typeof dto.tier === 'string' ? dto.tier.toUpperCase() : '';
+    if (!isTier(tier) || !isPaidTier(tier)) throw new BadRequestException('Choose Starter, Pro or Clinic.');
+    if (!REASONS.includes(dto.reason as ComplimentaryReason)) throw new BadRequestException('Choose a reason.');
+    const reason = dto.reason as ComplimentaryReason;
+    let until: Date | null = null;
+    if (dto.until !== null && dto.until !== undefined && dto.until !== '') {
+      until = new Date(String(dto.until));
+      if (Number.isNaN(until.getTime()) || until <= new Date()) throw new BadRequestException('Choose an end date in the future.');
+    }
+    if (!until && reason !== 'INTERNAL') throw new BadRequestException('Only an INTERNAL plan can have no end date.');
+
+    const before = await this.prisma.tenant.findUnique({ where: { id }, select: { id: true, ...PLAN_SELECT } });
+    if (!before) throw new NotFoundException('Practice not found');
+    if (before.complimentaryUntil) {
+      await this.notifications?.cancelRemindersWithPrefix(complimentaryPrefix(id, before.complimentaryUntil));
+    }
+    const after = await this.prisma.tenant.update({
+      where: { id },
+      data: { subscriptionTier: tier, complimentaryReason: reason, complimentaryUntil: until, subscriptionLapsedAt: null, downgradeAt: null },
+      select: { id: true, ...PLAN_SELECT },
+    });
+    // The audit log arrives in Phase 1 (§4.4); until then the change is logged.
+    this.logger.log(`Admin ${actorUserId ?? '?'} set complimentary plan on tenant ${id}: ${JSON.stringify(planView(before))} -> ${JSON.stringify(planView(after))}`);
+    return { id: id.toString(), ...planView(after) };
+  }
+
+  /** Ends a complimentary plan now: FREE, unless the practice is paying. */
+  async endComplimentary(id: bigint, actorUserId: string | undefined) {
+    const before = await this.prisma.tenant.findUnique({ where: { id }, select: { id: true, ...PLAN_SELECT } });
+    if (!before) throw new NotFoundException('Practice not found');
+    if (before.complimentaryUntil) {
+      await this.notifications?.cancelRemindersWithPrefix(complimentaryPrefix(id, before.complimentaryUntil));
+    }
+    const paying = before.subscriptionStatus === 'active';
+    const after = await this.prisma.tenant.update({
+      where: { id },
+      data: paying
+        ? { complimentaryReason: null, complimentaryUntil: null }
+        : { subscriptionTier: 'FREE', complimentaryReason: null, complimentaryUntil: null },
+      select: { id: true, ...PLAN_SELECT },
+    });
+    this.logger.log(`Admin ${actorUserId ?? '?'} ended complimentary plan on tenant ${id}: ${JSON.stringify(planView(before))} -> ${JSON.stringify(planView(after))}`);
+    return { id: id.toString(), ...planView(after) };
   }
 }

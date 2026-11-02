@@ -32,7 +32,7 @@ const practice = {
   role: 'OWNER',
   status: 'active',
   avatarUrl: null,
-  tenant: { name: 'Unclutter', slug: 'unclutter', subscriptionTier: 'CLINIC' },
+  tenant: { name: 'Unclutter', slug: 'unclutter', subscriptionTier: 'CLINIC', subscriptionStatus: 'active' },
   consultTherapistProfile: {},
 };
 

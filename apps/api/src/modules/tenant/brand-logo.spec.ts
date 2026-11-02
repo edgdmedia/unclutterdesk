@@ -5,7 +5,7 @@ import { TenantService } from './tenant.service';
 function make() {
   const prisma: any = {
     tenant: {
-      findUnique: vi.fn().mockResolvedValue({ id: 27n, slug: 'edgdmedia', subscriptionTier: 'PRO' }),
+      findUnique: vi.fn().mockResolvedValue({ id: 27n, slug: 'edgdmedia', subscriptionTier: 'PRO', subscriptionStatus: 'active' }),
       update: vi.fn().mockImplementation(({ data }) => Promise.resolve({ id: 27n, ...data })),
     },
   };
