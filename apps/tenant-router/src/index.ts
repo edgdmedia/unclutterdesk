@@ -13,8 +13,8 @@
  *
  * See docs/CLOUDFLARE_SETUP.md §1.
  */
-import { decide, isCustomDomainHost, originRequest, type RouterConfig } from './router';
-import { apiNotFound, apiRequest, clientResponse, isAllowedClientRoute, isApiPath, stripApiPrefix } from './api-proxy';
+import { decide, isCustomDomainHost, normalizeHost, originRequest, type RouterConfig } from './router';
+import { apiNotFound, apiRequest, apiUnavailable, clientResponse, isAllowedClientRoute, isApiPath, API_TIMEOUT_MS, stripApiPrefix } from './api-proxy';
 import { lookupTenant } from './tenants';
 import { practiceNotFoundResponse } from './not-found';
 
@@ -44,15 +44,16 @@ export default {
     };
 
     const url = new URL(request.url);
+    const host = normalizeHost(url.hostname);
 
     // /api is reserved on every host this Worker serves: it never reaches the
     // app. Only a practice's custom domain proxies it (spec §6.16); practice
     // subdomains keep calling the API origin directly, so they get a 404.
     if (isApiPath(url.pathname)) {
-      return proxyClientApi(request, url, env);
+      return proxyClientApi(request, url, env, host);
     }
 
-    const decision = decide(url.hostname, config);
+    const decision = decide(host, config);
 
     switch (decision.kind) {
       case 'redirect':
@@ -106,16 +107,21 @@ export default {
   },
 };
 
-async function proxyClientApi(request: Request, url: URL, env: Env): Promise<Response> {
-  if (!isCustomDomainHost(url.hostname, env.APEX_HOST)) return apiNotFound();
+async function proxyClientApi(request: Request, url: URL, env: Env, host: string): Promise<Response> {
+  if (!isCustomDomainHost(host, env.APEX_HOST)) return apiNotFound();
   if (!isAllowedClientRoute(request.method, stripApiPrefix(url.pathname))) return apiNotFound();
-  // Only an ACTIVE custom domain exists to the API's lookup; the API checks
-  // again on every request, so a lookup that fails open costs nothing.
-  const tenant = await lookupTenant(url.hostname, env.API_BASE, caches.default);
-  if (!tenant.exists) return apiNotFound();
+  // The API checks ACTIVE status itself, so we don't need to probe first (S2).
 
-  const response = await fetch(
-    apiRequest(request, { apiBase: env.API_BASE, practiceHost: url.hostname.toLowerCase(), secret: env.ROUTER_PROXY_SECRET }),
-  );
-  return clientResponse(response);
+  const signal = AbortSignal.timeout(API_TIMEOUT_MS);
+  const req = apiRequest(request, { apiBase: env.API_BASE, practiceHost: host, secret: env.ROUTER_PROXY_SECRET, signal });
+
+  try {
+    const response = await fetch(req);
+    return clientResponse(response);
+  } catch (e) {
+    if (e instanceof DOMException && e.name === 'TimeoutError') {
+      return apiUnavailable(504);
+    }
+    return apiUnavailable(502);
+  }
 }

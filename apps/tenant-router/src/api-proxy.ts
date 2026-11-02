@@ -24,6 +24,24 @@ export const CLIENT_IP_HEADER = 'x-ud-client-ip';
 const ROUTER_HEADERS = [ROUTER_SECRET_HEADER, PRACTICE_HOST_HEADER, CLIENT_IP_HEADER];
 
 export const API_PREFIX = '/api';
+export const API_TIMEOUT_MS = 30_000;
+
+/** What /api answers when the router won't forward: plain JSON, never the app. */
+export function apiNotFound(): Response {
+  return new Response(JSON.stringify({ statusCode: 404, message: 'Not found' }), {
+    status: 404,
+    headers: { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store' },
+  });
+}
+
+/** What /api answers when the API is unreachable or times out. */
+export function apiUnavailable(status: 502 | 504): Response {
+  const message = status === 504 ? 'Gateway timeout' : 'Service unavailable';
+  return new Response(JSON.stringify({ statusCode: status, message }), {
+    status,
+    headers: { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store' },
+  });
+}
 
 /** True for /api and anything under it: reserved on every practice host. */
 export function isApiPath(pathname: string): boolean {
@@ -68,7 +86,7 @@ export function stripApiPrefix(pathname: string): string {
  */
 export function apiRequest(
   request: Request,
-  opts: { apiBase: string; practiceHost: string; secret: string | undefined },
+  opts: { apiBase: string; practiceHost: string; secret: string | undefined; signal?: AbortSignal },
 ): Request {
   const incoming = new URL(request.url);
   const target = new URL(stripApiPrefix(incoming.pathname) + incoming.search, opts.apiBase);
@@ -91,16 +109,28 @@ export function apiRequest(
     // The body streams through rather than being buffered. Workers streams
     // by default; the fetch standard (and Node, in the tests) wants it said.
     ...(hasBody ? { duplex: 'half' } : {}),
+    signal: opts.signal,
   } as RequestInit);
 }
 
 /** One Set-Cookie value, made to belong to the custom domain under /api. */
 export function rewriteSetCookie(value: string): string {
-  return value
-    .split(';')
-    .map((part) => part.trim())
+  const parts = value.split(';').map((part) => part.trim());
+  const hasHttpOnly = parts.some((p) => /^HttpOnly$/i.test(p));
+
+  return parts
     .filter((part) => !/^domain=/i.test(part))
-    .map((part) => (/^path=\/v1(\/|$)/i.test(part) ? `Path=${API_PREFIX}${part.slice(part.indexOf('=') + 1)}` : part))
+    .map((part) => {
+      if (/^path=\/v1(\/|$)/i.test(part)) {
+        // Rewrite /v1/* to /api/v1/*
+        return `Path=${API_PREFIX}${part.slice(part.indexOf('=') + 1)}`;
+      }
+      if (/^path=\/$/i.test(part) && hasHttpOnly) {
+        // HttpOnly cookies with Path=/ should be scoped to /api
+        return 'Path=/api';
+      }
+      return part;
+    })
     .join('; ');
 }
 
@@ -123,12 +153,4 @@ export function clientResponse(response: Response): Response {
   headers.delete('set-cookie');
   for (const cookie of cookies) headers.append('set-cookie', rewriteSetCookie(cookie));
   return new Response(response.body, { status: response.status, statusText: response.statusText, headers });
-}
-
-/** What /api answers when the router won't forward: plain JSON, never the app. */
-export function apiNotFound(): Response {
-  return new Response(JSON.stringify({ statusCode: 404, message: 'Not found' }), {
-    status: 404,
-    headers: { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store' },
-  });
 }

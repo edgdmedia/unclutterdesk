@@ -3,7 +3,10 @@ import {
   CLIENT_IP_HEADER,
   PRACTICE_HOST_HEADER,
   ROUTER_SECRET_HEADER,
+  API_TIMEOUT_MS,
+  apiNotFound,
   apiRequest,
+  apiUnavailable,
   clientResponse,
   isAllowedClientRoute,
   isApiPath,
@@ -24,6 +27,45 @@ const ENV: Env = {
 describe('the /api path', () => {
   it.each(['/api', '/api/', '/api/v1/auth/login'])('%s is reserved', (p) => expect(isApiPath(p)).toBe(true));
   it.each(['/apis', '/book', '/', '/api-docs'])('%s is not', (p) => expect(isApiPath(p)).toBe(false));
+});
+
+describe('apiNotFound and apiUnavailable', () => {
+  it('apiNotFound returns 404 with cache-control: no-store', () => {
+    const res = apiNotFound();
+    expect(res.status).toBe(404);
+    expect(res.headers.get('content-type')).toBe('application/json; charset=utf-8');
+    expect(res.headers.get('cache-control')).toBe('no-store');
+  });
+
+  it('apiUnavailable(502) returns 502 with cache-control: no-store', () => {
+    const res = apiUnavailable(502);
+    expect(res.status).toBe(502);
+    expect(res.headers.get('content-type')).toBe('application/json; charset=utf-8');
+    expect(res.headers.get('cache-control')).toBe('no-store');
+  });
+
+  it('apiUnavailable(504) returns 504 with cache-control: no-store', () => {
+    const res = apiUnavailable(504);
+    expect(res.status).toBe(504);
+    expect(res.headers.get('content-type')).toBe('application/json; charset=utf-8');
+    expect(res.headers.get('cache-control')).toBe('no-store');
+  });
+
+  it('apiUnavailable returns correct message for each status', async () => {
+    const res502 = apiUnavailable(502);
+    const body502 = await res502.text();
+    expect(body502).toContain('Service unavailable');
+
+    const res504 = apiUnavailable(504);
+    const body504 = await res504.text();
+    expect(body504).toContain('Gateway timeout');
+  });
+});
+
+describe('API_TIMEOUT_MS constant', () => {
+  it('is 30_000', () => {
+    expect(API_TIMEOUT_MS).toBe(30_000);
+  });
 });
 
 describe('the client route allow-list (spec §6.16)', () => {
@@ -125,8 +167,17 @@ describe('cookies coming back', () => {
     );
   });
 
-  it('leave Path=/ alone, and match attributes case-insensitively', () => {
-    expect(rewriteSetCookie('unclutter_access=a; path=/; domain=api.unclutterdesk.com; HttpOnly')).toBe('unclutter_access=a; path=/; HttpOnly');
+  it('leave Path=/ alone for non-HttpOnly cookies, and match attributes case-insensitively', () => {
+    expect(rewriteSetCookie('unclutter_csrf=x; path=/; domain=api.unclutterdesk.com; Secure; SameSite=None')).toBe(
+      'unclutter_csrf=x; path=/; Secure; SameSite=None',
+    );
+  });
+
+  it('rewrite HttpOnly Path=/ cookies to Path=/api for scope to /api', () => {
+    // HttpOnly cookies need to be scoped to /api so they're sent through the proxy
+    expect(rewriteSetCookie('unclutter_refresh=r; Path=/; HttpOnly; Secure')).toBe(
+      'unclutter_refresh=r; Path=/api; HttpOnly; Secure',
+    );
   });
 
   it('are all rewritten when a response sets several', async () => {
@@ -137,7 +188,7 @@ describe('cookies coming back', () => {
     const out = clientResponse(new Response('{"ok":true}', { status: 201, headers }));
     expect(out.status).toBe(201);
     expect(setCookies(out)).toEqual([
-      'unclutter_access=a; Path=/; HttpOnly',
+      'unclutter_access=a; Path=/api; HttpOnly',
       'unclutter_refresh=r; Path=/api/v1/auth/refresh; HttpOnly',
       'unclutter_csrf=c; Path=/',
     ]);
@@ -188,10 +239,17 @@ describe('the Worker on /api', () => {
     expect(apiCalls()).toEqual([]);
   });
 
-  it('refuses a custom domain that is not ACTIVE (the lookup says it does not exist)', async () => {
-    const res = await call('https://not-active.example/api/v1/auth/login', { method: 'POST' });
-    expect(res.status).toBe(404);
-    expect(apiCalls()).toEqual([]);
+  it('forwards to the API even for a custom domain that is not ACTIVE (the API checks)', async () => {
+    // S2: The router does NOT check ACTIVE status before forwarding /api requests
+    // It relies on the API's own check. This test verifies the forwarding happens.
+    const res = await call('https://not-active.example/api/v1/auth/refresh', { method: 'POST' });
+    // The router forwards to the API without an ACTIVE probe (S2 fix)
+    expect(apiCalls()).toContain(`${API}/v1/auth/refresh`);
+    // Header should be set with the custom domain
+    const sent = fetchMock.mock.calls.find(([r]) => typeof r !== 'string' && r.url.endsWith('/v1/auth/refresh'))![0] as Request;
+    expect(sent.headers.get(PRACTICE_HOST_HEADER)).toBe('not-active.example');
+    // Response is 200 from mock (in real API, would be 404 since domain not ACTIVE)
+    expect(res.status).toBe(200);
   });
 
   it.each(['https://dr-smith.unclutterdesk.com/api/v1/auth/login', 'https://app.unclutterdesk.com/api/v1/auth/login'])(
@@ -208,5 +266,16 @@ describe('the Worker on /api', () => {
     const res = await call('https://dr-smith.unclutterdesk.com/book');
     expect(res.status).toBe(200);
     expect((fetchMock.mock.calls.at(-1)![0] as Request).url).toBe('https://app-unclutterdesk.pages.dev/book');
+  });
+
+  it('returns 502 when the API is unreachable (network error)', async () => {
+    const error = new Error('network down');
+    (error as any).name = 'TypeError';
+    fetchMock.mockRejectedValue(error);
+    const res = await call('https://chente.com/api/v1/auth/status');
+    expect(res.status).toBe(502);
+    expect(res.headers.get('content-type')).toContain('application/json');
+    const body = await res.text();
+    expect(body).toContain('Service unavailable');
   });
 });
