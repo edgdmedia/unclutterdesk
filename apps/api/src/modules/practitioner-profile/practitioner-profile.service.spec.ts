@@ -27,7 +27,7 @@ function setup() {
       deleteMany: vi.fn().mockReturnValue('deleteTaxonomy'),
       createMany: vi.fn().mockReturnValue('createTaxonomy'),
     },
-    consultTherapistProfile: { findFirst: vi.fn() },
+    consultTherapistProfile: { findFirst: vi.fn(), updateMany: vi.fn().mockResolvedValue({ count: 1 }) },
     taxonomyTerm: { findMany: vi.fn().mockResolvedValue([]) },
     $transaction: vi.fn(async (ops: unknown[]) => ops),
   };
@@ -432,6 +432,36 @@ describe('PractitionerProfileService', () => {
       ownProfile(prisma);
       storage.configured.mockReturnValue(false);
       await expect(service.setOwnPhoto(ME, PNG)).rejects.toThrow(/not available yet/);
+    });
+  });
+
+  describe('one place to edit (merged profile page)', () => {
+    it("copies the public profile's fields to every practice record of this person, and nothing else", async () => {
+      const { service, prisma } = setup();
+      ownProfile(prisma, {
+        headline: 'Calm support',
+        credentialsText: 'MSc',
+        selfReportedYears: 6,
+        taxonomy: [
+          { isPrimary: true, term: { kind: 'SPECIALTY', label: 'Grief & loss', sortOrder: 40 } },
+          { isPrimary: false, term: { kind: 'SPECIALTY', label: 'Anxiety', sortOrder: 10 } },
+          { isPrimary: false, term: { kind: 'MODALITY', label: 'Person-centred', sortOrder: 60 } },
+          { isPrimary: false, term: { kind: 'LANGUAGE', label: 'Yoruba', sortOrder: 20 } },
+          { isPrimary: false, term: { kind: 'LANGUAGE', label: 'English', sortOrder: 10 } },
+        ],
+      });
+      await service.updateOwn(ME, { headline: 'Calm support' });
+      expect(prisma.consultTherapistProfile.updateMany).toHaveBeenCalledWith({
+        where: { profile: { userId: ME } },
+        data: {
+          tagline: 'Calm support',
+          credentials: 'MSc',
+          yearsExperience: 6,
+          specialty: 'Grief & loss',
+          modalities: ['Person-centred'],
+          languages: ['English', 'Yoruba'],
+        },
+      });
     });
   });
 });
