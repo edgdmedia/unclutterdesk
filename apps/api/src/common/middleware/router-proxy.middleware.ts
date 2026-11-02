@@ -1,6 +1,7 @@
 import { Injectable, Logger, NestMiddleware } from '@nestjs/common';
 import type { NextFunction, Request, Response } from 'express';
-import { timingSafeEqual } from 'crypto';
+import { safeEqual } from '../timing-safe';
+import { normalizeHost } from '../normalize-host';
 
 /**
  * Requests that came through the client API proxy on a practice custom
@@ -22,12 +23,8 @@ export interface RouterProxyRequest extends Request {
   routerProxy?: RouterProxied;
 }
 
-function secretMatches(sent: unknown, expected: string): boolean {
-  if (typeof sent !== 'string' || sent.length === 0) return false;
-  const a = Buffer.from(sent, 'utf8');
-  const b = Buffer.from(expected, 'utf8');
-  if (a.length !== b.length) return false;
-  return timingSafeEqual(a, b);
+export function secretMatches(sent: unknown, expected: string): boolean {
+  return safeEqual(sent, expected);
 }
 
 /** A plain IPv4 or IPv6 address, nothing else (it ends up as a rate-limit key). */
@@ -43,6 +40,9 @@ function cleanIp(raw: unknown): string | null {
  * so without the secret, or with a wrong one, the request is simply an
  * ordinary direct request: the headers are ignored, not rejected. Either way
  * they are removed, so nothing further down reads them unchecked.
+ *
+ * Log at debug level for secret mismatches to avoid log flooding from direct
+ * callers who send the header without understanding it needs the secret.
  */
 @Injectable()
 export class RouterProxyMiddleware implements NestMiddleware {
@@ -54,9 +54,21 @@ export class RouterProxyMiddleware implements NestMiddleware {
     const host = req.headers[PRACTICE_HOST_HEADER];
 
     if (secret && secretMatches(sent, secret) && typeof host === 'string' && host.trim()) {
-      req.routerProxy = { practiceHost: host.trim().toLowerCase(), clientIp: cleanIp(req.headers[CLIENT_IP_HEADER]) };
+      req.routerProxy = { practiceHost: normalizeHost(host.trim()), clientIp: cleanIp(req.headers[CLIENT_IP_HEADER]) };
     } else if (sent !== undefined) {
-      this.logger.warn(`Ignored router proxy headers on ${req.method} ${req.path}: secret ${secret ? 'did not match' : 'is not configured'}`);
+      // Log at debug level: anyone can set the header, so warn only for actual bugs
+      // The message differs based on what's missing or wrong
+      if (!secret) {
+        this.logger.warn(`Ignored router proxy headers: ROUTER_PROXY_SECRET is not configured`);
+      } else if (!secretMatches(sent, secret)) {
+        this.logger.debug(`Router proxy secret did not match`);
+      } else if (typeof host !== 'string' || !host.trim()) {
+        // Secret matched but host is blank - this is a router bug
+        this.logger.warn(`Practice host header missing or empty`);
+      } else {
+        // Secret didn't match, but we already handled that above
+        this.logger.debug(`Router proxy request ignored`);
+      }
     }
 
     delete req.headers[ROUTER_SECRET_HEADER];

@@ -1,6 +1,7 @@
 import { Injectable, NestMiddleware, NotFoundException } from '@nestjs/common';
 import { Request, Response, NextFunction } from 'express';
 import { PrismaService } from '../prisma/prisma.service';
+import { normalizeHost } from '../normalize-host';
 import type { RouterProxied } from './router-proxy.middleware';
 
 export interface TenantRequest extends Request {
@@ -8,11 +9,6 @@ export interface TenantRequest extends Request {
   tenantId?: bigint;
   /** Set by RouterProxyMiddleware for requests proxied from a practice custom domain. */
   routerProxy?: RouterProxied;
-}
-
-function normalizeHost(hostname: string): string {
-  const lower = hostname.toLowerCase();
-  return lower.endsWith('.') ? lower.slice(0, -1) : lower;
 }
 
 @Injectable()

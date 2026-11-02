@@ -1,5 +1,6 @@
-import { describe, expect, it, vi, afterEach } from 'vitest';
+import { describe, expect, it, vi, afterEach, beforeEach } from 'vitest';
 import type { NextFunction, Response } from 'express';
+import { Logger } from '@nestjs/common';
 import {
   CLIENT_IP_HEADER,
   PRACTICE_HOST_HEADER,
@@ -32,10 +33,20 @@ const fromRouter = (over: Record<string, string> = {}) => ({
 });
 
 describe('router proxy headers (spec §6.16)', () => {
+  beforeEach(() => {
+    vi.spyOn(Logger.prototype, 'debug').mockImplementation(() => {});
+    vi.spyOn(Logger.prototype, 'warn').mockImplementation(() => {});
+  });
+
   it('are trusted when the secret matches', () => {
     const req = run(fromRouter());
     expect(req.routerProxy).toEqual({ practiceHost: 'chente.com', clientIp: '102.89.1.2' });
     expect(clientIpOf(req)).toBe('102.89.1.2');
+  });
+
+  it('normalises the practice host: lowercases and strips trailing dot', () => {
+    const req = run(fromRouter({ [PRACTICE_HOST_HEADER]: 'Chente.com.' }));
+    expect(req.routerProxy).toEqual({ practiceHost: 'chente.com', clientIp: '102.89.1.2' });
   });
 
   it.each([
@@ -64,5 +75,22 @@ describe('router proxy headers (spec §6.16)', () => {
     const req = run(fromRouter({ [CLIENT_IP_HEADER]: '1.2.3.4, evil' }));
     expect(req.routerProxy?.clientIp).toBeNull();
     expect(clientIpOf(req)).toBe('10.0.0.9');
+  });
+
+  it('logs a wrong secret at debug level, not warn', () => {
+    const debugSpy = vi.spyOn(Logger.prototype, 'debug');
+    const warnSpy = vi.spyOn(Logger.prototype, 'warn');
+    run(fromRouter({ [ROUTER_SECRET_HEADER]: 'guess' }));
+    expect(debugSpy).toHaveBeenCalled();
+    expect(warnSpy).not.toHaveBeenCalled();
+  });
+
+  it('logs a correct secret with blank practice header at warn level', () => {
+    // Set up secret first
+    process.env.ROUTER_PROXY_SECRET = 'router-secret';
+    // When secret matches but host is empty
+    const warnSpy = vi.spyOn(Logger.prototype, 'warn');
+    run(fromRouter({ [PRACTICE_HOST_HEADER]: '' }));
+    expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining('Practice host header missing'));
   });
 });
