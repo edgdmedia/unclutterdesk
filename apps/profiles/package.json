@@ -9,7 +9,7 @@
     "build": "astro build",
     "preview": "astro preview",
     "test": "vitest run",
-    "typecheck": "wrangler types && astro sync && tsc --noEmit"
+    "typecheck": "wrangler types && tsc --noEmit"
   },
   "devDependencies": {
     "typescript": "^5.9.3",
