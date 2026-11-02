@@ -14,6 +14,9 @@ const LIST = JSON.parse(
   readFileSync(resolve(__dirname, '../../../tenant-router/src/client-api-routes.json'), 'utf8'),
 ).routes as string[];
 const NEVER_PROXIED: string[] = [
+  // Public-profile site reads (§6.11): called server-side by apps/profiles, never from a practice domain
+  'GET /v1/profiles/sitemap',
+  'GET /v1/profiles/:handle',
   // Staff invite check endpoint that runs before a session exists
   'GET /v1/invites/check/:code',
   // Calendar integration OAuth callback
@@ -34,8 +37,6 @@ const NEVER_PROXIED: string[] = [
   'POST /v1/auth/register',
   // Invite claim endpoint (auth flow, not client booking)
   'POST /v1/auth/invite/claim',
-  // Tenant registration endpoint (practice admin flow)
-  'POST /v1/tenant/register',
 ];
 const ROUTES = allRoutes();
 const byTarget = new Map(ROUTES.map((r) => [r.target, r]));

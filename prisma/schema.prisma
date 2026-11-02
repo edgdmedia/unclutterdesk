@@ -11,12 +11,12 @@ datasource db {
 // ── Multi-Tenant Core ────────────────────────────────────────────────────────
 
 model Tenant {
-  id                 BigInt  @id @default(autoincrement())
-  name               String  @db.VarChar(100)
-  slug               String  @unique @db.VarChar(50) // e.g., "dr-jane" -> dr-jane.<TENANT_ROOT_DOMAIN>
-  customDomain       String? @unique @db.VarChar(100) // e.g., "booking.drjanetherapy.com"
-  customDomainStatus String  @default("PENDING") @db.VarChar(20) // "PENDING", "ACTIVE", "FAILED"
-  customHostnameId   String? @db.VarChar(60) // Cloudflare for SaaS custom hostname object id
+  id                  BigInt  @id @default(autoincrement())
+  name                String  @db.VarChar(100)
+  slug                String  @unique @db.VarChar(50) // e.g., "dr-jane" -> dr-jane.<TENANT_ROOT_DOMAIN>
+  customDomain        String? @unique @db.VarChar(100) // e.g., "booking.drjanetherapy.com"
+  customDomainStatus  String  @default("PENDING") @db.VarChar(20) // "PENDING", "ACTIVE", "FAILED"
+  customHostnameId    String? @db.VarChar(60) // Cloudflare for SaaS custom hostname object id
   customHostnameError String? // last human-readable provisioning failure, shown in Settings
 
   // White-Label Brand Tokens
@@ -95,8 +95,15 @@ model Tenant {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  profiles                Profile[]
-  therapists              ConsultTherapistProfile[]
+  profiles           Profile[]
+  therapists         ConsultTherapistProfile[]
+  practitionerPlaces PractitionerPlace[]
+
+  /// v2 §6.8: how the owner arrived. PROFILE = profile-first signup.
+  onboardingIntent        OnboardingIntent          @default(PRACTICE)
+  /// v2 §6.16: what a solo practice shows at `/`. Set once at the owner's first
+  /// publish, then only by the therapist. Null until then.
+  homePage                PracticeHomePage?
   notifications           Notification[]
   notificationDispatches  NotificationDispatch[]
   notificationPreferences NotificationPreference[]
@@ -149,13 +156,13 @@ model InviteCode {
 
 /// One email of an invite code to someone, so admins can see who was invited and resend.
 model InviteSend {
-  id           BigInt     @id @default(autoincrement())
+  id           BigInt   @id @default(autoincrement())
   inviteCodeId BigInt
   email        String
   message      String? // the admin's personal note, shown in the email
   delivered    Boolean // false: the mail provider refused it
   sentById     BigInt?
-  createdAt    DateTime   @default(now())
+  createdAt    DateTime @default(now())
 
   inviteCode InviteCode @relation(fields: [inviteCodeId], references: [id], onDelete: Cascade)
   sentBy     User?      @relation(fields: [sentById], references: [id], onDelete: SetNull)
@@ -178,10 +185,11 @@ model User {
   createdAt           DateTime  @default(now())
   updatedAt           DateTime  @updatedAt
 
-  platformRole String? // "SUPER_ADMIN", "ADMIN" — platform-level staff, no tenant context
-  profiles     Profile[]
-  tokens       Token[]
-  inviteSends  InviteSend[]
+  platformRole        String? // "SUPER_ADMIN", "ADMIN" — platform-level staff, no tenant context
+  profiles            Profile[]
+  tokens              Token[]
+  practitionerProfile PractitionerProfile?
+  inviteSends         InviteSend[]
 }
 
 model Token {
@@ -206,28 +214,28 @@ model Token {
 }
 
 model Profile {
-  id              BigInt    @id @default(autoincrement())
-  tenantId        BigInt
-  userId          BigInt?
-  username        String
-  email           String
-  type            String    @default("user") // "user", "therapist", "admin"
-  role            String    @default("CLIENT") // "OWNER", "ADMIN", "RECEPTIONIST", "THERAPIST", "CLIENT"
-  permissions     String[]  @default([])
-  status          String    @default("active") // "active", "inactive", "pending"
-  firstName       String?
-  lastName        String?
-  phone           String?
-  gender          String?
-  dateOfBirth     DateTime?
+  id          BigInt    @id @default(autoincrement())
+  tenantId    BigInt
+  userId      BigInt?
+  username    String
+  email       String
+  type        String    @default("user") // "user", "therapist", "admin"
+  role        String    @default("CLIENT") // "OWNER", "ADMIN", "RECEPTIONIST", "THERAPIST", "CLIENT"
+  permissions String[]  @default([])
+  status      String    @default("active") // "active", "inactive", "pending"
+  firstName   String?
+  lastName    String?
+  phone       String?
+  gender      String?
+  dateOfBirth DateTime?
 
   // Who to call in a crisis. Seen by clinical staff only.
-  emergencyContactName         String? @db.VarChar(120)
-  emergencyContactRelationship String? @db.VarChar(60)
-  emergencyContactPhone        String? @db.VarChar(40)
-  avatarUrl       String?
-  emailVerified   Boolean   @default(false)
-  emailVerifiedAt DateTime?
+  emergencyContactName         String?   @db.VarChar(120)
+  emergencyContactRelationship String?   @db.VarChar(60)
+  emergencyContactPhone        String?   @db.VarChar(40)
+  avatarUrl                    String?
+  emailVerified                Boolean   @default(false)
+  emailVerifiedAt              DateTime?
 
   // ONB-06: when this person took the dashboard walkthrough. Once, any device.
   tourCompletedAt DateTime?
@@ -281,11 +289,11 @@ model ConsultTherapistProfile {
   bookingEmail          String?
   notificationEmail     String?
   welcomeMessage        String?
-  tagline               String?
+  tagline               String? /// deprecated v2: PractitionerProfile.headline
   specialty             String?
   modalities            String[] @default([])
-  credentials           String?
-  yearsExperience       Int?
+  credentials           String? /// deprecated v2: PractitionerProfile.credentialsText
+  yearsExperience       Int? /// deprecated v2: PractitionerProfile.selfReportedYears
   languages             String[] @default([])
   isPublic              Boolean  @default(true)
   acceptsGeneralBooking Boolean  @default(true)
@@ -294,20 +302,24 @@ model ConsultTherapistProfile {
   googleRefreshToken    String?
   isVerified            Boolean  @default(true)
   /// SET-06: what this therapist sees clients as. Both false is not allowed.
-  offersOnline         Boolean  @default(true)
-  offersInPerson       Boolean  @default(false)
+  offersOnline          Boolean  @default(true)
+  offersInPerson        Boolean  @default(false)
   /// The repeating week is stored as TherapistWeeklyTime rows; these two drive
   /// how session times are laid out inside working hours.
-  sessionLengthMinutes Int      @default(50)
-  gapMinutes           Int      @default(10)
+  sessionLengthMinutes  Int      @default(50)
+  /// v2 §6.9: the practice's consent to appear as a place on this therapist's
+  /// public profile.
+  allowProfileBooking   Boolean  @default(true)
+  gapMinutes            Int      @default(10)
   createdAt             DateTime @default(now())
   updatedAt             DateTime @updatedAt
 
-  tenant         Tenant                @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  profile        Profile               @relation(fields: [profileId], references: [id], onDelete: Cascade)
-  availabilities ConsultAvailability[]
-  workLocations  TherapistLocation[]
-  weeklyTimes    TherapistWeeklyTime[]
+  tenant             Tenant                @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  profile            Profile               @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  availabilities     ConsultAvailability[]
+  workLocations      TherapistLocation[]
+  weeklyTimes        TherapistWeeklyTime[]
+  practitionerPlaces PractitionerPlace[]
 
   @@unique([tenantId, profileId])
   @@unique([tenantId, publicUsername])
@@ -327,7 +339,7 @@ model ConsultService {
   createdAt       DateTime  @default(now())
   updatedAt       DateTime?
 
-  tenant         Tenant                @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  tenant         Tenant                 @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   availabilities ConsultAvailability[]
   bookings       ConsultBooking[]
   formats        ConsultServiceFormat[]
@@ -936,4 +948,217 @@ model PractitionerHoursTarget {
   tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 
   @@unique([tenantId, practitionerProfileId])
+}
+
+// ── v2 Phase 1: therapist profiles (spec §6.1) ─────────────────────────────
+// Global, not tenant-scoped: a profile belongs to a person, who may practise
+// at several practices (PractitionerPlace). Only the owner and platform
+// admins read a draft or write (practitioner-profile.access.spec.ts).
+
+enum OnboardingIntent {
+  PROFILE
+  PRACTICE
+}
+
+enum PracticeHomePage {
+  PROFILE
+  PRACTICE
+}
+
+enum PractitionerProfileStatus {
+  DRAFT
+  PUBLISHED
+  HIDDEN
+  SUSPENDED
+}
+
+enum PractitionerKind {
+  COUNSELLOR
+  PSYCHOTHERAPIST
+  PSYCHOLOGIST
+  PSYCHIATRIST
+  SOCIAL_WORKER
+  TRAINEE
+}
+
+enum TaxonomyKind {
+  SPECIALTY
+  MODALITY
+  POPULATION
+  LANGUAGE
+}
+
+enum BookingMode {
+  NONE
+  DESK
+  EXTERNAL
+}
+
+model PractitionerProfile {
+  id                        BigInt                    @id @default(autoincrement())
+  userId                    BigInt                    @unique
+  handle                    String                    @unique @db.VarChar(30) // §6.2 rules, practitioner-profile/handles.ts
+  status                    PractitionerProfileStatus @default(DRAFT)
+  kind                      PractitionerKind
+  templateKey               String? // template used to start (§6.6)
+  themeKey                  String                    @default("calm") // §6.5
+  displayName               String
+  pronouns                  String?
+  photoKey                  String? // R2 object key (§4.4)
+  previewImageKey           String? // R2 key of the generated OG image (§6.3)
+  headline                  String?                   @db.VarChar(120)
+  about                     String?                   @db.VarChar(2000) // plain text
+  approach                  String?                   @db.VarChar(1500) // plain text
+  introVideoKey             String? // R2 key; profile-entitlement-gated
+  credentialsText           String? // as the therapist states them
+  city                      String?
+  countryCode               String                    @default("NG") @db.Char(2) // ISO 3166-1 alpha-2
+  offersOnline              Boolean                   @default(true)
+  offersInPerson            Boolean                   @default(false)
+  acceptingClients          Boolean                   @default(true)
+  faithIntegration          String?
+  supervisedBy              String? // shown for trainees, optional
+  showPlatformExperience    Boolean                   @default(false) // D12 opt-in
+  selfReportedYears         Int?
+  selfReportedClientsBucket String? // e.g. "50-100"
+  feeRangeText              String? // used when booking mode isn't DESK
+  bookingMode               BookingMode               @default(NONE)
+  externalBookingUrl        String? // EXTERNAL mode: https only
+  contactEmailPublic        String? // shown only if set
+  socialLinks               Json? // { instagram, linkedin, website, ... } https only
+  completenessScore         Int                       @default(0) // 0–100, computed
+  publishedAt               DateTime?
+  lastActiveAt              DateTime?
+  createdAt                 DateTime                  @default(now())
+  updatedAt                 DateTime                  @updatedAt
+
+  user          User                        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  places        PractitionerPlace[]
+  taxonomy      PractitionerTaxonomy[]
+  timeline      PractitionerTimelineEntry[]
+  handleHistory PractitionerHandleHistory[]
+
+  @@index([status, countryCode])
+}
+
+model TaxonomyTerm {
+  id        BigInt       @id @default(autoincrement())
+  kind      TaxonomyKind
+  key       String // stable slug, e.g. "grief", "cbt", "yoruba"
+  label     String
+  isActive  Boolean      @default(true)
+  sortOrder Int          @default(0)
+
+  profiles PractitionerTaxonomy[]
+
+  @@unique([kind, key])
+}
+
+model PractitionerTaxonomy {
+  profileId BigInt
+  termId    BigInt
+  isPrimary Boolean @default(false) // up to 3 primary specialties
+
+  profile PractitionerProfile @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  term    TaxonomyTerm        @relation(fields: [termId], references: [id])
+
+  @@id([profileId, termId])
+  @@index([termId])
+}
+
+/// Training & journey.
+model PractitionerTimelineEntry {
+  id           BigInt  @id @default(autoincrement())
+  profileId    BigInt
+  type         String // EDUCATION | TRAINING | PRACTICE | SUPERVISION | MEMBERSHIP | MILESTONE
+  title        String
+  organisation String?
+  startYear    Int?
+  endYear      Int? // null = ongoing
+  description  String?
+  sortOrder    Int     @default(0)
+
+  profile PractitionerProfile @relation(fields: [profileId], references: [id], onDelete: Cascade)
+
+  @@index([profileId])
+}
+
+/// Old handles 301 to the current one, forever.
+model PractitionerHandleHistory {
+  handle    String   @id @db.VarChar(30)
+  profileId BigInt
+  changedAt DateTime @default(now())
+
+  profile PractitionerProfile @relation(fields: [profileId], references: [id], onDelete: Cascade)
+
+  @@index([profileId])
+}
+
+/// "Where I practise": one row per practice this person can be booked at (§6.1, §6.9).
+model PractitionerPlace {
+  id                 BigInt   @id @default(autoincrement())
+  profileId          BigInt
+  tenantId           BigInt // the practice
+  therapistProfileId BigInt // -> ConsultTherapistProfile.profileId in that practice
+  isMain             Boolean  @default(false) // exactly one main place when any exist
+  sortOrder          Int      @default(0)
+  createdAt          DateTime @default(now())
+
+  profile          PractitionerProfile     @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  tenant           Tenant                  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  therapistProfile ConsultTherapistProfile @relation(fields: [therapistProfileId], references: [profileId], onDelete: Cascade)
+
+  @@unique([profileId, therapistProfileId])
+  @@index([tenantId])
+}
+
+/// Admin-editable starting content (§6.6).
+model ProfileTemplate {
+  key         String            @id // e.g. "private-practice-counsellor"
+  title       String
+  description String
+  kind        PractitionerKind?
+  sections    Json // per-section prompts, example text, suggested taxonomy keys
+  isActive    Boolean           @default(true)
+  sortOrder   Int               @default(0)
+  updatedAt   DateTime          @updatedAt
+}
+
+// ── v2 Phase 1: shared infrastructure (spec §4.4) ──────────────────────────
+
+/// Work done later, with retries: cache purges, preview images, photo copies.
+/// Run by the jobs module on the existing 5-minute schedule.
+model BackgroundJob {
+  id          BigInt    @id @default(autoincrement())
+  type        String    @db.VarChar(60)
+  payloadJson Json
+  runAfter    DateTime  @default(now())
+  attempts    Int       @default(0)
+  lastError   String?
+  /// One live job per key: enqueueing again while one is pending is a no-op.
+  dedupeKey   String?   @db.VarChar(200)
+  /// Set while a run holds the job, so two API processes never run it twice.
+  lockedUntil DateTime?
+  completedAt DateTime?
+  /// Gave up after the last attempt; kept for the admin to see.
+  failedAt    DateTime?
+  createdAt   DateTime  @default(now())
+
+  @@index([completedAt, failedAt, runAfter])
+  @@index([dedupeKey])
+}
+
+/// Every platform-admin action (spec §4.4). Append-only.
+model AdminAuditLog {
+  id          BigInt   @id @default(autoincrement())
+  actorUserId BigInt
+  action      String   @db.VarChar(80)
+  targetType  String   @db.VarChar(60)
+  targetId    String   @db.VarChar(80)
+  reason      String?
+  metaJson    Json?
+  createdAt   DateTime @default(now())
+
+  @@index([targetType, targetId])
+  @@index([actorUserId, createdAt])
 }

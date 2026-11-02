@@ -27,6 +27,13 @@ const DEFAULT_API_ORIGIN = 'https://api.unclutterdesk.com';
 /** Public profile pages (spec §4.1). PROFILE_PUBLIC_URL, default https://profiles.unclutterdesk.com. */
 export const PROFILE_PUBLIC_ORIGIN = trimSlash(setting('PROFILE_PUBLIC_URL') ?? 'https://profiles.unclutterdesk.com');
 
+/**
+ * Where public R2 files are served (R2_PUBLIC_URL, the public bucket's custom
+ * domain, e.g. media.<marketing domain>). No default: until it is set, nothing
+ * is uploaded to the public bucket.
+ */
+export const MEDIA_ORIGIN = setting('R2_PUBLIC_URL') ? trimSlash(setting('R2_PUBLIC_URL')!) : null;
+
 /** Platform mail goes from MAIL_FROM (or SMTP_FROM); this is the address when neither is set. */
 export const FALLBACK_SENDER_ADDRESS = `no-reply@${TENANT_ROOT_DOMAIN}`;
 
@@ -97,11 +104,22 @@ export function tenantWebOrigin(
   return `https://${tenant.slug}.${TENANT_ROOT_DOMAIN}`;
 }
 
+/**
+ * The public-profile site (spec §4.3): it shows text therapists write, so it
+ * is never trusted the way the platform is. No credentialed CORS, no CSRF
+ * pass with a session, and never a redirect target. It may sit under the
+ * tenant root today (profiles.<root>), so this check comes first.
+ */
+export function isProfilesOrigin(candidate: string): boolean {
+  return candidate.toLowerCase().replace(/\/+$/, '') === PROFILE_PUBLIC_ORIGIN.toLowerCase();
+}
+
 export function isPlatformOrigin(
   candidate: string,
   isProduction = process.env.NODE_ENV === 'production',
 ): boolean {
   const origin = candidate.toLowerCase();
+  if (isProfilesOrigin(origin)) return false;
   if (ROOT_ORIGINS.includes(origin) || TENANT_SUBDOMAIN.test(origin)) return true;
   if (!isProduction && (LOCAL_ORIGIN.test(origin) || PAGES_PREVIEW_ORIGIN.test(origin))) return true;
   return false;

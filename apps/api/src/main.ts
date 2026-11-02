@@ -15,7 +15,7 @@ import helmet from 'helmet';
 import { NestExpressApplication } from '@nestjs/platform-express';
 import { AppModule } from './app.module';
 import { PrismaService } from './common/prisma/prisma.service';
-import { createCorsOriginHandler } from './common/cors';
+import { createCorsOptionsDelegate } from './common/cors';
 import { AllExceptionsFilter } from './common/all-exceptions.filter';
 
 // Global BigInt JSON serialization fallback (prevents "Do not know how to serialize a BigInt" error)
@@ -51,16 +51,9 @@ async function bootstrap() {
     }),
   );
 
-  app.enableCors({
-    origin: createCorsOriginHandler(app.get(PrismaService), {
-      isProduction,
-      configuredOrigins,
-    }),
-    credentials: true,
-    methods: ['GET', 'HEAD', 'PUT', 'PATCH', 'POST', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization', 'X-CSRF-Token', 'X-Tenant-Slug'],
-    optionsSuccessStatus: 204,
-  });
+  // Per request: credentialed for the platform's origins, credential-free for
+  // the public-profile site's two public routes, nothing else for it (§4.3).
+  app.enableCors(createCorsOptionsDelegate(app.get(PrismaService), { isProduction, configuredOrigins }) as never);
 
   app.useGlobalFilters(new AllExceptionsFilter());
 

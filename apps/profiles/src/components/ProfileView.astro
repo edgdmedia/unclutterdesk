@@ -1,0 +1,126 @@
+---
+/*
+ * One profile, in §6.4's section order. Everything a therapist wrote is
+ * rendered as text (Astro escapes it); line breaks come from CSS. There is no
+ * set:html, no Markdown and no client script here (§4.3 #4), and every link
+ * is checked to be https before it becomes an href.
+ */
+import type { ProfilesConfig } from '../lib/config';
+import { KIND_TITLES, type PublicProfile } from '../lib/profiles';
+import { safeHttpsUrl } from '../lib/security';
+
+interface Props {
+  profile: PublicProfile;
+  config: ProfilesConfig;
+}
+const { profile: p, config } = Astro.props;
+
+const countryName = (() => {
+  try {
+    return new Intl.DisplayNames(['en'], { type: 'region' }).of(p.countryCode) ?? p.countryCode;
+  } catch {
+    return p.countryCode;
+  }
+})();
+const where = [p.city, countryName].filter(Boolean).join(', ');
+const modes = [p.offersOnline && 'Online', p.offersInPerson && 'In person'].filter(Boolean).join(' · ');
+const bookUrl = p.bookingMode === 'EXTERNAL' ? safeHttpsUrl(p.externalBookingUrl) : null;
+const social = Object.entries(p.socialLinks)
+  .map(([k, v]) => [k, safeHttpsUrl(v)] as const)
+  .filter(([, v]) => v);
+const socialLabel: Record<string, string> = { website: 'Website', instagram: 'Instagram', linkedin: 'LinkedIn', facebook: 'Facebook', x: 'X', tiktok: 'TikTok', youtube: 'YouTube' };
+const photo = p.photoUrl && config.mediaOrigin && p.photoUrl.startsWith(config.mediaOrigin + '/') ? p.photoUrl : null;
+const signup = `${config.appOrigin}/signup?intent=profile&ref=profile&handle=${encodeURIComponent(p.handle)}`;
+const years = (y: { startYear: number | null; endYear: number | null }) =>
+  y.startYear ? `${y.startYear}–${y.endYear ?? 'present'}` : y.endYear ? String(y.endYear) : '';
+---
+<main id="main" class="wrap">
+  <header class="hero">
+    {photo && <img class="photo" src={photo} alt={`Photo of ${p.displayName}`} width="120" height="120" />}
+    <div>
+      <h1>{p.displayName}{p.pronouns && <span class="muted"> ({p.pronouns})</span>}</h1>
+      <p class="kind">{KIND_TITLES[p.kind] ?? 'Therapist'}</p>
+      {p.headline && <p class="headline">{p.headline}</p>}
+      {(where || modes) && <p class="meta">{[where, modes].filter(Boolean).join(' · ')}</p>}
+      {p.supervisedBy && <p class="badge">Practising under supervision</p>}
+      {!p.acceptingClients && <p class="badge">Not taking new clients at the moment</p>}
+      <div class="actions">
+        {bookUrl && <a class="btn" href={bookUrl} rel="noopener nofollow">Book a session</a>}
+        {!bookUrl && p.contactEmail && <a class="btn" href={`mailto:${p.contactEmail}`}>Get in touch</a>}
+      </div>
+    </div>
+  </header>
+
+  {p.about && (
+    <section aria-labelledby="about"><h2 id="about">About</h2><p class="text">{p.about}</p></section>
+  )}
+
+  {(p.credentialsText || p.timeline.length > 0) && (
+    <section aria-labelledby="qualifications">
+      <h2 id="qualifications">Qualifications & training</h2>
+      {p.credentialsText && <p class="text">{p.credentialsText}</p>}
+      {p.supervisedBy && <p class="text muted">Supervised by {p.supervisedBy}</p>}
+      {p.timeline.length > 0 && (
+        <ul class="timeline">
+          {p.timeline.map((e) => (
+            <li><strong>{e.title}</strong>{e.organisation && <span>, {e.organisation}</span>}{years(e) && <span class="muted"> · {years(e)}</span>}{e.description && <p class="text muted">{e.description}</p>}</li>
+          ))}
+        </ul>
+      )}
+    </section>
+  )}
+
+  {p.specialties.length > 0 && (
+    <section aria-labelledby="specialties">
+      <h2 id="specialties">Specialties</h2>
+      <ul class="chips">{p.specialties.map((t) => <li class={t.primary ? 'primary' : undefined}>{t.label}</li>)}</ul>
+    </section>
+  )}
+
+  {(p.approach || p.modalities.length > 0) && (
+    <section aria-labelledby="approach">
+      <h2 id="approach">Approach</h2>
+      {p.approach && <p class="text">{p.approach}</p>}
+      {p.modalities.length > 0 && <ul class="chips">{p.modalities.map((t) => <li>{t.label}</li>)}</ul>}
+    </section>
+  )}
+
+  {(p.populations.length > 0 || p.faithIntegration) && (
+    <section aria-labelledby="who">
+      <h2 id="who">Who I work with</h2>
+      {p.populations.length > 0 && <ul class="chips">{p.populations.map((t) => <li>{t.label}</li>)}</ul>}
+      {p.faithIntegration && <p class="text">{p.faithIntegration}</p>}
+    </section>
+  )}
+
+  {p.languages.length > 0 && (
+    <section aria-labelledby="languages">
+      <h2 id="languages">Languages</h2>
+      <ul class="chips">{p.languages.map((t) => <li>{t.label}</li>)}</ul>
+    </section>
+  )}
+
+  {p.yearsInPractice !== null && (
+    <section aria-labelledby="experience"><h2 id="experience">Experience</h2><p class="text">{`${p.yearsInPractice} ${p.yearsInPractice === 1 ? 'year' : 'years'} in practice`}</p></section>
+  )}
+
+  {p.feeRangeText && (
+    <section aria-labelledby="fees"><h2 id="fees">Sessions & fees</h2><p class="text">{p.feeRangeText}</p></section>
+  )}
+
+  {(p.contactEmail || social.length > 0) && (
+    <section aria-labelledby="contact">
+      <h2 id="contact">Contact</h2>
+      <ul class="chips">
+        {p.contactEmail && <li><a href={`mailto:${p.contactEmail}`}>{p.contactEmail}</a></li>}
+        {social.map(([k, v]) => <li><a href={v!} rel="noopener nofollow me">{socialLabel[k] ?? k}</a></li>)}
+      </ul>
+    </section>
+  )}
+
+  <footer>
+    <a href={signup}>Create your free therapist profile</a>
+    <a href={`${config.marketingOrigin}/terms`}>Terms</a>
+    <a href={`${config.marketingOrigin}/privacy`}>Privacy</a>
+  </footer>
+</main>

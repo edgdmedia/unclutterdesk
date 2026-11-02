@@ -85,3 +85,10 @@ describe('TenantService refuses reserved slugs', () => {
     expect(await service.checkSlugAvailability('dr-jane')).toMatchObject({ available: true });
   });
 });
+
+describe('v2 profile-site names (§6.2)', () => {
+  test.each(['profiles', 'directory'])('reserves %s as a practice slug', async (slug) => {
+    const { isReservedSlug } = await import('./reserved-slugs');
+    expect(isReservedSlug(slug)).toBe(true);
+  });
+});

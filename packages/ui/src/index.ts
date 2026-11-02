@@ -37,3 +37,4 @@ export * from './layout/AppShell';
 export * from './data/sort';
 export * from './data/ResponsiveTable';
 export * from './brand/tenantBrandStyle';
+export * from './brand/profileThemes';
