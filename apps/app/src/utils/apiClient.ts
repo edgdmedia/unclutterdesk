@@ -47,7 +47,7 @@ export const API_BASE =
 
 const RESERVED_SUBDOMAINS = new Set([
   'www', 'app', 'os', 'admin', 'api', 'book', 'mail', 'docs', 'help', 'blog',
-  'status', 'support', 'cdn', 'assets', 'static', 'dev', 'staging', 'test', 'demo', 'ns1', 'ns2'
+  'status', 'support', 'cdn', 'assets', 'static', 'dev', 'staging', 'test', 'demo', 'ns1', 'ns2', 'profiles', 'directory'
 ]);
 
 /**
