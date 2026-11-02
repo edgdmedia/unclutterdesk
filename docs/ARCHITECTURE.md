@@ -48,6 +48,15 @@ Notification dispatch goes through the `NotificationDispatch` table.
   `TenantMiddleware` resolves it (slug, then ACTIVE custom domain, then `Host`).
 - Signed-in requests take the tenant from the JWT via `authenticatedTenantId(req)`,
   never from the header.
+- **Custom domains** (Pro): the tenant router serves the client-facing API at
+  `{customDomain}/api` so sign-in cookies are first-party there (spec §6.16).
+  Only allow-listed client routes are forwarded
+  (`apps/tenant-router/src/client-api-routes.json`); the router names the
+  practice and visitor IP in its own headers, which the API trusts only with
+  `ROUTER_PROXY_SECRET` (`common/middleware/router-proxy.middleware.ts`), and
+  rewrites `Set-Cookie` (no `Domain`, `Path=/api/v1/...`). The app picks
+  `{host}/api` on custom domains and the API origin elsewhere
+  (`apps/app/src/utils/apiClient.ts`).
 
 ## 4. Auth and permissions
 

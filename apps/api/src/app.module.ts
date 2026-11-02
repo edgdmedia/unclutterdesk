@@ -1,6 +1,8 @@
 import { Module, NestModule, MiddlewareConsumer, RequestMethod } from '@nestjs/common';
 import { APP_GUARD } from '@nestjs/core';
-import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
+import { ThrottlerModule } from '@nestjs/throttler';
+import { ProxyAwareThrottlerGuard } from './common/proxy-aware-throttler.guard';
+import { RouterProxyMiddleware } from './common/middleware/router-proxy.middleware';
 import { SentryModule } from '@sentry/nestjs/setup';
 import { PrismaService } from './common/prisma/prisma.service';
 import { HealthController } from './common/health.controller';
@@ -64,14 +66,16 @@ import { EntitlementsModule } from './modules/entitlements/entitlements.module';
     PrismaService,
     {
       provide: APP_GUARD,
-      useClass: ThrottlerGuard,
+      useClass: ProxyAwareThrottlerGuard,
     },
   ],
 })
 export class AppModule implements NestModule {
   configure(consumer: MiddlewareConsumer) {
     consumer
-      .apply(TenantMiddleware)
+      // Router proxy first: it decides whether the router's headers are
+      // trusted, and removes them, before the tenant is resolved.
+      .apply(RouterProxyMiddleware, TenantMiddleware)
       // /health must not depend on a tenant lookup: the middleware queries the
       // database, so leaving it in would make the probe fail in the middleware
       // and report 500 instead of the controller's 503.

@@ -11,6 +11,7 @@ import {
   UseGuards,
   UnauthorizedException,
 } from '@nestjs/common';
+import { clientIpOf } from '../../common/middleware/router-proxy.middleware';
 import { Throttle } from '@nestjs/throttler';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { Response } from 'express';
@@ -297,11 +298,12 @@ export class AuthController {
  *
  * Both values are shown back to the account owner so they can recognise their
  * own devices; neither is trusted for anything else. `req.ip` is meaningful
- * because main.ts sets `trust proxy`.
+ * because main.ts sets `trust proxy`; on requests proxied from a custom domain
+ * it's the router's, so the forwarded visitor IP is used instead.
  */
 function deviceOf(req: TenantRequest): DeviceInfo {
   return {
     userAgent: req.headers?.['user-agent'] ?? null,
-    ipAddress: req.ip ?? null,
+    ipAddress: clientIpOf(req) ?? null,
   };
 }

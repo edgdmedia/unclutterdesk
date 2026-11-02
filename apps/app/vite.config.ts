@@ -7,6 +7,12 @@ export default defineConfig({
     react(),
     VitePWA({
       registerType: 'autoUpdate',
+      workbox: {
+        // On a practice's custom domain the client API is served at /api by
+        // the tenant router (spec §6.16). A link that opens an /api address
+        // (an iCal download, say) must reach it, not the app's index.html.
+        navigateFallbackDenylist: [/^\/api(\/|$)/],
+      },
       includeAssets: ['favicon.svg', 'favicon.ico', 'apple-touch-icon.png', 'unclutterdesk-mark.svg', 'unclutterdesk-lockup.svg'],
       manifest: {
         name: 'Unclutter Desk',
