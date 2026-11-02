@@ -6,7 +6,7 @@ import { BookingLinkCard } from '../../../components/settings/BookingLinkCard';
 import { CustomDomainPanel } from './CustomDomainPanel';
 
 /**
- * GEN-04: the practice's booking address in one place — the unclutterdesk.com
+ * GEN-04: the practice's booking address in one place — the platform subdomain
  * link clients use today, and the practice's own domain on top of it.
  */
 export function SettingsDomainPage() {

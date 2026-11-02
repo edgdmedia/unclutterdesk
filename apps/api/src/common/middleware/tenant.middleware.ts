@@ -46,7 +46,7 @@ export class TenantMiddleware implements NestMiddleware {
 
     if (tenantHeaderSlug) {
       // The app sends the practice it is serving, read from the page's own
-      // address. Browsers call api.unclutterdesk.com, so the Host header here
+      // address. Browsers call the API's own host, so the Host header here
       // never names a practice; without this, public booking calls could not
       // tell which practice they were for. On a practice's own domain the
       // "slug" the app reads is that whole domain.
@@ -62,7 +62,7 @@ export class TenantMiddleware implements NestMiddleware {
       // Try exact custom domain first (normalized)
       tenant = await this.activeCustomDomain(domain);
 
-      // Otherwise check subdomain (e.g. "drjane.unclutterdesk.com" -> "drjane").
+      // Otherwise check subdomain (e.g. "drjane.<root>" -> "drjane").
       // Local dev uses *.localhost, which has only two labels.
       if (!tenant && domain.includes('.')) {
         const parts = domain.split('.');

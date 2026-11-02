@@ -1,6 +1,10 @@
 # Cloudflare Pages security headers for app.unclutterdesk.com and every
 # <tenant>.unclutterdesk.com booking surface.
 #
+# Change at the domain move (spec §4.1b): the CSP connect-src below names the
+# API host. This file is static, so it is a listed exception in
+# apps/api/src/domain-literals.spec.ts.
+#
 # Files in public/ are copied verbatim into dist/, which is what wrangler
 # deploys. `_headers` is parsed by Pages and never served as an asset.
 #

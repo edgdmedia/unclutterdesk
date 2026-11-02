@@ -4,9 +4,9 @@
  * Cloudflare Pages cannot serve a wildcard custom domain ("It is currently not
  * possible to add a custom domain with a wildcard" — Pages known issues), and it
  * matches the Host header against explicitly registered domains. That leaves the
- * per-tenant booking surfaces at https://<slug>.unclutterdesk.com unreachable.
+ * per-tenant booking surfaces at https://<slug>.<APEX_HOST> unreachable.
  *
- * This Worker sits on `*.unclutterdesk.com/*` and serves the app bundle for any
+ * This Worker sits on `*.<APEX_HOST>/*` (wrangler.jsonc) and serves the app bundle for any
  * host, with no per-tenant registration and no ceiling on tenant count. It works
  * because apps/app resolves its tenant client-side from window.location.hostname,
  * so every tenant host serves byte-identical assets.
@@ -23,6 +23,8 @@ export interface Env {
   ORIGIN_HOST: string;
   /** Zone apex. */
   APEX_HOST: string;
+  /** The marketing site, linked from the practice-not-found page. */
+  MARKETING_URL: string;
   /** API base used to check whether a practice address exists, and the /api proxy's target. */
   API_BASE: string;
   /**
@@ -72,12 +74,12 @@ export default {
         // Only booking surfaces get the existence check: the app shell is not a
         // practice address, so there is nothing to look up.
         if (decision.checkTenant) {
-          const tenant = await lookupTenant(url.hostname, env.API_BASE, caches.default);
+          const tenant = await lookupTenant(host, env.API_BASE, caches.default);
           // `exists: false` is the only outcome that 404s. A deactivated
           // practice is still served, so the app can show its inactive-practice
           // page to clients who already have sessions booked.
           if (!tenant.exists) {
-            return practiceNotFoundResponse(url.hostname);
+            return practiceNotFoundResponse(host, env.MARKETING_URL);
           }
         }
 

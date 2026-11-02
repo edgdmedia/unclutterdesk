@@ -5,6 +5,8 @@
   "compatibility_date": "2026-09-01",
   "observability": { "enabled": true },
 
+  // Domain config (spec §4.1a): the route and the vars below are this
+  // Worker's only production addresses. Change them here at the domain move.
   // Serves every tenant booking surface. NOTE: this pattern also matches
   // api.unclutterdesk.com once that record is proxied, so add a more specific
   // route for it in Cloudflare with Worker = None (more specific routes win).
@@ -15,6 +17,8 @@
 
   "vars": {
     "APEX_HOST": "unclutterdesk.com",
+    // Linked from the practice-not-found page.
+    "MARKETING_URL": "https://unclutterdesk.com",
     // The app Pages project's .pages.dev hostname. Verify this matches the
     // CLOUDFLARE_PAGES_APP_PROJECT secret used by .github/workflows/deploy-app.yml.
     "ORIGIN_HOST": "app-unclutterdesk.pages.dev",

@@ -1,11 +1,13 @@
 import { randomBytes } from 'crypto';
+import { TENANT_ROOT_DOMAIN } from './origins';
 
 const IS_PROD = process.env.NODE_ENV === 'production';
 
-// The web app (app.unclutterdesk.com) and API (api.unclutterdesk.com) are
-// served from different subdomains (or localhost ports in dev).
+// The web app and API are served from different subdomains of the tenant
+// root domain (or localhost ports in dev). In production the CSRF cookie is set
+// for the root, so the app can read it on any subdomain. COOKIE_DOMAIN overrides.
 
-const COOKIE_DOMAIN = process.env.COOKIE_DOMAIN || (IS_PROD ? '.unclutterdesk.com' : undefined);
+const COOKIE_DOMAIN = process.env.COOKIE_DOMAIN || (IS_PROD ? `.${TENANT_ROOT_DOMAIN}` : undefined);
 
 function resolveSecret(name: string): string {
   const fromEnv = process.env[name];

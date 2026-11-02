@@ -9,7 +9,7 @@ import { NotificationService } from '../notifications/notification.service';
 import { DefaultFormsService } from '../intake/default-forms.service';
 import { decryptNoteFields } from '../../common/field-encryption';
 import { isPlatformHostname, isReservedSlug, normalizeSlug } from './reserved-slugs';
-import { apiOrigin, appOrigin, ROOT_DOMAIN, tenantWebOrigin } from '../../common/origins';
+import { apiOrigin, appOrigin, customDomainTarget, TENANT_ROOT_DOMAIN, tenantWebOrigin } from '../../common/origins';
 import { EmergencyContactInput, emergencyContactData, emergencyContactOf, emergencyContactText } from './emergency-contact';
 import { GRANTABLE, PERMISSIONS } from '../../common/permissions';
 import { NEW_PRACTICE_TIER, PLAN_SELECT, PRACTICE_ENTITLEMENTS, practiceEntitlements, requiredTierFor, requiredTierForStaffRole, TIER_NAMES } from '../entitlements/entitlements';
@@ -238,7 +238,7 @@ export class TenantService {
    */
   async getPublicTenantExistence(slugOrDomain: string) {
     // The edge router sends the full host it is serving, so a practice
-    // subdomain arrives as "dr-smith.unclutterdesk.com", not "dr-smith".
+    // subdomain arrives as "dr-smith.<root>", not "dr-smith".
     // Matching only bare slugs made every practice subdomain 404.
     const key = practiceKeyFromHost(slugOrDomain);
     const tenant = await this.prisma.tenant.findFirst({
@@ -469,14 +469,9 @@ export class TenantService {
     return { ...tenant, id: tenant.id.toString(), customDomainTarget: this.customDomainTarget() };
   }
 
-  /**
-   * The hostname practices point their CNAME at, e.g. customers.unclutterdesk.com.
-   * Unset means Cloudflare for SaaS is not configured, so no custom domain can
-   * actually be served and none may be marked active.
-   */
+  /** The hostname practices point their CNAME at (origins.ts). */
   customDomainTarget(): string | null {
-    const target = process.env.CUSTOM_DOMAIN_TARGET?.trim().toLowerCase().replace(/\.$/, '');
-    return target || null;
+    return customDomainTarget();
   }
 
   /** Separate so tests can stand in for DNS. */
@@ -526,7 +521,7 @@ export class TenantService {
     const target = this.customDomainTarget();
     if (!this.cf?.configured() && !target) {
       throw new BadRequestException(
-        'Custom domains are not available yet. Your practice keeps working at its unclutterdesk.com address.',
+        `Custom domains are not available yet. Your practice keeps working at its ${TENANT_ROOT_DOMAIN} address.`,
       );
     }
 
@@ -568,7 +563,7 @@ export class TenantService {
 
     if (!target) {
       throw new BadRequestException(
-        'Custom domains are not available yet. Your practice keeps working at its unclutterdesk.com address.',
+        `Custom domains are not available yet. Your practice keeps working at its ${TENANT_ROOT_DOMAIN} address.`,
       );
     }
     const setStatus = (customDomainStatus: 'ACTIVE' | 'PENDING' | 'FAILED') =>
@@ -1338,15 +1333,15 @@ export class TenantService {
 }
 
 /**
- * A slug from `<slug>.unclutterdesk.com`, or the input unchanged: a bare slug
+ * A slug from `<slug>.<tenant root domain>`, or the input unchanged: a bare slug
  * or a practice's own custom domain.
  */
 export function practiceKeyFromHost(input: string): string {
   const key = input.toLowerCase().trim().replace(/\.$/, '');
-  const suffix = `.${ROOT_DOMAIN}`;
+  const suffix = `.${TENANT_ROOT_DOMAIN}`;
   if (key.endsWith(suffix)) {
     const label = key.slice(0, -suffix.length);
-    // Only a single label is a practice address; a.b.unclutterdesk.com is not.
+    // Only a single label is a practice address; a.b.<root> is not.
     if (label && !label.includes('.')) return label;
   }
   return key;

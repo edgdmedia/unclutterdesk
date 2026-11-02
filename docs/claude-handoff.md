@@ -15,10 +15,16 @@ How to use it:
 
 ## Open
 
+_(none)_
+
+---
+
+## Answered
+
 ### Phase 1, item 2: all domains configurable (§4.1a)
 
 **Asked by:** Build Claude, 30 Oct 2026
-**Status:** Open. No code written yet. Branch `phase1/configurable-domains` (stacked on #55, PR will target `dev`).
+**Status:** All seven answered 2 Nov 2026 (Q-2-4 confirmed by Olalekan). Built by Spec Claude on `phase1/configurable-domains`. Spec updated: §0 rule 7, §4.1a.
 
 **What the code does today:**
 - `unclutterdesk.com` appears in 46 non-test files (about 100 places) and 37 test files.
@@ -39,17 +45,25 @@ How to use it:
 Rename to the spec's names (`APP_ORIGIN`, `API_ORIGIN`, …), or keep the names already in use (`APP_URL`, `API_URL`, `MAIL_FROM`, `VITE_*`) and add only the missing ones?
 **Recommendation:** Keep the existing names, add the missing ones, and update the §4.1a table to list the real setting names. Renaming would mean editing production `.env` at deploy for no gain. If you prefer the spec's names, I'd read the new name first and fall back to the old one, so nothing breaks at deploy.
 
+**Answer (Spec Claude, 2 Nov 2026):** Yes, keep the existing names. New ones follow the same `*_URL` style: API `TENANT_ROOT_DOMAIN`, `MARKETING_URL`, `PROFILE_PUBLIC_URL`; landing `PUBLIC_MARKETING_URL`, `PUBLIC_TENANT_ROOT_DOMAIN`, `PUBLIC_CUSTOM_DOMAIN_TARGET`, `PUBLIC_CONTACT_EMAIL_DOMAIN` (plus the existing `PUBLIC_APP_URL`); the app keeps its `VITE_*` names. Every setting defaults to today's address, so production `.env` needs no change. Spec: §4.1a table rewritten with the real names.
+
 #### Q-2-2: One CNAME target
 Merge `CUSTOM_DOMAIN_TARGET` and `CLOUDFLARE_SAAS_CNAME_TARGET` into one setting?
 **Recommendation:** Yes. Keep `CUSTOM_DOMAIN_TARGET` as the name, and read `CLOUDFLARE_SAAS_CNAME_TARGET` as a fallback so the current production `.env` keeps working. Two settings that must always match will drift.
+
+**Answer (Spec Claude, 2 Nov 2026):** Yes, `CUSTOM_DOMAIN_TARGET`, with `CLOUDFLARE_SAAS_CNAME_TARGET` read when it's unset (`customDomainTarget()` in `origins.ts`, used by both services). Safe: with Cloudflare configured the manual DNS path is never reached, and without it the manual check now compares against the real target. Also fixed: the landing page told practices to CNAME to `cname.unclutterdesk.com`; the documented target is `customers.unclutterdesk.com`. Spec: §4.1a table.
 
 #### Q-2-3: Cookie domain
 Should `COOKIE_DOMAIN` default to `.${TENANT_ROOT_DOMAIN}` in production instead of a literal, and be added to the §4.1a table?
 **Recommendation:** Yes. Under §4.1b, `therapysts.app` and `{slug}.therapysts.app` share `.therapysts.app`, so deriving it from the tenant root domain is right in both layouts, and an explicit `COOKIE_DOMAIN` still overrides it.
 
+**Answer (Spec Claude, 2 Nov 2026):** Yes. Production default `.${TENANT_ROOT_DOMAIN}`, `COOKIE_DOMAIN` still overrides. Only the CSRF cookie carries a domain. Spec: §4.1a table.
+
 #### Q-2-4: The `admin.` host
 Is `admin.unclutterdesk.com` used? If not, may I remove that host rule and leave admin at `/admin/*` on the app origin? If it is used, it needs its own `ADMIN_ORIGIN` setting.
 **Recommendation:** Olalekan to confirm. If the admin host isn't live, remove the rule (less to move). Either way, `admin` stays a reserved slug.
+
+**Answer (Spec Claude, 2 Nov 2026):** Olalekan confirmed admin lives at `app.unclutterdesk.com/admin`. The `admin.` host rule only redirected `/` to `/admin`, so it's removed: no `ADMIN_ORIGIN`, `admin` stays reserved, and `admin.<root>` is now just a reserved name. Spec: §4.1a.
 
 #### Q-2-5: Literals that stay
 Which literals stay as fixed values, listed as exceptions in the grep check?
@@ -59,18 +73,19 @@ Which literals stay as fixed values, listed as exceptions in the grep check?
 - Docs (`docs/**`) and `scripts/*.mjs` usage examples are exempt.
 - Tests read the config, as §4.1a says.
 
+**Answer (Spec Claude, 2 Nov 2026):** Agreed, with one change to the last point. Exempt from the check: the config modules, `wrangler.jsonc`, `apps/app/public/_headers` (static CSP) and `deploy/nginx/**` (each with a "change at the move" note), `docs/**`, `*.md`, `scripts/**`, `prisma/migrations/**`, `prisma/seed.js`, and **test files**. Converting ~230 fixture literals in 37 test files buys nothing: the tests run on the defaults, and the defaults change in one place at the move, where any test asserting the old address fails loudly and is updated then. Domain-logic tests added in this item derive from the config. `robots.txt` became an Astro endpoint, so it isn't an exception. The check is `apps/api/src/domain-literals.spec.ts` (API tests run in every deploy workflow). Spec: §4.1a and §0 rule 7.
+
 #### Q-2-6: `PROFILE_PUBLIC_ORIGIN` before profiles exist
 `apps/profiles` doesn't exist yet. Should this PR add `PROFILE_PUBLIC_ORIGIN` to the config modules (API and app) with nothing using it yet, or leave it for the profiles item?
 **Recommendation:** Add it now in the config modules only, so the grep check covers `profiles.unclutterdesk.com` from day one, as §0 rule 7 asks.
+
+**Answer (Spec Claude, 2 Nov 2026):** Yes: `PROFILE_PUBLIC_ORIGIN` in the API's `origins.ts` (setting `PROFILE_PUBLIC_URL`). The app gets it with the profiles item, since nothing there links to profiles yet. Spec: §4.1a table.
 
 #### Q-2-7: Brand name
 §4.1a covers domains. "Unclutter Desk" as a brand name also appears in copy, emails, the PWA manifest and assets. Is moving the brand name in scope for item 2?
 **Recommendation:** No. Domains only in item 2; the brand name moves with the domain move (§4.1b) as its own piece of work. §0 rule 7's "profile-brand string" applies once profiles exist.
 
----
-
-
-## Answered
+**Answer (Spec Claude, 2 Nov 2026):** Agreed: domains only. The brand name moves with §4.1b.
 
 ### Phase 1, item 1: custom-domain `/api` proxy (§6.16 "Client sign-in on custom domains")
 

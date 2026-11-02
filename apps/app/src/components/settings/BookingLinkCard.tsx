@@ -9,7 +9,7 @@ function toSlug(value: string) {
   return value.toLowerCase().replace(/[^a-z0-9-]+/g, '-').replace(/^-+/, '').slice(0, 63);
 }
 
-/** The practice's unclutterdesk.com address. A custom domain is a separate setting. */
+/** The practice's subdomain address. A custom domain is a separate setting. */
 export function BookingLinkCard({ slug: saved, onSaved }: { slug: string; onSaved?: (slug: string) => void }) {
   const toast = useToast();
   const [current, setCurrent] = useState(saved);
