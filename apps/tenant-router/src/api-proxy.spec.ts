@@ -240,15 +240,11 @@ describe('the Worker on /api', () => {
   });
 
   it('forwards to the API even for a custom domain that is not ACTIVE (the API checks)', async () => {
-    // S2: The router does NOT check ACTIVE status before forwarding /api requests
-    // It relies on the API's own check. This test verifies the forwarding happens.
+    // The API checks the custom domain is ACTIVE and answers 404 otherwise, so there's no probe here.
     const res = await call('https://not-active.example/api/v1/auth/refresh', { method: 'POST' });
-    // The router forwards to the API without an ACTIVE probe (S2 fix)
     expect(apiCalls()).toContain(`${API}/v1/auth/refresh`);
-    // Header should be set with the custom domain
     const sent = fetchMock.mock.calls.find(([r]) => typeof r !== 'string' && r.url.endsWith('/v1/auth/refresh'))![0] as Request;
     expect(sent.headers.get(PRACTICE_HOST_HEADER)).toBe('not-active.example');
-    // Response is 200 from mock (in real API, would be 404 since domain not ACTIVE)
     expect(res.status).toBe(200);
   });
 
@@ -277,5 +273,16 @@ describe('the Worker on /api', () => {
     expect(res.headers.get('content-type')).toContain('application/json');
     const body = await res.text();
     expect(body).toContain('Service unavailable');
+  });
+
+  it('returns 504 when the API times out (TimeoutError)', async () => {
+    // Create a DOMException with name 'TimeoutError' to match the actual timeout behavior
+    const error = new DOMException('timeout', 'TimeoutError');
+    fetchMock.mockRejectedValue(error);
+    const res = await call('https://chente.com/api/v1/auth/status');
+    expect(res.status).toBe(504);
+    expect(res.headers.get('content-type')).toContain('application/json');
+    const body = await res.text();
+    expect(body).toContain('Gateway timeout');
   });
 });

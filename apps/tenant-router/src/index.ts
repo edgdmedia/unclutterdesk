@@ -110,7 +110,7 @@ export default {
 async function proxyClientApi(request: Request, url: URL, env: Env, host: string): Promise<Response> {
   if (!isCustomDomainHost(host, env.APEX_HOST)) return apiNotFound();
   if (!isAllowedClientRoute(request.method, stripApiPrefix(url.pathname))) return apiNotFound();
-  // The API checks ACTIVE status itself, so we don't need to probe first (S2).
+  // The API checks the custom domain is ACTIVE and answers 404 otherwise, so there's no probe here.
 
   const signal = AbortSignal.timeout(API_TIMEOUT_MS);
   const req = apiRequest(request, { apiBase: env.API_BASE, practiceHost: host, secret: env.ROUTER_PROXY_SECRET, signal });

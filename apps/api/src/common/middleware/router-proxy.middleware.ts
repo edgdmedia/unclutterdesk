@@ -37,8 +37,8 @@ function cleanIp(raw: unknown): string | null {
  * ordinary direct request: the headers are ignored, not rejected. Either way
  * they are removed, so nothing further down reads them unchecked.
  *
- * Log at debug level for secret mismatches to avoid log flooding from direct
- * callers who send the header without understanding it needs the secret.
+ * Wrong secrets log at debug level (anyone can send the header); missing
+ * configuration or a blank host from the router log at warn level.
  */
 @Injectable()
 export class RouterProxyMiddleware implements NestMiddleware {
@@ -52,17 +52,12 @@ export class RouterProxyMiddleware implements NestMiddleware {
     if (secret && safeEqual(sent, secret) && typeof host === 'string' && host.trim()) {
       req.routerProxy = { practiceHost: normalizeHost(host.trim()), clientIp: cleanIp(req.headers[CLIENT_IP_HEADER]) };
     } else if (sent !== undefined) {
-      // Log at debug level for secret mismatches to avoid log flooding from direct callers
       if (!secret) {
         this.logger.warn(`Ignored router proxy headers: ROUTER_PROXY_SECRET is not configured`);
       } else if (!safeEqual(sent, secret)) {
         this.logger.debug(`Router proxy secret did not match`);
       } else if (typeof host !== 'string' || !host.trim()) {
-        // Secret matched but host is blank - this is a router bug
         this.logger.warn(`Practice host header missing or empty`);
-      } else {
-        // Secret didn't match, but we already handled that above
-        this.logger.debug(`Router proxy request ignored`);
       }
     }
 
