@@ -31,6 +31,16 @@ request to the app's Pages project (`app-unclutterdesk.pages.dev`), 301s `www` t
 the apex, and returns a real 404 for an address that belongs to no practice.
 Background on why it is a Worker is in the appendix.
 
+**Routes are owned by the API, not by Wrangler.** `wrangler deploy` replaces a
+Worker's routes with the ones in `wrangler.jsonc`, and on 2 Nov 2026 that
+deleted the route for `consult.unclutter.com.ng`, so the site answered 522
+until the route came back. `wrangler.jsonc` now lists no routes
+(`workers_dev: false`; a router test keeps it that way), and the API's
+custom-domain cron (every 5 minutes) puts back `*.<TENANT_ROOT_DOMAIN>/*` and
+the route of every provisioned practice domain if one is missing. Nobody adds
+a route by hand: a practice saves its domain in the dashboard and the API
+does the rest.
+
 **One trap:** that route also matches `api.unclutterdesk.com`. It does no harm
 while `api` is DNS-only, because Worker routes only run on proxied records. The
 moment `api` is proxied, the Worker would answer every API call with a 404 — so
@@ -193,7 +203,7 @@ CLOUDFLARE_SAAS_CNAME_TARGET=customers.unclutterdesk.com
    the tenant is an Enterprise add-on; the zone answers `1413` without it) and
    a Workers route `book.theirpractice.com/*` → the tenant router. The router
    already serves any host: no Pages custom domain per tenant, no DNS record
-   on our side.
+   on our side. If that route is ever removed, the cron restores it.
 2. The panel shows exactly what to publish at their domain provider (the
 certificate's TXT validation record + the hostname CNAME to the SaaS
 target).

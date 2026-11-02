@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
+import { TENANT_ROOT_DOMAIN } from '../../common/origins';
 import { CustomDomainCron } from './custom-domain.cron';
 
 function deps() {
@@ -15,6 +16,7 @@ function deps() {
     listHostnames: vi.fn().mockResolvedValue([]),
     deleteHostname: vi.fn().mockResolvedValue(undefined),
     removeRoute: vi.fn().mockResolvedValue(undefined),
+    ensureRoutes: vi.fn().mockResolvedValue([]),
   } as any;
   const tenantService = { provisionCustomDomain: vi.fn().mockResolvedValue(null) } as any;
   return { prisma, cf, tenantService, cron: new CustomDomainCron(prisma, cf, tenantService) };
@@ -92,5 +94,36 @@ describe('CustomDomainCron', () => {
       .mockResolvedValueOnce([]);
 
     await expect(cron.tick()).resolves.toBeUndefined();
+  });
+
+  describe('Worker routes', () => {
+    it('restores the route of every provisioned domain and the practice subdomains', async () => {
+      const { prisma, cf, cron } = deps();
+      prisma.tenant.findMany.mockImplementation(async (args: any) =>
+        args?.where?.customHostnameId?.not === null && args?.where?.customDomain?.not === null && !args?.where?.customDomainStatus
+          ? [{ customDomain: 'consult.unclutter.com.ng' }, { customDomain: 'book.acme.ng' }]
+          : [],
+      );
+      cf.ensureRoutes.mockResolvedValue(['consult.unclutter.com.ng/*']);
+
+      await cron.tick();
+      expect(cf.ensureRoutes).toHaveBeenCalledWith([
+        `*.${TENANT_ROOT_DOMAIN}/*`,
+        'consult.unclutter.com.ng/*',
+        'book.acme.ng/*',
+      ]);
+    });
+
+    it('keeps the subdomain route even with no custom domains', async () => {
+      const { cf, cron } = deps();
+      await cron.tick();
+      expect(cf.ensureRoutes).toHaveBeenCalledWith([`*.${TENANT_ROOT_DOMAIN}/*`]);
+    });
+
+    it('survives Cloudflare refusing the route check', async () => {
+      const { cf, cron } = deps();
+      cf.ensureRoutes.mockRejectedValue(new Error('cf down'));
+      await expect(cron.tick()).resolves.toBeUndefined();
+    });
   });
 });
