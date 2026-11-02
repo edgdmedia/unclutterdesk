@@ -17,6 +17,7 @@ import { AdminModule } from './modules/admin/admin.module';
 import { NotificationsModule } from './modules/notifications/notification.module';
 import { DiscountModule } from './modules/discount/discount.module';
 import { HoursModule } from './modules/hours/hours.module';
+import { PractitionerProfileModule } from './modules/practitioner-profile/practitioner-profile.module';
 import { ScheduleModule } from '@nestjs/schedule';
 import { CalendarModule } from './modules/calendar/calendar.module';
 import { PrivacyModule } from './modules/privacy/privacy.module';
@@ -53,6 +54,7 @@ import { EntitlementsModule } from './modules/entitlements/entitlements.module';
     NotificationsModule,
     DiscountModule,
     HoursModule,
+    PractitionerProfileModule,
     CalendarModule,
     PrivacyModule,
     InviteModule,
