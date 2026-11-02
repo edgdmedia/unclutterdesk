@@ -94,4 +94,22 @@ describe('JobsService', () => {
     jobs.register('t', vi.fn());
     expect(() => jobs.register('t', vi.fn())).toThrow(/already has a handler/);
   });
+
+  it('runs one job now, with the same claim', async () => {
+    const { jobs, prisma } = setup();
+    const handler = vi.fn().mockResolvedValue(undefined);
+    jobs.register('t', handler);
+    await jobs.runNow(1n, NOW);
+    expect(prisma.backgroundJob.updateMany.mock.calls[0][0].where).toMatchObject({ id: 1n, completedAt: null, failedAt: null });
+    expect(handler).toHaveBeenCalled();
+  });
+
+  it('leaves a job another process holds to that process', async () => {
+    const { jobs, prisma } = setup();
+    const handler = vi.fn();
+    jobs.register('t', handler);
+    prisma.backgroundJob.updateMany.mockResolvedValue({ count: 0 });
+    await jobs.runNow(1n, NOW);
+    expect(handler).not.toHaveBeenCalled();
+  });
 });

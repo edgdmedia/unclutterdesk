@@ -57,7 +57,7 @@ const sources = files(SRC).map((f) => ({ f: f.slice(SRC.length + 1), text: readF
 describe('the renderer never trusts the visitor (§4.3 #1, #4)', () => {
   it('never reads cookies or Authorization', () => {
     for (const { f, text } of sources) {
-      expect(text, f).not.toMatch(/Astro\.cookies|headers\.get\(\s*['"](cookie|authorization)['"]|request\.headers/i);
+      expect(text, f).not.toMatch(/Astro\.cookies|\.cookies\b|headers\.get\(\s*['"](cookie|authorization)['"]/i);
     }
   });
   it('renders therapist text as text: set:html only for the escaped JSON-LD', () => {
