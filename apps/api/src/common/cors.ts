@@ -1,7 +1,8 @@
 import { PrismaService } from './prisma/prisma.service';
 // Shared with checkout redirect validation, so the two cannot drift into
 // disagreeing about which hosts are ours.
-import { LOCAL_ORIGIN, PAGES_PREVIEW_ORIGIN, ROOT_ORIGINS, TENANT_SUBDOMAIN } from './origins';
+import type { CorsOptions } from '@nestjs/common/interfaces/external/cors-options.interface';
+import { LOCAL_ORIGIN, PAGES_PREVIEW_ORIGIN, ROOT_ORIGINS, TENANT_SUBDOMAIN, isProfilesOrigin } from './origins';
 
 // Verified tenant custom domains live in the database, so they are cached rather
 // than queried on every preflight.
@@ -57,6 +58,9 @@ export function createCorsOriginHandler(
 
     const candidate = origin.toLowerCase();
 
+    // Never a credentialed origin, even though it may match the tenant pattern (§4.3).
+    if (isProfilesOrigin(candidate)) return callback(null, false);
+
     if (
       configuredOrigins.includes(origin) ||
       ROOT_ORIGINS.includes(candidate) ||
@@ -74,5 +78,43 @@ export function createCorsOriginHandler(
     customDomains()
       .then((domains) => callback(null, domains.has(candidate)))
       .catch(() => callback(null, false));
+  };
+}
+
+/**
+ * The only routes a browser on the public-profile site calls (spec §4.3):
+ * the report form and, from Phase 2, the stats beacon. Both are public and
+ * are answered without Access-Control-Allow-Credentials.
+ */
+export const PROFILES_BROWSER_ROUTES = /^\/v1\/profiles\/[a-z0-9-]{3,30}\/(report|event)\/?$/;
+
+const BASE_CORS: CorsOptions = {
+  credentials: true,
+  methods: ['GET', 'HEAD', 'PUT', 'PATCH', 'POST', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-CSRF-Token', 'X-Tenant-Slug'],
+  optionsSuccessStatus: 204,
+};
+
+/**
+ * Per-request CORS: the platform's credentialed rules for every origin we
+ * trust, and a separate, credential-free rule for the profiles site on its
+ * two public routes. Anything else from the profiles site gets no CORS
+ * headers, so the browser blocks it.
+ */
+export function createCorsOptionsDelegate(
+  prisma: PrismaService,
+  options: { isProduction: boolean; configuredOrigins: string[] },
+) {
+  const platformOrigin = createCorsOriginHandler(prisma, options);
+  return (req: { headers: Record<string, unknown>; url?: string; path?: string }, callback: (err: Error | null, options?: CorsOptions) => void) => {
+    const origin = typeof req.headers.origin === 'string' ? req.headers.origin : undefined;
+    if (origin && isProfilesOrigin(origin)) {
+      const path = String(req.path ?? req.url ?? '').split('?')[0];
+      if (PROFILES_BROWSER_ROUTES.test(path)) {
+        return callback(null, { origin: true, credentials: false, methods: ['POST', 'OPTIONS'], allowedHeaders: ['Content-Type'], optionsSuccessStatus: 204 });
+      }
+      return callback(null, { origin: false });
+    }
+    callback(null, { ...BASE_CORS, origin: platformOrigin });
   };
 }
