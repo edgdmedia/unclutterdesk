@@ -1,0 +1,45 @@
+---
+import Base from '../components/Base.astro';
+import ProfileView from '../components/ProfileView.astro';
+import { config as loadConfig } from '../lib/env';
+import { KIND_TITLES, lookupProfile, personJsonLd } from '../lib/profiles';
+import { MISS_CACHE, PAGE_CACHE } from '../lib/security';
+
+const config = loadConfig();
+const requested = Astro.params.handle ?? '';
+// One address per profile: /Jane-Smith 301s to /jane-smith.
+if (requested !== requested.toLowerCase()) return Astro.redirect(`/${requested.toLowerCase()}`, 301);
+const result = await lookupProfile(config, requested);
+
+if (result.kind === 'moved') {
+  // Old handles 301 to the current one, forever (§6.2).
+  return Astro.redirect(`/${result.handle}`, 301);
+}
+if (result.kind !== 'found') {
+  Astro.response.status = result.kind === 'gone' ? 410 : 404;
+  Astro.response.headers.set('Cache-Control', MISS_CACHE);
+} else {
+  Astro.response.headers.set('Cache-Control', PAGE_CACHE);
+}
+const profile = result.kind === 'found' ? result.profile : null;
+const canonical = profile ? `${config.publicOrigin}/${profile.handle}` : undefined;
+---
+{profile ? (
+  <Base
+    title={`${profile.displayName} · ${KIND_TITLES[profile.kind] ?? 'Therapist'}`}
+    description={profile.headline ?? undefined}
+    canonical={canonical}
+    theme={profile.themeKey}
+    image={profile.previewImageUrl ?? profile.photoUrl}
+    jsonLd={personJsonLd(profile, canonical!)}
+  >
+    <ProfileView profile={profile} config={config} />
+  </Base>
+) : (
+  <Base title={result.kind === 'gone' ? 'Profile no longer available' : 'Profile not found'} noindex>
+    <main id="main" class="wrap">
+      <h1>{result.kind === 'gone' ? 'This profile is no longer available' : 'We couldn’t find that profile'}</h1>
+      <p><a href="/">Find out about therapist profiles</a></p>
+    </main>
+  </Base>
+)}

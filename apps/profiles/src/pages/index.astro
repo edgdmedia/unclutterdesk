@@ -1,0 +1,18 @@
+---
+import Base from '../components/Base.astro';
+import { config as loadConfig } from '../lib/env';
+import { PAGE_CACHE } from '../lib/security';
+
+// Becomes the directory in Phase 4 (§6.11).
+const config = loadConfig();
+Astro.response.headers.set('Cache-Control', PAGE_CACHE);
+---
+<Base title="Therapist profiles" description="Create a free, clear profile clients can find and share." canonical={`${config.publicOrigin}/`}>
+  <main id="main" class="wrap">
+    <header class="hero">
+      <h1>A clear, free profile for every therapist</h1>
+      <p class="headline">Show clients who you help, how you work and how to book, on a page you can share anywhere.</p>
+      <div class="actions"><a class="btn" href="/join">Create your free therapist profile</a></div>
+    </header>
+  </main>
+</Base>
