@@ -4,6 +4,7 @@ import ProfileView from '../components/ProfileView.astro';
 import { config as loadConfig } from '../lib/env';
 import { KIND_TITLES, lookupProfile, personJsonLd } from '../lib/profiles';
 import { MISS_CACHE, PAGE_CACHE } from '../lib/security';
+import { profileTag } from '../lib/purge';
 
 const config = loadConfig();
 const requested = Astro.params.handle ?? '';
@@ -21,6 +22,9 @@ if (result.kind !== 'found') {
 } else {
   Astro.response.headers.set('Cache-Control', PAGE_CACHE);
 }
+// Purged by tag when this profile changes (§6.12). A miss is tagged too, so
+// a just-published profile replaces its cached 404 at once.
+Astro.response.headers.set('Cache-Tag', profileTag(requested.toLowerCase()));
 const profile = result.kind === 'found' ? result.profile : null;
 const canonical = profile ? `${config.publicOrigin}/${profile.handle}` : undefined;
 ---

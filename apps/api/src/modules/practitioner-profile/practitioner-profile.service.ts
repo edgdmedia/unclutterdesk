@@ -20,6 +20,7 @@ import { isThemeKey } from './themes';
 import { writingTips } from './writing-tips';
 import { HANDLE_MESSAGES, handleProblem, normalizeHandle, suggestHandle } from './handles';
 import { PHOTO_BACKFILL_JOB, type PhotoBackfillPayload } from './profile-photo.job';
+import { PURGE_JOB, SITEMAP_TAG, profileTag, type PurgePayload } from './profile-purge.job';
 
 /**
  * A therapist's own public profile (spec §6.1).
@@ -243,6 +244,7 @@ export class PractitionerProfileService {
     await this.jobs.enqueue(PHOTO_BACKFILL_JOB, payload as never, { dedupeKey: `${PHOTO_BACKFILL_JOB}:${created.id}` });
     await this.refreshOwnScore(userId);
     await this.syncPracticeRecords(userId);
+    await this.purgeIfPublished(userId);
     return this.getOwn(userId);
   }
 
@@ -321,6 +323,7 @@ export class PractitionerProfileService {
     await this.prisma.practitionerProfile.update({ where: { userId }, data });
     await this.refreshOwnScore(userId);
     await this.syncPracticeRecords(userId);
+    await this.purgeIfPublished(userId);
     return this.getOwn(userId);
   }
 
@@ -342,6 +345,7 @@ export class PractitionerProfileService {
         this.prisma.practitionerHandleHistory.create({ data: { handle: profile.handle, profileId: profile.id } }),
         this.prisma.practitionerProfile.update({ where: { userId }, data: { handle: availability.handle } }),
       ]);
+      await this.purge([profileTag(profile.handle), profileTag(availability.handle), SITEMAP_TAG]);
     } catch (err) {
       if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === 'P2002') {
         throw new ConflictException(HANDLE_MESSAGES.taken);
@@ -385,6 +389,7 @@ export class PractitionerProfileService {
     ]);
     await this.refreshOwnScore(userId);
     await this.syncPracticeRecords(userId);
+    await this.purgeIfPublished(userId);
     return this.getOwn(userId);
   }
 
@@ -432,7 +437,9 @@ export class PractitionerProfileService {
       this.prisma.practitionerTimelineEntry.createMany({ data: rows.map((r) => ({ ...r, profileId: profile.id })) }),
     ]);
     await this.refreshOwnScore(userId);
+    await this.purgeIfPublished(userId);
     await this.syncPracticeRecords(userId);
+    await this.purgeIfPublished(userId);
     return this.getOwn(userId);
   }
 
@@ -460,6 +467,7 @@ export class PractitionerProfileService {
     if (profile.photoKey) await this.removeQuietly(profile.photoKey);
     await this.refreshOwnScore(userId);
     await this.syncPracticeRecords(userId);
+    await this.purgeIfPublished(userId);
     return this.getOwn(userId);
   }
 
@@ -471,6 +479,7 @@ export class PractitionerProfileService {
       await this.removeQuietly(profile.photoKey);
       await this.refreshOwnScore(userId);
     await this.syncPracticeRecords(userId);
+    await this.purgeIfPublished(userId);
     }
     return this.getOwn(userId);
   }
@@ -520,6 +529,8 @@ export class PractitionerProfileService {
       where: { userId },
       data: { status: 'PUBLISHED', publishedAt: profile.publishedAt ?? new Date() },
     });
+    const live = await this.requireOwn(userId);
+    await this.purge([profileTag(live.handle), SITEMAP_TAG]);
     return { profile: await this.getOwn(userId), warnings: { unchangedTemplateText: checklist.unchangedTemplateText } };
   }
 
@@ -530,6 +541,8 @@ export class PractitionerProfileService {
     if (profile.status === 'SUSPENDED') throw new ForbiddenException('This profile has been suspended. Contact support.');
     if (profile.status === 'PUBLISHED') {
       await this.prisma.practitionerProfile.update({ where: { userId }, data: { status: 'HIDDEN' } });
+      const hidden = await this.requireOwn(userId);
+      await this.purge([profileTag(hidden.handle), SITEMAP_TAG]);
     }
     return this.getOwn(userId);
   }
@@ -598,6 +611,19 @@ export class PractitionerProfileService {
         languages: labels('LANGUAGE'),
       },
     });
+  }
+
+  /** After a change to a published profile, purge its page (§6.12). Drafts and hidden profiles aren't served, so there is nothing to purge. */
+  private async purgeIfPublished(userId: bigint) {
+    const profile = await this.prisma.practitionerProfile.findUnique({ where: { userId }, select: { handle: true, status: true } });
+    if (profile?.status === 'PUBLISHED') await this.purge([profileTag(profile.handle)]);
+  }
+
+  /** Queue a purge with retries, then try it at once so the change shows within a minute. */
+  private async purge(tags: string[]) {
+    const payload: PurgePayload = { tags };
+    const job = await this.jobs.enqueue(PURGE_JOB, payload as never, { dedupeKey: `${PURGE_JOB}:${[...tags].sort().join(',')}` });
+    if (job) await this.jobs.runNow(job.id);
   }
 
   /** Recompute and store the signed-in user's completeness score (§6.7: on every save). */

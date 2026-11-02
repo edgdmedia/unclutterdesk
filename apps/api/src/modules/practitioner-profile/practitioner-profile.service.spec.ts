@@ -31,7 +31,7 @@ function setup() {
     taxonomyTerm: { findMany: vi.fn().mockResolvedValue([]) },
     $transaction: vi.fn(async (ops: unknown[]) => ops),
   };
-  const jobs: any = { enqueue: vi.fn().mockResolvedValue({ id: 1n }) };
+  const jobs: any = { enqueue: vi.fn().mockResolvedValue({ id: 1n }), runNow: vi.fn().mockResolvedValue(undefined) };
   const storage: any = { configured: vi.fn().mockReturnValue(true), put: vi.fn(), remove: vi.fn() };
   return { service: new PractitionerProfileService(prisma, jobs, storage), prisma, jobs, storage };
 }
@@ -462,6 +462,44 @@ describe('PractitionerProfileService', () => {
           languages: ['English', 'Yoruba'],
         },
       });
+    });
+  });
+
+  describe('freshness (§6.12)', () => {
+    const purges = (jobs: any) => jobs.enqueue.mock.calls.filter((c: any[]) => c[0] === 'profile.purge').map((c: any[]) => c[1].tags);
+
+    it('purges a published profile after a change, and runs the purge at once', async () => {
+      const { service, prisma, jobs } = setup();
+      ownProfile(prisma, { status: 'PUBLISHED' });
+      await service.updateOwn(ME, { headline: 'New' });
+      expect(purges(jobs)).toEqual([['profile:adaeze']]);
+      expect(jobs.runNow).toHaveBeenCalledWith(1n);
+    });
+
+    it('leaves drafts alone: nothing of theirs is cached', async () => {
+      const { service, prisma, jobs } = setup();
+      ownProfile(prisma, { status: 'DRAFT' });
+      await service.updateOwn(ME, { headline: 'New' });
+      expect(purges(jobs)).toEqual([]);
+    });
+
+    it('purges both handles and the sitemap when the handle changes', async () => {
+      const { service, prisma, jobs } = setup();
+      ownProfile(prisma, { status: 'PUBLISHED' });
+      await service.changeOwnHandle(ME, 'adaeze-o');
+      expect(purges(jobs)).toContainEqual(['profile:adaeze', 'profile:adaeze-o', 'sitemap']);
+    });
+
+    it('purges the page and the sitemap on publish and on unpublish', async () => {
+      const ready = setup();
+      ownProfile(ready.prisma, { ...READY, status: 'DRAFT' });
+      await ready.service.publishOwn(ME);
+      expect(purges(ready.jobs)).toContainEqual(['profile:adaeze', 'sitemap']);
+
+      const live = setup();
+      ownProfile(live.prisma, { status: 'PUBLISHED' });
+      await live.service.unpublishOwn(ME);
+      expect(purges(live.jobs)).toContainEqual(['profile:adaeze', 'sitemap']);
     });
   });
 });

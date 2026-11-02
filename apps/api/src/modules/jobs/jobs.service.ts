@@ -86,6 +86,21 @@ export class JobsService {
     return ran;
   }
 
+  /**
+   * Claim and run one job now instead of waiting for the schedule, for work
+   * that should land within seconds (cache purges, §6.12). Same claim, retry
+   * and failure rules as runDue; if it can't run now, the schedule retries it.
+   */
+  async runNow(id: bigint, now = new Date()): Promise<void> {
+    const claimed = await this.prisma.backgroundJob.updateMany({
+      where: { id, completedAt: null, failedAt: null, runAfter: { lte: now }, OR: [{ lockedUntil: null }, { lockedUntil: { lt: now } }] },
+      data: { lockedUntil: new Date(now.getTime() + LOCK_MS), attempts: { increment: 1 } },
+    });
+    if (claimed.count !== 1) return;
+    const job = await this.prisma.backgroundJob.findUnique({ where: { id } });
+    if (job) await this.runOne(job, now);
+  }
+
   private async runOne(job: { id: bigint; type: string; payloadJson: Prisma.JsonValue; attempts: number }, now: Date) {
     const handler = this.handlers.get(job.type);
     try {
