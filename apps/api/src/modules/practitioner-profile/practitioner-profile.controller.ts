@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, Patch, Post, Put, Req, UnauthorizedException, UseGuards } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, Patch, Post, Put, Req, UnauthorizedException, UseGuards } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { RolesGuard } from '../../common/roles.guard';
@@ -6,8 +6,10 @@ import { Permissions } from '../../common/permissions';
 import { authenticatedProfileId } from '../../common/authenticated-tenant';
 import {
   PractitionerProfileService,
+  type ProfileAppearanceInput,
   type ProfileCreateInput,
   type ProfileUpdateInput,
+  type TimelineInput,
   type TaxonomySelection,
 } from './practitioner-profile.service';
 
@@ -47,7 +49,7 @@ export class PractitionerProfileController {
   @Permissions('clinical.record')
   @Patch('me')
   @ApiOperation({ summary: 'Change my profile details' })
-  update(@Req() req: any, @Body() dto: ProfileUpdateInput) {
+  update(@Req() req: any, @Body() dto: ProfileUpdateInput & ProfileAppearanceInput) {
     return this.profiles.updateOwn(authenticatedUserId(req), dto ?? {});
   }
 
@@ -63,6 +65,55 @@ export class PractitionerProfileController {
   @ApiOperation({ summary: 'Set my specialties, modalities, populations and languages' })
   setTaxonomy(@Req() req: any, @Body() dto: { terms?: TaxonomySelection[] }) {
     return this.profiles.setOwnTaxonomy(authenticatedUserId(req), dto?.terms as TaxonomySelection[]);
+  }
+
+  @Permissions('clinical.record')
+  @Put('me/timeline')
+  @ApiOperation({ summary: 'Set my training & journey timeline' })
+  setTimeline(@Req() req: any, @Body() dto: { entries?: TimelineInput[] }) {
+    return this.profiles.setOwnTimeline(authenticatedUserId(req), dto?.entries as TimelineInput[]);
+  }
+
+  @Permissions('clinical.record')
+  @Put('me/photo')
+  @ApiOperation({ summary: 'Set my photo (a JPEG, PNG or WebP data URL, up to 2 MB)' })
+  setPhoto(@Req() req: any, @Body() dto: { image?: string }) {
+    return this.profiles.setOwnPhoto(authenticatedUserId(req), dto?.image);
+  }
+
+  @Permissions('clinical.record')
+  @Delete('me/photo')
+  @ApiOperation({ summary: 'Remove my photo' })
+  removePhoto(@Req() req: any) {
+    return this.profiles.removeOwnPhoto(authenticatedUserId(req));
+  }
+
+  @Permissions('clinical.record')
+  @Get('me/checklist')
+  @ApiOperation({ summary: 'My completeness score, next step, publish blockers and writing tips' })
+  checklist(@Req() req: any) {
+    return this.profiles.ownChecklist(authenticatedUserId(req));
+  }
+
+  @Permissions('clinical.record')
+  @Post('me/publish')
+  @ApiOperation({ summary: 'Publish my profile' })
+  publish(@Req() req: any) {
+    return this.profiles.publishOwn(authenticatedUserId(req));
+  }
+
+  @Permissions('clinical.record')
+  @Post('me/unpublish')
+  @ApiOperation({ summary: 'Take my profile off the web' })
+  unpublish(@Req() req: any) {
+    return this.profiles.unpublishOwn(authenticatedUserId(req));
+  }
+
+  @Permissions('clinical.record')
+  @Get('templates')
+  @ApiOperation({ summary: 'Profile templates: prompts, examples and guidance per section' })
+  templates() {
+    return this.profiles.activeTemplates();
   }
 
   @Permissions('clinical.record')

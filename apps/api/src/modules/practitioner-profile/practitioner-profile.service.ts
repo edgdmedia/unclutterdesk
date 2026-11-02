@@ -1,7 +1,23 @@
-import { BadRequestException, ConflictException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ConflictException, ForbiddenException, Injectable, Logger, NotFoundException, ServiceUnavailableException } from '@nestjs/common';
 import { Prisma, type PractitionerKind } from '@prisma/client';
 import { PrismaService } from '../../common/prisma/prisma.service';
+import { randomBytes } from 'node:crypto';
 import { JobsService } from '../jobs/jobs.service';
+import { decodeImageDataUrl } from '../storage/images';
+import { StorageService } from '../storage/storage.service';
+import {
+  PUBLISH_BLOCKER_MESSAGES,
+  SECTION_ORDER,
+  SECTION_WEIGHTS,
+  completenessScore,
+  nextSection,
+  publishBlockers,
+  sectionScores,
+  type ProfileSnapshot,
+  type SectionKey,
+} from './completeness';
+import { isThemeKey } from './themes';
+import { writingTips } from './writing-tips';
 import { HANDLE_MESSAGES, handleProblem, normalizeHandle, suggestHandle } from './handles';
 import { PHOTO_BACKFILL_JOB, type PhotoBackfillPayload } from './profile-photo.job';
 
@@ -57,6 +73,32 @@ export type ProfileUpdateInput = Partial<Record<TextField, string | null>> &
     socialLinks?: Partial<Record<(typeof SOCIAL_KEYS)[number], string>> | null;
   };
 
+/** Fields that also choose appearance or starting content. */
+export type ProfileAppearanceInput = { themeKey?: string; templateKey?: string | null };
+
+export interface TimelineInput {
+  type: string;
+  title: string;
+  organisation?: string | null;
+  startYear?: number | null;
+  endYear?: number | null;
+  description?: string | null;
+}
+
+export const TIMELINE_TYPES = ['EDUCATION', 'TRAINING', 'PRACTICE', 'SUPERVISION', 'MEMBERSHIP', 'MILESTONE'] as const;
+export const MAX_TIMELINE_ENTRIES = 30;
+
+/** Free text a template's example may have been inserted into, by section (§6.6). */
+const TEMPLATE_TEXT_FIELDS: Partial<Record<SectionKey, 'headline' | 'about' | 'approach' | 'credentialsText' | 'faithIntegration'>> = {
+  identity: 'headline',
+  about: 'about',
+  approach: 'approach',
+  qualifications: 'credentialsText',
+  population: 'faithIntegration',
+};
+
+const squash = (text: string) => text.replace(/\s+/g, ' ').trim().toLowerCase();
+
 export interface ProfileCreateInput {
   handle?: string;
   kind?: PractitionerKind;
@@ -101,9 +143,12 @@ function boundedText(value: unknown, field: TextField): string | null {
 
 @Injectable()
 export class PractitionerProfileService {
+  private readonly logger = new Logger(PractitionerProfileService.name);
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly jobs: JobsService,
+    private readonly storage: StorageService,
   ) {}
 
   /**
@@ -196,12 +241,30 @@ export class PractitionerProfileService {
 
     const payload: PhotoBackfillPayload = { practitionerProfileId: String(created.id), sourceProfileId: String(therapistProfileId) };
     await this.jobs.enqueue(PHOTO_BACKFILL_JOB, payload as never, { dedupeKey: `${PHOTO_BACKFILL_JOB}:${created.id}` });
-    return created;
+    await this.refreshOwnScore(userId);
+    return this.getOwn(userId);
   }
 
   /** Change the signed-in user's own profile fields. */
-  async updateOwn(userId: bigint, input: ProfileUpdateInput) {
+  async updateOwn(userId: bigint, input: ProfileUpdateInput & ProfileAppearanceInput) {
     const data: Prisma.PractitionerProfileUpdateInput = {};
+
+    if ('themeKey' in input) {
+      if (!isThemeKey(input.themeKey)) throw new BadRequestException('Unknown theme');
+      data.themeKey = input.themeKey;
+    }
+    if ('templateKey' in input) {
+      if (input.templateKey === null) {
+        data.templateKey = null;
+      } else {
+        const template = await this.prisma.profileTemplate.findFirst({
+          where: { key: String(input.templateKey), isActive: true },
+          select: { key: true },
+        });
+        if (!template) throw new BadRequestException('Unknown template');
+        data.templateKey = template.key;
+      }
+    }
 
     for (const field of Object.keys(TEXT_LIMITS) as TextField[]) {
       if (field in input) data[field] = boundedText(input[field], field) as never;
@@ -254,7 +317,9 @@ export class PractitionerProfileService {
     }
 
     await this.requireOwn(userId);
-    return this.prisma.practitionerProfile.update({ where: { userId }, data, include: OWN_PROFILE_INCLUDE });
+    await this.prisma.practitionerProfile.update({ where: { userId }, data });
+    await this.refreshOwnScore(userId);
+    return this.getOwn(userId);
   }
 
   /**
@@ -316,7 +381,160 @@ export class PractitionerProfileService {
         data: selections.map((s) => ({ profileId: profile.id, termId: BigInt(s.termId), isPrimary: Boolean(s.isPrimary) })),
       }),
     ]);
+    await this.refreshOwnScore(userId);
     return this.getOwn(userId);
+  }
+
+  /** Replace the signed-in user's training & journey timeline (§6.4 section 3). */
+  async setOwnTimeline(userId: bigint, entries: TimelineInput[]) {
+    if (!Array.isArray(entries)) throw new BadRequestException('Send a list of entries');
+    if (entries.length > MAX_TIMELINE_ENTRIES) throw new BadRequestException(`Add at most ${MAX_TIMELINE_ENTRIES} entries`);
+    const thisYear = new Date().getFullYear();
+    const year = (value: unknown, label: string) => {
+      if (value === null || value === undefined || value === '') return null;
+      if (!Number.isInteger(value) || (value as number) < 1950 || (value as number) > thisYear + 1) {
+        throw new BadRequestException(`${label} must be a year between 1950 and ${thisYear + 1}`);
+      }
+      return value as number;
+    };
+    const short = (value: unknown, label: string, max: number) => {
+      if (value === null || value === undefined) return null;
+      if (typeof value !== 'string') throw new BadRequestException(`${label} must be text`);
+      const text = value.trim();
+      if (text.length > max) throw new BadRequestException(`${label} can be at most ${max} characters`);
+      return text || null;
+    };
+
+    const rows = entries.map((e, i) => {
+      if (!(TIMELINE_TYPES as readonly string[]).includes(e?.type)) throw new BadRequestException('Unknown timeline entry type');
+      const title = short(e.title, 'Title', 120);
+      if (!title) throw new BadRequestException('Each entry needs a title');
+      const startYear = year(e.startYear, 'Start year');
+      const endYear = year(e.endYear, 'End year');
+      if (startYear !== null && endYear !== null && endYear < startYear) throw new BadRequestException('An entry ends before it starts');
+      return {
+        type: e.type,
+        title,
+        organisation: short(e.organisation, 'Organisation', 120),
+        startYear,
+        endYear,
+        description: short(e.description, 'Description', 500),
+        sortOrder: i,
+      };
+    });
+
+    const profile = await this.requireOwn(userId);
+    await this.prisma.$transaction([
+      this.prisma.practitionerTimelineEntry.deleteMany({ where: { profileId: profile.id, profile: { userId } } }),
+      this.prisma.practitionerTimelineEntry.createMany({ data: rows.map((r) => ({ ...r, profileId: profile.id })) }),
+    ]);
+    await this.refreshOwnScore(userId);
+    return this.getOwn(userId);
+  }
+
+  /**
+   * Set the signed-in user's photo from an image the app has encoded (a data
+   * URL). The bytes must really be a JPEG, PNG or WebP within the size limit.
+   * Each upload gets a new key, so the old file is removed after the switch.
+   */
+  async setOwnPhoto(userId: bigint, image: unknown) {
+    if (typeof image !== 'string') throw new BadRequestException('Choose an image');
+    const decoded = decodeImageDataUrl(image);
+    if ('problem' in decoded) {
+      throw new BadRequestException(
+        decoded.problem === 'size' ? 'That photo is too large. Choose one under 2 MB.' : 'Choose a JPEG, PNG or WebP photo.',
+      );
+    }
+    if (!this.storage.configured('public')) throw new ServiceUnavailableException('Photo upload is not available yet.');
+
+    const profile = await this.prisma.practitionerProfile.findUnique({ where: { userId }, select: { id: true, photoKey: true } });
+    if (!profile) throw new NotFoundException('You have no profile yet');
+
+    const key = `profiles/${profile.id}/photo-${randomBytes(8).toString('hex')}.${decoded.extension}`;
+    await this.storage.put('public', key, decoded.bytes, { contentType: decoded.contentType });
+    await this.prisma.practitionerProfile.update({ where: { userId }, data: { photoKey: key } });
+    if (profile.photoKey) await this.removeQuietly(profile.photoKey);
+    await this.refreshOwnScore(userId);
+    return this.getOwn(userId);
+  }
+
+  async removeOwnPhoto(userId: bigint) {
+    const profile = await this.prisma.practitionerProfile.findUnique({ where: { userId }, select: { photoKey: true } });
+    if (!profile) throw new NotFoundException('You have no profile yet');
+    if (profile.photoKey) {
+      await this.prisma.practitionerProfile.update({ where: { userId }, data: { photoKey: null } });
+      await this.removeQuietly(profile.photoKey);
+      await this.refreshOwnScore(userId);
+    }
+    return this.getOwn(userId);
+  }
+
+  /**
+   * Everything the editor shows beside the form (§6.7): the score by section,
+   * the next thing to add, what still blocks publishing, writing tips, and
+   * sections still holding unchanged template text (§6.6).
+   */
+  async ownChecklist(userId: bigint) {
+    const loaded = await this.loadOwnSnapshot(userId);
+    if (!loaded) throw new NotFoundException('You have no profile yet');
+    const { snapshot, profile } = loaded;
+
+    const scores = sectionScores(snapshot);
+    const blockers = publishBlockers(snapshot);
+    return {
+      score: completenessScore(snapshot),
+      sections: SECTION_ORDER.map((key) => ({ key, score: scores[key], weight: SECTION_WEIGHTS[key] })),
+      next: nextSection(snapshot),
+      canPublish: blockers.length === 0,
+      blockers: blockers.map((key) => ({ key, message: PUBLISH_BLOCKER_MESSAGES[key] })),
+      tips: writingTips({
+        headline: profile.headline,
+        about: profile.about,
+        approach: profile.approach,
+        credentialsText: profile.credentialsText,
+      }),
+      unchangedTemplateText: await this.unchangedTemplateSections(profile),
+    };
+  }
+
+  /**
+   * Publish the signed-in user's profile. Refused while anything in §6.4's
+   * "required to publish" is missing, or while an admin has suspended it.
+   * Unchanged template text is a warning in the response, never a block.
+   */
+  async publishOwn(userId: bigint) {
+    const checklist = await this.ownChecklist(userId);
+    const profile = await this.prisma.practitionerProfile.findUnique({ where: { userId }, select: { status: true, publishedAt: true } });
+    if (!profile) throw new NotFoundException('You have no profile yet');
+    if (profile.status === 'SUSPENDED') throw new ForbiddenException('This profile has been suspended. Contact support.');
+    if (!checklist.canPublish) {
+      throw new BadRequestException({ message: 'Your profile is not ready to publish', blockers: checklist.blockers });
+    }
+    await this.prisma.practitionerProfile.update({
+      where: { userId },
+      data: { status: 'PUBLISHED', publishedAt: profile.publishedAt ?? new Date() },
+    });
+    return { profile: await this.getOwn(userId), warnings: { unchangedTemplateText: checklist.unchangedTemplateText } };
+  }
+
+  /** Take the signed-in user's published profile off the web (HIDDEN). A draft stays a draft. */
+  async unpublishOwn(userId: bigint) {
+    const profile = await this.prisma.practitionerProfile.findUnique({ where: { userId }, select: { status: true } });
+    if (!profile) throw new NotFoundException('You have no profile yet');
+    if (profile.status === 'SUSPENDED') throw new ForbiddenException('This profile has been suspended. Contact support.');
+    if (profile.status === 'PUBLISHED') {
+      await this.prisma.practitionerProfile.update({ where: { userId }, data: { status: 'HIDDEN' } });
+    }
+    return this.getOwn(userId);
+  }
+
+  /** Active templates for the picker (§6.6), with their guidance and examples. */
+  async activeTemplates() {
+    return this.prisma.profileTemplate.findMany({
+      where: { isActive: true },
+      orderBy: [{ sortOrder: 'asc' }, { title: 'asc' }],
+      select: { key: true, title: true, description: true, kind: true, sections: true },
+    });
   }
 
   /** The active taxonomy, grouped by kind, for the editor's pickers. */
@@ -336,6 +554,73 @@ export class PractitionerProfileService {
     });
     if (!profile) throw new NotFoundException('You have no profile yet');
     return profile;
+  }
+
+  /** Recompute and store the signed-in user's completeness score (§6.7: on every save). */
+  private async refreshOwnScore(userId: bigint) {
+    const loaded = await this.loadOwnSnapshot(userId);
+    if (!loaded) return;
+    await this.prisma.practitionerProfile.update({ where: { userId }, data: { completenessScore: completenessScore(loaded.snapshot) } });
+  }
+
+  private async loadOwnSnapshot(userId: bigint): Promise<{ snapshot: ProfileSnapshot; profile: any } | null> {
+    const profile = await this.prisma.practitionerProfile.findUnique({
+      where: { userId },
+      include: {
+        taxonomy: { select: { term: { select: { kind: true } } } },
+        _count: { select: { timeline: true, places: true } },
+      },
+    });
+    if (!profile) return null;
+    const terms = { SPECIALTY: 0, MODALITY: 0, POPULATION: 0, LANGUAGE: 0 };
+    for (const t of profile.taxonomy) terms[t.term.kind] += 1;
+    const links = profile.socialLinks && typeof profile.socialLinks === 'object' ? Object.keys(profile.socialLinks as object) : [];
+    return {
+      profile,
+      snapshot: {
+        displayName: profile.displayName,
+        kind: profile.kind,
+        headline: profile.headline,
+        countryCode: profile.countryCode,
+        photoKey: profile.photoKey,
+        about: profile.about,
+        approach: profile.approach,
+        credentialsText: profile.credentialsText,
+        timelineCount: profile._count.timeline,
+        terms,
+        faithIntegration: profile.faithIntegration,
+        selfReportedYears: profile.selfReportedYears,
+        showPlatformExperience: profile.showPlatformExperience,
+        bookingMode: profile.bookingMode,
+        placesCount: profile._count.places,
+        feeRangeText: profile.feeRangeText,
+        externalBookingUrl: profile.externalBookingUrl,
+        contactEmailPublic: profile.contactEmailPublic,
+        socialLinksCount: links.length,
+      },
+    };
+  }
+
+  /** Sections whose text still contains the chosen template's example word for word (§6.6). */
+  private async unchangedTemplateSections(profile: { templateKey: string | null } & Record<string, any>): Promise<SectionKey[]> {
+    if (!profile.templateKey) return [];
+    const template = await this.prisma.profileTemplate.findUnique({ where: { key: profile.templateKey }, select: { sections: true } });
+    const sections = ((template?.sections as any)?.sections ?? {}) as Partial<Record<SectionKey, { example?: string }>>;
+    const out: SectionKey[] = [];
+    for (const [section, field] of Object.entries(TEMPLATE_TEXT_FIELDS) as [SectionKey, string][]) {
+      const example = sections[section]?.example;
+      const text = profile[field];
+      if (example && typeof text === 'string' && squash(text).includes(squash(example))) out.push(section);
+    }
+    return out;
+  }
+
+  private async removeQuietly(key: string) {
+    try {
+      await this.storage.remove('public', key);
+    } catch (err) {
+      this.logger.warn(`could not remove old photo ${key}: ${(err as Error).message}`);
+    }
   }
 
   /** Active terms whose key or label matches free text from the old fields, case-insensitively. */

@@ -13,6 +13,11 @@ function setup() {
       create: vi.fn(async ({ data }: any) => ({ id: 1n, ...data })),
       update: vi.fn(async ({ data }: any) => ({ id: 1n, ...data })),
     },
+    practitionerTimelineEntry: {
+      deleteMany: vi.fn().mockReturnValue('deleteTimeline'),
+      createMany: vi.fn().mockReturnValue('createTimeline'),
+    },
+    profileTemplate: { findFirst: vi.fn().mockResolvedValue(null), findUnique: vi.fn().mockResolvedValue(null), findMany: vi.fn() },
     practitionerHandleHistory: {
       findUnique: vi.fn().mockResolvedValue(null),
       deleteMany: vi.fn().mockReturnValue('deleteHistory'),
@@ -27,7 +32,8 @@ function setup() {
     $transaction: vi.fn(async (ops: unknown[]) => ops),
   };
   const jobs: any = { enqueue: vi.fn().mockResolvedValue({ id: 1n }) };
-  return { service: new PractitionerProfileService(prisma, jobs), prisma, jobs };
+  const storage: any = { configured: vi.fn().mockReturnValue(true), put: vi.fn(), remove: vi.fn() };
+  return { service: new PractitionerProfileService(prisma, jobs, storage), prisma, jobs, storage };
 }
 
 const therapist = (over: Record<string, unknown> = {}) => ({
@@ -45,11 +51,43 @@ const therapist = (over: Record<string, unknown> = {}) => ({
 });
 
 /** The profile lookups the service makes, answered as the user's own profile. */
-function ownProfile(prisma: any, profile: Record<string, unknown> = { id: 1n, handle: 'adaeze', userId: ME }) {
+const BLANK = {
+  displayName: 'Adaeze Okonkwo',
+  kind: 'COUNSELLOR',
+  headline: null,
+  countryCode: 'NG',
+  photoKey: null,
+  about: null,
+  approach: null,
+  credentialsText: null,
+  faithIntegration: null,
+  selfReportedYears: null,
+  showPlatformExperience: false,
+  bookingMode: 'NONE',
+  feeRangeText: null,
+  externalBookingUrl: null,
+  contactEmailPublic: null,
+  socialLinks: null,
+  templateKey: null,
+  status: 'DRAFT',
+  publishedAt: null,
+  taxonomy: [] as unknown[],
+  _count: { timeline: 0, places: 0 },
+};
+
+function ownProfile(prisma: any, over: Record<string, unknown> = {}) {
+  const profile = { id: 1n, handle: 'adaeze', userId: ME, ...BLANK, ...over };
   prisma.practitionerProfile.findUnique.mockImplementation(async ({ where }: any) =>
     where.userId === ME || where.handle === profile.handle ? profile : null,
   );
+  return profile;
 }
+
+const READY = {
+  headline: 'Calm, practical support',
+  about: 'x'.repeat(160),
+  taxonomy: [{ term: { kind: 'SPECIALTY' } }, { term: { kind: 'LANGUAGE' } }],
+};
 
 describe('PractitionerProfileService', () => {
   describe('handle availability', () => {
@@ -199,7 +237,7 @@ describe('PractitionerProfileService', () => {
   describe('changing your handle', () => {
     it('keeps the old handle in history and frees your return to it', async () => {
       const { service, prisma } = setup();
-      ownProfile(prisma, { id: 1n, handle: 'adaeze', userId: ME });
+      ownProfile(prisma);
 
       await service.changeOwnHandle(ME, 'adaeze-o');
 
@@ -213,7 +251,7 @@ describe('PractitionerProfileService', () => {
 
     it('does nothing when the handle is unchanged', async () => {
       const { service, prisma } = setup();
-      ownProfile(prisma, { id: 1n, handle: 'adaeze', userId: ME });
+      ownProfile(prisma);
       await service.changeOwnHandle(ME, 'Adaeze');
       expect(prisma.$transaction).not.toHaveBeenCalled();
     });
@@ -260,6 +298,140 @@ describe('PractitionerProfileService', () => {
       prisma.taxonomyTerm.findMany.mockResolvedValue([]);
       await expect(service.setOwnTaxonomy(ME, [{ termId: '99' }])).rejects.toBeInstanceOf(BadRequestException);
       await expect(service.setOwnTaxonomy(ME, [{ termId: 'x' }])).rejects.toBeInstanceOf(BadRequestException);
+    });
+  });
+
+  describe('completeness on save (§6.7)', () => {
+    it('stores the recomputed score after an update', async () => {
+      const { service, prisma } = setup();
+      ownProfile(prisma, READY);
+      await service.updateOwn(ME, { headline: 'Calm, practical support' });
+      const scoreWrite = prisma.practitionerProfile.update.mock.calls.find((c: any[]) => 'completenessScore' in c[0].data);
+      // identity 15 (no photo) + about 15 + specialties 10 + languages 5
+      expect(scoreWrite[0]).toEqual({ where: { userId: ME }, data: { completenessScore: 45 } });
+    });
+  });
+
+  describe('appearance', () => {
+    it('accepts a known theme and refuses others', async () => {
+      const { service, prisma } = setup();
+      ownProfile(prisma);
+      await service.updateOwn(ME, { themeKey: 'warm' });
+      expect(prisma.practitionerProfile.update.mock.calls[0][0].data).toEqual({ themeKey: 'warm' });
+      await expect(service.updateOwn(ME, { themeKey: 'neon' })).rejects.toBeInstanceOf(BadRequestException);
+    });
+
+    it('accepts only an active template', async () => {
+      const { service, prisma } = setup();
+      ownProfile(prisma);
+      await expect(service.updateOwn(ME, { templateKey: 'nope' })).rejects.toBeInstanceOf(BadRequestException);
+      prisma.profileTemplate.findFirst.mockResolvedValue({ key: 'clinical-psychologist' });
+      await service.updateOwn(ME, { templateKey: 'clinical-psychologist' });
+      expect(prisma.profileTemplate.findFirst.mock.calls[1][0].where).toEqual({ key: 'clinical-psychologist', isActive: true });
+    });
+  });
+
+  describe('publishing (§6.4)', () => {
+    it('lists what is missing and refuses', async () => {
+      const { service, prisma } = setup();
+      ownProfile(prisma);
+      await expect(service.publishOwn(ME)).rejects.toMatchObject({
+        response: { blockers: [{ key: 'headline' }, { key: 'about' }, { key: 'specialties' }, { key: 'languages' }] },
+      });
+    });
+
+    it('publishes a ready profile and keeps the first publish date', async () => {
+      const { service, prisma } = setup();
+      const first = new Date('2026-10-01T00:00:00Z');
+      ownProfile(prisma, { ...READY, status: 'HIDDEN', publishedAt: first });
+      await service.publishOwn(ME);
+      expect(prisma.practitionerProfile.update).toHaveBeenCalledWith({ where: { userId: ME }, data: { status: 'PUBLISHED', publishedAt: first } });
+    });
+
+    it('warns, but publishes, when template text is unchanged (§6.6)', async () => {
+      const { service, prisma } = setup();
+      const example = 'People often come to me when something that used to feel manageable has started to feel heavy.';
+      ownProfile(prisma, { ...READY, about: `${example} ${'x'.repeat(80)}`, templateKey: 'private-practice-counsellor' });
+      prisma.profileTemplate.findUnique.mockResolvedValue({ sections: { sections: { about: { example } } } });
+      const result = await service.publishOwn(ME);
+      expect(result.warnings.unchangedTemplateText).toEqual(['about']);
+    });
+
+    it('never lets the owner publish or unpublish a suspended profile', async () => {
+      const { service, prisma } = setup();
+      ownProfile(prisma, { ...READY, status: 'SUSPENDED' });
+      await expect(service.publishOwn(ME)).rejects.toBeInstanceOf(ForbiddenException);
+      await expect(service.unpublishOwn(ME)).rejects.toBeInstanceOf(ForbiddenException);
+    });
+
+    it('unpublishing hides a published profile and leaves a draft alone', async () => {
+      const { service, prisma } = setup();
+      ownProfile(prisma, { status: 'PUBLISHED' });
+      await service.unpublishOwn(ME);
+      expect(prisma.practitionerProfile.update).toHaveBeenCalledWith({ where: { userId: ME }, data: { status: 'HIDDEN' } });
+
+      const draft = setup();
+      ownProfile(draft.prisma, { status: 'DRAFT' });
+      await draft.service.unpublishOwn(ME);
+      expect(draft.prisma.practitionerProfile.update).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('timeline', () => {
+    it('replaces the entries in order, in one transaction', async () => {
+      const { service, prisma } = setup();
+      ownProfile(prisma);
+      await service.setOwnTimeline(ME, [
+        { type: 'EDUCATION', title: 'MSc Counselling', organisation: 'University of Lagos', startYear: 2014, endYear: 2016 },
+        { type: 'MEMBERSHIP', title: 'Counselling Association of Nigeria' },
+      ]);
+      const rows = prisma.practitionerTimelineEntry.createMany.mock.calls[0][0].data;
+      expect(rows.map((r: any) => [r.sortOrder, r.title, r.profileId])).toEqual([
+        [0, 'MSc Counselling', 1n],
+        [1, 'Counselling Association of Nigeria', 1n],
+      ]);
+      expect(prisma.practitionerTimelineEntry.deleteMany).toHaveBeenCalledWith({ where: { profileId: 1n, profile: { userId: ME } } });
+    });
+
+    it.each([
+      [{ type: 'HOBBY', title: 'x' }],
+      [{ type: 'EDUCATION', title: '' }],
+      [{ type: 'EDUCATION', title: 'x', startYear: 2016, endYear: 2014 }],
+      [{ type: 'EDUCATION', title: 'x', startYear: 1900 }],
+    ])('refuses %j', async (entry) => {
+      const { service, prisma } = setup();
+      ownProfile(prisma);
+      await expect(service.setOwnTimeline(ME, [entry as any])).rejects.toBeInstanceOf(BadRequestException);
+    });
+  });
+
+  describe('photo', () => {
+    const PNG = `data:image/png;base64,${Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0, 0]).toString('base64')}`;
+
+    it('uploads a real image under a new key and removes the old one', async () => {
+      const { service, prisma, storage } = setup();
+      ownProfile(prisma, { photoKey: 'profiles/1/photo-old.png' });
+      await service.setOwnPhoto(ME, PNG);
+      const key = storage.put.mock.calls[0][1];
+      expect(key).toMatch(/^profiles\/1\/photo-[0-9a-f]{16}\.png$/);
+      expect(prisma.practitionerProfile.update).toHaveBeenCalledWith({ where: { userId: ME }, data: { photoKey: key } });
+      expect(storage.remove).toHaveBeenCalledWith('public', 'profiles/1/photo-old.png');
+    });
+
+    it('refuses something that is not a real image', async () => {
+      const { service, prisma, storage } = setup();
+      ownProfile(prisma);
+      await expect(service.setOwnPhoto(ME, `data:image/png;base64,${Buffer.from('<svg>').toString('base64')}`)).rejects.toBeInstanceOf(
+        BadRequestException,
+      );
+      expect(storage.put).not.toHaveBeenCalled();
+    });
+
+    it('says plainly when storage is not set up', async () => {
+      const { service, prisma, storage } = setup();
+      ownProfile(prisma);
+      storage.configured.mockReturnValue(false);
+      await expect(service.setOwnPhoto(ME, PNG)).rejects.toThrow(/not available yet/);
     });
   });
 });
