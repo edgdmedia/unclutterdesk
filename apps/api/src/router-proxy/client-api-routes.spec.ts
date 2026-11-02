@@ -34,8 +34,6 @@ const NEVER_PROXIED: string[] = [
   'POST /v1/auth/register',
   // Invite claim endpoint (auth flow, not client booking)
   'POST /v1/auth/invite/claim',
-  // Tenant registration endpoint (practice admin flow)
-  'POST /v1/tenant/register',
 ];
 const ROUTES = allRoutes();
 const byTarget = new Map(ROUTES.map((r) => [r.target, r]));

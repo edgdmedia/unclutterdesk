@@ -8,6 +8,7 @@ import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { RolesGuard } from '../../common/roles.guard';
 import { Permissions } from '../../common/permissions';
 import { authenticatedTenantId } from '../../common/authenticated-tenant';
+import { PlatformAdminGuard } from '../admin/platform-admin.guard';
 
 @ApiTags('Tenant')
 @Controller('v1/tenant')
@@ -15,7 +16,9 @@ export class TenantController {
   constructor(private readonly tenantService: TenantService) {}
 
   @Post('register')
-  @ApiOperation({ summary: 'Register a new practice tenant (SaaS Onboarding)' })
+  @UseGuards(PlatformAdminGuard)
+  @ApiBearerAuth('access-token')
+  @ApiOperation({ summary: 'Platform admin: set up a practice directly (e.g. a clinic onboarded in person)' })
   createTenant(@Body() dto: {
     name: string;
     slug: string;

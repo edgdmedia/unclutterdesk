@@ -35,7 +35,6 @@ const EXEMPT_ROUTES = new Set([
   'POST /v1/auth/invite/claim',
   'POST /v1/auth/refresh',
   'POST /v1/admin/auth/login',
-  'POST /v1/tenant/register',
 ]);
 
 function normalisePath(raw: string): string {
