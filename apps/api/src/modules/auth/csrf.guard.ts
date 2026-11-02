@@ -1,6 +1,6 @@
 import { CanActivate, ExecutionContext, Injectable, ForbiddenException } from '@nestjs/common';
-import { timingSafeEqual } from 'crypto';
 import { ACCESS_COOKIE, REFRESH_COOKIE, CSRF_COOKIE } from '../../common/auth.config';
+import { safeEqual } from '../../common/timing-safe';
 
 const SAFE_METHODS = new Set(['GET', 'HEAD', 'OPTIONS']);
 
@@ -47,16 +47,7 @@ function normalisePath(raw: string): string {
 }
 
 function tokensMatch(header: unknown, cookie: unknown): boolean {
-  // A repeated header arrives as an array; treat that as a failure rather than
-  // trying to guess which value was meant.
-  if (typeof header !== 'string' || typeof cookie !== 'string') return false;
-  if (header.length === 0 || cookie.length === 0) return false;
-
-  const a = Buffer.from(header, 'utf8');
-  const b = Buffer.from(cookie, 'utf8');
-  // timingSafeEqual throws on a length mismatch, and length is not secret.
-  if (a.length !== b.length) return false;
-  return timingSafeEqual(a, b);
+  return safeEqual(header, cookie);
 }
 
 @Injectable()

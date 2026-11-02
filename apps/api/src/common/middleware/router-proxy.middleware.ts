@@ -23,10 +23,6 @@ export interface RouterProxyRequest extends Request {
   routerProxy?: RouterProxied;
 }
 
-export function secretMatches(sent: unknown, expected: string): boolean {
-  return safeEqual(sent, expected);
-}
-
 /** A plain IPv4 or IPv6 address, nothing else (it ends up as a rate-limit key). */
 function cleanIp(raw: unknown): string | null {
   if (typeof raw !== 'string') return null;
@@ -53,14 +49,13 @@ export class RouterProxyMiddleware implements NestMiddleware {
     const sent = req.headers[ROUTER_SECRET_HEADER];
     const host = req.headers[PRACTICE_HOST_HEADER];
 
-    if (secret && secretMatches(sent, secret) && typeof host === 'string' && host.trim()) {
+    if (secret && safeEqual(sent, secret) && typeof host === 'string' && host.trim()) {
       req.routerProxy = { practiceHost: normalizeHost(host.trim()), clientIp: cleanIp(req.headers[CLIENT_IP_HEADER]) };
     } else if (sent !== undefined) {
-      // Log at debug level: anyone can set the header, so warn only for actual bugs
-      // The message differs based on what's missing or wrong
+      // Log at debug level for secret mismatches to avoid log flooding from direct callers
       if (!secret) {
         this.logger.warn(`Ignored router proxy headers: ROUTER_PROXY_SECRET is not configured`);
-      } else if (!secretMatches(sent, secret)) {
+      } else if (!safeEqual(sent, secret)) {
         this.logger.debug(`Router proxy secret did not match`);
       } else if (typeof host !== 'string' || !host.trim()) {
         // Secret matched but host is blank - this is a router bug
