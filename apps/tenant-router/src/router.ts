@@ -10,6 +10,16 @@ export interface RouterConfig {
 }
 
 /**
+ * Normalises a hostname for practice lookups: lowercases and removes one trailing dot.
+ * This ensures consistent matching across the router and API when headers come from
+ * different sources (e.g., Cloudflare for SaaS vs. the API's own checks).
+ */
+export function normalizeHost(hostname: string): string {
+  const lower = hostname.toLowerCase();
+  return lower.endsWith('.') ? lower.slice(0, -1) : lower;
+}
+
+/**
  * A host outside our zone: a practice custom domain arriving through
  * Cloudflare for SaaS. The client API proxy runs only on these (spec §6.16).
  */
@@ -83,14 +93,35 @@ export function decide(hostname: string, config: RouterConfig): Decision {
  * method, body and headers. Only the host changes — the SPA resolves its tenant
  * from window.location in the browser, so the origin can serve one bundle for
  * every host.
+ *
+ * Session credentials are stripped: the app origin serves a static SPA and
+ * never sees authenticated requests; sending them would leak cookies across
+ * hosts and confuse the origin's own caching.
  */
 export function originRequest(request: Request, config: RouterConfig): Request {
   const url = new URL(request.url);
   url.protocol = config.originProtocol ?? 'https:';
-  url.host = config.originHost;
+  // If originHost includes a port (e.g. local e2e setup), use it; otherwise clear any visitor port.
+  // Cloudflare proxies 8443, 2053 and other ports, so we must not forward the visitor's port.
+  if (config.originHost.includes(':')) {
+    url.href = `${url.protocol}//${config.originHost}${url.pathname}${url.search}`;
+  } else {
+    url.hostname = config.originHost;
+    url.port = '';
+  }
 
   // The Host header is derived from the URL and cannot be set manually in
   // Workers; passing the original host through would make Pages reject the
   // request as an unregistered custom domain.
-  return new Request(url.toString(), request);
+  const headers = new Headers(request.headers);
+  headers.delete('cookie');
+  headers.delete('authorization');
+  const hasBody = request.method !== 'GET' && request.method !== 'HEAD';
+  return new Request(url.toString(), {
+    method: request.method,
+    headers,
+    body: hasBody ? request.body : undefined,
+    redirect: request.redirect,
+    ...(hasBody ? { duplex: 'half' } : {}),
+  } as RequestInit);
 }
