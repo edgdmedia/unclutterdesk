@@ -242,6 +242,7 @@ export class PractitionerProfileService {
     const payload: PhotoBackfillPayload = { practitionerProfileId: String(created.id), sourceProfileId: String(therapistProfileId) };
     await this.jobs.enqueue(PHOTO_BACKFILL_JOB, payload as never, { dedupeKey: `${PHOTO_BACKFILL_JOB}:${created.id}` });
     await this.refreshOwnScore(userId);
+    await this.syncPracticeRecords(userId);
     return this.getOwn(userId);
   }
 
@@ -319,6 +320,7 @@ export class PractitionerProfileService {
     await this.requireOwn(userId);
     await this.prisma.practitionerProfile.update({ where: { userId }, data });
     await this.refreshOwnScore(userId);
+    await this.syncPracticeRecords(userId);
     return this.getOwn(userId);
   }
 
@@ -382,6 +384,7 @@ export class PractitionerProfileService {
       }),
     ]);
     await this.refreshOwnScore(userId);
+    await this.syncPracticeRecords(userId);
     return this.getOwn(userId);
   }
 
@@ -429,6 +432,7 @@ export class PractitionerProfileService {
       this.prisma.practitionerTimelineEntry.createMany({ data: rows.map((r) => ({ ...r, profileId: profile.id })) }),
     ]);
     await this.refreshOwnScore(userId);
+    await this.syncPracticeRecords(userId);
     return this.getOwn(userId);
   }
 
@@ -455,6 +459,7 @@ export class PractitionerProfileService {
     await this.prisma.practitionerProfile.update({ where: { userId }, data: { photoKey: key } });
     if (profile.photoKey) await this.removeQuietly(profile.photoKey);
     await this.refreshOwnScore(userId);
+    await this.syncPracticeRecords(userId);
     return this.getOwn(userId);
   }
 
@@ -465,6 +470,7 @@ export class PractitionerProfileService {
       await this.prisma.practitionerProfile.update({ where: { userId }, data: { photoKey: null } });
       await this.removeQuietly(profile.photoKey);
       await this.refreshOwnScore(userId);
+    await this.syncPracticeRecords(userId);
     }
     return this.getOwn(userId);
   }
@@ -554,6 +560,44 @@ export class PractitionerProfileService {
     });
     if (!profile) throw new NotFoundException('You have no profile yet');
     return profile;
+  }
+
+  /**
+   * Copy what the public profile now owns back to the deprecated fields on
+   * every practice record of this person (ConsultTherapistProfile), which the
+   * practice booking page still reads. The profile is the one place these are
+   * edited; this keeps the booking page in step until it reads the profile
+   * itself. Practice-only settings (emails, video, locations, welcome
+   * message, online/in-person per practice) are never touched.
+   */
+  private async syncPracticeRecords(userId: bigint) {
+    const profile = await this.prisma.practitionerProfile.findUnique({
+      where: { userId },
+      select: {
+        headline: true,
+        credentialsText: true,
+        selfReportedYears: true,
+        taxonomy: { select: { isPrimary: true, term: { select: { kind: true, label: true, sortOrder: true } } } },
+      },
+    });
+    if (!profile) return;
+    const labels = (kind: string, primaryOnly = false) =>
+      profile.taxonomy
+        .filter((t) => t.term.kind === kind && (!primaryOnly || t.isPrimary))
+        .sort((a, b) => a.term.sortOrder - b.term.sortOrder)
+        .map((t) => t.term.label);
+    const specialties = labels('SPECIALTY', true).length ? labels('SPECIALTY', true) : labels('SPECIALTY');
+    await this.prisma.consultTherapistProfile.updateMany({
+      where: { profile: { userId } },
+      data: {
+        tagline: profile.headline,
+        credentials: profile.credentialsText,
+        yearsExperience: profile.selfReportedYears,
+        specialty: specialties.join(', ') || null,
+        modalities: labels('MODALITY'),
+        languages: labels('LANGUAGE'),
+      },
+    });
   }
 
   /** Recompute and store the signed-in user's completeness score (§6.7: on every save). */

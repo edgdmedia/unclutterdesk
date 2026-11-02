@@ -29,7 +29,17 @@ type LocationOption = { id: string; name: string; city: string };
 
 const inputCls = 'h-[46px] w-full px-[14px] rounded-[14px] bg-[#F8FAFC] border border-[#E2E8F0] text-sm font-medium text-[#0F172A] outline-none focus:bg-white focus:border-[#94A3B8]';
 
-export function MyProfilePage() {
+/**
+ * The therapist's settings at this practice. Inside the merged profile page
+ * (`embedded`), it's the "This practice" tab. Once the therapist has a public
+ * profile (`sharedFieldsInPublicProfile`), the fields the profile now owns
+ * (specialty, tagline, credentials, years, modalities, languages) are edited
+ * there and copied here by the API, so they are not shown twice.
+ */
+export function MyProfilePage({
+  embedded = false,
+  sharedFieldsInPublicProfile = false,
+}: { embedded?: boolean; sharedFieldsInPublicProfile?: boolean } = {}) {
   const toast = useToast();
   const [profile, setProfile] = useState<ProfileRecord>({ modalities: [], languages: [] });
   const [loading, setLoading] = useState(true);
@@ -83,12 +93,18 @@ export function MyProfilePage() {
   }
 
   return (
-    <div className="flex-1 min-w-[1192px] flex flex-col bg-[#F8FAFC]">
-      <header className="h-[88px] bg-white border-b border-[#E2E8F0] px-[26px] flex items-center gap-5 shrink-0">
+    <div className={embedded ? 'flex flex-col' : 'flex-1 min-w-[1192px] flex flex-col bg-[#F8FAFC]'}>
+      <header className={embedded ? 'flex items-center gap-5 pb-4' : 'h-[88px] bg-white border-b border-[#E2E8F0] px-[26px] flex items-center gap-5 shrink-0'}>
         <div>
-          <Eyebrow>ACCOUNT</Eyebrow>
-          <h1 className="text-[20px] font-bold tracking-[-0.02em] text-[#0F172A]">My profile</h1>
-          <p className="text-xs text-[#64748B] font-medium">Real therapist profile data used on your booking page</p>
+          {embedded ? (
+            <p className="text-[13px] text-[#64748B] font-medium">Settings for this practice: how clients reach you, video, locations and your booking-page welcome.</p>
+          ) : (
+            <>
+              <Eyebrow>ACCOUNT</Eyebrow>
+              <h1 className="text-[20px] font-bold tracking-[-0.02em] text-[#0F172A]">My profile</h1>
+              <p className="text-xs text-[#64748B] font-medium">Real therapist profile data used on your booking page</p>
+            </>
+          )}
         </div>
         <button onClick={() => void handleSave()} className="os-brand-btn ml-auto h-[44px] px-5 rounded-[14px] font-bold text-sm flex items-center gap-2 text-white cursor-pointer disabled:opacity-60" style={{ backgroundColor: '#0F3A53' }} disabled={saving || loading}>
           <Save className="h-4 w-4" />
@@ -96,7 +112,7 @@ export function MyProfilePage() {
         </button>
       </header>
 
-      <main className="flex-1 min-h-0 overflow-auto p-[24px_26px_32px] grid grid-cols-[minmax(0,1fr)_352px] gap-[20px] items-start">
+      <main className={embedded ? 'grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_352px] gap-[20px] items-start' : 'flex-1 min-h-0 overflow-auto p-[24px_26px_32px] grid grid-cols-[minmax(0,1fr)_352px] gap-[20px] items-start'}>
         <div className="flex flex-col gap-5">
           {error ? <div className="rounded-[18px] border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-medium text-rose-700">{error}</div> : null}
           {loading ? <div className="rounded-[24px] border border-[#E2E8F0] bg-white px-6 py-10 text-sm font-medium text-[#64748B]">Loading profile...</div> : (
@@ -107,14 +123,19 @@ export function MyProfilePage() {
                   <div><label className="block text-[11.5px] font-bold text-[#475569] mb-1.5">First name</label><input className={inputCls} value={profile.firstName || ''} onChange={(e) => setProfile((p) => ({ ...p, firstName: e.target.value }))} /></div>
                   <div><label className="block text-[11.5px] font-bold text-[#475569] mb-1.5">Last name</label><input className={inputCls} value={profile.lastName || ''} onChange={(e) => setProfile((p) => ({ ...p, lastName: e.target.value }))} /></div>
                   <div><label className="block text-[11.5px] font-bold text-[#475569] mb-1.5">Phone</label><input className={inputCls} value={profile.phone || ''} onChange={(e) => setProfile((p) => ({ ...p, phone: e.target.value }))} /></div>
-                  <div><label className="block text-[11.5px] font-bold text-[#475569] mb-1.5">Specialty</label><input className={inputCls} value={profile.specialty || ''} onChange={(e) => setProfile((p) => ({ ...p, specialty: e.target.value }))} /></div>
+                  {!sharedFieldsInPublicProfile && <div><label className="block text-[11.5px] font-bold text-[#475569] mb-1.5">Specialty</label><input className={inputCls} value={profile.specialty || ''} onChange={(e) => setProfile((p) => ({ ...p, specialty: e.target.value }))} /></div>}
                   <div><label className="block text-[11.5px] font-bold text-[#475569] mb-1.5">Booking email</label><input className={inputCls} value={profile.bookingEmail || ''} onChange={(e) => setProfile((p) => ({ ...p, bookingEmail: e.target.value }))} /></div>
                   <div><label className="block text-[11.5px] font-bold text-[#475569] mb-1.5">Notification email</label><input className={inputCls} value={profile.notificationEmail || ''} onChange={(e) => setProfile((p) => ({ ...p, notificationEmail: e.target.value }))} /></div>
                 </div>
-                <div className="mt-4"><label className="block text-[11.5px] font-bold text-[#475569] mb-1.5">Tagline</label><input className={inputCls} value={profile.tagline || ''} maxLength={120} placeholder="One line under your name on the booking page" onChange={(e) => setProfile((p) => ({ ...p, tagline: e.target.value }))} /></div>
+                {!sharedFieldsInPublicProfile && <div className="mt-4"><label className="block text-[11.5px] font-bold text-[#475569] mb-1.5">Tagline</label><input className={inputCls} value={profile.tagline || ''} maxLength={120} placeholder="One line under your name on the booking page" onChange={(e) => setProfile((p) => ({ ...p, tagline: e.target.value }))} /></div>}
                 <div className="mt-4"><label className="block text-[11.5px] font-bold text-[#475569] mb-1.5">Bio</label><textarea rows={5} className="w-full min-h-[96px] p-3.5 rounded-[14px] bg-[#F8FAFC] border border-[#E2E8F0] text-sm font-medium text-[#0F172A] outline-none focus:bg-white focus:border-[#94A3B8] resize-none leading-relaxed" value={profile.welcomeMessage || ''} onChange={(e) => setProfile((p) => ({ ...p, welcomeMessage: e.target.value }))} /></div>
               </div>
 
+              {sharedFieldsInPublicProfile ? (
+                <p className="rounded-[18px] border border-[#E2E8F0] bg-white px-5 py-4 text-[13px] text-[#475569]" role="note">
+                  Your specialty, headline, credentials, experience, modalities and languages are edited in your public profile and used here too.
+                </p>
+              ) : (
               <div className="bg-white rounded-[24px] border border-[#E2E8F0] p-[24px_26px]">
                 <Eyebrow className="mb-1">CREDENTIALS</Eyebrow>
                 <div className="grid grid-cols-2 gap-4 mt-4">
@@ -124,6 +145,7 @@ export function MyProfilePage() {
                   <div><label className="block text-[11.5px] font-bold text-[#475569] mb-1.5">Languages</label><input className={inputCls} value={(profile.languages || []).join(', ')} onChange={(e) => setProfile((p) => ({ ...p, languages: e.target.value.split(',').map((v) => v.trim()).filter(Boolean) }))} /></div>
                 </div>
               </div>
+              )}
 
               <div className="bg-white rounded-[24px] border border-[#E2E8F0] p-[24px_26px]">
                 <Eyebrow className="mb-1">SEES CLIENTS</Eyebrow>

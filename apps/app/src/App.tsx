@@ -45,7 +45,7 @@ const PayBookingPage = lazy(() => import('./pages/public/PayBookingPage').then((
 const NotificationsPage = lazy(() => import('./pages/practice/NotificationsPage').then((m) => ({ default: m.NotificationsPage })));
 const SubmissionsPage = lazy(() => import('./pages/practice/SubmissionsPage').then((m) => ({ default: m.SubmissionsPage })));
 const AvailabilitySettingsPage = lazy(() => import('./pages/practice/settings/AvailabilitySettingsPage').then((m) => ({ default: m.AvailabilitySettingsPage })));
-const MyProfilePage = lazy(() => import('./pages/practice/MyProfilePage').then((m) => ({ default: m.MyProfilePage })));
+const ProfilePage = lazy(() => import('./pages/practice/profile/ProfilePage').then((m) => ({ default: m.ProfilePage })));
 const AccountPreferencesPage = lazy(() => import('./pages/practice/settings/AccountPreferencesPage').then((m) => ({ default: m.AccountPreferencesPage })));
 const PracticeProfilePage = lazy(() => import('./pages/practice/settings/PracticeProfilePage').then((m) => ({ default: m.PracticeProfilePage })));
 const SettingsHub = lazy(() => import('./pages/practice/settings/SettingsPage').then((m) => ({ default: m.SettingsHub })));
@@ -469,7 +469,7 @@ function AppLayout() {
                 <Route path="account" element={<AccountPreferencesPage />} />
                 <Route path="*" element={<SettingsIndex />} />
               </Route>
-              <Route path="/dashboard/profile" element={<MyProfilePage />} />
+              <Route path="/dashboard/profile" element={<ProfilePage />} />
               <Route path="/dashboard/settings/payouts" element={<PayoutSettingsPage />} />
               <Route path="/dashboard/settings/forms" element={<FormsManagerPage />} />
               <Route path="/dashboard/settings/forms/:id" element={<FormEditorPage />} />
