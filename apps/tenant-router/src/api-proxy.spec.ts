@@ -180,6 +180,12 @@ describe('cookies coming back', () => {
     );
   });
 
+  it('scopes a clearing HttpOnly cookie the same way', () => {
+    expect(rewriteSetCookie('unclutter_access=; Path=/; Expires=Thu, 01 Jan 1970 00:00:00 GMT; HttpOnly')).toBe(
+      'unclutter_access=; Path=/api; Expires=Thu, 01 Jan 1970 00:00:00 GMT; HttpOnly',
+    );
+  });
+
   it('are all rewritten when a response sets several', async () => {
     const headers = new Headers({ 'content-type': 'application/json' });
     headers.append('set-cookie', 'unclutter_access=a; Path=/; HttpOnly');
@@ -284,5 +290,12 @@ describe('the Worker on /api', () => {
     expect(res.headers.get('content-type')).toContain('application/json');
     const body = await res.text();
     expect(body).toContain('Gateway timeout');
+  });
+
+  it('bounds the API call with API_TIMEOUT_MS', async () => {
+    const timeoutSpy = vi.spyOn(AbortSignal, 'timeout');
+    await call('https://chente.com/api/v1/auth/status');
+    expect(timeoutSpy).toHaveBeenCalledWith(API_TIMEOUT_MS);
+    timeoutSpy.mockRestore();
   });
 });
