@@ -2,12 +2,22 @@
 
 Every production address in the code is a setting with today's address as its default (spec §4.1a table). This page lists what a move to new domains touches: the settings, the files that can't read a setting, and the outside services that hold one of our URLs. Nothing here has been changed yet. Fill in the new values at the move.
 
+## 0. The new domains live in a different Cloudflare account
+
+`therapysts.com` and `therapysts.app` are zones in a different Cloudflare account from `unclutterdesk.com`. The R2 buckets are created there from the start (spec §4.4), so the public bucket's custom domain sits on a new-account zone and no files ever need copying between accounts. Everything else still in the current account moves at the switch, and each piece is recreated rather than transferred:
+
+- **Tenant router Worker:** deploy it to the new account (`wrangler login` as the new account, then deploy). Set `ROUTER_PROXY_SECRET` there with `wrangler secret put`, using the same value as the API.
+- **Pages projects** for the app and the landing site: create them in the new account and add the new custom domains. Update the GitHub secrets the deploy workflows use (`CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_ACCOUNT_ID`, the Pages project names).
+- **Cloudflare for SaaS** on the `.app` zone: enable it, create the fallback origin and the CNAME target, then set the API's `CLOUDFLARE_ZONE_ID`, `CLOUDFLARE_AUTH_EMAIL`, `CLOUDFLARE_API_KEY` and `CUSTOM_DOMAIN_TARGET` to the new account's values. Each Pro custom domain is created again by the API when its practice re-saves it. Tell those practices to re-point their CNAME before the switch.
+- **Worker routes** are recreated by the API's custom-domain cron from `TENANT_ROOT_DOMAIN` once the API points at the new zone (`CLOUDFLARE_SETUP.md`). Delete the old account's routes by hand afterwards.
+
 ## 1. Settings
 
 **API `.env`** (`apps/api/src/common/origins.ts`):
 - `TENANT_ROOT_DOMAIN`: practice subdomains, CORS, the CSRF cookie domain and the `no-reply@` fallback all follow it.
 - `MARKETING_URL`, `APP_URL`, `API_URL`, `PROFILE_PUBLIC_URL`.
 - `MAIL_FROM`: the platform sender on the new sending domain.
+- `R2_*`: already on the new account (section 0); nothing to change at the switch.
 - `CUSTOM_DOMAIN_TARGET`: the new CNAME target. Remove `CLOUDFLARE_SAAS_CNAME_TARGET` once this is set.
 - `COOKIE_DOMAIN`: leave unset unless the cookie must differ from `.<TENANT_ROOT_DOMAIN>`.
 - `GOOGLE_REDIRECT_URI`, if set (otherwise it follows `API_URL`).

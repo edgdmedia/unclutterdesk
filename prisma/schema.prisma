@@ -1123,3 +1123,42 @@ model ProfileTemplate {
   sortOrder   Int               @default(0)
   updatedAt   DateTime          @updatedAt
 }
+
+// ── v2 Phase 1: shared infrastructure (spec §4.4) ──────────────────────────
+
+/// Work done later, with retries: cache purges, preview images, photo copies.
+/// Run by the jobs module on the existing 5-minute schedule.
+model BackgroundJob {
+  id          BigInt    @id @default(autoincrement())
+  type        String    @db.VarChar(60)
+  payloadJson Json
+  runAfter    DateTime  @default(now())
+  attempts    Int       @default(0)
+  lastError   String?
+  /// One live job per key: enqueueing again while one is pending is a no-op.
+  dedupeKey   String?   @db.VarChar(200)
+  /// Set while a run holds the job, so two API processes never run it twice.
+  lockedUntil DateTime?
+  completedAt DateTime?
+  /// Gave up after the last attempt; kept for the admin to see.
+  failedAt    DateTime?
+  createdAt   DateTime  @default(now())
+
+  @@index([completedAt, failedAt, runAfter])
+  @@index([dedupeKey])
+}
+
+/// Every platform-admin action (spec §4.4). Append-only.
+model AdminAuditLog {
+  id          BigInt   @id @default(autoincrement())
+  actorUserId BigInt
+  action      String   @db.VarChar(80)
+  targetType  String   @db.VarChar(60)
+  targetId    String   @db.VarChar(80)
+  reason      String?
+  metaJson    Json?
+  createdAt   DateTime @default(now())
+
+  @@index([targetType, targetId])
+  @@index([actorUserId, createdAt])
+}

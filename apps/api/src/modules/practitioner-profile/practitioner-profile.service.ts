@@ -1,7 +1,9 @@
 import { BadRequestException, ConflictException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { Prisma, type PractitionerKind } from '@prisma/client';
 import { PrismaService } from '../../common/prisma/prisma.service';
+import { JobsService } from '../jobs/jobs.service';
 import { HANDLE_MESSAGES, handleProblem, normalizeHandle, suggestHandle } from './handles';
+import { PHOTO_BACKFILL_JOB, type PhotoBackfillPayload } from './profile-photo.job';
 
 /**
  * A therapist's own public profile (spec §6.1).
@@ -99,7 +101,10 @@ function boundedText(value: unknown, field: TextField): string | null {
 
 @Injectable()
 export class PractitionerProfileService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly jobs: JobsService,
+  ) {}
 
   /**
    * Whether `input` can be this user's handle: well-formed, not reserved, and
@@ -134,7 +139,8 @@ export class PractitionerProfileService {
    * their practice already holds about them (§6.1 back-fill): tagline,
    * credentials, years of experience, online/in-person, and taxonomy terms
    * matching their specialty, modalities and languages. The old fields are
-   * left as they are. The photo is copied by the storage step (§4.4), not here.
+   * left as they are. The practice photo is copied to R2 by a background job
+   * (profile-photo.job.ts), so a slow or unconfigured R2 never blocks signup.
    */
   async createOwn(userId: bigint, therapistProfileId: bigint, input: ProfileCreateInput) {
     const existing = await this.prisma.practitionerProfile.findUnique({ where: { userId }, select: { id: true } });
@@ -163,8 +169,9 @@ export class PractitionerProfileService {
       LANGUAGE: therapist.languages,
     });
 
+    let created;
     try {
-      return await this.prisma.practitionerProfile.create({
+      created = await this.prisma.practitionerProfile.create({
         data: {
           userId,
           handle: availability.handle,
@@ -186,6 +193,10 @@ export class PractitionerProfileService {
       }
       throw err;
     }
+
+    const payload: PhotoBackfillPayload = { practitionerProfileId: String(created.id), sourceProfileId: String(therapistProfileId) };
+    await this.jobs.enqueue(PHOTO_BACKFILL_JOB, payload as never, { dedupeKey: `${PHOTO_BACKFILL_JOB}:${created.id}` });
+    return created;
   }
 
   /** Change the signed-in user's own profile fields. */

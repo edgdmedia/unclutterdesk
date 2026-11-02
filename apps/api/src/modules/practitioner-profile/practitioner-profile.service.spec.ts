@@ -26,7 +26,8 @@ function setup() {
     taxonomyTerm: { findMany: vi.fn().mockResolvedValue([]) },
     $transaction: vi.fn(async (ops: unknown[]) => ops),
   };
-  return { service: new PractitionerProfileService(prisma), prisma };
+  const jobs: any = { enqueue: vi.fn().mockResolvedValue({ id: 1n }) };
+  return { service: new PractitionerProfileService(prisma, jobs), prisma, jobs };
 }
 
 const therapist = (over: Record<string, unknown> = {}) => ({
@@ -109,6 +110,17 @@ describe('PractitionerProfileService', () => {
       });
       expect(data.status).toBeUndefined(); // the column default: DRAFT
       expect(data.taxonomy.create.map((t: any) => t.termId).sort()).toEqual([1n, 2n, 3n, 4n, 5n, 6n]);
+    });
+
+    it('queues the practice photo to be copied to storage, once per profile', async () => {
+      const { service, prisma, jobs } = setup();
+      prisma.consultTherapistProfile.findFirst.mockResolvedValue(therapist());
+      await service.createOwn(ME, 50n, {});
+      expect(jobs.enqueue).toHaveBeenCalledWith(
+        'profile.photo-backfill',
+        { practitionerProfileId: '1', sourceProfileId: '50' },
+        { dedupeKey: 'profile.photo-backfill:1' },
+      );
     });
 
     it('reads the practice details only from your own therapist profile', async () => {
