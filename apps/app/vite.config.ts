@@ -7,6 +7,12 @@ export default defineConfig({
     react(),
     VitePWA({
       registerType: 'autoUpdate',
+      workbox: {
+        // On a practice's custom domain the client API is served at /api by
+        // the tenant router (spec §6.16). A link that opens an /api address
+        // (an iCal download, say) must reach it, not the app's index.html.
+        navigateFallbackDenylist: [/^\/api(\/|$)/],
+      },
       includeAssets: ['favicon.svg', 'favicon.ico', 'apple-touch-icon.png', 'unclutterdesk-mark.svg', 'unclutterdesk-lockup.svg'],
       manifest: {
         name: 'Unclutter Desk',
@@ -29,7 +35,7 @@ export default defineConfig({
     // (app.localhost, a practice's *.localhost booking host) talks to it on its
     // own origin. Calling the API on another *.localhost host is cross-site:
     // the browser drops the session and CSRF cookies, and booking failed with
-    // "Your session has expired". Production is one site under unclutterdesk.com.
+    // "Your session has expired". Production is one site under the tenant root domain.
     proxy: {
       '/v1': { target: process.env.API_PROXY_TARGET ?? 'http://localhost:3099', changeOrigin: false },
     },

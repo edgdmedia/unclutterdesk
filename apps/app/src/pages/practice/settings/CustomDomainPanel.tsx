@@ -4,6 +4,7 @@ import { Eyebrow, useToast } from '@unclutterdesk/ui';
 import { api } from '../../../utils/apiClient';
 import { useEntitlements } from '../../../utils/entitlements';
 import { Link } from 'react-router-dom';
+import { TENANT_ROOT_DOMAIN } from '../../../config/domains';
 
 type DomainRecord = { type: string; name: string; value: string; state: 'verified' | 'missing' | 'unknown' };
 type DomainStatus = {
@@ -112,7 +113,7 @@ export function CustomDomainPanel() {
           <Eyebrow className="mb-1">CUSTOM DOMAIN</Eyebrow>
           <h3 className="text-[16px] font-bold tracking-[-0.01em] text-[#0F172A]">Your own booking address</h3>
           <p className="text-[12.5px] text-[#64748B] font-medium mt-0.5">
-            Clients book you at your domain instead of a unclutterdesk.com address.
+            Clients book you at your domain instead of a {TENANT_ROOT_DOMAIN} address.
           </p>
         </div>
         <span className={`h-[26px] px-3 rounded-full text-[11px] font-black tracking-[0.04em] uppercase flex items-center shrink-0 ${chip.cls}`}>

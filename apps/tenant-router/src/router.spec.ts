@@ -1,10 +1,42 @@
 import { describe, it, expect } from 'vitest';
-import { decide, originRequest, type RouterConfig } from './router';
+import { decide, isCustomDomainHost, normalizeHost, originRequest, type RouterConfig } from './router';
 
 const config: RouterConfig = {
   apexHost: 'unclutterdesk.com',
   originHost: 'app-unclutterdesk.pages.dev',
 };
+
+describe('normalizeHost', () => {
+  it('returns the hostname unchanged when no trailing dot', () => {
+    expect(normalizeHost('chente.com')).toBe('chente.com');
+  });
+
+  it('lowercases the hostname', () => {
+    expect(normalizeHost('Chente.COM')).toBe('chente.com');
+  });
+
+  it('removes exactly one trailing dot', () => {
+    expect(normalizeHost('chente.com.')).toBe('chente.com');
+  });
+
+  it('does not remove multiple trailing dots', () => {
+    expect(normalizeHost('chente.com..')).toBe('chente.com.');
+  });
+});
+
+describe('isCustomDomainHost', () => {
+  it('returns true for a custom domain outside the apex zone', () => {
+    expect(isCustomDomainHost('chente.com', 'unclutterdesk.com')).toBe(true);
+  });
+
+  it('returns false for the apex host itself', () => {
+    expect(isCustomDomainHost('unclutterdesk.com', 'unclutterdesk.com')).toBe(false);
+  });
+
+  it('returns false for subdomains under the apex', () => {
+    expect(isCustomDomainHost('dr-smith.unclutterdesk.com', 'unclutterdesk.com')).toBe(false);
+  });
+});
 
 describe('decide', () => {
   it('serves a tenant booking subdomain, indexable', () => {
@@ -120,5 +152,34 @@ describe('originRequest', () => {
   it('upgrades a plaintext request to https at the origin', () => {
     const req = originRequest(new Request('http://dr-smith.unclutterdesk.com/x'), config);
     expect(new URL(req.url).protocol).toBe('https:');
+  });
+
+  it('drops a non-default port the visitor used', () => {
+    const url = new URL(originRequest(new Request('https://dr-smith.unclutterdesk.com:8443/book'), config).url);
+    expect(url.host).toBe('app-unclutterdesk.pages.dev');
+    expect(url.port).toBe('');
+  });
+
+  it('keeps a port given in originHost (the local e2e setup)', () => {
+    const url = new URL(
+      originRequest(new Request('https://chente.com/book'), { apexHost: 'chente.com', originHost: 'localhost:5173' }).url,
+    );
+    expect(url.host).toBe('localhost:5173');
+  });
+
+  it('does not send cookies or Authorization to the app origin', () => {
+    const req = originRequest(
+      new Request('https://dr-smith.unclutterdesk.com/book', {
+        headers: {
+          cookie: 'unclutter_access=a; unclutter_refresh=r',
+          authorization: 'Bearer eyJ...',
+          'x-custom': 'kept',
+        },
+      }),
+      config,
+    );
+    expect(req.headers.get('cookie')).toBeNull();
+    expect(req.headers.get('authorization')).toBeNull();
+    expect(req.headers.get('x-custom')).toBe('kept');
   });
 });

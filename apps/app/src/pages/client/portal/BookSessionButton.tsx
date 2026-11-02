@@ -6,7 +6,7 @@ import { getAppType, getBookingUrl } from '../../../utils/apiClient';
 
 /**
  * POR-04: the booking wizard lives on the practice's host. There the client is
- * already signed in on the same origin; from app.unclutterdesk.com we send
+ * already signed in on the same origin; from the app host we send
  * them to the practice's own address (the session cookie is on the api
  * domain, so they stay signed in).
  */

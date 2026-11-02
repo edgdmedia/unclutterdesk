@@ -1,4 +1,5 @@
 ---
+import { SECURITY_EMAIL, SUPPORT_EMAIL, TENANT_ROOT_DOMAIN } from '../config/domains';
 import LegalPage from '../layouts/LegalPage.astro';
 ---
 
@@ -79,7 +80,7 @@ import LegalPage from '../layouts/LegalPage.astro';
     security of login credentials, and for everything done by users you invite.
     Give each staff member their own account and the narrowest role that lets them
     work — owner, admin, therapist or receptionist. Tell us promptly at
-    support@unclutterdesk.com if you suspect unauthorised
+    {SUPPORT_EMAIL} if you suspect unauthorised
     access.
   </p>
 
@@ -170,14 +171,14 @@ import LegalPage from '../layouts/LegalPage.astro';
   </ul>
   <p>
     If you find a security vulnerability, please report it to
-    security@unclutterdesk.com rather than exploiting it. We
+    {SECURITY_EMAIL} rather than exploiting it. We
     will not pursue good-faith research reported promptly and privately.
   </p>
 
   <h2 id="domains">10. Booking subdomains and custom domains</h2>
   <p>
     Each Practice gets a booking address at
-    <code>your-practice.unclutterdesk.com</code>. We may reclaim a subdomain that
+    <code>your-practice.{TENANT_ROOT_DOMAIN}</code>. We may reclaim a subdomain that
     is misleading, infringes a trademark, impersonates another practice, or is
     unused on a closed account.
   </p>
@@ -196,7 +197,7 @@ import LegalPage from '../layouts/LegalPage.astro';
     work where we reasonably can.
   </p>
   <p>
-    Support is by email at support@unclutterdesk.com, during
+    Support is by email at {SUPPORT_EMAIL}, during
     normal working hours, 09:00 to 17:00 WAT, Monday to Friday.
   </p>
 
@@ -271,7 +272,7 @@ import LegalPage from '../layouts/LegalPage.astro';
     use the platform after that means you accept the change.
   </p>
   <p>
-    Questions: support@unclutterdesk.com ·
+    Questions: {SUPPORT_EMAIL} ·
     19 Yesufu Sanusi, off Adeniran Ogunsanya, Lagos, Nigeria.
   </p>
 </LegalPage>

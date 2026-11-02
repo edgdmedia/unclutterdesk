@@ -1,10 +1,14 @@
 import { Injectable, NestMiddleware, NotFoundException } from '@nestjs/common';
 import { Request, Response, NextFunction } from 'express';
 import { PrismaService } from '../prisma/prisma.service';
+import { normalizeHost } from '../normalize-host';
+import type { RouterProxied } from './router-proxy.middleware';
 
 export interface TenantRequest extends Request {
   tenant?: any;
   tenantId?: bigint;
+  /** Set by RouterProxyMiddleware for requests proxied from a practice custom domain. */
+  routerProxy?: RouterProxied;
 }
 
 @Injectable()
@@ -14,6 +18,21 @@ export class TenantMiddleware implements NestMiddleware {
   async use(req: TenantRequest, res: Response, next: NextFunction) {
     // Explicitly ignore ambient tenant resolution for routes that strictly require body/query tenantId
     if (req.path === '/v1/discount/validate') {
+      return next();
+    }
+
+    // Router-proxied requests: verify the practice exists and is ACTIVE
+    // If not found, throw 404 so the proxy returns 404 instead of letting the request through
+    if (req.routerProxy) {
+      const normalizedHost = normalizeHost(req.routerProxy.practiceHost);
+      const tenant = await this.prisma.tenant.findFirst({
+        where: { customDomain: normalizedHost, customDomainStatus: 'ACTIVE' },
+      });
+      if (!tenant) {
+        throw new NotFoundException('Not found');
+      }
+      req.tenant = tenant;
+      req.tenantId = tenant.id;
       return next();
     }
 
@@ -27,23 +46,23 @@ export class TenantMiddleware implements NestMiddleware {
 
     if (tenantHeaderSlug) {
       // The app sends the practice it is serving, read from the page's own
-      // address. Browsers call api.unclutterdesk.com, so the Host header here
+      // address. Browsers call the API's own host, so the Host header here
       // never names a practice; without this, public booking calls could not
       // tell which practice they were for. On a practice's own domain the
       // "slug" the app reads is that whole domain.
-      const key = tenantHeaderSlug.trim().toLowerCase();
+      const key = normalizeHost(tenantHeaderSlug.trim());
       tenant = await this.prisma.tenant.findUnique({ where: { slug: key } });
       if (!tenant && key.includes('.')) {
         tenant = await this.activeCustomDomain(key);
       }
     } else if (host) {
       // Clean host (remove port)
-      const domain = host.split(':')[0].toLowerCase();
+      const domain = normalizeHost(host.split(':')[0]);
 
-      // Try exact custom domain first
+      // Try exact custom domain first (normalized)
       tenant = await this.activeCustomDomain(domain);
 
-      // Otherwise check subdomain (e.g. "drjane.unclutterdesk.com" -> "drjane").
+      // Otherwise check subdomain (e.g. "drjane.<root>" -> "drjane").
       // Local dev uses *.localhost, which has only two labels.
       if (!tenant && domain.includes('.')) {
         const parts = domain.split('.');
@@ -70,7 +89,7 @@ export class TenantMiddleware implements NestMiddleware {
   /** A custom domain only stands for a practice once it has been verified. */
   private activeCustomDomain(domain: string) {
     return this.prisma.tenant.findFirst({
-      where: { customDomain: domain, customDomainStatus: 'ACTIVE' },
+      where: { customDomain: normalizeHost(domain), customDomainStatus: 'ACTIVE' },
     });
   }
 }

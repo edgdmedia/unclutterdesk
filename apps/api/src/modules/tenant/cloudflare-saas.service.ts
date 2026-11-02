@@ -1,4 +1,5 @@
 import { Injectable } from '@nestjs/common';
+import { customDomainTarget } from '../../common/origins';
 
 /**
  * SET-13: Cloudflare for SaaS plumbing.
@@ -43,7 +44,7 @@ export class CloudflareSaasService {
   private readonly zoneId = process.env.CLOUDFLARE_ZONE_ID || '';
   private readonly workerScript = process.env.CLOUDFLARE_WORKER_SCRIPT || 'unclutterdesk-tenant-router';
   /** The fixed address practices CNAME their domains to (fallback-origin record). */
-  private readonly saasCnameTarget = process.env.CLOUDFLARE_SAAS_CNAME_TARGET || '';
+  private readonly saasCnameTarget = customDomainTarget() || '';
   private readonly apiBase = 'https://api.cloudflare.com/client/v4';
 
   /**

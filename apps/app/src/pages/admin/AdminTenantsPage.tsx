@@ -5,6 +5,7 @@ import { Loader2, Building2, Search } from 'lucide-react';
 import { api } from '../../utils/apiClient';
 import { Card, Eyebrow, StatusBadge, useToast } from '@unclutterdesk/ui';
 import { AdminTenant, formatNaira, formatDate } from './adminTypes';
+import { TENANT_ROOT_DOMAIN } from '../../config/domains';
 
 export function AdminTenantsPage() {
   const toast = useToast();
@@ -114,7 +115,7 @@ export function AdminTenantsPage() {
                             {t.name}
                           </div>
                           <div className="text-[11.5px] text-[#94A3B8]">
-                            {t.slug}.unclutterdesk.com{t.customDomain ? ` · ${t.customDomain}` : ''}
+                            {t.slug}.{TENANT_ROOT_DOMAIN}{t.customDomain ? ` · ${t.customDomain}` : ''}
                           </div>
                         </div>
                       </Link>

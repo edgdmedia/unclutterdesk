@@ -4,16 +4,17 @@
  * Cloudflare Pages cannot serve a wildcard custom domain ("It is currently not
  * possible to add a custom domain with a wildcard" — Pages known issues), and it
  * matches the Host header against explicitly registered domains. That leaves the
- * per-tenant booking surfaces at https://<slug>.unclutterdesk.com unreachable.
+ * per-tenant booking surfaces at https://<slug>.<APEX_HOST> unreachable.
  *
- * This Worker sits on `*.unclutterdesk.com/*` and serves the app bundle for any
+ * This Worker sits on `*.<APEX_HOST>/*` (wrangler.jsonc) and serves the app bundle for any
  * host, with no per-tenant registration and no ceiling on tenant count. It works
  * because apps/app resolves its tenant client-side from window.location.hostname,
  * so every tenant host serves byte-identical assets.
  *
  * See docs/CLOUDFLARE_SETUP.md §1.
  */
-import { decide, originRequest, type RouterConfig } from './router';
+import { decide, isCustomDomainHost, normalizeHost, originRequest, type RouterConfig } from './router';
+import { apiNotFound, apiRequest, apiUnavailable, clientResponse, isAllowedClientRoute, isApiPath, API_TIMEOUT_MS, stripApiPrefix } from './api-proxy';
 import { lookupTenant } from './tenants';
 import { practiceNotFoundResponse } from './not-found';
 
@@ -22,8 +23,18 @@ export interface Env {
   ORIGIN_HOST: string;
   /** Zone apex. */
   APEX_HOST: string;
-  /** API base used to check whether a practice address exists. */
+  /** The marketing site, linked from the practice-not-found page. */
+  MARKETING_URL: string;
+  /** API base used to check whether a practice address exists, and the /api proxy's target. */
   API_BASE: string;
+  /**
+   * Shared with the API (a Worker secret, never a var). With it the API trusts
+   * the proxy's practice and client-IP headers; without it the proxy still
+   * forwards, but the API treats requests as ordinary direct ones.
+   */
+  ROUTER_PROXY_SECRET?: string;
+  /** Only for the local end-to-end test: "http:" to reach a local app server. */
+  ORIGIN_PROTOCOL?: string;
 }
 
 export default {
@@ -31,10 +42,20 @@ export default {
     const config: RouterConfig = {
       apexHost: env.APEX_HOST,
       originHost: env.ORIGIN_HOST,
+      originProtocol: env.ORIGIN_PROTOCOL === 'http:' ? 'http:' : 'https:',
     };
 
     const url = new URL(request.url);
-    const decision = decide(url.hostname, config);
+    const host = normalizeHost(url.hostname);
+
+    // /api is reserved on every host this Worker serves: it never reaches the
+    // app. Only a practice's custom domain proxies it (spec §6.16); practice
+    // subdomains keep calling the API origin directly, so they get a 404.
+    if (isApiPath(url.pathname)) {
+      return proxyClientApi(request, url, env, host);
+    }
+
+    const decision = decide(host, config);
 
     switch (decision.kind) {
       case 'redirect':
@@ -53,12 +74,12 @@ export default {
         // Only booking surfaces get the existence check: the app shell is not a
         // practice address, so there is nothing to look up.
         if (decision.checkTenant) {
-          const tenant = await lookupTenant(url.hostname, env.API_BASE, caches.default);
+          const tenant = await lookupTenant(host, env.API_BASE, caches.default);
           // `exists: false` is the only outcome that 404s. A deactivated
           // practice is still served, so the app can show its inactive-practice
           // page to clients who already have sessions booked.
           if (!tenant.exists) {
-            return practiceNotFoundResponse(url.hostname);
+            return practiceNotFoundResponse(host, env.MARKETING_URL);
           }
         }
 
@@ -87,3 +108,22 @@ export default {
     }
   },
 };
+
+async function proxyClientApi(request: Request, url: URL, env: Env, host: string): Promise<Response> {
+  if (!isCustomDomainHost(host, env.APEX_HOST)) return apiNotFound();
+  if (!isAllowedClientRoute(request.method, stripApiPrefix(url.pathname))) return apiNotFound();
+  // The API checks the custom domain is ACTIVE and answers 404 otherwise, so there's no probe here.
+
+  const signal = AbortSignal.timeout(API_TIMEOUT_MS);
+  const req = apiRequest(request, { apiBase: env.API_BASE, practiceHost: host, secret: env.ROUTER_PROXY_SECRET, signal });
+
+  try {
+    const response = await fetch(req);
+    return clientResponse(response);
+  } catch (e) {
+    if (e instanceof DOMException && e.name === 'TimeoutError') {
+      return apiUnavailable(504);
+    }
+    return apiUnavailable(502);
+  }
+}

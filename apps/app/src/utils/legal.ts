@@ -1,3 +1,5 @@
+import { PRODUCTION_MARKETING_ORIGIN } from '../config/domains';
+
 /**
  * The legal documents, in one place.
  *
@@ -20,7 +22,7 @@ function marketingBase(): string {
   const configured = import.meta.env.VITE_MARKETING_URL;
   if (configured) return String(configured).replace(/\/+$/, '');
   // The landing site runs on its own dev server; astro's default is 4321.
-  return import.meta.env.DEV ? 'http://localhost:4321' : 'https://unclutterdesk.com';
+  return import.meta.env.DEV ? 'http://localhost:4321' : PRODUCTION_MARKETING_ORIGIN;
 }
 
 export const MARKETING_BASE_URL = marketingBase();

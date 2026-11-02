@@ -12,23 +12,55 @@
  *   torn down via a session-expired handler.
  */
 
+import { APP_HOST, MARKETING_HOST, PRODUCTION_API_ORIGIN, PRODUCTION_APP_ORIGIN, TENANT_ROOT_DOMAIN } from '../config/domains';
+
 // '' in development: same origin, through the dev server's /v1 proxy (vite.config).
-const DEFAULT_API_BASE = import.meta.env.DEV ? '' : 'https://api.unclutterdesk.com';
-export const API_BASE = import.meta.env.VITE_API_URL || DEFAULT_API_BASE;
+const DEFAULT_API_BASE = import.meta.env.DEV ? '' : PRODUCTION_API_ORIGIN;
+/** The configured API origin, used everywhere except a practice's custom domain. */
+const CONFIGURED_API_BASE = import.meta.env.VITE_API_URL || DEFAULT_API_BASE;
+
+/**
+ * Whether this page is on a practice's own domain (e.g. chente.com), rather
+ * than our zone, a local host or a Pages preview. Worked out from the host,
+ * the same way the app works out which practice it's serving.
+ */
+export function isPracticeCustomDomain(hostname: string): boolean {
+  const host = hostname.toLowerCase();
+  if (!host || host === 'localhost' || host.endsWith('.localhost')) return false;
+  if (/^\d{1,3}(\.\d{1,3}){3}$/.test(host) || host.includes(':')) return false;
+  if (host.endsWith('.pages.dev')) return false;
+  return host !== TENANT_ROOT_DOMAIN && !host.endsWith(`.${TENANT_ROOT_DOMAIN}`);
+}
+
+/**
+ * Where API calls go from this page. On a practice's custom domain the API is
+ * served first-party at {host}/api by the tenant router, so sign-in cookies
+ * belong to that domain (spec §6.16); a third-party API origin there is
+ * blocked by browsers. Everywhere else, the configured API origin.
+ */
+export function resolveApiBase(hostname: string, origin: string): string {
+  return isPracticeCustomDomain(hostname) ? `${origin}/api` : CONFIGURED_API_BASE;
+}
+
+export const API_BASE =
+  typeof window === 'undefined' ? CONFIGURED_API_BASE : resolveApiBase(window.location.hostname, window.location.origin);
 
 const RESERVED_SUBDOMAINS = new Set([
   'www', 'app', 'os', 'admin', 'api', 'book', 'mail', 'docs', 'help', 'blog',
   'status', 'support', 'cdn', 'assets', 'static', 'dev', 'staging', 'test', 'demo', 'ns1', 'ns2'
 ]);
 
-export function getAppType(): 'admin' | 'app' | 'booking' | 'marketing' {
+/**
+ * What this host is. Platform admin has no host of its own: it lives at
+ * /admin on the app (the old admin.<root> rule only redirected / to /admin).
+ */
+export function getAppType(): 'app' | 'booking' | 'marketing' {
   if (typeof window === 'undefined') return 'marketing';
-  const host = window.location.hostname;
-  
-  if (host === 'admin.unclutterdesk.com' || host === 'admin.localhost') return 'admin';
-  if (host === 'app.unclutterdesk.com' || host === 'app.localhost' || host === 'localhost') return 'app';
-  if (host === 'unclutterdesk.com' || host === 'www.unclutterdesk.com') return 'marketing';
-  
+  const host = window.location.hostname.toLowerCase();
+
+  if (host === APP_HOST || host === 'app.localhost' || host === 'localhost') return 'app';
+  if (host === MARKETING_HOST || host === `www.${MARKETING_HOST}`) return 'marketing';
+
   return 'booking';
 }
 
@@ -45,17 +77,17 @@ export function getSubdomainTenantSlug(): string | null {
     return null;
   }
 
-  // Production unclutterdesk.com subdomains
-  if (host.endsWith('.unclutterdesk.com')) {
-    const slug = host.replace('.unclutterdesk.com', '');
+  // Practice subdomains of the tenant root domain
+  if (host.endsWith(`.${TENANT_ROOT_DOMAIN}`)) {
+    const slug = host.slice(0, -(TENANT_ROOT_DOMAIN.length + 1));
     if (!RESERVED_SUBDOMAINS.has(slug)) {
       return slug;
     }
     return null;
   }
 
-  // Custom domains
-  if (host !== 'localhost' && host !== 'unclutterdesk.com') {
+  // Custom domains: the same test that picks the API base, so the two agree
+  if (isPracticeCustomDomain(host) && host !== MARKETING_HOST && host !== APP_HOST) {
     return host; // The backend should resolve the custom domain to a tenant slug
   }
 
@@ -65,7 +97,7 @@ export function getSubdomainTenantSlug(): string | null {
 export const TENANT_SLUG = import.meta.env.VITE_TENANT_SLUG || getSubdomainTenantSlug() || '';
 
 function resolveAppBase(): string {
-  if (!import.meta.env.DEV || typeof window === 'undefined') return 'https://app.unclutterdesk.com';
+  if (!import.meta.env.DEV || typeof window === 'undefined') return PRODUCTION_APP_ORIGIN;
   const { hostname, origin, port } = window.location;
   if (hostname === 'localhost' || hostname === 'app.localhost') return origin;
   return `http://localhost${port ? `:${port}` : ''}`;
@@ -79,15 +111,15 @@ export function getBookingUrl(slug: string): string {
   if (import.meta.env.DEV && typeof window !== 'undefined') {
     return `http://${slug}.localhost${window.location.port ? `:${window.location.port}` : ''}`;
   }
-  return `https://${slug}.unclutterdesk.com`;
+  return `https://${slug}.${TENANT_ROOT_DOMAIN}`;
 }
 
 /**
  * The address clients book this practice at.
  *
  * Takes the slug from the signed-in session, never from the page's own host:
- * staff work on app.unclutterdesk.com, which has no practice subdomain, so
- * reading it from the host produced https://.unclutterdesk.com. A custom
+ * staff work on the app host, which has no practice subdomain, so reading it
+ * from the host produced an address with an empty subdomain. A custom
  * domain is only used once verified; until then it does not reach the app.
  */
 export function practiceBookingUrl(
@@ -259,7 +291,7 @@ export async function apiRequest<T = unknown>(
   const headers = buildHeaders(extraHeaders as Record<string, string> | undefined, method);
 
   // Public booking calls need this most of all: the API is reached at
-  // api.unclutterdesk.com, so its Host never names the practice, and without
+  // its own host, so its Host never names the practice, and without
   // the header a client's booking page could load neither services nor times.
   if (!('X-Tenant-Slug' in headers) && !AUTH_PUBLIC_PATHS.has(path) && TENANT_SLUG) {
     headers['X-Tenant-Slug'] = TENANT_SLUG;

@@ -1,0 +1,4 @@
+# Local secrets for `wrangler dev` (copy to .dev.vars, which is git-ignored).
+# In production set it with: pnpm exec wrangler secret put ROUTER_PROXY_SECRET
+# Same value as the API's ROUTER_PROXY_SECRET (docs/CLOUDFLARE_SETUP.md §5).
+ROUTER_PROXY_SECRET=

@@ -35,3 +35,35 @@ describe('practiceBookingUrl', () => {
     expect(practiceBookingUrl('calm-harbor', 'book.calmharbor.ng', status)).toBe(subdomain);
   });
 });
+
+describe('the API base on a practice custom domain (spec §6.16)', () => {
+  // Imported lazily so the module-level API_BASE under test is the jsdom one.
+  const load = () => import('../apiClient');
+
+  it.each(['chente.com', 'consult.unclutter.com.ng', 'book.calmharbor.ng'])('%s calls its own /api', async (host) => {
+    const { isPracticeCustomDomain, resolveApiBase } = await load();
+    expect(isPracticeCustomDomain(host)).toBe(true);
+    expect(resolveApiBase(host, `https://${host}`)).toBe(`https://${host}/api`);
+  });
+
+  it.each([
+    'dr-smith.unclutterdesk.com',
+    'app.unclutterdesk.com',
+    'unclutterdesk.com',
+    'localhost',
+    'dr-smith.localhost',
+    '127.0.0.1',
+    'app-unclutterdesk.pages.dev',
+    'abc123.app-unclutterdesk.pages.dev',
+  ])('%s keeps the configured API origin', async (host) => {
+    const { isPracticeCustomDomain, resolveApiBase } = await load();
+    expect(isPracticeCustomDomain(host)).toBe(false);
+    expect(resolveApiBase(host, `https://${host}`)).not.toContain(`${host}/api`);
+  });
+
+  it('is case-insensitive about the host', async () => {
+    const { isPracticeCustomDomain } = await load();
+    expect(isPracticeCustomDomain('DR-Smith.UnclutterDesk.com')).toBe(false);
+    expect(isPracticeCustomDomain('Chente.COM')).toBe(true);
+  });
+});

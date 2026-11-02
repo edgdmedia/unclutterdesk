@@ -209,6 +209,54 @@ target).
 `CUSTOM_DOMAIN_TARGET` keeps its old meaning for environments without the
 token: manual verify then checks public DNS + HTTPS itself, as before.
 
+### Client sign-in on custom domains: the `/api` proxy (spec §6.16)
+
+On `book.theirpractice.com` the API's cookies (set by `api.unclutterdesk.com`)
+are third-party, which browsers block, and the page can't read the CSRF
+cookie set for `.unclutterdesk.com`. Client sign-in "worked" and then signed
+the client straight out, and booking failed with "session expired"
+(confirmed in Edge on `consult.unclutter.com.ng`, 27 Oct 2026). So the tenant
+router serves the client-facing API first-party on each custom domain:
+
+- `book.theirpractice.com/api/*` is forwarded to the API with the `/api`
+  prefix removed, **only** for the client routes listed in
+  `apps/tenant-router/src/client-api-routes.json` (sign-in, booking, the
+  client portal, intake and assessments by token, video join, payments).
+  Admin, platform and practice-dashboard routes get a JSON 404. An API test
+  (`apps/api/src/router-proxy/client-api-routes.spec.ts`) holds the list to
+  public and client-reachable routes.
+- The router tells the API which practice and which visitor this is
+  (`x-ud-practice-host`, `x-ud-client-ip`), after removing any copy the
+  browser sent, and proves it with **`ROUTER_PROXY_SECRET`**
+  (`x-ud-router-secret`). The API trusts those headers only when the secret
+  matches (timing-safe); otherwise the request is an ordinary direct one.
+  The practice must still be an `ACTIVE` custom domain; rate limits use the
+  forwarded visitor IP, so clients don't share one sign-in bucket.
+- Every `Set-Cookie` coming back loses its `Domain` (host-only on the custom
+  domain) and has `Path=/v1/` rewritten to `Path=/api/v1/` (the refresh
+  cookie is scoped to `/v1/auth/refresh`; sign-out's clearing cookies get the
+  same rewrite).
+- The app calls `https://{host}/api` when it's on a custom domain, and
+  `API_ORIGIN` everywhere else. `/api` on `*.unclutterdesk.com` returns 404.
+- A client signed in on the custom domain isn't signed in on the practice's
+  `*.unclutterdesk.com` address (cookies are per domain). That's accepted.
+
+**Set the secret, the same value in both places** (any long random string,
+e.g. `openssl rand -hex 32`):
+
+1. Worker: `cd apps/tenant-router && pnpm exec wrangler secret put ROUTER_PROXY_SECRET`
+   (a secret, never a `vars` entry in `wrangler.jsonc`).
+2. API: `ROUTER_PROXY_SECRET=<same value>` in the server's `.env`, then restart.
+
+Without it the proxy still forwards, but the API ignores the router's
+headers: the practice is then resolved from the `X-Tenant-Slug` header the
+app sends, and every custom-domain client shares one rate-limit bucket.
+
+**Check after deploy** (Olalekan, by hand): on `consult.unclutter.com.ng`, in
+Safari (macOS and iOS), Edge and Chrome, sign in as a client, reload, stay
+signed in, and book. The automated version runs in CI
+(`.github/workflows/e2e-custom-domain.yml`, `e2e/custom-domain/run.sh`).
+
 ---
 
 ## Appendix: why practice subdomains use a Worker

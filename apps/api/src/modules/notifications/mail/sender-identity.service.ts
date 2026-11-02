@@ -2,9 +2,9 @@ import { Injectable, Logger, Optional } from '@nestjs/common';
 import { PrismaService } from '../../../common/prisma/prisma.service';
 import { MailService } from './mail.service';
 import { addressOf, nameOf, type Sender } from './outgoing-email';
+import { FALLBACK_SENDER_ADDRESS } from '../../../common/origins';
 
 const PLATFORM_NAME = 'Unclutter Desk';
-const FALLBACK_ADDRESS = 'no-reply@unclutterdesk.com';
 
 export interface SenderIdentity extends Sender {
   replyTo?: string;
@@ -31,7 +31,7 @@ export class SenderIdentityService {
   ) {}
 
   platformAddress(): string {
-    return addressOf(process.env.MAIL_FROM || process.env.SMTP_FROM || FALLBACK_ADDRESS);
+    return addressOf(process.env.MAIL_FROM || process.env.SMTP_FROM || FALLBACK_SENDER_ADDRESS);
   }
 
   platformName(): string {

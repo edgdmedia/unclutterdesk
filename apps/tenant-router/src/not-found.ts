@@ -4,10 +4,12 @@
  * Self-contained on purpose: it must render even when the origin or the API is
  * the thing that is unavailable, so it inlines its own styles and loads nothing.
  */
-export function practiceNotFoundResponse(host: string): Response {
-  const safeHost = host.replace(/[&<>"']/g, (c) =>
-    ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c] as string,
-  );
+const escapeHtml = (value: string) =>
+  value.replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c] as string);
+
+/** `marketingUrl` is the MARKETING_URL var: the platform's home, linked from the page. */
+export function practiceNotFoundResponse(host: string, marketingUrl: string): Response {
+  const safeHost = escapeHtml(host);
 
   const body = `<!doctype html>
 <html lang="en">
@@ -53,7 +55,7 @@ export function practiceNotFoundResponse(host: string): Response {
     <h1>We couldn't find that practice</h1>
     <div class="host">${safeHost}</div>
     <p>No practice is using this address. The link may be out of date, or the address may have a typo in it.</p>
-    <a class="btn" href="https://unclutterdesk.com">Go to Unclutter Desk</a>
+    <a class="btn" href="${escapeHtml(marketingUrl)}">Go to Unclutter Desk</a>
   </main>
 </body>
 </html>`;
