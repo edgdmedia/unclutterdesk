@@ -11,6 +11,7 @@ import { dropLegacyOnboardingDraft, onboardingDraftKey } from '../../utils/onboa
 import { isPracticeAccount } from '../../utils/accounts';
 import { usePracticeBrand } from '../../context/PracticeBrandContext';
 import { LogoField } from '../../components/settings/LogoField';
+import { TENANT_ROOT_DOMAIN } from '../../config/domains';
 
 type SignupState = {
   practiceName?: string;
@@ -770,7 +771,7 @@ function OnboardingWizard({ tenantId }: { tenantId: string }) {
                               placeholder="practice"
                               className="flex-1 bg-transparent text-xs font-bold text-[#0F172A] outline-none placeholder:text-[#CBD5E1]"
                             />
-                            <span className="text-xs font-semibold text-[#64748B] shrink-0">.unclutterdesk.com</span>
+                            <span className="text-xs font-semibold text-[#64748B] shrink-0">.{TENANT_ROOT_DOMAIN}</span>
                             {slugChecking ? (
                               <span className="text-[10px] font-bold text-slate-600 bg-slate-100 px-2 py-0.5 rounded-full border border-slate-200 shrink-0 inline-flex items-center gap-1">
                                 <Loader2 className="h-2.5 w-2.5 animate-spin" /> CHECKING

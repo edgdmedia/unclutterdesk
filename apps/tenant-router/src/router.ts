@@ -1,7 +1,7 @@
 // Routing decisions, kept free of the fetch call so they can be tested directly.
 
 export interface RouterConfig {
-  /** The zone apex, e.g. "unclutterdesk.com". */
+  /** The zone apex (APEX_HOST in wrangler.jsonc). */
   apexHost: string;
   /** Where the app bundle actually lives, e.g. "app-unclutterdesk.pages.dev". */
   originHost: string;
@@ -64,7 +64,7 @@ export function decide(hostname: string, config: RouterConfig): Decision {
   const host = hostname.toLowerCase();
   const { apexHost } = config;
 
-  // The route pattern `*.unclutterdesk.com/*` does not match the bare apex, but
+  // The route pattern `*.<apex>/*` does not match the bare apex, but
   // handle it anyway so the Worker is correct if the route is ever widened.
   if (host === apexHost) return { kind: 'redirect', to: `https://${apexHost}/` };
 

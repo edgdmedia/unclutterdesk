@@ -1,5 +1,7 @@
+import { TENANT_ROOT_DOMAIN } from '../../common/origins';
+
 /**
- * Every practice is served at `<slug>.unclutterdesk.com`, so a slug is also a
+ * Every practice is served at `<slug>.<tenant root domain>`, so a slug is also a
  * subdomain. These names belong to the platform — our own services, mail and
  * nameservers, or words a client could mistake for us — and no practice may
  * hold one.
@@ -44,8 +46,6 @@ export const RESERVED_SLUGS: ReadonlySet<string> = new Set([
   'unclutterdesk',
 ]);
 
-export const PLATFORM_APEX = 'unclutterdesk.com';
-
 /** The one normalisation every slug path uses, so they cannot disagree. */
 export function normalizeSlug(input: string): string {
   return input.toLowerCase().trim().replace(/[^a-z0-9-]/g, '');
@@ -61,5 +61,5 @@ export function isReservedSlug(slug: string): boolean {
  */
 export function isPlatformHostname(hostname: string): boolean {
   const host = hostname.toLowerCase().trim();
-  return host === PLATFORM_APEX || host.endsWith(`.${PLATFORM_APEX}`) || host === 'localhost';
+  return host === TENANT_ROOT_DOMAIN || host.endsWith(`.${TENANT_ROOT_DOMAIN}`) || host === 'localhost';
 }

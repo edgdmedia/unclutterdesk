@@ -3,7 +3,7 @@ import { createHmac, timingSafeEqual, randomBytes, randomUUID, createHash } from
 import { JWT_SECRET } from '../../common/auth.config';
 import { google } from 'googleapis';
 import { PrismaService } from '../../common/prisma/prisma.service';
-import { tenantWebOrigin } from '../../common/origins';
+import { apiOrigin, ICAL_UID_DOMAIN, tenantWebOrigin } from '../../common/origins';
 import { joinLinkFor } from '../video/room-links';
 import { PLAN_SELECT, practiceEntitlements, requiredTierFor } from '../entitlements/entitlements';
 import { EntitlementError } from '../entitlements/entitlement.error';
@@ -32,7 +32,7 @@ export class CalendarService {
     const configured = process.env.GOOGLE_REDIRECT_URI?.trim();
     if (configured) return configured;
     return process.env.NODE_ENV === 'production'
-      ? 'https://api.unclutterdesk.com/v1/calendar/google/callback'
+      ? `${apiOrigin(true)}/v1/calendar/google/callback`
       : 'http://localhost:3001/v1/calendar/google/callback';
   }
 
@@ -322,7 +322,7 @@ export class CalendarService {
       'CALSCALE:GREGORIAN',
       'METHOD:PUBLISH',
       'BEGIN:VEVENT',
-      `UID:booking-${booking.id}@unclutterdesk.com`,
+      `UID:booking-${booking.id}@${ICAL_UID_DOMAIN}`,
       `DTSTAMP:${dtStamp}`,
       `DTSTART:${dtStart}`,
       `DTEND:${dtEnd}`,

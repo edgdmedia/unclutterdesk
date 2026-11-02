@@ -1,10 +1,11 @@
 ---
+import { APP_ORIGIN, TENANT_ROOT_DOMAIN } from '../config/domains';
 import '../styles/global.css';
 
 // Astro emits this as 404.html, which Cloudflare Pages serves with a real 404
 // status for unmatched paths — replacing the soft 404 where every unknown URL
 // returned 200 with the home page.
-const appUrl = import.meta.env.PUBLIC_APP_URL ?? 'https://app.unclutterdesk.com';
+const appUrl = APP_ORIGIN;
 ---
 
 <!DOCTYPE html>
@@ -54,7 +55,7 @@ const appUrl = import.meta.env.PUBLIC_APP_URL ?? 'https://app.unclutterdesk.com'
 
       <p class="mt-12 mb-0 text-[14px] text-[#64748B]">
         Looking for a practice's booking page? Those live at their own address,
-        like <span class="font-semibold text-[#334155]">practice-name.unclutterdesk.com</span>.
+        like <span class="font-semibold text-[#334155]">practice-name.{TENANT_ROOT_DOMAIN}</span>.
       </p>
     </main>
 

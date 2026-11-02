@@ -4,30 +4,64 @@
  * One definition, shared by CORS and by anywhere a URL is handed to a third
  * party to redirect a person back to us. Two notions of "our origins" drifting
  * apart is how a redirect ends up trusting a host the browser would not.
+ *
+ * This is also the API's one domain config (spec §4.1a): every production
+ * address is a setting read here, with today's address as its default, so the
+ * move to new domains (§4.1b) is a change of settings, not of code. No other
+ * API file may spell out a production domain (domain-literals.spec.ts).
  */
 
-/** Exact-match origins that are always allowed in every environment. */
-export const ROOT_ORIGINS = ['https://unclutterdesk.com', 'https://www.unclutterdesk.com'];
+const trimSlash = (value: string) => value.replace(/\/+$/, '');
+const setting = (name: string) => process.env[name]?.trim() || undefined;
+
+/** Practice subdomains are `{slug}.<root>`. TENANT_ROOT_DOMAIN, default unclutterdesk.com. */
+export const TENANT_ROOT_DOMAIN = (setting('TENANT_ROOT_DOMAIN') ?? 'unclutterdesk.com').toLowerCase().replace(/^\.+|\.+$/g, '');
+
+/** The marketing site. MARKETING_URL, default https://unclutterdesk.com. */
+export const MARKETING_ORIGIN = trimSlash(setting('MARKETING_URL') ?? 'https://unclutterdesk.com');
+
+/** Production defaults for the app and API. Their own settings, never derived from the root domain. */
+const DEFAULT_APP_ORIGIN = 'https://app.unclutterdesk.com';
+const DEFAULT_API_ORIGIN = 'https://api.unclutterdesk.com';
+
+/** Public profile pages (spec §4.1). PROFILE_PUBLIC_URL, default https://profiles.unclutterdesk.com. */
+export const PROFILE_PUBLIC_ORIGIN = trimSlash(setting('PROFILE_PUBLIC_URL') ?? 'https://profiles.unclutterdesk.com');
+
+/** Platform mail goes from MAIL_FROM (or SMTP_FROM); this is the address when neither is set. */
+export const FALLBACK_SENDER_ADDRESS = `no-reply@${TENANT_ROOT_DOMAIN}`;
 
 /**
- * Tenant booking surfaces: https://<slug>.unclutterdesk.com — a single label
- * only, so this cannot be satisfied by an attacker-controlled host such as
- * "https://evil.com/x.unclutterdesk.com" or "https://unclutterdesk.com.evil.com".
+ * The domain in a calendar event's UID. Fixed for good, not a setting: a
+ * subscribed calendar matches events by UID, so changing it at a domain move
+ * would show every existing booking twice.
  */
-export const TENANT_SUBDOMAIN =
-  /^https:\/\/[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.unclutterdesk\.com$/;
+export const ICAL_UID_DOMAIN = 'unclutterdesk.com';
+
+const escapeRegex = (value: string) => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+/** Exact-match origins that are always allowed in every environment: the marketing site and its www. */
+export const ROOT_ORIGINS = [MARKETING_ORIGIN, MARKETING_ORIGIN.replace(/^https:\/\/(?!www\.)/, 'https://www.')].filter(
+  (origin, i, all) => all.indexOf(origin) === i,
+);
+
+/**
+ * Tenant booking surfaces: https://<slug>.<root> — a single label only, so
+ * this cannot be satisfied by an attacker-controlled host such as
+ * "https://evil.com/x.<root>" or "https://<root>.evil.com".
+ */
+export const TENANT_SUBDOMAIN = new RegExp(
+  `^https:\\/\\/[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\\.${escapeRegex(TENANT_ROOT_DOMAIN)}$`,
+);
 
 /** Dev-only. Never consulted when NODE_ENV=production. */
 export const LOCAL_ORIGIN = /^https?:\/\/(?:[a-z0-9-]+\.)*localhost(?::\d+)?$/;
 export const PAGES_PREVIEW_ORIGIN = /^https:\/\/[a-z0-9-]+\.[a-z0-9-]+\.pages\.dev$/;
 
-export const ROOT_DOMAIN = 'unclutterdesk.com';
-
 /** The workspace app, where staff land after a subscription payment. */
 export function appOrigin(isProduction = process.env.NODE_ENV === 'production'): string {
   const configured = process.env.APP_URL?.trim();
   if (configured) return configured.replace(/\/+$/, '');
-  return isProduction ? `https://app.${ROOT_DOMAIN}` : 'http://localhost:5173';
+  return isProduction ? DEFAULT_APP_ORIGIN : 'http://localhost:5173';
 }
 
 /**
@@ -49,7 +83,7 @@ export function absoluteUrl(link: string, isProduction = process.env.NODE_ENV ==
 export function apiOrigin(isProduction = process.env.NODE_ENV === 'production'): string {
   const configured = process.env.API_URL?.trim();
   if (configured) return configured.replace(/\/+$/, '');
-  return isProduction ? `https://api.${ROOT_DOMAIN}` : 'http://localhost:3099';
+  return isProduction ? DEFAULT_API_ORIGIN : 'http://localhost:3099';
 }
 
 export function tenantWebOrigin(
@@ -60,7 +94,7 @@ export function tenantWebOrigin(
 
   const domain = tenant.customDomain?.trim().toLowerCase();
   if (domain && tenant.customDomainStatus === 'ACTIVE') return `https://${domain}`;
-  return `https://${tenant.slug}.${ROOT_DOMAIN}`;
+  return `https://${tenant.slug}.${TENANT_ROOT_DOMAIN}`;
 }
 
 export function isPlatformOrigin(
@@ -105,7 +139,7 @@ export function isAllowedRedirectTarget(
   // Blocks javascript:, data:, and every other scheme that is not a web page.
   if (url.protocol !== 'https:' && !(url.protocol === 'http:' && !isProduction)) return false;
 
-  // Credentials in a URL ("https://app.unclutterdesk.com@evil.com") are how a
+  // Credentials in a URL ("https://app.<root>@evil.com") are how a
   // host is disguised as a path to a reader skimming the address bar.
   if (url.username || url.password) return false;
 
@@ -119,4 +153,15 @@ export function isAllowedRedirectTarget(
   }
 
   return false;
+}
+
+/**
+ * The hostname practices point their custom domain's CNAME at. One setting,
+ * CUSTOM_DOMAIN_TARGET; CLOUDFLARE_SAAS_CNAME_TARGET is still read when it is
+ * unset, so an existing .env keeps working. Unset means Cloudflare for SaaS is
+ * not configured, so no custom domain can be served and none may be marked active.
+ */
+export function customDomainTarget(): string | null {
+  const target = (setting('CUSTOM_DOMAIN_TARGET') ?? setting('CLOUDFLARE_SAAS_CNAME_TARGET'))?.toLowerCase().replace(/\.$/, '');
+  return target || null;
 }

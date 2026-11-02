@@ -7,6 +7,7 @@ import { Card, CardHeader, Eyebrow, StatusBadge, AvatarChip, useToast } from '@u
 import { AdminTenantDetail, formatNaira, formatDate } from './adminTypes';
 import { ComplimentaryPlanForm, describePlan, type PlanView } from './ComplimentaryPlanForm';
 import { TIER_NAMES, type Tier } from '../../utils/entitlements';
+import { TENANT_ROOT_DOMAIN } from '../../config/domains';
 
 
 export function AdminTenantDetailPage() {
@@ -106,7 +107,7 @@ export function AdminTenantDetailPage() {
               <StatusBadge status={tenant.isActive ? 'Active' : 'Inactive'} />
             </div>
             <div className="text-[13px] text-[#64748B] mt-1">
-              {tenant.slug}.unclutterdesk.com{tenant.customDomain ? ` · ${tenant.customDomain}` : ''} · Joined{' '}
+              {tenant.slug}.{TENANT_ROOT_DOMAIN}{tenant.customDomain ? ` · ${tenant.customDomain}` : ''} · Joined{' '}
               {formatDate(tenant.createdAt)}
             </div>
           </div>

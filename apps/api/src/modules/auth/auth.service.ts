@@ -390,7 +390,7 @@ export class AuthService {
           to: profile.email,
           type: 'auth.welcome',
           title: 'Welcome to Unclutter Desk',
-          message: `Your email has been verified and your practice workspace is active. You can now sign in and start booking clients, writing SOAP notes, and more. Get started at app.unclutterdesk.com.`,
+          message: `Your email has been verified and your practice workspace is active. You can now sign in and start booking clients, writing SOAP notes, and more. Get started at ${appOrigin().replace(/^https?:\/\//, '')}.`,
           tenantId: profile.tenantId,
           profileId: profile.id,
         });

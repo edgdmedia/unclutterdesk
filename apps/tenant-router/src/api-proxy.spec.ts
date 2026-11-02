@@ -19,6 +19,7 @@ const setCookies = (r: Response) => (r.headers as unknown as { getSetCookie(): s
 const API = 'https://api.unclutterdesk.com';
 const ENV: Env = {
   APEX_HOST: 'unclutterdesk.com',
+  MARKETING_URL: 'https://unclutterdesk.com',
   ORIGIN_HOST: 'app-unclutterdesk.pages.dev',
   API_BASE: API,
   ROUTER_PROXY_SECRET: 'router-secret',

@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { APP_ORIGIN, CUSTOM_DOMAIN_TARGET, SUPPORT_EMAIL } from '../config/domains';
 
 const PRESETS = [
   { name: "Deep navy", primary: "#0F3A53", secondary: "#E3B341" },
@@ -68,7 +69,7 @@ const PLANS = [
  * Pointed at the address already published in the footer rather than a sales@
  * mailbox that does not exist yet. When one does, this is the line to change.
  */
-const CONTACT_EMAIL = 'support@unclutterdesk.com';
+const CONTACT_EMAIL = SUPPORT_EMAIL;
 const SALES_MAILTO =
   `mailto:${CONTACT_EMAIL}` +
   '?subject=Group%20Clinic%20enquiry' +
@@ -137,7 +138,7 @@ export function LandingPage() {
 
   const appBaseUrl = import.meta.env.DEV
     ? "http://app.localhost:5173"
-    : "https://app.unclutterdesk.com";
+    : APP_ORIGIN;
   const loginUrl = `${appBaseUrl}/login`;
   const registerUrl = `${appBaseUrl}/register`;
 
@@ -390,7 +391,7 @@ export function LandingPage() {
           <div className="bg-white rounded-[20px] p-4.5 flex flex-col sm:flex-row items-start sm:items-center gap-3.5 max-w-[520px] mt-2 p-5">
             <span className="h-[22px] px-2.5 rounded-full bg-[#F0FDF4] text-[#16A34A] text-[9px] font-[900] tracking-[0.12em] inline-flex items-center shrink-0">VERIFIED</span>
             <span className="text-[13.5px] leading-[1.55] text-[#0F172A]">
-              Point your CNAME at <span className="font-mono text-[12.5px] bg-[#F1F5F9] px-1.5 py-0.5 rounded-md">cname.unclutterdesk.com</span> to run the whole thing on <span className="font-mono text-[12.5px] bg-[#F1F5F9] px-1.5 py-0.5 rounded-md">booking.yourpractice.com</span>.
+              Point your CNAME at <span className="font-mono text-[12.5px] bg-[#F1F5F9] px-1.5 py-0.5 rounded-md">{CUSTOM_DOMAIN_TARGET}</span> to run the whole thing on <span className="font-mono text-[12.5px] bg-[#F1F5F9] px-1.5 py-0.5 rounded-md">booking.yourpractice.com</span>.
             </span>
           </div>
         </div>

@@ -544,9 +544,6 @@ function RootRedirect() {
 
   if (isLoading) return <PageFallback />;
 
-  if (appType === 'admin') {
-    return <Navigate to="/admin" replace />;
-  }
   if (appType === 'booking') {
     return <PublicProfilePage />;
   }

@@ -2,7 +2,7 @@
   "name": "@unclutterdesk/tenant-router",
   "version": "0.1.0",
   "private": true,
-  "description": "Serves tenant booking surfaces on *.unclutterdesk.com, which Cloudflare Pages cannot do with a wildcard custom domain",
+  "description": "Serves tenant booking surfaces on practice subdomains, which Cloudflare Pages cannot do with a wildcard custom domain",
   "scripts": {
     "dev": "wrangler dev",
     "deploy": "wrangler deploy",

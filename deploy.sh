@@ -200,4 +200,4 @@ for attempt in $(seq 1 15); do
     sleep 2
 done
 
-echo "✅ Unclutter Desk API Deployed Successfully on app.unclutterdesk.com!"
+echo "✅ Unclutter Desk API deployed successfully."

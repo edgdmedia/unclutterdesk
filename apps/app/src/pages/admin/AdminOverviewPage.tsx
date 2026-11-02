@@ -20,6 +20,7 @@ import {
   formatCount,
   formatDate,
 } from './adminTypes';
+import { TENANT_ROOT_DOMAIN } from '../../config/domains';
 
 export function AdminOverviewPage() {
   const { data: stats, error: statsError, isLoading: statsLoading } = useSWR<AdminStats>('/v1/admin/stats');
@@ -154,7 +155,7 @@ export function AdminOverviewPage() {
                             {t.name}
                           </div>
                           <div className="text-[11.5px] text-[#94A3B8]">
-                            {t.slug}.unclutterdesk.com{t.customDomain ? ` · ${t.customDomain}` : ''}
+                            {t.slug}.{TENANT_ROOT_DOMAIN}{t.customDomain ? ` · ${t.customDomain}` : ''}
                           </div>
                         </div>
                       </Link>

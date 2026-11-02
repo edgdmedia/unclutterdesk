@@ -4,6 +4,7 @@ import { ArrowRight, Eye, EyeOff, Loader2, Lock, Mail, ShieldCheck } from 'lucid
 import { useAuth } from '../../context/AuthContext';
 import { AuthField, authInputCls } from '../../components/AuthField';
 import { UnclutterMark } from '@unclutterdesk/ui';
+import { TENANT_ROOT_DOMAIN } from '../../config/domains';
 
 export function PlatformAdminLoginPage() {
   const navigate = useNavigate();
@@ -61,7 +62,7 @@ export function PlatformAdminLoginPage() {
                 required
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                placeholder="you@unclutterdesk.com"
+                placeholder={`you@${TENANT_ROOT_DOMAIN}`}
                 className={authInputCls}
               />
             </AuthField>

@@ -20,10 +20,10 @@ const SetPasswordPage = lazy(() => import('../pages/public/SetPasswordPage').the
 /**
  * POR-01: clients arrive at the practice's own link — the confirmation email,
  * the portal button, the "Not you?" sign-in. These routes must exist on the
- * practice host as well as on app.unclutterdesk.com, so every tree that can
+ * practice host as well as on the app host, so every tree that can
  * show client pages renders this one fragment. The tenant resolves from the
  * host (apiClient's TENANT_SLUG), and the session cookie lives on the api
- * domain, so the same pages work anywhere under unclutterdesk.com.
+ * domain, so the same pages work anywhere under the tenant root domain.
  */
 /**
  * POR-01: on a practice host there is no staff brand call to read from, so the

@@ -8,7 +8,8 @@ import sitemap from '@astrojs/sitemap';
 
 // https://astro.build/config
 export default defineConfig({
-  site: 'https://unclutterdesk.com',
+  // The same setting as src/config/domains.ts MARKETING_ORIGIN (spec §4.1a).
+  site: (process.env.PUBLIC_MARKETING_URL || 'https://unclutterdesk.com').replace(/\/+$/, ''),
 
   integrations: [
     react(),

@@ -21,7 +21,7 @@ You are extending a working, multi-tenant NestJS + Prisma + React product. The p
 4. **Never trust `req.user.roles` for practice roles.** Practice roles and permissions come from `Profile.role` + `Profile.permissions` via `RolesGuard`. Every new authenticated route needs a permission annotation (the build already enforces this).
 5. **New models use Prisma enums**, not `String` status columns. Don't convert existing string columns in v2 unless a phase says so.
 6. **Money stays in kobo (`BigInt`).** IDs stay `BigInt`, matching the existing schema.
-7. **No hard-coded profile domain or brand.** Profiles will move to their own domain later. Every public profile URL and profile-brand string goes through one config module (§4.1). CI grep check: no literal `profiles.unclutterdesk.com` outside that config, except `apps/profiles/wrangler.jsonc` (route binding) and the API's excluded-origins / CORS configuration (§4.3).
+7. **No hard-coded profile domain or brand.** Profiles will move to their own domain later. Every public profile URL and profile-brand string goes through one config module (§4.1). CI check (`apps/api/src/domain-literals.spec.ts`): no production domain, `profiles.unclutterdesk.com` included, outside the domain config and the exceptions listed in §4.1a. `apps/profiles/wrangler.jsonc` (route binding) joins that list when it exists.
 8. **The profiles site is untrusted** (§4.3). Never relax those rules for convenience.
 9. **Docs are part of "done."** Each phase updates `docs/LAUNCH_FEATURE_MATRIX.md` and any landing/legal copy it affects.
 10. **Ask, don't guess, on anything marked `DECISION`.** Never invent a third option silently.
@@ -143,24 +143,26 @@ Rules:
 
 The whole platform moves to therapysts.com / therapysts.app before launch (§4.1b). Today `unclutterdesk.com` appears ~100 times across 48 files (plus 36 test files). Moving now is a few days of mechanical work; after launch the external integrations turn it into a migration project. So, in Phase 1, make **every** origin a setting:
 
-| Setting | Today | Notes |
-|---|---|---|
-| `MARKETING_ORIGIN` | `https://unclutterdesk.com` | |
-| `APP_ORIGIN` | `https://app.unclutterdesk.com` | **Its own setting**, not derived from the root domain (a future layout may serve the app at a bare domain) |
-| `API_ORIGIN` | `https://api.unclutterdesk.com` | |
-| `TENANT_ROOT_DOMAIN` | `unclutterdesk.com` | Practice subdomains `{slug}.<root>` |
-| `PROFILE_PUBLIC_ORIGIN` | `https://profiles.unclutterdesk.com` | §4.1 |
-| `EMAIL_FROM_DOMAIN` / `NO_REPLY_ADDRESS` | `unclutterdesk.com` | Resend sending domain |
-| `CUSTOM_DOMAIN_CNAME_TARGET` | current Cloudflare for SaaS target | What Pro customers point their domains at |
+Settings keep the names the code already used (Q-2-1); each defaults to today's address, so production `.env` changes only at the move.
 
-Work items (from the code audit):
-- **API:** most of it already goes through `ROOT_DOMAIN` in `origins.ts` with `APP_URL`/`API_URL` overrides. Finish it: `tenant.service.ts`, `reserved-slugs.ts`, the Google Calendar callback in `calendar.service.ts`, and the tenant middleware. Stop building the app origin as `app.${ROOT_DOMAIN}`.
-- **App:** remove the 13 hard-coded fallbacks in `apiClient.ts` (use `VITE_API_URL` / `VITE_APP_URL`); move legal links and settings-page URLs onto config.
-- **Landing:** 14 places, mostly copy and legal pages.
-- **Infra:** `tenant-router` config (including the apex rule), nginx and the TLS certificate, `deploy.sh`.
-- **Tests:** use the config, not literals.
-- **Document (don't change yet)** the external items a move would touch: Paystack, Google OAuth and Daily.co callback/webhook URLs; the Resend sending domain and `no-reply@` sender; the custom-domain CNAME target.
-- Extend the §0 rule 7 grep check: no literal production domain outside the config files and the listed exceptions.
+| Setting | API (`common/origins.ts`) | App (`src/config/domains.ts`) | Landing (`src/config/domains.ts`) | Today | Notes |
+|---|---|---|---|---|---|
+| Marketing origin | `MARKETING_URL` | `VITE_MARKETING_URL` | `PUBLIC_MARKETING_URL` (also `site`) | `https://unclutterdesk.com` | CORS also allows its `www.` |
+| App origin | `APP_URL` | `VITE_APP_URL` | `PUBLIC_APP_URL` | `https://app.unclutterdesk.com` | **Its own setting**, never derived from the root domain |
+| API origin | `API_URL` | `VITE_API_URL` | — | `https://api.unclutterdesk.com` | |
+| Tenant root domain | `TENANT_ROOT_DOMAIN` | `VITE_TENANT_ROOT_DOMAIN` | `PUBLIC_TENANT_ROOT_DOMAIN` | `unclutterdesk.com` | Practice subdomains `{slug}.<root>` |
+| Profile origin | `PROFILE_PUBLIC_URL` | (with the profiles item) | — | `https://profiles.unclutterdesk.com` | §4.1 |
+| CSRF cookie domain | `COOKIE_DOMAIN` | — | — | `.<root>` | Derived from the root unless set (Q-2-3) |
+| Platform sender | `MAIL_FROM` (`SMTP_FROM` fallback) | — | — | `no-reply@<root>` when unset | Resend sending domain |
+| Custom-domain CNAME target | `CUSTOM_DOMAIN_TARGET` (`CLOUDFLARE_SAAS_CNAME_TARGET` fallback) | from the API | `PUBLIC_CUSTOM_DOMAIN_TARGET` | `customers.unclutterdesk.com` | One setting, not two (Q-2-2) |
+| Contact mailboxes | — | — | `PUBLIC_CONTACT_EMAIL_DOMAIN` | `unclutterdesk.com` | support@, privacy@, security@ |
+| Tenant router | `wrangler.jsonc`: route, `APEX_HOST`, `API_BASE`, `MARKETING_URL` | | | | Deployment config, edited at the move |
+
+Decided in Phase 1 (hand-off Q-2-1 to Q-2-7):
+- **No admin host.** Platform admin lives at `/admin` on the app origin. The old `admin.<root>` rule only redirected `/` and is removed; `admin` stays a reserved slug.
+- **The calendar UID domain is fixed for good** (`ICAL_UID_DOMAIN` in `origins.ts`, `unclutterdesk.com`): calendars match events by UID, so changing it at the move would duplicate every booking.
+- **The check** is `apps/api/src/domain-literals.spec.ts` (§0 rule 7). It fails on `unclutterdesk.com`, `therapysts.com` or `therapysts.app` anywhere outside: the three config modules, `astro.config.mjs`, `packages/ui` brand-slot tokens, `wrangler.jsonc`, `apps/app/public/_headers` and `deploy/nginx/**` (both static, each with a "change at the move" note), `docs/**`, `*.md`, env examples, `scripts/**`, `prisma/migrations/**`, `prisma/seed.js`, and test files. Test fixtures keep literals: tests run on the defaults, and a test asserting an old address fails at the move, where it's updated.
+- **The external items a move touches** are listed in `docs/DOMAIN_MOVE.md`.
 
 ### 4.1b Target domains: therapysts.com + therapysts.app (D22)
 
