@@ -1,6 +1,7 @@
 import { CanActivate, ExecutionContext, Injectable, ForbiddenException } from '@nestjs/common';
 import { ACCESS_COOKIE, REFRESH_COOKIE, CSRF_COOKIE } from '../../common/auth.config';
 import { safeEqual } from '../../common/timing-safe';
+import { isProfilesOrigin } from '../../common/origins';
 
 const SAFE_METHODS = new Set(['GET', 'HEAD', 'OPTIONS']);
 
@@ -71,6 +72,13 @@ export class CsrfGuard implements CanActivate {
     // on, so unauthenticated calls — public bookings, provider webhooks — pass.
     const hasSession = req.cookies?.[ACCESS_COOKIE] || req.cookies?.[REFRESH_COOKIE];
     if (!hasSession) return true;
+
+    // The public-profile site may share the platform's cookie domain, but a
+    // page there must never act on a session, whatever token it holds (§4.3).
+    const origin = req.headers?.origin;
+    if (typeof origin === 'string' && isProfilesOrigin(origin)) {
+      throw new ForbiddenException('Not allowed from the public profile site');
+    }
 
     if (tokensMatch(req.headers?.['x-csrf-token'], req.cookies?.[CSRF_COOKIE])) {
       return true;

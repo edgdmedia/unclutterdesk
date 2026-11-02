@@ -23,6 +23,7 @@ const CONFIG_FILES = [
   'apps/api/src/common/origins.ts',
   'apps/app/src/config/domains.ts',
   'apps/landing/src/config/domains.ts',
+  'apps/profiles/src/lib/config.ts',
   'apps/landing/astro.config.mjs', // `site`, the same setting as the landing config
   'packages/ui/src/tokens/brand-slots.css', // design-specimen defaults, not used by the apps
 ];
@@ -33,6 +34,7 @@ const CONFIG_FILES = [
  */
 const DEPLOYMENT_FILES = [
   'apps/tenant-router/wrangler.jsonc', // the Worker's route and vars
+  'apps/profiles/wrangler.jsonc', // the profiles Worker's vars (spec §0 rule 7)
   'apps/app/public/_headers', // static CSP connect-src
   /^deploy\/nginx\//, // server_name and certificate paths
 ];

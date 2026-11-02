@@ -1,0 +1,18 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "therapysts-profiles",
+  "main": "@astrojs/cloudflare/entrypoints/server",
+  "compatibility_date": "2026-10-01",
+  "compatibility_flags": ["nodejs_compat", "global_fetch_strictly_public"],
+  "assets": { "binding": "ASSETS", "directory": "./dist" },
+  "observability": { "enabled": true },
+  // Domain config (spec §4.1a): this site's addresses. The route is added at
+  // deploy (spec §4.2); it lives on the new account's marketing domain.
+  "vars": {
+    "PROFILE_PUBLIC_URL": "https://profiles.unclutterdesk.com",
+    "API_URL": "https://api.unclutterdesk.com",
+    "APP_URL": "https://app.unclutterdesk.com",
+    "MARKETING_URL": "https://unclutterdesk.com",
+    "MEDIA_URL": "https://media.therapysts.com"
+  }
+}

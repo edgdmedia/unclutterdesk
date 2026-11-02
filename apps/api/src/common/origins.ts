@@ -104,11 +104,22 @@ export function tenantWebOrigin(
   return `https://${tenant.slug}.${TENANT_ROOT_DOMAIN}`;
 }
 
+/**
+ * The public-profile site (spec §4.3): it shows text therapists write, so it
+ * is never trusted the way the platform is. No credentialed CORS, no CSRF
+ * pass with a session, and never a redirect target. It may sit under the
+ * tenant root today (profiles.<root>), so this check comes first.
+ */
+export function isProfilesOrigin(candidate: string): boolean {
+  return candidate.toLowerCase().replace(/\/+$/, '') === PROFILE_PUBLIC_ORIGIN.toLowerCase();
+}
+
 export function isPlatformOrigin(
   candidate: string,
   isProduction = process.env.NODE_ENV === 'production',
 ): boolean {
   const origin = candidate.toLowerCase();
+  if (isProfilesOrigin(origin)) return false;
   if (ROOT_ORIGINS.includes(origin) || TENANT_SUBDOMAIN.test(origin)) return true;
   if (!isProduction && (LOCAL_ORIGIN.test(origin) || PAGES_PREVIEW_ORIGIN.test(origin))) return true;
   return false;
