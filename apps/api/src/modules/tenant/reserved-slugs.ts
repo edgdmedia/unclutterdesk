@@ -44,6 +44,10 @@ export const RESERVED_SLUGS: ReadonlySet<string> = new Set([
   'demo',
   'unclutter',
   'unclutterdesk',
+  // v2 §6.2: the public-profile site and the directory (Phase 4) use these
+  // as subdomains, so no practice may take them.
+  'profiles',
+  'directory',
 ]);
 
 /** The one normalisation every slug path uses, so they cannot disagree. */
