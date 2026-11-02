@@ -6,6 +6,12 @@
   "compatibility_flags": ["nodejs_compat", "global_fetch_strictly_public"],
   "assets": { "binding": "ASSETS", "directory": "./dist" },
   "observability": { "enabled": true },
+  // Workers Caching (spec §4.2, §6.12): pages are cached by this Worker, keyed
+  // by URL and Worker version (never cookies), tagged per profile, and purged
+  // from inside the Worker by POST /api/purge (src/pages/api/purge.ts).
+  "cache": { "enabled": true },
+  // Secret, not a var: PROFILES_PURGE_SECRET, shared with the API's
+  // profile.purge job. Set with: pnpm exec wrangler secret put PROFILES_PURGE_SECRET
   // Domain config (spec §4.1a): this site's addresses. The route is added at
   // deploy (spec §4.2); it lives on the new account's marketing domain.
   "vars": {
