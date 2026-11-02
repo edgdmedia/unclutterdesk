@@ -1,0 +1,108 @@
+{
+  "_note": "Seed for ProfileTemplate (spec §6.6), inserted once by the 20261103090000_profile_templates migration. After that the templates live in the database and are edited in admin; changing this file changes nothing in a running system. Drafted for Olalekan to review before launch.",
+  "guidance": {
+    "identity": "Use the name clients will search for. Your headline is the one line people see first: say who you help and how, in plain words.",
+    "about": "Write to the person reading, not about yourself in the third person. What brings people to you, what a first session is like, and what you hope they leave with.",
+    "qualifications": "List qualifications and memberships as they appear on your certificates. Add your training journey so clients can see how you got here.",
+    "specialties": "Choose up to three primary specialties: the things you most want to be found for. Add others you also work with.",
+    "approach": "Describe how you work in everyday words. Name the therapies you use, then say what they look like in a session.",
+    "population": "Say who you work with: age groups, couples, families. Add faith integration only if you offer it.",
+    "languages": "Add every language you can hold a session in.",
+    "experience": "Years in practice, as you'd state them professionally. Avoid client counts you can't stand behind.",
+    "fees": "Clients want to know cost before they reach out. A range is enough.",
+    "contact": "Make the next step obvious: a Book button, or one clear way to get in touch."
+  },
+  "templates": [
+    {
+      "key": "private-practice-counsellor",
+      "title": "Counsellor in private practice",
+      "description": "For counsellors seeing individual adults in their own practice.",
+      "kind": "COUNSELLOR",
+      "sortOrder": 10,
+      "sections": {
+        "identity": { "prompt": "Who do you help, and with what?", "example": "Counsellor helping adults through anxiety, stress and life changes" },
+        "about": { "prompt": "What do people usually come to you with, and what is a first session like?", "example": "People often come to me when something that used to feel manageable has started to feel heavy: work pressure, a relationship, a loss, or a worry that won't settle. In our first session we talk about what has brought you here and what you'd like to be different. You set the pace. My aim is a space where you can think clearly, feel heard, and leave each session with something useful." },
+        "approach": { "prompt": "How do you work, in everyday words?", "example": "I work collaboratively, drawing on person-centred and cognitive behavioural approaches. That means listening carefully first, then working together on practical steps that fit your life." }
+      },
+      "suggested": { "SPECIALTY": ["anxiety", "stress", "life-transitions", "relationships"], "MODALITY": ["person-centred", "cbt"], "POPULATION": ["adults", "young-adults"] }
+    },
+    {
+      "key": "trainee-counsellor",
+      "title": "Trainee counsellor under supervision",
+      "description": "For counsellors in training who see clients under supervision.",
+      "kind": "TRAINEE",
+      "sortOrder": 20,
+      "sections": {
+        "identity": { "prompt": "Say that you are in training, and who you see.", "example": "Trainee counsellor offering supervised sessions for adults" },
+        "about": { "prompt": "Where are you training, and what can clients expect from a session with you?", "example": "I am in the final stage of my counselling training and see clients under regular clinical supervision. That supervision is part of how I keep my work careful and safe. I offer a calm, confidential space to talk through what is on your mind, at a pace that suits you." },
+        "qualifications": { "prompt": "Name your training programme and your supervisor's professional body.", "example": "Diploma in Counselling (in progress). Supervised by a registered counsellor." }
+      },
+      "suggested": { "SPECIALTY": ["stress", "self-esteem", "life-transitions"], "MODALITY": ["person-centred"], "POPULATION": ["adults", "students"] }
+    },
+    {
+      "key": "clinical-psychologist",
+      "title": "Clinical psychologist",
+      "description": "For clinical psychologists offering assessment and therapy.",
+      "kind": "PSYCHOLOGIST",
+      "sortOrder": 30,
+      "sections": {
+        "identity": { "prompt": "Your title and the main areas you assess or treat.", "example": "Clinical psychologist working with anxiety, depression and trauma" },
+        "about": { "prompt": "What do you offer, and how does it usually begin?", "example": "I offer psychological assessment and evidence-based therapy for adults. We usually begin with an assessment session to understand what you're experiencing and what you'd like help with. From there we agree a plan together, and review it as we go so the work stays focused on what matters to you." },
+        "approach": { "prompt": "Which therapies do you use, and why?", "example": "I use cognitive behavioural therapy, acceptance and commitment therapy and trauma-focused approaches, choosing what fits the person and the problem rather than one method for everyone." }
+      },
+      "suggested": { "SPECIALTY": ["anxiety", "depression", "trauma", "ocd"], "MODALITY": ["cbt", "act", "tf-cbt"], "POPULATION": ["adults"] }
+    },
+    {
+      "key": "faith-integrated-counsellor",
+      "title": "Faith-integrated counsellor",
+      "description": "For counsellors who bring faith into their work when clients want it.",
+      "kind": "COUNSELLOR",
+      "sortOrder": 40,
+      "sections": {
+        "identity": { "prompt": "Who you help, and that faith can be part of it.", "example": "Christian counsellor supporting individuals and couples" },
+        "about": { "prompt": "How does faith come into your sessions, and is it optional?", "example": "I work with people who want their faith to be part of how they make sense of what they're going through. Faith comes into our sessions only as much as you want it to. Whether you're facing grief, a strained marriage or a season of doubt, you'll find a space that respects both your beliefs and your experience." },
+        "population": { "prompt": "Describe how you integrate faith, in one or two sentences.", "example": "I integrate Christian faith when a client asks for it, and work without it when they don't." }
+      },
+      "suggested": { "SPECIALTY": ["faith-spirituality", "grief", "marriage", "relationships"], "MODALITY": ["person-centred", "integrative"], "POPULATION": ["adults", "couples"] }
+    },
+    {
+      "key": "child-adolescent-specialist",
+      "title": "Child & adolescent specialist",
+      "description": "For practitioners working with children, teenagers and their families.",
+      "kind": "PSYCHOTHERAPIST",
+      "sortOrder": 50,
+      "sections": {
+        "identity": { "prompt": "The ages you work with, and what you help with.", "example": "Child and adolescent therapist supporting young people and their parents" },
+        "about": { "prompt": "How do you work with young people, and how are parents involved?", "example": "I work with children and teenagers who are finding things hard: worries, big feelings, school pressure or changes at home. Sessions are shaped around the young person, using play, creative activities and conversation depending on their age. Parents are part of the process, with regular check-ins so you know how to support your child between sessions." },
+        "approach": { "prompt": "Which approaches fit the ages you see?", "example": "I use play therapy with younger children and cognitive behavioural approaches with teenagers, always alongside the family." }
+      },
+      "suggested": { "SPECIALTY": ["anxiety", "academic-stress", "bullying", "adhd"], "MODALITY": ["play-therapy", "cbt", "family-systems"], "POPULATION": ["children", "adolescents", "parents"] }
+    },
+    {
+      "key": "couples-family-therapist",
+      "title": "Couples & family therapist",
+      "description": "For practitioners working with couples and families.",
+      "kind": "PSYCHOTHERAPIST",
+      "sortOrder": 60,
+      "sections": {
+        "identity": { "prompt": "Who you work with: couples, families, or both.", "example": "Couples and family therapist helping people communicate and reconnect" },
+        "about": { "prompt": "What do couples or families usually come to you with?", "example": "Couples and families often come to me when the same arguments keep repeating, when trust has been shaken, or when a big change has put everyone under strain. In sessions I help each person be heard, slow down the patterns that keep you stuck, and find ways of talking that work at home, not only in the room." },
+        "approach": { "prompt": "How do you work with more than one person in the room?", "example": "I draw on emotionally focused therapy and the Gottman method for couples, and family systems approaches for families." }
+      },
+      "suggested": { "SPECIALTY": ["marriage", "relationships", "family-conflict", "divorce-separation"], "MODALITY": ["eft", "gottman", "family-systems"], "POPULATION": ["couples", "families"] }
+    },
+    {
+      "key": "workplace-wellbeing",
+      "title": "Workplace / corporate wellbeing practitioner",
+      "description": "For practitioners supporting employees and organisations.",
+      "kind": "COUNSELLOR",
+      "sortOrder": 70,
+      "sections": {
+        "identity": { "prompt": "Who you support at work, and with what.", "example": "Workplace wellbeing counsellor for professionals and teams" },
+        "about": { "prompt": "What do working people bring to you, and how do sessions fit around work?", "example": "I support working professionals dealing with pressure, burnout, difficult relationships at work and career decisions. Sessions are confidential and fit around your working day, online or in person. I also work with organisations on wellbeing programmes, without ever sharing what individuals discuss." },
+        "approach": { "prompt": "How do you work with individuals, and with organisations?", "example": "With individuals I use practical, solution-focused and cognitive behavioural approaches. With organisations I run workshops and check-ins designed around the team's needs." }
+      },
+      "suggested": { "SPECIALTY": ["burnout", "stress", "work-career", "anxiety"], "MODALITY": ["solution-focused", "cbt"], "POPULATION": ["professionals", "adults"] }
+    }
+  ]
+}
