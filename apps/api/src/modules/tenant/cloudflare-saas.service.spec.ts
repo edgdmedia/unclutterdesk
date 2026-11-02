@@ -150,6 +150,18 @@ describe('CloudflareSaasService', () => {
     expect(JSON.parse(post[1].body)).toEqual({ pattern: 'booking.acme.ng/*', script: 'unclutterdesk-tenant-router' });
   });
 
+  it('ensureRoutes lists once, creates only the missing patterns and reports them', async () => {
+    fetchMock
+      .mockResolvedValueOnce(ok([{ id: 'r1', pattern: '*.unclutterdesk.com/*' }]))
+      .mockResolvedValue(ok({ id: 'new' }));
+    const service = new CloudflareSaasService();
+    const created = await service.ensureRoutes(['*.unclutterdesk.com/*', 'consult.unclutter.com.ng/*', 'consult.unclutter.com.ng/*']);
+    expect(created).toEqual(['consult.unclutter.com.ng/*']);
+    const methods = fetchMock.mock.calls.map((c) => c[1].method);
+    expect(methods).toEqual(['GET', 'POST']);
+    expect(JSON.parse(fetchMock.mock.calls[1][1].body)).toEqual({ pattern: 'consult.unclutter.com.ng/*', script: 'unclutterdesk-tenant-router' });
+  });
+
   it('removeRoute deletes by matching pattern and tolerates absence', async () => {
     fetchMock
       .mockResolvedValueOnce(ok([{ id: 'r9', pattern: 'booking.acme.ng/*' }]))

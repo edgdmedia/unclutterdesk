@@ -5,16 +5,21 @@
   "compatibility_date": "2026-09-01",
   "observability": { "enabled": true },
 
-  // Domain config (spec §4.1a): the route and the vars below are this
-  // Worker's only production addresses. Change them here at the domain move.
-  // Serves every tenant booking surface. NOTE: this pattern also matches
-  // api.unclutterdesk.com once that record is proxied, so add a more specific
-  // route for it in Cloudflare with Worker = None (more specific routes win).
-  // Until then the Worker answers `api` with a 404 rather than the SPA.
-  "routes": [
-    { "pattern": "*.unclutterdesk.com/*", "zone_name": "unclutterdesk.com" }
-  ],
+  // No routes here, on purpose. `wrangler deploy` replaces the Worker's routes
+  // with whatever this file lists, so a deploy used to delete every practice's
+  // custom-domain route (each created by the API when the practice saves its
+  // domain) and those sites answered 522. Routes are owned by the API instead:
+  // the custom-domain cron (apps/api/src/modules/tenant/custom-domain.cron.ts)
+  // keeps `*.<TENANT_ROOT_DOMAIN>/*` and every provisioned domain's route in
+  // place. workers_dev stays off, as Wrangler would otherwise turn it on.
+  //
+  // `api.<root>` must keep its more specific route with Worker = None in
+  // Cloudflare (more specific routes win); without it the Worker answers
+  // `api` with a 404 rather than the SPA.
+  "workers_dev": false,
 
+  // Domain config (spec §4.1a): the vars below are this Worker's production
+  // addresses. Change them here at the domain move.
   "vars": {
     "APEX_HOST": "unclutterdesk.com",
     // Linked from the practice-not-found page.
