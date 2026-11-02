@@ -12,47 +12,58 @@ import { allRoutes, reachableBy } from '../test-support/routes';
  */
 const LIST = JSON.parse(
   readFileSync(resolve(__dirname, '../../../tenant-router/src/client-api-routes.json'), 'utf8'),
-) as { routes: string[] };
+).routes as string[];
+const NEVER_PROXIED: string[] = [
+  // Staff invite check endpoint that runs before a session exists
+  'GET /v1/invites/check/:code',
+  // Calendar integration OAuth callback
+  'GET /v1/calendar/google/callback',
+  // Payment gateway webhook endpoint
+  'POST /v1/billing/paystack-webhook',
+  // Video conferencing webhook endpoint
+  'POST /v1/video/webhooks/daily',
+  // Resend webhook endpoint
+  'POST /v1/webhooks/resend',
+  // Claim token verification for public invites
+  'GET /v1/tenant/public/invite/:claimToken',
+  // Tenant slug availability check (public but not for booking)
+  'GET /v1/tenant/check-slug/:slug',
+  // Admin authentication endpoint
+  'POST /v1/admin/auth/login',
+  // Client self-registration endpoint
+  'POST /v1/auth/register',
+  // Invite claim endpoint (auth flow, not client booking)
+  'POST /v1/auth/invite/claim',
+  // Tenant registration endpoint (practice admin flow)
+  'POST /v1/tenant/register',
+];
 const ROUTES = allRoutes();
 const byTarget = new Map(ROUTES.map((r) => [r.target, r]));
 const clientReachable = new Set(reachableBy('CLIENT', ROUTES).map((r) => r.target));
 
-/** Public routes that are not the client's: staff invites, owner signup, webhooks, OAuth callbacks. */
-const NEVER_PROXIED = [
-  'POST /v1/admin/auth/login',
-  'POST /v1/auth/register',
-  'POST /v1/auth/invite/claim',
-  'POST /v1/tenant/register',
-  'GET /v1/tenant/public/invite/:claimToken',
-  'GET /v1/tenant/check-slug/:slug',
-  'GET /v1/invites/check/:code',
-  'GET /v1/calendar/google/callback',
-  'POST /v1/billing/paystack-webhook',
-  'POST /v1/video/webhooks/daily',
-  'POST /v1/webhooks/resend',
-];
-
 describe('the custom-domain proxy allow-list', () => {
   it('is not empty and has no duplicates', () => {
-    expect(LIST.routes.length).toBeGreaterThan(30);
-    expect(new Set(LIST.routes).size).toBe(LIST.routes.length);
+    expect(LIST.length).toBeGreaterThan(30);
+    expect(new Set(LIST).size).toBe(LIST.length);
   });
 
-  it.each(LIST.routes)('%s is a real route, public or client-reachable', (target) => {
-    const route = byTarget.get(target);
-    expect(route, `${target} is not an API route`).toBeDefined();
-    expect(route!.platformAdmin).toBe(false);
-    if (route!.authenticated) {
-      expect(clientReachable.has(target), `${target} needs a session a client can't hold`).toBe(true);
+  it('each entry is a real route that is client-reachable', () => {
+    for (const target of LIST) {
+      const route = byTarget.get(target);
+      expect(route, `${target} is not an API route`).toBeDefined();
+      expect(route!.platformAdmin).toBe(false);
+      if (route!.authenticated) {
+        expect(clientReachable.has(target), `${target} needs a session a client can't hold`).toBe(true);
+      }
     }
   });
 
-  it('leaves out staff, owner-signup, webhook and admin routes', () => {
-    for (const target of NEVER_PROXIED) expect(LIST.routes).not.toContain(target);
+  it('covers everything a client can reach, so the client portal works through the proxy', () => {
+    const missing = [...clientReachable].filter((t) => !LIST.includes(t) && !NEVER_PROXIED.includes(t));
+    expect(missing).toEqual([]);
   });
 
-  it('covers everything a client can reach, so the client portal works through the proxy', () => {
-    const missing = [...clientReachable].filter((t) => !LIST.routes.includes(t) && !NEVER_PROXIED.includes(t));
-    expect(missing).toEqual([]);
+  it('leaves out staff, owner-signup, webhook and admin routes', () => {
+    for (const target of NEVER_PROXIED) expect(LIST).not.toContain(target);
   });
 });
