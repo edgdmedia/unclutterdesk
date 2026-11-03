@@ -1,7 +1,8 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Info, Plus, Save } from 'lucide-react';
-import { Button, Card, Eyebrow, Page, PageHeader, useToast } from '@unclutterdesk/ui';
+import { Button, Card, Eyebrow, Page, PageHeader, SegmentedControl, useToast } from '@unclutterdesk/ui';
 import { api } from '../../../utils/apiClient';
+import { useSearchParams } from 'react-router-dom';
 
 type Format = 'ONLINE' | 'IN_PERSON';
 type Window = { start: string; end: string };
@@ -121,6 +122,10 @@ function Tile(props: {
 
 export function AvailabilitySettingsPage() {
   const toast = useToast();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const initialTab = (searchParams.get('tab') === 'upcoming' ? 'upcoming' : 'weekly') as 'weekly' | 'upcoming';
+  const [tab, setTab] = useState<typeof initialTab>(initialTab);
+
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -134,6 +139,11 @@ export function AvailabilitySettingsPage() {
   const [gapMinutes, setGapMinutes] = useState(10);
   const [cancellationHours, setCancellationHours] = useState(24);
   const [openChooser, setOpenChooser] = useState<string | null>(null);
+
+  // Sync tab to URL
+  React.useEffect(() => {
+    setSearchParams({ tab }, { replace: true });
+  }, [tab, setSearchParams]);
 
   function apply(payload: Payload) {
     setLocations(payload.locations ?? []);
@@ -268,12 +278,36 @@ export function AvailabilitySettingsPage() {
     return [...byDate.entries()].slice(0, 28);
   }, [slots]);
 
+  const tabActions = (
+    <SegmentedControl
+      options={['Weekly hours', 'Upcoming times']}
+      value={tab === 'upcoming' ? 'Upcoming times' : 'Weekly hours'}
+      onChange={(t: string) => setTab(t === 'Upcoming times' ? 'upcoming' : 'weekly')}
+      className="h-[40px] p-1 bg-[#EEF2F7] rounded-[14px] inline-flex gap-1 border border-[#E2E8F0] shrink-0"
+    />
+  );
+
   return (
-    <Page header={<PageHeader eyebrow="PRACTICE" title="Availability" actions={<Button onClick={() => void save()} disabled={saving || loading}><Save className="h-4 w-4" />{saving ? 'Saving…' : 'Save availability'}</Button>} />}>
+    <Page
+      header={
+        <PageHeader
+          eyebrow="PRACTICE"
+          title="Availability"
+          actions={
+            <>
+              {tabActions}
+              <Button onClick={() => void save()} disabled={saving || loading}>
+                <Save className="h-4 w-4" />{saving ? 'Saving…' : 'Save availability'}
+              </Button>
+            </>
+          }
+        />
+      }
+    >
       {error ? <div role="alert" className="rounded-[14px] border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-medium text-rose-700">{error}</div> : null}
       {loading ? <p className="text-sm text-[#64748B]">Loading…</p> : (
-        <div className="grid grid-cols-1 min-[1100px]:grid-cols-[minmax(0,1fr)_320px] gap-5 items-start">
-          <div className="space-y-4">
+        <div className="space-y-4">
+          {tab === 'weekly' ? (
             <Card padding="p-5" className="space-y-1">
               <Eyebrow>WEEKLY HOURS</Eyebrow>
               <p className="text-[13px] text-[#64748B] mb-2">Each session time gets its own format. Changes apply to open times; booked sessions and this-date-only changes stay as they are.</p>
@@ -336,7 +370,7 @@ export function AvailabilitySettingsPage() {
                 </div>
               ))}
             </Card>
-
+          ) : (
             <Card padding="p-5" className="space-y-2">
               <Eyebrow>UPCOMING TIMES</Eyebrow>
               <p className="text-[12.5px] text-[#64748B]">Change a single date for that day only. Booked times are locked.</p>
@@ -367,32 +401,31 @@ export function AvailabilitySettingsPage() {
                 </div>
               ))}
             </Card>
-          </div>
+          )}
 
-          <div className="space-y-4">
-            <Card padding="p-5" className="space-y-4">
-              <Eyebrow>BOOKING RULES</Eyebrow>
-              <label className="block text-[11.5px] font-bold text-[#475569]">Session length
-                <select className="mt-1 h-[42px] w-full rounded-[13px] border border-[#E2E8F0] bg-[#F8FAFC] px-3 text-[13.5px] font-semibold" value={sessionLengthMinutes} onChange={(e) => setSessionLengthMinutes(Number(e.target.value))}>
-                  {[30, 50, 60, 80, 90].map((m) => <option key={m} value={m}>{m} min</option>)}
-                </select>
-              </label>
-              <label className="block text-[11.5px] font-bold text-[#475569]">Gap between sessions
-                <select className="mt-1 h-[42px] w-full rounded-[13px] border border-[#E2E8F0] bg-[#F8FAFC] px-3 text-[13.5px] font-semibold" value={gapMinutes} onChange={(e) => setGapMinutes(Number(e.target.value))}>
-                  {[0, 10, 15, 30].map((m) => <option key={m} value={m}>{m === 0 ? 'No gap' : `${m} min`}</option>)}
-                </select>
-              </label>
-              <label className="block text-[11.5px] font-bold text-[#475569]">Minimum notice
-                <select className="mt-1 h-[42px] w-full rounded-[13px] border border-[#E2E8F0] bg-[#F8FAFC] px-3 text-[13.5px] font-semibold" value={cancellationHours} onChange={(e) => setCancellationHours(Number(e.target.value))}>
-                  {[12, 24, 48].map((h) => <option key={h} value={h}>{h} hours</option>)}
-                </select>
-              </label>
-              <div className="p-3.5 rounded-[14px] bg-[#EFF6FB] text-[#0F3A53] text-xs font-medium flex items-start gap-2.5 leading-relaxed">
-                <Info className="h-4 w-4 shrink-0 mt-0.5" />
-                <span>Saving regenerates the next 28 days of open times from this week.</span>
-              </div>
-            </Card>
-          </div>
+          {/* Booking rules moved below tabs, full width */}
+          <Card padding="p-5" className="space-y-4">
+            <Eyebrow>BOOKING RULES</Eyebrow>
+            <label className="block text-[11.5px] font-bold text-[#475569]">Session length
+              <select className="mt-1 h-[42px] w-full rounded-[13px] border border-[#E2E8F0] bg-[#F8FAFC] px-3 text-[13.5px] font-semibold" value={sessionLengthMinutes} onChange={(e) => setSessionLengthMinutes(Number(e.target.value))}>
+                {[30, 50, 60, 80, 90].map((m) => <option key={m} value={m}>{m} min</option>)}
+              </select>
+            </label>
+            <label className="block text-[11.5px] font-bold text-[#475569]">Gap between sessions
+              <select className="mt-1 h-[42px] w-full rounded-[13px] border border-[#E2E8F0] bg-[#F8FAFC] px-3 text-[13.5px] font-semibold" value={gapMinutes} onChange={(e) => setGapMinutes(Number(e.target.value))}>
+                {[0, 10, 15, 30].map((m) => <option key={m} value={m}>{m === 0 ? 'No gap' : `${m} min`}</option>)}
+              </select>
+            </label>
+            <label className="block text-[11.5px] font-bold text-[#475569]">Minimum notice
+              <select className="mt-1 h-[42px] w-full rounded-[13px] border border-[#E2E8F0] bg-[#F8FAFC] px-3 text-[13.5px] font-semibold" value={cancellationHours} onChange={(e) => setCancellationHours(Number(e.target.value))}>
+                {[12, 24, 48].map((h) => <option key={h} value={h}>{h} hours</option>)}
+              </select>
+            </label>
+            <div className="p-3.5 rounded-[14px] bg-[#EFF6FB] text-[#0F3A53] text-xs font-medium flex items-start gap-2.5 leading-relaxed">
+              <Info className="h-4 w-4 shrink-0 mt-0.5" />
+              <span>Saving regenerates the next 28 days of open times from this week.</span>
+            </div>
+          </Card>
         </div>
       )}
     </Page>
