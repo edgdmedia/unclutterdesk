@@ -4,7 +4,7 @@ import { PrismaService } from '../../common/prisma/prisma.service';
 import { AuditService } from '../audit/audit.service';
 import { JobsService } from '../jobs/jobs.service';
 import { SECTION_ORDER, type SectionKey } from './completeness';
-import { PURGE_JOB, profileTag, type PurgePayload } from './profile-purge.job';
+import { PURGE_JOB, profileTag, queuePurge, type PurgePayload } from './profile-purge.job';
 import {
   parseGuidanceUpdate,
   parseTemplateUpdate,
@@ -412,9 +412,8 @@ export class AdminProfileContentService {
     });
     if (!profiles.length) return;
 
-    const payload: PurgePayload = { tags: [...new Set(profiles.map((profile) => profileTag(profile.handle)))] };
-    const job = await this.jobs.enqueue(PURGE_JOB, payload as never);
-    if (job) await this.jobs.runNow(job.id);
+    const tags = [...new Set(profiles.map((profile) => profileTag(profile.handle)))];
+    await queuePurge(this.jobs, tags);
   }
 
   private termId(value: string): bigint {
