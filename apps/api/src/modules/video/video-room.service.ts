@@ -32,6 +32,7 @@ export class VideoRoomService {
       where: { id: bookingId, tenantId },
       include: {
         client: { select: { firstName: true, lastName: true } },
+        tenant: { select: { joinOpensMinutesBefore: true } },
         availability: {
           select: {
             startsAt: true,
@@ -74,7 +75,7 @@ export class VideoRoomService {
     if (booking.status !== 'CONFIRMED') throw new ForbiddenException("This session isn't confirmed yet.");
     if (booking.format === 'IN_PERSON') throw new ForbiddenException('This session is in person, so it has no video room.');
 
-    const window = joinWindow(booking.availability.startsAt, booking.availability.endsAt);
+    const window = joinWindow(booking.availability.startsAt, booking.availability.endsAt, booking.tenant?.joinOpensMinutesBefore);
     if (now < window.opensAt) throw new ForbiddenException(`This room opens at ${watTime(window.opensAt)}.`);
     if (now > window.closesAt) throw new ForbiddenException('This session has ended.');
     const closesAt = window.closesAt.toISOString();

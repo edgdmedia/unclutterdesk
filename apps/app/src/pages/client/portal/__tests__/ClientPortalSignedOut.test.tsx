@@ -25,6 +25,8 @@ function setSignedIn(value: boolean) {
   listeners.forEach((l) => l());
 }
 vi.mock('../../../../context/AuthContext', () => ({
+  // The Join button reads the practice's room setting from here; signed out, there is none.
+  useOptionalAuth: () => null,
   useAuth: () => {
     const on = useSyncExternalStore(
       (l) => {

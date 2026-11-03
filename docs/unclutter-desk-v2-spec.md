@@ -652,7 +652,14 @@ A profile's look is two separate choices, decided 3 Nov 2026 (design canvas "The
   - `split`: on a desktop, the sessions-and-fees panel stays beside the profile; on a phone it comes straight after the introduction.
 - **Palettes** (colour tokens only). `themeKey` keeps its name and values: `calm` (default, pine), `warm` (clay), `clinical` (blue), `earth` (olive), `night` (dark).
 - Every palette passes WCAG 2.1 AA on every layout: body, muted and accent text at 4.5:1 on their backgrounds, and button text at 4.5:1 on the accent. A test checks each pair.
-- The editor shows both pickers with a live phone preview. All layouts and palettes are on all plans.
+- The editor shows both pickers with a live phone preview. All layouts and the five palettes are on all plans.
+- **Custom brand colour** (agreed 3 Nov 2026): a sixth palette choice, `themeKey = 'custom'`, with `brandColor` (hex).
+  - **Plans:** Starter and up; Free keeps the five palettes. Checked through the practice's plan for practice members, and the profile entitlements for profile-only accounts.
+  - **Contrast:** the colour is the accent (buttons, links, highlights). Its tokens are worked out from it so every pair still passes WCAG AA. Accent text on the background and button text on the accent each need 4.5:1, so lightness is nudged until they do, with the button text white or near-black, whichever passes. The editor shows the adjusted colour when it had to change. Tokens are derived by one shared function in `packages/ui` (`brandTokens(hex)`), used by the profiles renderer, the booking flow and the preview image. The contrast test covers a spread of brand colours, including pale yellow and near-black.
+- **One look per person or practice (§6.16):**
+  - A solo practice has no separate brand colour. Its practice page, booking flow and emails use the owner's profile layout and palette (custom colour included).
+  - A team practice keeps its own brand colour (`Tenant.primaryColor`), and it's offered the same palettes and custom colour.
+- **The booking flow wears the page it came from:** the same palette or brand colour, and the practice's logo. Going from profile to booking never looks like a different website.
 - Fonts are self-hosted (CSP `font-src 'self'`): Outfit, and Fraunces for `editorial` only.
 - The public site and the dashboard share one design language: the Unclutter Desk design system, extended with a Public surface (larger type, one photograph per page, more air). The profile PDF (§6.10) and preview images (§6.3) follow the profile's layout and palette.
 
@@ -810,19 +817,18 @@ For a solo therapist, the person and the practice are the same thing to a client
 
 **Definition of solo:** the practice has exactly **one active therapist membership** (role OWNER or THERAPIST with a `ConsultTherapistProfile`), and it is the owner. ADMIN and RECEPTIONIST staff **don't** make a practice non-solo. (The existing staff-count code treats all non-owner roles alike; solo detection must not reuse it.)
 
-**The reviews question is decided once.** When the owner's profile is **first published**:
-- if the practice has **no published client reviews**, set `homePage = PROFILE`;
-- otherwise leave `homePage` null and show a dashboard prompt: "Show your therapist profile here instead? Your profile doesn't show client reviews (D13), so they'd no longer appear on this page." Choosing it sets `homePage = PROFILE`; declining sets `homePage = PRACTICE`.
+**What `/` shows on a practice address** (reviews decided 3 Nov 2026):
 
-After that, **only the therapist changes `homePage`** (in settings). Publishing reviews later never changes what `/` shows.
-
-**What `/` shows on a practice address:**
-
-| `homePage` | Solo and profile published | Otherwise (clinic, or profile not published) |
+| | Solo, profile published | Otherwise (team practice, or profile not published) |
 |---|---|---|
-| `PROFILE` | The owner's profile | The practice page |
-| `PRACTICE` (opt-out, or declined the prompt) | The practice page | The practice page |
-| null (profile never published, or prompt not yet answered) | The practice page | The practice page |
+| `homePage` not `PRACTICE` (the default) | The owner's profile page | The practice page |
+| `homePage = PRACTICE` (opt-out in settings) | The practice page | The practice page |
+
+**Reviews:**
+- **No reviews on the profile address (D13).** The therapysts.com profile never shows client reviews.
+- **Reviews on the practice address.** When the same page is served on the practice address, it adds a **Reviews** section, but only if the practice has published client reviews (the practice chose to collect and publish them).
+- **So nothing is lost by showing the profile at `/`,** and there's no first-publish prompt. `homePage` is null by default and set only by the therapist.
+- **Rendering:** the profiles renderer adds the section only in the practice-host serving context (the router-set header below), reading the practice's published reviews from the API.
 
 A clinic's practice page lists its therapists, each linking to their profile.
 
@@ -868,13 +874,13 @@ On a custom domain such as `chente.com`, the API's sign-in cookies (on `api.uncl
 - [ ] A new therapist signs up (including the 6-digit code), picks a template and theme, and publishes a profile in under 10 minutes (manual test script)
 - [ ] Handle/slug checks across both namespaces; slug suffix on collision; slug rename when switching booking on; `profiles` and `directory` reserved after a DB check
 - [ ] Profile-first dashboard mode works; switching on Desk booking moves the tenant to the full practice view
-- [ ] Solo practices (§6.16): `/` serves the owner's published profile through the service binding, on subdomains and custom domains; `homePage` set once at first publish (PROFILE without reviews, prompt with reviews); later reviews never change `/`; opt-out works; clinics keep the practice page; switching on second-therapist activation and back; admin/receptionist staff don't affect solo status; all other paths unchanged
+- [ ] Solo practices (§6.16): `/` serves the owner's published profile through the service binding, on subdomains and custom domains; the practice's published reviews appear only there, never on the profile address; opt-out works; clinics keep the practice page; switching on second-therapist activation and back; admin/receptionist staff don't affect solo status; all other paths unchanged
 - [x] **First item:** custom-domain `/api` proxy built: allow-listed routes only, router-set practice header and client IP trusted only with `ROUTER_PROXY_SECRET`, ACTIVE-only origin, `Domain` stripped and `Path=/v1/` rewritten to `/api/v1/` in `Set-Cookie`, `/api` 404 on subdomains, end-to-end test in CI, frontend picks the API base from its host, full sign-in + booking with CSRF works through the proxy on `consult.unclutter.com.ng` in Edge, Safari (macOS and iOS) and Chrome — done 2 Nov 2026 (PRs #55, #58; checked by Olalekan in Safari, Edge and Chrome)
 - [ ] Unverified signups older than 7 days release their handle and slug (only owner self-signups with nothing attached; others flagged for admin)
 - [ ] Proxied page: cookies and `Authorization` stripped, no `Set-Cookie` passed back, assets and site links absolute on the profiles origin, Book button goes to the same host's `/book`, canonical points to the profile address
 - [ ] All three booking modes work; several places per profile with one main; per-place consent; Free offers Paystack only; external URL validated
 - [ ] Templates and guidance editable in admin; unchanged-template-text warning works
-- [ ] Themes pass contrast tests; preview images generated on save into R2 and served from R2
+- [ ] Themes pass contrast tests, including custom brand colours (Starter and up); the booking flow uses the page's palette or brand colour; preview images generated on save into R2 and served from R2
 - [ ] Security (§4.3): cache ignores cookies; renderer never reads them; credentialed requests from the profiles origin are rejected; CSP present; script/HTML payloads render inert
 - [ ] Leaving a practice removes only that place (via each of the four existing exit paths), promotes a new main place, falls back to NONE when none remain, and purges the page
 - [ ] Share link, QR and PDF use `profilePath()`; PDF gated by profile entitlements

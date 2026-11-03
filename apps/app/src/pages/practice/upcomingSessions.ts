@@ -1,4 +1,5 @@
 import type { CalendarEvent } from '../../App';
+import { sessionStatus } from '../../utils/sessionStatus';
 
 /**
  * The dashboard's Upcoming list: sessions that haven't ended yet, soonest
@@ -16,12 +17,8 @@ export function upcomingSessions(events: CalendarEvent[], now: Date, limit = UPC
   return { shown: all.slice(0, limit), more: Math.max(0, all.length - limit) };
 }
 
-/** What a session's badge says right now. */
-export function sessionBadge(e: CalendarEvent, now: Date): { label: string; tone: 'live' | 'ok' | 'wait' } {
-  const status = (e.status ?? '').toUpperCase();
-  if (status === 'PENDING_PAYMENT' || status === 'PENDING') return { label: 'Awaiting payment', tone: 'wait' };
-  const start = new Date(e.startsAt).getTime();
-  const end = new Date(e.endsAt).getTime();
-  if (now.getTime() >= start && now.getTime() < end) return { label: 'In progress', tone: 'live' };
-  return { label: 'Confirmed', tone: 'ok' };
+/** What a session's badge says right now: the same words as everywhere else (utils/sessionStatus). */
+export function sessionBadge(e: CalendarEvent, now: Date, timezone?: string): { label: string; tone: 'live' | 'ok' | 'wait' } {
+  const st = sessionStatus(e.status, e.startsAt, e.endsAt, now, timezone);
+  return { label: st.label, tone: st.tone === 'info' ? 'live' : st.tone === 'warn' || st.tone === 'danger' ? 'wait' : 'ok' };
 }

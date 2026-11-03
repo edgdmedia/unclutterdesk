@@ -2,14 +2,21 @@
  * VID-01 / VID-02: when a session's room can be entered. One rule for the
  * server's check and for the Join buttons, so they never disagree.
  */
-export const JOIN_OPENS_MINUTES_BEFORE = 15;
+/** The practice chooses how early a session's room opens; closing is fixed. */
+export const JOIN_OPENS_CHOICES = [0, 5, 10, 15] as const;
+export const DEFAULT_JOIN_OPENS_MINUTES = 10;
 export const JOIN_CLOSES_MINUTES_AFTER = 60;
+
+/** A stored setting, or the default when it is missing or not one of the choices. */
+export function joinOpensMinutes(value: unknown): number {
+  return typeof value === 'number' && (JOIN_OPENS_CHOICES as readonly number[]).includes(value) ? value : DEFAULT_JOIN_OPENS_MINUTES;
+}
 
 export interface RoomWindowTimes { opensAt: Date; closesAt: Date }
 
-export function joinWindow(startsAt: Date, endsAt: Date): RoomWindowTimes {
+export function joinWindow(startsAt: Date, endsAt: Date, opensMinutesBefore: number = DEFAULT_JOIN_OPENS_MINUTES): RoomWindowTimes {
   return {
-    opensAt: new Date(startsAt.getTime() - JOIN_OPENS_MINUTES_BEFORE * 60_000),
+    opensAt: new Date(startsAt.getTime() - joinOpensMinutes(opensMinutesBefore) * 60_000),
     closesAt: new Date(endsAt.getTime() + JOIN_CLOSES_MINUTES_AFTER * 60_000),
   };
 }

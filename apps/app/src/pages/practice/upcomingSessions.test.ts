@@ -25,7 +25,8 @@ describe('the dashboard Upcoming list', () => {
 
   it('labels each session by what is true now, not a fixed word', () => {
     expect(sessionBadge(ev('x', '2026-11-04T09:30:00Z'), now).label).toBe('In progress');
-    expect(sessionBadge(ev('x', '2026-11-05T09:00:00Z'), now).label).toBe('Confirmed');
+    expect(sessionBadge(ev('x', '2026-11-04T15:00:00Z'), now).label).toBe('Today');
+    expect(sessionBadge(ev('x', '2026-11-05T09:00:00Z'), now).label).toBe('Upcoming');
     expect(sessionBadge(ev('x', '2026-11-05T09:00:00Z', 50, { status: 'PENDING_PAYMENT' }), now).label).toBe('Awaiting payment');
   });
 });

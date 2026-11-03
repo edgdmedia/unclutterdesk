@@ -1,4 +1,4 @@
-import { useEffect, useRef, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { PlainLink, type LinkLike } from './links';
 import { useFocusTrap } from '../a11y/useFocusTrap';
 
@@ -120,6 +120,11 @@ export function Sidebar({
   const panelRef = useRef<HTMLElement>(null);
   useFocusTrap(panelRef, overlay);
 
+  // A collapsible section must always toggle when its label is clicked. When the
+  // caller does not control a section (no `openSections` entry), the Sidebar keeps
+  // that section's state itself instead of silently doing nothing.
+  const [internalOpen, setInternalOpen] = useState<Record<string, boolean>>({});
+
   useEffect(() => {
     if (!overlay || !onClose) return;
     const onKey = (e: KeyboardEvent) => {
@@ -129,7 +134,14 @@ export function Sidebar({
     return () => document.removeEventListener('keydown', onKey);
   }, [overlay, onClose]);
 
-  const isOpen = (s: SidebarSection) => !s.collapsible || rail || (openSections[s.key] ?? true);
+  const isOpen = (s: SidebarSection) =>
+    !s.collapsible || rail || (openSections[s.key] ?? internalOpen[s.key] ?? true);
+
+  const toggleSection = (section: SidebarSection) => {
+    const next = !isOpen(section);
+    if (onSectionToggle) onSectionToggle(section.key, next);
+    else setInternalOpen((prev) => ({ ...prev, [section.key]: next }));
+  };
 
   const nav = (
     <nav aria-label="Main" className={`no-scrollbar flex-1 min-h-0 overflow-y-auto space-y-1 ${rail ? 'flex flex-col items-center' : ''}`}>
@@ -141,7 +153,7 @@ export function Sidebar({
               <button
                 type="button"
                 aria-expanded={isOpen(section)}
-                onClick={() => onSectionToggle?.(section.key, !isOpen(section))}
+                onClick={() => toggleSection(section)}
                 className="w-full flex items-center gap-2 text-[9px] font-black tracking-[0.2em] uppercase text-[var(--desk-text-muted)] hover:text-[var(--desk-text-subtle)] px-3 pb-2 pt-5 transition-colors cursor-pointer"
               >
                 {section.icon}

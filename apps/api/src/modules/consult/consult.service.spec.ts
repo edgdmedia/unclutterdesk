@@ -23,6 +23,8 @@ function makeService() {
     },
     consultTherapistProfile: { updateMany: vi.fn().mockResolvedValue({ count: 1 }) },
     consultBooking: { findMany: vi.fn().mockResolvedValue([]) },
+    // VID-02: the practice's room-opening setting (default 10 minutes).
+    tenant: { findUnique: vi.fn().mockResolvedValue({ joinOpensMinutesBefore: 10 }) },
   };
   const service = new ConsultService(
     prisma, {} as any, {} as any, {} as any, {} as any, {} as any, {} as any,
@@ -156,6 +158,7 @@ describe('ConsultService.getClientPortal', () => {
   });
 
   it('gives online sessions their room window, and never a provider link (VID-02)', async () => {
+    prisma.tenant.findUnique.mockResolvedValue({ joinOpensMinutesBefore: 5 });
     prisma.profile.findFirst.mockResolvedValue({ id: 9n });
     const startsAt = new Date(Date.now() + 86_400_000);
     const endsAt = new Date(startsAt.getTime() + 3_000_000);
@@ -170,7 +173,8 @@ describe('ConsultService.getClientPortal', () => {
     ]);
     const portal: any = await service.getClientPortal(1n, 9n);
     const [online, inPerson] = portal.upcoming;
-    expect(online.joinOpensAt).toBe(new Date(startsAt.getTime() - 15 * 60_000).toISOString());
+    // The practice's own setting (5 minutes here), not a fixed number.
+    expect(online.joinOpensAt).toBe(new Date(startsAt.getTime() - 5 * 60_000).toISOString());
     expect(online.joinClosesAt).toBe(new Date(endsAt.getTime() + 60 * 60_000).toISOString());
     expect(inPerson.joinOpensAt).toBeNull();
     expect(online).not.toHaveProperty('videoRoomLink');

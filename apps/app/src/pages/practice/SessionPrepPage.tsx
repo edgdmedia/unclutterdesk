@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { JoinButton } from '../../components/video/JoinButton';
 import { useNavigate, useParams } from 'react-router-dom';
 import { ArrowLeft, Video } from 'lucide-react';
-import { Eyebrow } from '@unclutterdesk/ui';
+import { Eyebrow, Page, PageHeader } from '@unclutterdesk/ui';
 import { api } from '../../utils/apiClient';
 import { formatWhen } from '../../utils/displayFormat';
 
@@ -75,15 +75,19 @@ export function SessionPrepPage() {
   }, [id]);
 
   return (
-    <div className="min-h-screen bg-[#F8FAFC] flex">
-      <div className="flex-1 min-w-0 flex flex-col">
-        <header className="h-[70px] shrink-0 bg-white border-b border-[#E2E8F0] px-[24px] flex items-center gap-4">
-          <button onClick={() => navigate('/dashboard/schedule')} className="h-[40px] px-4 rounded-[13px] bg-white border border-[#E2E8F0] text-[#334155] text-[13px] font-bold flex items-center gap-2 hover:bg-[#F1F5F9] cursor-pointer">
-            <ArrowLeft className="h-4 w-4" /> Back to schedule
-          </button>
-        </header>
-
-        <main className="flex-1 min-h-0 overflow-auto p-[24px_26px_32px] grid grid-cols-[minmax(0,1fr)_340px] gap-[20px] items-start">
+    <Page
+      header={
+        <PageHeader
+          title="Session prep"
+          breadcrumb={
+            <button onClick={() => navigate('/dashboard/schedule')} className="h-[40px] px-4 rounded-[13px] bg-white border border-[#E2E8F0] text-[#334155] text-[13px] font-bold flex items-center gap-2 hover:bg-[#F1F5F9] cursor-pointer">
+              <ArrowLeft className="h-4 w-4" /> Back to schedule
+            </button>
+          }
+        />
+      }
+    >
+      <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_340px] gap-[20px] items-start">
           {loading ? <div className="rounded-[24px] border border-[#E2E8F0] bg-white px-6 py-10 text-sm font-medium text-[#64748B]">Loading session prep...</div> : error || !prep ? <div className="rounded-[18px] border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-medium text-rose-700">{error || 'Session prep unavailable'}</div> : (
             <>
               <div className="flex flex-col gap-4">
@@ -165,8 +169,7 @@ export function SessionPrepPage() {
               </div>
             </>
           )}
-        </main>
-      </div>
-    </div>
+        </div>
+    </Page>
   );
 }

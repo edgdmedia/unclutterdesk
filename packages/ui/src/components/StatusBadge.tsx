@@ -3,16 +3,30 @@ import React from 'react';
 
 export type StatusType = 'Confirmed' | 'Active' | 'Pending Intake' | 'Awaiting intake' | 'Inactive' | 'Paused' | 'Danger';
 
+export type StatusTone = 'ok' | 'info' | 'warn' | 'danger' | 'muted';
+
 export interface StatusBadgeProps {
   status: StatusType | string;
+  /** The colour to use. Without it, the colour is guessed from the words (older callers). */
+  tone?: StatusTone;
   className?: string;
 }
 
-export function StatusBadge({ status, className = '' }: StatusBadgeProps) {
+const TONES: Record<StatusTone, string> = {
+  ok: 'bg-[#ECFDF5] text-[#059669] border-[#A7F3D0]',
+  info: 'bg-[#EFF6FF] text-[#1D4ED8] border-[#BFDBFE]',
+  warn: 'bg-[#FFFBEB] text-[#B45309] border-[#FDE68A]',
+  danger: 'bg-[#FFF1F2] text-[#E11D48] border-[#FECDD3]',
+  muted: 'bg-[#F1F5F9] text-[#64748B] border-[#E2E8F0]',
+};
+
+export function StatusBadge({ status, tone, className = '' }: StatusBadgeProps) {
   const normalized = status.toLowerCase();
 
   let styles = 'bg-[#F1F5F9] text-[#64748B] border-[#E2E8F0]';
-  if (normalized.includes('confirmed') || normalized.includes('active')) {
+  if (tone) {
+    styles = TONES[tone];
+  } else if (normalized.includes('confirmed') || normalized.includes('active')) {
     styles = 'bg-[#ECFDF5] text-[#059669] border-[#A7F3D0]';
   } else if (normalized.includes('pending') || normalized.includes('intake')) {
     styles = 'bg-[#FFFBEB] text-[#B45309] border-[#FDE68A]';

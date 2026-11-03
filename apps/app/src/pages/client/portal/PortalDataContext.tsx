@@ -5,6 +5,8 @@ import type { MyAssessment } from '../../../utils/assessments';
 import type { ManualPayment } from '../../../components/payments/TransferDetails';
 
 export type PortalSession = {
+  /** VID-02: when the room opens, from the server (the practice's setting); null in person. */
+  joinOpensAt?: string | null;
   icalToken?: string;
   id: string;
   serviceTitle: string;

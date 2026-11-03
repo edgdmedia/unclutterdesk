@@ -2,7 +2,7 @@ import { describe, it, expect, vi } from 'vitest';
 import { ForbiddenException, NotFoundException } from '@nestjs/common';
 import { VideoRoomService } from './video-room.service';
 import { VideoRouter } from './video-router.service';
-import { joinWindow, JOIN_OPENS_MINUTES_BEFORE, JOIN_CLOSES_MINUTES_AFTER } from './join-window';
+import { joinWindow, DEFAULT_JOIN_OPENS_MINUTES, JOIN_CLOSES_MINUTES_AFTER, JOIN_OPENS_CHOICES, joinOpensMinutes } from './join-window';
 import { readFileSync } from 'fs';
 import { resolve } from 'path';
 
@@ -123,7 +123,7 @@ describe('VideoRoomService.join', () => {
     const { service, usage, daily } = make();
     const early = service.join(TENANT, 900n, { profileId: CLIENT, canSeeClinical: false }, new Date('2026-10-06T08:40:00Z'));
     await expect(early).rejects.toBeInstanceOf(ForbiddenException);
-    await expect(early).rejects.toThrow('This room opens at 9:45 AM.');
+    await expect(early).rejects.toThrow('This room opens at 9:50 AM.');
     expect(daily.createRoom).not.toHaveBeenCalled();
     expect(usage.recordJoin).not.toHaveBeenCalled();
   });
@@ -172,8 +172,15 @@ describe('VideoRoomService.join', () => {
 });
 
 describe('joinWindow', () => {
-  it('opens 15 minutes before the start and closes 60 minutes after the end', () => {
-    expect(joinWindow(STARTS, ENDS)).toEqual({ opensAt: new Date('2026-10-06T08:45:00Z'), closesAt: new Date('2026-10-06T10:50:00Z') });
+  it('opens 10 minutes before the start by default and closes 60 minutes after the end', () => {
+    expect(joinWindow(STARTS, ENDS)).toEqual({ opensAt: new Date('2026-10-06T08:50:00Z'), closesAt: new Date('2026-10-06T10:50:00Z') });
+  });
+
+  it("follows the practice's choice of 0, 5, 10 or 15 minutes, and ignores anything else", () => {
+    expect(joinWindow(STARTS, ENDS, 0).opensAt).toEqual(new Date('2026-10-06T09:00:00Z'));
+    expect(joinWindow(STARTS, ENDS, 15).opensAt).toEqual(new Date('2026-10-06T08:45:00Z'));
+    expect(joinWindow(STARTS, ENDS, 45).opensAt).toEqual(new Date('2026-10-06T08:50:00Z'));
+    expect(joinOpensMinutes(null)).toBe(10);
   });
 });
 
@@ -182,8 +189,9 @@ describe('the join window shared with the app', () => {
   const shared = readFileSync(resolve(__dirname, '../../../../../packages/shared/src/joinWindow.ts'), 'utf8');
   const minutes = (name: string) => Number(new RegExp(`export const ${name} = (\\d+);`).exec(shared)?.[1]);
 
-  it('uses the same minutes as the Join buttons (packages/shared)', () => {
-    expect(minutes('JOIN_OPENS_MINUTES_BEFORE')).toBe(JOIN_OPENS_MINUTES_BEFORE);
+  it('uses the same rule as the Join buttons (packages/shared)', () => {
+    expect(minutes('DEFAULT_JOIN_OPENS_MINUTES')).toBe(DEFAULT_JOIN_OPENS_MINUTES);
     expect(minutes('JOIN_CLOSES_MINUTES_AFTER')).toBe(JOIN_CLOSES_MINUTES_AFTER);
+    expect(shared).toContain(`export const JOIN_OPENS_CHOICES = [${JOIN_OPENS_CHOICES.join(', ')}] as const;`);
   });
 });

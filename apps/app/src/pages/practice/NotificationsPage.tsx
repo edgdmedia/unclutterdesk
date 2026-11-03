@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Bell, Calendar, CheckCircle2, CreditCard, FileText, Loader2 } from 'lucide-react';
-import { Eyebrow, Card } from '@unclutterdesk/ui';
+import { Card, Page, PageHeader } from '@unclutterdesk/ui';
 import { api } from '../../utils/apiClient';
 
 /**
@@ -99,27 +99,27 @@ export function NotificationsPage() {
   const unread = (items ?? []).filter((n) => n.status === 'unread').length;
 
   return (
-    <div className="flex-1 min-w-0 flex flex-col bg-[#F8FAFC]">
-      <header className="h-[80px] bg-white border-b border-[#E2E8F0] px-[26px] flex items-center justify-between gap-5 shrink-0">
-        <div>
-          <Eyebrow>PRACTICE ACTIVITY</Eyebrow>
-          <h1 className="text-[20px] font-bold tracking-[-0.02em] text-[#0F172A]">
-            Notifications &amp; Alerts
-          </h1>
-        </div>
-        {unread > 0 ? (
-          <button
-            type="button"
-            onClick={markAllRead}
-            disabled={markingAll}
-            className="h-[38px] px-4 rounded-[12px] border border-[#E2E8F0] bg-white text-[13px] font-bold text-[#475569] hover:bg-[#F8FAFC] cursor-pointer disabled:opacity-60"
-          >
-            {markingAll ? 'Marking…' : `Mark all read (${unread})`}
-          </button>
-        ) : null}
-      </header>
-
-      <main className="p-[24px_26px_30px] space-y-4 flex-1">
+    <Page
+      header={
+        <PageHeader
+          eyebrow="PRACTICE ACTIVITY"
+          title="Notifications & Alerts"
+          actions={
+            unread > 0 ? (
+              <button
+                type="button"
+                onClick={markAllRead}
+                disabled={markingAll}
+                className="h-[38px] px-4 rounded-[12px] border border-[#E2E8F0] bg-white text-[13px] font-bold text-[#475569] hover:bg-[#F8FAFC] cursor-pointer disabled:opacity-60"
+              >
+                {markingAll ? 'Marking…' : `Mark all read (${unread})`}
+              </button>
+            ) : undefined
+          }
+        />
+      }
+    >
+      <div className="space-y-4">
         {error ? (
           <div className="rounded-[18px] border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-medium text-rose-700">
             {error}
@@ -183,7 +183,7 @@ export function NotificationsPage() {
             </div>
           )}
         </Card>
-      </main>
-    </div>
+      </div>
+    </Page>
   );
 }

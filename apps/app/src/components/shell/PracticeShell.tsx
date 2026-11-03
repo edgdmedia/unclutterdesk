@@ -11,7 +11,8 @@ import { PracticeBrand } from './PracticeBrand';
 import { DisplayPrefsSync } from '../DisplayPrefsSync';
 
 const COLLAPSED_KEY = 'unclutter_sidebar_collapsed';
-const PRACTICE_OPEN_KEY = 'unclutter_sidebar_practice_open';
+// Each collapsible section remembers whether it was left open: forms, booking, …
+const sectionOpenKey = (key: string) => `unclutter_sidebar_${key}_open`;
 
 // Storage can be unavailable (private windows, blocked site data); the shell must still work.
 function readFlag(key: string): string | null {
@@ -34,7 +35,10 @@ export function PracticeShell({ banner, children }: { banner?: ReactNode; childr
   const plan = useEntitlements();
   const location = useLocation();
   const [collapsed, setCollapsed] = useState(() => readFlag(COLLAPSED_KEY) === '1');
-  const [practiceOpen, setPracticeOpen] = useState(() => readFlag(PRACTICE_OPEN_KEY) !== '0');
+  const [openSections, setOpenSections] = useState<Record<string, boolean>>(() => ({
+    forms: readFlag(sectionOpenKey('forms')) !== '0',
+    booking: readFlag(sectionOpenKey('booking')) !== '0',
+  }));
 
   const sections = useMemo(() => practiceSections(profile, plan), [profile, plan]);
   const hrefs = useMemo(
@@ -51,11 +55,10 @@ export function PracticeShell({ banner, children }: { banner?: ReactNode; childr
         LinkComponent: RouterLink,
         brand: (mode) => <PracticeBrand mode={mode} />,
         account: (mode) => <AccountMenu mode={mode} />,
-        openSections: { practice: practiceOpen },
+        openSections,
         onSectionToggle: (key, open) => {
-          if (key !== 'practice') return;
-          setPracticeOpen(open);
-          writeFlag(PRACTICE_OPEN_KEY, open ? '1' : '0');
+          setOpenSections((prev) => ({ ...prev, [key]: open }));
+          writeFlag(sectionOpenKey(key), open ? '1' : '0');
         },
       }}
       collapsed={collapsed}
