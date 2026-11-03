@@ -80,9 +80,11 @@ function PracticeToday(props: DashboardPageProps) {
 
   const bookingUrl = practiceBookingUrl(authUser?.tenantSlug, customDomain, customDomainStatus);
 
-  // The photo lives on the server, not just in this screen: after saving, the
-  // signed-in profile is re-read so the account menu shows it too.
+  // §6.17: the photo clients see lives on the therapist's profile (booking
+  // page and the public profile). The account menu’s picture is updated with it,
+  // and the signed-in profile re-read so the menu shows it.
   async function savePhoto(dataUrl: string) {
+    await api.put('/v1/practitioner-profile/me/photo', { image: dataUrl });
     await api.post('/v1/consult/therapist/profile/avatar', { avatarUrl: dataUrl });
     await refreshProfile();
     // GEN-02: done means gone — the card retires the moment the server has it.

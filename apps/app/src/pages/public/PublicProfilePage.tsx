@@ -29,6 +29,7 @@ type PublicTherapist = {
   profileId: string;
   firstName: string;
   lastName: string;
+  displayName?: string | null;
   avatarUrl: string | null;
   specialty: string | null;
   credentials: string | null;
@@ -96,7 +97,8 @@ export function PublicProfilePage() {
 
   const primaryColor = tenant?.primaryColor || brand.primaryColor || '#0F3A53';
   const practiceName = tenant?.name || brand.name || 'Therapy Practice';
-  const therapistName = therapist ? `${therapist.firstName} ${therapist.lastName}` : null;
+  // §6.17: the name the therapist chose for clients, from their profile.
+  const therapistName = therapist ? therapist.displayName || `${therapist.firstName} ${therapist.lastName}` : null;
   const initials = practiceName
     .split(' ')
     .map((part) => part[0])

@@ -303,6 +303,8 @@ export class PractitionerProfileService {
           headline: therapist.tagline?.trim().slice(0, TEXT_LIMITS.headline) || null,
           credentialsText: therapist.credentials?.trim().slice(0, TEXT_LIMITS.credentialsText) || null,
           selfReportedYears: therapist.yearsExperience ?? null,
+          // §6.17: the practice welcome message was the only "about" there was.
+          about: therapist.welcomeMessage?.trim().slice(0, TEXT_LIMITS.about) || null,
           offersOnline: therapist.offersOnline,
           offersInPerson: therapist.offersInPerson,
           taxonomy: { create: termIds.map((termId) => ({ termId })) },
@@ -320,9 +322,44 @@ export class PractitionerProfileService {
     const payload: PhotoBackfillPayload = { practitionerProfileId: String(created.id), sourceProfileId: String(therapistProfileId) };
     await this.jobs.enqueue(PHOTO_BACKFILL_JOB, payload as never, { dedupeKey: `${PHOTO_BACKFILL_JOB}:${created.id}` });
     await this.refreshOwnScore(userId);
-    await this.syncPracticeRecords(userId);
     await this.purgeIfPublished(userId);
     return this.getOwn(userId);
+  }
+
+  /**
+   * §6.17: make sure this therapist has a profile, the one home for the facts
+   * about them. Creates an unpublished DRAFT, filled from their practice
+   * record, with a handle made from their name (then -2, -3 … until free).
+   * Does nothing if they already have one. Publishing stays their choice.
+   */
+  async ensureDraft(userId: bigint, therapistProfileId: bigint): Promise<{ created: boolean }> {
+    const existing = await this.prisma.practitionerProfile.findUnique({ where: { userId }, select: { id: true } });
+    if (existing) return { created: false };
+    const therapist = await this.prisma.consultTherapistProfile.findFirst({
+      where: { profileId: therapistProfileId, profile: { userId } },
+      select: { profile: { select: { firstName: true, lastName: true } } },
+    });
+    if (!therapist) return { created: false };
+    const name = [therapist.profile.firstName, therapist.profile.lastName].filter(Boolean).join(' ').trim() || 'Therapist';
+    const base = suggestHandle(name) || 'therapist';
+    for (let n = 1; n <= 99; n++) {
+      const suffix = n === 1 ? '' : `-${n}`;
+      const candidate = `${base.slice(0, 30 - suffix.length).replace(/-+$/, '')}${suffix}`;
+      const free = await this.handleAvailability(userId, candidate);
+      if (!free.available) continue;
+      try {
+        await this.createOwn(userId, therapistProfileId, { handle: free.handle, displayName: name });
+        return { created: true };
+      } catch (err) {
+        if (err instanceof ConflictException) {
+          // Taken a moment ago by someone else, or this person was given one meanwhile.
+          if (await this.prisma.practitionerProfile.findUnique({ where: { userId }, select: { id: true } })) return { created: false };
+          continue;
+        }
+        throw err;
+      }
+    }
+    throw new ConflictException('Could not find a free profile address for this therapist');
   }
 
   /** Change the signed-in user's own profile fields. */
@@ -392,7 +429,6 @@ export class PractitionerProfileService {
     await this.requireOwn(userId);
     await this.prisma.practitionerProfile.update({ where: { userId }, data });
     await this.refreshOwnScore(userId);
-    await this.syncPracticeRecords(userId);
     await this.purgeIfPublished(userId);
     return this.getOwn(userId);
   }
@@ -458,7 +494,6 @@ export class PractitionerProfileService {
       }),
     ]);
     await this.refreshOwnScore(userId);
-    await this.syncPracticeRecords(userId);
     await this.purgeIfPublished(userId);
     return this.getOwn(userId);
   }
@@ -508,7 +543,6 @@ export class PractitionerProfileService {
     ]);
     await this.refreshOwnScore(userId);
     await this.purgeIfPublished(userId);
-    await this.syncPracticeRecords(userId);
     await this.purgeIfPublished(userId);
     return this.getOwn(userId);
   }
@@ -536,7 +570,6 @@ export class PractitionerProfileService {
     await this.prisma.practitionerProfile.update({ where: { userId }, data: { photoKey: key } });
     if (profile.photoKey) await this.removeQuietly(profile.photoKey);
     await this.refreshOwnScore(userId);
-    await this.syncPracticeRecords(userId);
     await this.purgeIfPublished(userId);
     return this.getOwn(userId);
   }
@@ -548,7 +581,6 @@ export class PractitionerProfileService {
       await this.prisma.practitionerProfile.update({ where: { userId }, data: { photoKey: null } });
       await this.removeQuietly(profile.photoKey);
       await this.refreshOwnScore(userId);
-    await this.syncPracticeRecords(userId);
     await this.purgeIfPublished(userId);
     }
     return this.getOwn(userId);
@@ -710,44 +742,6 @@ export class PractitionerProfileService {
     });
     if (!profile) throw new NotFoundException('You have no profile yet');
     return profile;
-  }
-
-  /**
-   * Copy what the public profile now owns back to the deprecated fields on
-   * every practice record of this person (ConsultTherapistProfile), which the
-   * practice booking page still reads. The profile is the one place these are
-   * edited; this keeps the booking page in step until it reads the profile
-   * itself. Practice-only settings (emails, video, locations, welcome
-   * message, online/in-person per practice) are never touched.
-   */
-  private async syncPracticeRecords(userId: bigint) {
-    const profile = await this.prisma.practitionerProfile.findUnique({
-      where: { userId },
-      select: {
-        headline: true,
-        credentialsText: true,
-        selfReportedYears: true,
-        taxonomy: { select: { isPrimary: true, term: { select: { kind: true, label: true, sortOrder: true } } } },
-      },
-    });
-    if (!profile) return;
-    const labels = (kind: string, primaryOnly = false) =>
-      profile.taxonomy
-        .filter((t) => t.term.kind === kind && (!primaryOnly || t.isPrimary))
-        .sort((a, b) => a.term.sortOrder - b.term.sortOrder)
-        .map((t) => t.term.label);
-    const specialties = labels('SPECIALTY', true).length ? labels('SPECIALTY', true) : labels('SPECIALTY');
-    await this.prisma.consultTherapistProfile.updateMany({
-      where: { profile: { userId } },
-      data: {
-        tagline: profile.headline,
-        credentials: profile.credentialsText,
-        yearsExperience: profile.selfReportedYears,
-        specialty: specialties.join(', ') || null,
-        modalities: labels('MODALITY'),
-        languages: labels('LANGUAGE'),
-      },
-    });
   }
 
   /** After a change to a published profile, purge its page (§6.12). Drafts and hidden profiles aren't served, so there is nothing to purge. */

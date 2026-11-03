@@ -4,12 +4,13 @@ import { act, cleanup, fireEvent, renderWithApp, screen, waitFor } from '../../t
 
 const get = vi.fn();
 const post = vi.fn();
+const put = vi.fn(async (..._a: unknown[]) => ({}));
 const refreshProfile = vi.fn();
 vi.mock('../../utils/apiClient', async (importOriginal) => {
   const real = await importOriginal<typeof import('../../utils/apiClient')>();
   return {
     ...real,
-    api: { get: (...a: unknown[]) => get(...a), post: (...a: unknown[]) => post(...a) },
+    api: { get: (...a: unknown[]) => get(...a), post: (...a: unknown[]) => post(...a), put: (...a: unknown[]) => put(...a) },
   };
 });
 vi.mock('../../context/AuthContext', () => ({
@@ -67,6 +68,11 @@ describe('dashboard profile photo', () => {
     });
     await waitFor(() =>
       expect(post).toHaveBeenCalledWith('/v1/consult/therapist/profile/avatar', { avatarUrl: expect.stringMatching(/^data:image\//) }),
+    );
+    // §6.17: the photo clients see is the profile photo.
+    expect(put).toHaveBeenCalledWith('/v1/practitioner-profile/me/photo', { image: expect.stringMatching(/^data:image\//) });
+    await waitFor(() =>
+      expect(post).toHaveBeenCalled(),
     );
     await waitFor(() => expect(refreshProfile).toHaveBeenCalled());
     // GEN-02: once saved, the card retires; the photo lives on in the menu.

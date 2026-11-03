@@ -79,7 +79,10 @@ export class TenantController {
   async getPublicInfoFromHost(@Req() req: TenantRequest) {
     // req.tenant is the whole Tenant row; returning it as-is published billing
     // codes and internal settings to anyone who asked.
-    if (req.tenant) return { ...publicTenantFields(req.tenant), ...(await this.tenantService.publicExtras(req.tenant.id)) };
+    if (req.tenant) {
+      const fields = publicTenantFields(req.tenant);
+      return { ...fields, ...(await this.tenantService.publicExtras(req.tenant.id)), ...(await this.tenantService.withSoloProfile(req.tenant.id, fields)) };
+    }
     return { name: 'Unclutter Desk', slug: 'default', primaryColor: '#0F3A53', secondaryColor: '#E3B341' };
   }
 
