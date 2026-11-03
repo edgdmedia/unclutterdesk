@@ -1,3 +1,4 @@
+import { PageHeader } from './PageHeader';
 import { describe, expect, it, vi } from 'vitest';
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import { AppShell } from './AppShell';
@@ -138,4 +139,28 @@ describe('the header slot', () => {
     expect(bar.querySelector('button')).toBeTruthy();
     expect(bar.className).toContain('justify-end');
   });
+
+  it('shows the frame header inside the page header, once, and the bar only when a page has none', () => {
+    const { unmount } = render(
+      <AppShell header={<button>bell</button>}>
+        <PageHeader title="Clients" actions={<button>Add client</button>} />
+      </AppShell>,
+    );
+    expect(screen.queryByTestId('app-header')).toBeNull();
+    expect(screen.getAllByRole('button', { name: 'bell' })).toHaveLength(1);
+    expect(screen.getByTestId('page-header-frame').closest('header')).toBeTruthy();
+    unmount();
+    render(
+      <AppShell header={<button>bell</button>}>
+        <p>no header here</p>
+      </AppShell>,
+    );
+    expect(screen.getByTestId('app-header').textContent).toBe('bell');
+  });
+
+  it('renders a PageHeader on its own, outside the frame, with no frame items', () => {
+    render(<PageHeader title="Alone" />);
+    expect(screen.queryByTestId('page-header-frame')).toBeNull();
+  });
 });
+

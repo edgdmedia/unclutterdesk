@@ -1,5 +1,6 @@
 import { useState, type ReactNode } from 'react';
 import { Eyebrow } from '../components/Eyebrow';
+import { useHeaderSlot } from './headerSlot';
 
 export interface PageHeaderProps {
   title: ReactNode;
@@ -14,10 +15,11 @@ export interface PageHeaderProps {
 
 export function PageHeader({ title, eyebrow, breadcrumb, actions, secondaryActions }: PageHeaderProps) {
   const [menuOpen, setMenuOpen] = useState(false);
+  const frameItems = useHeaderSlot();
   return (
     <header className="bg-[var(--desk-card)] border-b border-[var(--desk-border)] print:hidden">
       <div className="min-h-[70px] px-4 md:px-6 xl:px-[26px] py-3 flex flex-wrap items-center gap-x-5 gap-y-3">
-        <div className="min-w-0 flex-1 basis-[240px]">
+        <div className="order-1 min-w-0 flex-1 basis-[240px]">
           {eyebrow ? <Eyebrow className="block">{eyebrow}</Eyebrow> : null}
           <div className="flex items-center gap-2 min-w-0">
             {breadcrumb ? (
@@ -31,7 +33,7 @@ export function PageHeader({ title, eyebrow, breadcrumb, actions, secondaryActio
           </div>
         </div>
         {actions || secondaryActions ? (
-          <div className="flex flex-wrap items-center gap-2 md:gap-3">
+          <div className="order-3 md:order-2 flex flex-wrap items-center gap-2 md:gap-3">
             {actions}
             {secondaryActions ? (
               <>
@@ -63,6 +65,13 @@ export function PageHeader({ title, eyebrow, breadcrumb, actions, secondaryActio
                 </div>
               </>
             ) : null}
+          </div>
+        ) : null}
+        {frameItems ? (
+          // One instance: beside the title on phones (actions wrap below),
+          // after the actions on wider screens. Always the far right.
+          <div data-testid="page-header-frame" className="order-2 md:order-3 shrink-0 flex items-center gap-2">
+            {frameItems}
           </div>
         ) : null}
       </div>
