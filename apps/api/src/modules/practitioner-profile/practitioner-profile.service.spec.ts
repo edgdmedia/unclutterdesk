@@ -32,8 +32,20 @@ function setup() {
     $transaction: vi.fn(async (ops: unknown[]) => ops),
   };
   const jobs: any = { enqueue: vi.fn().mockResolvedValue({ id: 1n }), runNow: vi.fn().mockResolvedValue(undefined) };
-  const storage: any = { configured: vi.fn().mockReturnValue(true), put: vi.fn(), remove: vi.fn() };
-  return { service: new PractitionerProfileService(prisma, jobs, storage), prisma, jobs, storage };
+  const storage: any = {
+    configured: vi.fn().mockReturnValue(true),
+    put: vi.fn(),
+    remove: vi.fn(),
+    get: vi.fn().mockResolvedValue(null),
+  };
+  const entitlements: any = { assertProfile: vi.fn().mockResolvedValue(undefined), forProfile: vi.fn() };
+  return {
+    service: new PractitionerProfileService(prisma, jobs, storage, entitlements),
+    prisma,
+    jobs,
+    storage,
+    entitlements,
+  };
 }
 
 const therapist = (over: Record<string, unknown> = {}) => ({
@@ -508,6 +520,25 @@ describe('PractitionerProfileService', () => {
       ownProfile(live.prisma, { status: 'PUBLISHED' });
       await live.service.unpublishOwn(ME);
       expect(purges(live.jobs)).toContainEqual(['profile:adaeze', 'sitemap']);
+    });
+
+    it('queues a new link-preview image (§6.3) on publish and on changes while published, never for drafts', async () => {
+      const previews = (jobs: any) => jobs.enqueue.mock.calls.filter((c: any[]) => c[0] === 'profile.preview');
+      const ready = setup();
+      ownProfile(ready.prisma, { ...READY, status: 'DRAFT' });
+      await ready.service.publishOwn(ME);
+      expect(previews(ready.jobs)).toHaveLength(1);
+      expect(previews(ready.jobs)[0][2]).toEqual({ dedupeKey: expect.stringMatching(/^profile\.preview:/) });
+
+      const live = setup();
+      ownProfile(live.prisma, { status: 'PUBLISHED' });
+      await live.service.updateOwn(ME, { layoutKey: 'split' });
+      expect(previews(live.jobs)).toHaveLength(1);
+
+      const draft = setup();
+      ownProfile(draft.prisma, { status: 'DRAFT' });
+      await draft.service.updateOwn(ME, { headline: 'New' });
+      expect(previews(draft.jobs)).toHaveLength(0);
     });
   });
 });

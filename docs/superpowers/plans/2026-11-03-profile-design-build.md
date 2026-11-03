@@ -23,7 +23,7 @@
 - [x] **4. Profile layouts.** Built as one `ProfileView.astro` with a single section list and a `layout-*` class (plus small header variants), rather than four components: the content and order then can't drift at all. Checked against the canvas at 390 and 1280 px (no horizontal overflow, no CSP errors). Deviation from the canvas: on a phone, Split keeps the fees panel after the sections (in the §6.4 order); the Book button is already in the introduction.
 - [x] **5. Public pages.** Home (`/`) with the two-slide hero as two tab links (no JavaScript, no autoplay), the report page and its thank-you state, and the 404 and 410 pages, all from the canvas.
 - [x] **6. Editor appearance picker.** In `PublicProfileEditor.tsx`: a layout picker and a palette picker, and a live phone preview built from the same tokens. Saves `layoutKey` and `themeKey`.
-- [ ] **7. Link-preview images (§6.3).** Rendered in the API (satori + resvg) as a background job on save, stored in R2, one design per layout in the profile's palette (canvas "Link preview image"). `og:image` points to it; until it exists, the photo.
-- [ ] **8. Check and ship.** Lighthouse accessibility ≥ 95 on each layout; profiles tests; a manual check at 320, 390 and 1280 px; deploy the Worker.
+- [x] **7. Link-preview images (§6.3).** Rendered in the API (satori + resvg) as a background job on save, stored in R2, one design per layout in the profile's palette (canvas "Link preview image"). `og:image` points to it; until it exists, the photo.
+- [ ] **8. Check and ship.** Done: Lighthouse accessibility 100 on all four layouts, the Clinical palette, home and the report page (production build, mobile); no overflow at 390 or 1280 px; all suites pass. Left: deploy the Worker and the API after PRs #76 and #75 merge.
 
 The profile PDF (§6.10, canvas "Profile PDF one-pager") is in opencode's share-kit plan. Point that work at the canvas board before it starts.

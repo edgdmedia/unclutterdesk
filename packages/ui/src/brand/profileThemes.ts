@@ -10,7 +10,7 @@
  * (apps/profiles), so the two always match. Keys must match the API's
  * THEME_KEYS and LAYOUT_KEYS (apps/api/src/modules/practitioner-profile/themes.ts).
  *
- * Values come from the approved design (design canvas "Therapysts.com design",
+ * Values come from the approved design (the approved design canvas,
  * 3 Nov 2026), built on the Unclutter Desk design system: pine, clay, slate.
  * Every palette passes WCAG 2.1 AA (profileThemes.test.ts).
  */

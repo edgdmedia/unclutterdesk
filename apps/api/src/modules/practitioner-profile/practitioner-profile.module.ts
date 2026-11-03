@@ -4,6 +4,7 @@ import { PractitionerProfileController } from './practitioner-profile.controller
 import { PractitionerProfileService } from './practitioner-profile.service';
 import { ProfilePhotoJob } from './profile-photo.job';
 import { ProfilePurgeJob } from './profile-purge.job';
+import { ProfilePreviewJob } from './profile-preview.job';
 import { PublicProfileService } from './public-profile.service';
 import { PublicProfilesController } from './public-profiles.controller';
 import { StorageModule } from '../storage/storage.module';
@@ -20,6 +21,7 @@ import { ProfileReportsService } from './profile-reports.service';
     ProfileReportsService,
     ProfilePhotoJob,
     ProfilePurgeJob,
+    ProfilePreviewJob,
     PlatformAdminGuard,
     PrismaService,
   ],

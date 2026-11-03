@@ -1,4 +1,4 @@
-import { DeleteObjectCommand, PutObjectCommand, S3Client } from '@aws-sdk/client-s3';
+import { DeleteObjectCommand, GetObjectCommand, PutObjectCommand, S3Client } from '@aws-sdk/client-s3';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 /*
@@ -77,6 +77,19 @@ describe('StorageService', () => {
   it('links public files at the media origin', async () => {
     const storage = await load();
     expect(storage.publicUrl('profiles/1/photo-ab.png')).toBe('https://media.example.test/profiles/1/photo-ab.png');
+  });
+
+  it('reads a file back, and answers null when it is missing', async () => {
+    const body = Buffer.from('png-bytes');
+    const send = vi
+      .spyOn(S3Client.prototype, 'send')
+      .mockResolvedValueOnce({ Body: { transformToByteArray: async () => body } } as never)
+      .mockRejectedValueOnce(Object.assign(new Error('not found'), { name: 'NoSuchKey' }) as never);
+    const storage = await load();
+    await expect(storage.get('public', 'profiles/1/photo-ab.png')).resolves.toEqual(body);
+    await expect(storage.get('public', 'profiles/1/gone.png')).resolves.toBeNull();
+    expect(send.mock.calls[0][0]).toBeInstanceOf(GetObjectCommand);
+    expect((send.mock.calls[0][0] as GetObjectCommand).input).toEqual({ Bucket: 'ud-public', Key: 'profiles/1/photo-ab.png' });
   });
 
   it('signs private links for at most ten minutes, against the private bucket', async () => {

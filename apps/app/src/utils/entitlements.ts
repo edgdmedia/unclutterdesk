@@ -67,3 +67,35 @@ export function useEntitlements(enabled = true): EntitlementSummary | null {
   }, [enabled]);
   return summary;
 }
+
+/** What a person's profile can do (API: GET /v1/me/profile-entitlements). Mirrors the API's ProfileEntitlements. */
+export type ProfileEntitlements = { downloadablePdf: boolean; introVideo: boolean };
+
+/** The cheapest plan that includes each profile feature. Mirrors PROFILE_ENTITLEMENTS in the API. */
+export const PROFILE_FEATURE_TIERS: Record<keyof ProfileEntitlements, Tier> = {
+  downloadablePdf: 'STARTER',
+  introVideo: 'STARTER',
+};
+
+/**
+ * The signed-in person's profile entitlements, from their best qualifying
+ * practice plan. Null while loading or unreadable, so the screen leaves the
+ * feature visible and lets the API's 402 say no.
+ */
+export function useProfileEntitlements(enabled = true): ProfileEntitlements | null {
+  const [entitlements, setEntitlements] = useState<ProfileEntitlements | null>(null);
+  useEffect(() => {
+    if (!enabled) return;
+    let cancelled = false;
+    api
+      .get<ProfileEntitlements>('/v1/me/profile-entitlements')
+      .then((e) => {
+        if (!cancelled && e && typeof e === 'object' && 'downloadablePdf' in e) setEntitlements(e);
+      })
+      .catch(() => undefined);
+    return () => {
+      cancelled = true;
+    };
+  }, [enabled]);
+  return entitlements;
+}
