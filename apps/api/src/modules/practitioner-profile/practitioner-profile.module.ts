@@ -7,6 +7,8 @@ import { PractitionerProfileService } from './practitioner-profile.service';
 import { ProfilePhotoJob } from './profile-photo.job';
 import { ProfilePurgeJob } from './profile-purge.job';
 import { ProfilePreviewJob } from './profile-preview.job';
+import { ProfileEnsureDraftsJob } from './profile-ensure-drafts.job';
+import { PersonFactsService } from './person-facts.service';
 import { PublicProfileService } from './public-profile.service';
 import { PublicProfilesController } from './public-profiles.controller';
 import { StorageModule } from '../storage/storage.module';
@@ -25,10 +27,12 @@ import { ProfileReportsService } from './profile-reports.service';
     ProfilePhotoJob,
     ProfilePurgeJob,
     ProfilePreviewJob,
+    ProfileEnsureDraftsJob,
+    PersonFactsService,
     AdminProfileContentService,
     PlatformAdminGuard,
     PrismaService,
   ],
-  exports: [PractitionerProfileService],
+  exports: [PractitionerProfileService, PersonFactsService],
 })
 export class PractitionerProfileModule {}

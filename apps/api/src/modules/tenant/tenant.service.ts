@@ -14,6 +14,7 @@ import { EmergencyContactInput, emergencyContactData, emergencyContactOf, emerge
 import { GRANTABLE, PERMISSIONS } from '../../common/permissions';
 import { NEW_PRACTICE_TIER, PLAN_SELECT, PRACTICE_ENTITLEMENTS, practiceEntitlements, requiredTierFor, requiredTierForStaffRole, TIER_NAMES } from '../entitlements/entitlements';
 import { EntitlementError } from '../entitlements/entitlement.error';
+import { PersonFactsService } from '../practitioner-profile/person-facts.service';
 
 const RESERVED_SLUG_MESSAGE = 'That booking handle is reserved. Try another one.';
 
@@ -133,7 +134,44 @@ export class TenantService {
     private readonly notifications: NotificationService,
     @Optional() private readonly defaultForms?: DefaultFormsService,
     @Optional() private readonly cf?: CloudflareSaasService,
+    @Optional() private readonly personFacts?: PersonFactsService,
   ) {}
+
+  /**
+   * §6.16 definition: exactly one active therapist membership, and it's the
+   * owner's. Admin and reception staff don't count.
+   */
+  async soloOwner(tenantId: bigint): Promise<bigint | null> {
+    const members = await this.prisma.consultTherapistProfile.findMany({
+      where: { tenantId, profile: { status: 'active' } },
+      select: { profile: { select: { role: true, userId: true } } },
+      take: 2,
+    });
+    if (members.length !== 1 || members[0].profile.role !== 'OWNER') return null;
+    return members[0].profile.userId;
+  }
+
+  /**
+   * §6.17: a solo practice using its owner's profile shows the owner's about,
+   * headline, city and photo wherever its own field is empty. Fields the
+   * practice has filled in always win. Returns only the filled-in values.
+   */
+  async withSoloProfile(tenantId: bigint, fields: { welcomeMessage?: unknown; tagline?: unknown; city?: unknown; logoUrl?: unknown }): Promise<Record<string, string>> {
+    if (!this.personFacts) return {};
+    const tenant = await this.prisma.tenant.findUnique({ where: { id: tenantId }, select: { useProfileForPractice: true } });
+    if (!tenant?.useProfileForPractice) return {};
+    const owner = await this.soloOwner(tenantId);
+    if (owner === null) return {};
+    const facts = (await this.personFacts.forUsers([owner])).get(owner.toString());
+    if (!facts) return {};
+    const empty = (v: unknown) => v === null || v === undefined || String(v).trim() === '';
+    const out: Record<string, string> = {};
+    if (empty(fields.welcomeMessage) && facts.about) out.welcomeMessage = facts.about;
+    if (empty(fields.tagline) && facts.headline) out.tagline = facts.headline;
+    if (empty(fields.city) && facts.city) out.city = facts.city;
+    if (empty(fields.logoUrl) && facts.photoUrl) out.logoUrl = facts.photoUrl;
+    return out;
+  }
 
   private normalizeCustomDomain(input?: string | null) {
     return input?.toLowerCase().trim() || null;
@@ -270,6 +308,7 @@ export class TenantService {
       ...tenant,
       id: tenant.id.toString(),
       ...(await this.publicExtras(tenant.id)),
+      ...(await this.withSoloProfile(tenant.id, tenant)),
     };
   }
 
@@ -308,7 +347,11 @@ export class TenantService {
     city?: string;
     address?: string;
     category?: string;
+    useProfileForPractice?: boolean;
   }) {
+    if (dto.useProfileForPractice !== undefined && typeof dto.useProfileForPractice !== 'boolean') {
+      throw new BadRequestException('useProfileForPractice must be true or false');
+    }
     let previousDomain: { customDomain: string | null; customHostnameId: string | null } | null = null;
     if (dto.customDomain !== undefined) {
       const tenant = await this.prisma.tenant.findUnique({
@@ -360,6 +403,7 @@ export class TenantService {
       ...(dto.city !== undefined ? { city: dto.city?.trim() || null } : {}),
       ...(dto.address !== undefined ? { address: dto.address?.trim() || null } : {}),
       ...(dto.category !== undefined ? { category: dto.category?.trim() || null } : {}),
+      ...(dto.useProfileForPractice !== undefined ? { useProfileForPractice: dto.useProfileForPractice } : {}),
     };
 
     try {
@@ -468,11 +512,14 @@ export class TenantService {
         city: true,
         address: true,
         category: true,
+        useProfileForPractice: true,
       },
     });
 
     if (!tenant) throw new NotFoundException('Practice tenant not found');
-    return { ...tenant, id: tenant.id.toString(), customDomainTarget: this.customDomainTarget() };
+    // §6.17: whether the "use my profile" switch applies, and what it would fill in.
+    const solo = (await this.soloOwner(tenantId)) !== null;
+    return { ...tenant, id: tenant.id.toString(), customDomainTarget: this.customDomainTarget(), solo, fromProfile: solo ? await this.withSoloProfile(tenantId, tenant) : {} };
   }
 
   /** The hostname practices point their CNAME at (origins.ts). */

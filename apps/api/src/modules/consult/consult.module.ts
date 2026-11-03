@@ -10,9 +10,10 @@ import { NotificationsModule } from '../notifications/notification.module';
 import { DiscountModule } from '../discount/discount.module';
 import { BillingModule } from '../billing/billing.module';
 import { CalendarModule } from '../calendar/calendar.module';
+import { PractitionerProfileModule } from '../practitioner-profile/practitioner-profile.module';
 
 @Module({
-  imports: [NotificationsModule, DiscountModule, BillingModule, CalendarModule],
+  imports: [NotificationsModule, DiscountModule, BillingModule, CalendarModule, PractitionerProfileModule],
   controllers: [ConsultController],
   providers: [ConsultService, ConsultCron, ManualPaymentService, StaffBookingService, SessionDirectoryService, PrismaService],
   exports: [ConsultService],
