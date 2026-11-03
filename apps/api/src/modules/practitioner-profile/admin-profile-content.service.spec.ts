@@ -66,7 +66,10 @@ function setup() {
         return row;
       }),
     },
-    $transaction: vi.fn(async (operations: Promise<unknown>[]) => Promise.all(operations)),
+    $transaction: vi.fn(async (arg: any) => {
+      if (typeof arg === 'function') return arg(prisma);
+      return Promise.all(arg);
+    }),
   };
   const audit: any = { record: vi.fn(async (entry: unknown) => entry) };
   const jobs: any = { enqueue: vi.fn(async () => ({ id: 1n })), runNow: vi.fn(async () => undefined) };
@@ -112,6 +115,7 @@ describe('AdminProfileContentService (§6.6)', () => {
         targetId: 'private-practice-counsellor',
         reason: 'clarity pass',
       }),
+        expect.anything(),
     );
     expect(audit.record.mock.calls[0][0].meta.changed).toEqual(['title', 'sections']);
   });
@@ -145,6 +149,7 @@ describe('AdminProfileContentService (§6.6)', () => {
         targetId: GENERAL_PROFILE_TEMPLATE_KEY,
         reason: 'tone',
       }),
+        expect.anything(),
     );
   });
 

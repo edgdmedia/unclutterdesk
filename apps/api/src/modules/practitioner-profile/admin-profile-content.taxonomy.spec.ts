@@ -49,7 +49,10 @@ function setup(profiles: { handle: string }[] = [{ handle: 'adaeze' }, { handle:
       }),
     },
     practitionerProfile: { findMany: vi.fn(async () => profiles) },
-    $transaction: vi.fn(async (operations: Promise<unknown>[]) => Promise.all(operations)),
+    $transaction: vi.fn(async (arg: any) => {
+      if (typeof arg === 'function') return arg(prisma);
+      return Promise.all(arg);
+    }),
   };
   const audit: any = { record: vi.fn(async (entry: unknown) => entry) };
   const jobs: any = { enqueue: vi.fn(async () => ({ id: 9n })), runNow: vi.fn(async () => undefined) };
@@ -85,6 +88,7 @@ describe('AdminProfileContentService taxonomy (§6.4)', () => {
         targetType: 'TaxonomyTerm',
         reason: 'requested by practitioners',
       }),
+        expect.anything(),
     );
   });
 
@@ -105,6 +109,7 @@ describe('AdminProfileContentService taxonomy (§6.4)', () => {
     expect(updated).toMatchObject({ id: '2', label: 'Bereavement & loss' });
     expect(audit.record).toHaveBeenCalledWith(
       expect.objectContaining({ action: 'profile.taxonomy.update', targetType: 'TaxonomyTerm', targetId: 2n }),
+        expect.anything(),
     );
     expect(jobs.enqueue).toHaveBeenCalledWith('profile.purge', { tags: ['profile:adaeze', 'profile:bola'] });
     expect(jobs.runNow).toHaveBeenCalledWith(9n);
@@ -149,6 +154,7 @@ describe('AdminProfileContentService taxonomy (§6.4)', () => {
     expect(result.map((term) => term.id)).toEqual(['1', '2', '3']);
     expect(audit.record).toHaveBeenCalledWith(
       expect.objectContaining({ action: 'profile.taxonomy.reorder', targetType: 'TaxonomyKind', targetId: 'SPECIALTY' }),
+        expect.anything(),
     );
     expect(jobs.enqueue).toHaveBeenCalledWith('profile.purge', { tags: ['profile:adaeze', 'profile:bola'] });
   });

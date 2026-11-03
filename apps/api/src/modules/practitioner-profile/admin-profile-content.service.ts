@@ -106,54 +106,59 @@ export class AdminProfileContentService {
       throw new BadRequestException('Edit the shared guidance with the guidance endpoint');
     }
 
-    const existing = await this.prisma.profileTemplate.findUnique({ where: { key } });
-    if (!existing) throw new NotFoundException('Unknown template');
+    return this.prisma.$transaction(async (tx) => {
+      const existing = await tx.profileTemplate.findUnique({ where: { key } });
+      if (!existing) throw new NotFoundException('Unknown template');
 
-    const data: Prisma.ProfileTemplateUpdateInput = {};
-    const changed: (keyof TemplateUpdateInput)[] = [];
+      const data: Prisma.ProfileTemplateUpdateInput = {};
+      const changed: (keyof TemplateUpdateInput)[] = [];
 
-    if (update.title !== undefined) {
-      data.title = update.title;
-      changed.push('title');
-    }
-    if (update.description !== undefined) {
-      data.description = update.description;
-      changed.push('description');
-    }
-    if (update.kind !== undefined) {
-      data.kind = update.kind;
-      changed.push('kind');
-    }
-    if (update.isActive !== undefined) {
-      data.isActive = update.isActive;
-      changed.push('isActive');
-    }
-    if (update.sortOrder !== undefined) {
-      data.sortOrder = update.sortOrder;
-      changed.push('sortOrder');
-    }
-    if (update.sections !== undefined) {
-      data.sections = mergeSections(existing.sections, update.sections) as Prisma.InputJsonValue;
-      changed.push('sections');
-    }
+      if (update.title !== undefined) {
+        data.title = update.title;
+        changed.push('title');
+      }
+      if (update.description !== undefined) {
+        data.description = update.description;
+        changed.push('description');
+      }
+      if (update.kind !== undefined) {
+        data.kind = update.kind;
+        changed.push('kind');
+      }
+      if (update.isActive !== undefined) {
+        data.isActive = update.isActive;
+        changed.push('isActive');
+      }
+      if (update.sortOrder !== undefined) {
+        data.sortOrder = update.sortOrder;
+        changed.push('sortOrder');
+      }
+      if (update.sections !== undefined) {
+        data.sections = mergeSections(existing.sections, update.sections) as Prisma.InputJsonValue;
+        changed.push('sections');
+      }
 
-    const updated = await this.prisma.profileTemplate.update({ where: { key }, data });
+      const updated = await tx.profileTemplate.update({ where: { key }, data });
 
-    await this.audit.record({
-      actorUserId,
-      action: 'profile.template.update',
-      targetType: 'ProfileTemplate',
-      targetId: key,
-      reason: update.reason ?? null,
-      meta: {
-        templateKey: key,
-        changed: changed.map(String),
-        before: this.pick(existing, changed),
-        after: this.pick(updated, changed),
-      } as Prisma.InputJsonValue,
+      await this.audit.record(
+        {
+          actorUserId,
+          action: 'profile.template.update',
+          targetType: 'ProfileTemplate',
+          targetId: key,
+          reason: update.reason ?? null,
+          meta: {
+            templateKey: key,
+            changed: changed.map(String),
+            before: this.pick(existing, changed),
+            after: this.pick(updated, changed),
+          } as Prisma.InputJsonValue,
+        },
+        tx,
+      );
+
+      return this.serialise(updated);
     });
-
-    return this.serialise(updated);
   }
 
   /**
@@ -163,40 +168,44 @@ export class AdminProfileContentService {
    */
   async updateGuidance(actorUserId: bigint, input: unknown) {
     const update = parseGuidanceUpdate(input);
-    const general = await this.prisma.profileTemplate.findUnique({
-      where: { key: GENERAL_PROFILE_TEMPLATE_KEY },
-      select: { sections: true },
-    });
-    if (!general) throw new NotFoundException('General profile guidance is missing');
 
-    const before = guidanceFrom(general.sections);
-    const after = { ...before, ...update.guidance };
-    const rows = await this.prisma.profileTemplate.findMany({ select: { key: true, sections: true } });
-    if (!rows.length) throw new NotFoundException('No profile templates exist');
+    return this.prisma.$transaction(async (tx) => {
+      const general = await tx.profileTemplate.findUnique({
+        where: { key: GENERAL_PROFILE_TEMPLATE_KEY },
+        select: { sections: true },
+      });
+      if (!general) throw new NotFoundException('General profile guidance is missing');
 
-    await this.prisma.$transaction(
-      rows.map((row) =>
-        this.prisma.profileTemplate.update({
+      const before = guidanceFrom(general.sections);
+      const after = { ...before, ...update.guidance };
+      const rows = await tx.profileTemplate.findMany({ select: { key: true, sections: true } });
+      if (!rows.length) throw new NotFoundException('No profile templates exist');
+
+      for (const row of rows) {
+        await tx.profileTemplate.update({
           where: { key: row.key },
           data: { sections: withGuidance(row.sections, after) as Prisma.InputJsonValue },
-        }),
-      ),
-    );
+        });
+      }
 
-    await this.audit.record({
-      actorUserId,
-      action: 'profile.guidance.update',
-      targetType: 'ProfileGuidance',
-      targetId: GENERAL_PROFILE_TEMPLATE_KEY,
-      reason: update.reason ?? null,
-      meta: {
-        changed: Object.keys(update.guidance),
-        before,
-        after,
-      } as Prisma.InputJsonValue,
+      await this.audit.record(
+        {
+          actorUserId,
+          action: 'profile.guidance.update',
+          targetType: 'ProfileGuidance',
+          targetId: GENERAL_PROFILE_TEMPLATE_KEY,
+          reason: update.reason ?? null,
+          meta: {
+            changed: Object.keys(update.guidance),
+            before,
+            after,
+          } as Prisma.InputJsonValue,
+        },
+        tx,
+      );
+
+      return { guidance: after };
     });
-
-    return { guidance: after };
   }
 
   /** Every term, including deactivated ones, with how many profiles still use it. */
@@ -214,25 +223,30 @@ export class AdminProfileContentService {
     const key = create.key ?? taxonomyKeyFromLabel(create.label);
     if (!key) throw new BadRequestException('key is required when the label has no Latin letters');
 
-    const existing = await this.prisma.taxonomyTerm.findUnique({
-      where: { kind_key: { kind: create.kind, key } },
-    });
-    if (existing) throw new ConflictException('A term with this key already exists');
+    return this.prisma.$transaction(async (tx) => {
+      const existing = await tx.taxonomyTerm.findUnique({
+        where: { kind_key: { kind: create.kind, key } },
+      });
+      if (existing) throw new ConflictException('A term with this key already exists');
 
-    const term = await this.prisma.taxonomyTerm.create({
-      data: { kind: create.kind, key, label: create.label, sortOrder: create.sortOrder ?? 0 },
-    });
+      const term = await tx.taxonomyTerm.create({
+        data: { kind: create.kind, key, label: create.label, sortOrder: create.sortOrder ?? 0 },
+      });
 
-    await this.audit.record({
-      actorUserId,
-      action: 'profile.taxonomy.create',
-      targetType: 'TaxonomyTerm',
-      targetId: term.id,
-      reason: create.reason ?? null,
-      meta: { kind: create.kind, key, label: create.label } as Prisma.InputJsonValue,
-    });
+      await this.audit.record(
+        {
+          actorUserId,
+          action: 'profile.taxonomy.create',
+          targetType: 'TaxonomyTerm',
+          targetId: term.id,
+          reason: create.reason ?? null,
+          meta: { kind: create.kind, key, label: create.label } as Prisma.InputJsonValue,
+        },
+        tx,
+      );
 
-    return this.serialiseTerm(term, 0);
+      return this.serialiseTerm(term, 0);
+    });
   }
 
   /**
@@ -243,82 +257,94 @@ export class AdminProfileContentService {
   async updateTaxonomy(actorUserId: bigint, idInput: string, input: unknown) {
     const update = parseTaxonomyUpdate(input);
     const id = this.termId(idInput);
-    const existing = await this.prisma.taxonomyTerm.findUnique({
-      where: { id },
-      include: { _count: { select: { profiles: true } } },
-    });
-    if (!existing) throw new NotFoundException('Unknown term');
 
-    if (update.key !== undefined && update.key !== existing.key) {
-      const clash = await this.prisma.taxonomyTerm.findUnique({
-        where: { kind_key: { kind: existing.kind, key: update.key } },
+    const { updated, usageCount, changed } = await this.prisma.$transaction(async (tx) => {
+      const existing = await tx.taxonomyTerm.findUnique({
+        where: { id },
+        include: { _count: { select: { profiles: true } } },
       });
-      if (clash && clash.id !== id) throw new ConflictException('A term with this key already exists');
-    }
+      if (!existing) throw new NotFoundException('Unknown term');
 
-    const data: Prisma.TaxonomyTermUpdateInput = {};
-    const changed: (keyof UpdateTaxonomyInput)[] = [];
-    if (update.label !== undefined) {
-      data.label = update.label;
-      changed.push('label');
-    }
-    if (update.key !== undefined) {
-      data.key = update.key;
-      changed.push('key');
-    }
-    if (update.isActive !== undefined) {
-      data.isActive = update.isActive;
-      changed.push('isActive');
-    }
-    if (update.sortOrder !== undefined) {
-      data.sortOrder = update.sortOrder;
-      changed.push('sortOrder');
-    }
+      if (update.key !== undefined && update.key !== existing.key) {
+        const clash = await tx.taxonomyTerm.findUnique({
+          where: { kind_key: { kind: existing.kind, key: update.key } },
+        });
+        if (clash && clash.id !== id) throw new ConflictException('A term with this key already exists');
+      }
 
-    const updated = await this.prisma.taxonomyTerm.update({ where: { id }, data });
+      const data: Prisma.TaxonomyTermUpdateInput = {};
+      const changed: (keyof UpdateTaxonomyInput)[] = [];
+      if (update.label !== undefined) {
+        data.label = update.label;
+        changed.push('label');
+      }
+      if (update.key !== undefined) {
+        data.key = update.key;
+        changed.push('key');
+      }
+      if (update.isActive !== undefined) {
+        data.isActive = update.isActive;
+        changed.push('isActive');
+      }
+      if (update.sortOrder !== undefined) {
+        data.sortOrder = update.sortOrder;
+        changed.push('sortOrder');
+      }
 
-    await this.audit.record({
-      actorUserId,
-      action: 'profile.taxonomy.update',
-      targetType: 'TaxonomyTerm',
-      targetId: id,
-      reason: update.reason ?? null,
-      meta: {
-        kind: existing.kind,
-        changed: changed.map(String),
-        before: this.pick(existing, changed),
-        after: this.pick(updated, changed),
-      } as Prisma.InputJsonValue,
+      const updated = await tx.taxonomyTerm.update({ where: { id }, data });
+
+      await this.audit.record(
+        {
+          actorUserId,
+          action: 'profile.taxonomy.update',
+          targetType: 'TaxonomyTerm',
+          targetId: id,
+          reason: update.reason ?? null,
+          meta: {
+            kind: existing.kind,
+            changed: changed.map(String),
+            before: this.pick(existing, changed),
+            after: this.pick(updated, changed),
+          } as Prisma.InputJsonValue,
+        },
+        tx,
+      );
+
+      return { updated, usageCount: existing._count?.profiles ?? 0, changed };
     });
 
     if (changed.length) await this.purgeProfilesUsingTerms([id]);
-    return this.serialiseTerm(updated, existing._count?.profiles ?? 0);
+    return this.serialiseTerm(updated, usageCount);
   }
 
   /** Apply a drag-and-drop order to one kind. Every id must belong to that kind. */
   async reorderTaxonomy(actorUserId: bigint, input: unknown) {
     const reorder: ReorderTaxonomyInput = parseTaxonomyReorder(input);
-    const terms = await this.prisma.taxonomyTerm.findMany({
-      where: { id: { in: reorder.ids }, kind: reorder.kind },
-      select: { id: true },
-    });
-    if (terms.length !== reorder.ids.length) {
-      throw new BadRequestException('Every term must belong to the chosen kind');
-    }
 
-    await this.prisma.$transaction(
-      reorder.ids.map((id, index) =>
-        this.prisma.taxonomyTerm.update({ where: { id }, data: { sortOrder: index * 10 } }),
-      ),
-    );
+    await this.prisma.$transaction(async (tx) => {
+      const terms = await tx.taxonomyTerm.findMany({
+        where: { id: { in: reorder.ids }, kind: reorder.kind },
+        select: { id: true },
+      });
+      if (terms.length !== reorder.ids.length) {
+        throw new BadRequestException('Every term must belong to the chosen kind');
+      }
 
-    await this.audit.record({
-      actorUserId,
-      action: 'profile.taxonomy.reorder',
-      targetType: 'TaxonomyKind',
-      targetId: reorder.kind,
-      reason: reorder.reason ?? null,
-      meta: { kind: reorder.kind, ids: reorder.ids.map(String) } as Prisma.InputJsonValue,
+      for (const [index, id] of reorder.ids.entries()) {
+        await tx.taxonomyTerm.update({ where: { id }, data: { sortOrder: index * 10 } });
+      }
+
+      await this.audit.record(
+        {
+          actorUserId,
+          action: 'profile.taxonomy.reorder',
+          targetType: 'TaxonomyKind',
+          targetId: reorder.kind,
+          reason: reorder.reason ?? null,
+          meta: { kind: reorder.kind, ids: reorder.ids.map(String) } as Prisma.InputJsonValue,
+        },
+        tx,
+      );
     });
 
     await this.purgeProfilesUsingTerms(reorder.ids);
