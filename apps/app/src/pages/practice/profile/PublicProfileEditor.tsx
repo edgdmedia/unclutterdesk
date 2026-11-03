@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Button, Card, Input, PROFILE_THEMES, ProgressRow, Textarea, profileTheme, useToast } from '@unclutterdesk/ui';
+import { Button, Card, Input, ProgressRow, Textarea, useToast } from '@unclutterdesk/ui';
+import { AppearancePicker } from './AppearancePicker';
 import { profilePath } from '../../../config/domains';
 import {
   KIND_LABELS,
@@ -432,9 +433,9 @@ export function PublicProfileEditor({ onProfileChange }: { onProfileChange?: (p:
     }
   }
 
-  async function chooseTheme(themeKey: string) {
+  async function chooseAppearance(change: { layoutKey?: string; themeKey?: string }) {
     try {
-      const next = await profileApi.update({ themeKey });
+      const next = await profileApi.update(change);
       setProfile(next);
       onProfileChange?.(next);
     } catch (err) {
@@ -468,7 +469,6 @@ export function PublicProfileEditor({ onProfileChange }: { onProfileChange?: (p:
   }
 
   const anyDirty = dirty.fields || dirty.terms || dirty.timeline;
-  const theme = profileTheme(profile.themeKey);
 
   return (
     <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_340px] gap-5 items-start">
@@ -795,36 +795,14 @@ export function PublicProfileEditor({ onProfileChange }: { onProfileChange?: (p:
           </Card>
         )}
 
-        <Card padding="lg">
-          <span className="text-[15px] font-bold text-[#0F172A]">Theme</span>
-          <div className="mt-3 grid grid-cols-1 gap-2" role="radiogroup" aria-label="Theme">
-            {PROFILE_THEMES.map((t) => (
-              <button
-                key={t.key}
-                type="button"
-                role="radio"
-                aria-checked={theme.key === t.key}
-                onClick={() => void chooseTheme(t.key)}
-                className={`flex items-center gap-3 p-2 rounded-[14px] border cursor-pointer text-left ${
-                  theme.key === t.key ? 'border-[#0F3A53] ring-2 ring-[#0F3A53]/20' : 'border-[#E2E8F0]'
-                }`}
-              >
-                <span
-                  aria-hidden
-                  className="h-[40px] w-[56px] rounded-[10px] border flex items-end p-1.5 gap-1"
-                  style={{ background: t.colors.background, borderColor: t.colors.border }}
-                >
-                  <span className="h-[8px] flex-1 rounded" style={{ background: t.colors.text }} />
-                  <span className="h-[14px] w-[14px] rounded-full" style={{ background: t.colors.accent }} />
-                </span>
-                <span>
-                  <span className="block text-[13px] font-bold text-[#0F172A]">{t.label}</span>
-                  <span className="block text-[12px] text-[#64748B]">{t.description}</span>
-                </span>
-              </button>
-            ))}
-          </div>
-        </Card>
+        <AppearancePicker
+          layoutKey={profile.layoutKey}
+          themeKey={profile.themeKey}
+          name={profile.displayName}
+          kindLabel={KIND_LABELS[profile.kind as keyof typeof KIND_LABELS] ?? 'Therapist'}
+          headline={profile.headline}
+          onChange={(change) => void chooseAppearance(change)}
+        />
       </aside>
     </div>
   );
