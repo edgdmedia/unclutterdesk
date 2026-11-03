@@ -36,7 +36,8 @@ type PrepPayload = {
       item9Risk: boolean;
     } | null;
     submittedAt: string;
-    answers: Array<{ key: string; value: unknown }>;
+    /** Each answer with its question's label and a readable value (API: intake/form-answers.ts). */
+    answers: Array<{ key: string; label?: string; value: unknown; display?: string }>;
   }>;
   nextBooking: {
     clientName: string;
@@ -47,6 +48,31 @@ type PrepPayload = {
 
 function formatDateTime(value: string) {
   return formatWhen(value, 'short');
+}
+
+const ANSWERS_SHOWN = 6;
+
+/** A submission's answers as questions and answers; the first few, then all on request. */
+function SubmissionAnswers({ id, answers }: { id: string; answers: Array<{ key: string; label?: string; value: unknown; display?: string }> }) {
+  const [all, setAll] = useState(false);
+  const shown = all ? answers : answers.slice(0, ANSWERS_SHOWN);
+  return (
+    <>
+      <dl className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-3">
+        {shown.map((answer) => (
+          <div key={`${id}_${answer.key}`} className="rounded-[12px] bg-white border border-[#E2E8F0] px-3 py-2">
+            <dt className="text-[11px] font-bold text-[#64748B]">{answer.label ?? answer.key}</dt>
+            <dd className="mt-0.5 text-[13px] text-[#0F172A] whitespace-pre-wrap break-words">{answer.display ?? String(answer.value ?? '—')}</dd>
+          </div>
+        ))}
+      </dl>
+      {answers.length > ANSWERS_SHOWN ? (
+        <button type="button" onClick={() => setAll((v) => !v)} className="mt-2 text-[12.5px] font-bold text-[#0F3A53] hover:underline cursor-pointer">
+          {all ? 'Show fewer' : `Show all ${answers.length} answers`}
+        </button>
+      ) : null}
+    </>
+  );
 }
 
 export function SessionPrepPage() {
@@ -137,7 +163,7 @@ export function SessionPrepPage() {
                               <span>{submission.derived.severity}</span>
                             </div>
                           ) : null}
-                          <div className="mt-3 grid grid-cols-2 gap-3">{submission.answers.slice(0, 6).map((answer) => <div key={`${submission.id}_${answer.key}`} className="rounded-[12px] bg-white border border-[#E2E8F0] px-3 py-2 text-[12px] text-[#475569]"><strong className="text-[#0F172A]">{answer.key}:</strong> {String(answer.value)}</div>)}</div>
+                          <SubmissionAnswers id={submission.id} answers={submission.answers} />
                         </div>
                       ))}
                     </div>
