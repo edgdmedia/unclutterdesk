@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, Patch, Req, UnauthorizedException, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Param, Patch, Post, Put, Req, UnauthorizedException, UseGuards } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { PlatformAdminGuard } from '../admin/platform-admin.guard';
 import { AdminProfileContentService } from './admin-profile-content.service';
@@ -44,5 +44,29 @@ export class AdminProfileContentController {
   @ApiOperation({ summary: 'Edit the shared per-section profile guidance' })
   updateGuidance(@Req() req: any, @Body() dto: Record<string, unknown>) {
     return this.content.updateGuidance(authenticatedUserId(req), dto);
+  }
+
+  @Get('taxonomy')
+  @ApiOperation({ summary: 'List taxonomy terms, including inactive ones, with usage counts' })
+  taxonomy() {
+    return this.content.listTaxonomy();
+  }
+
+  @Post('taxonomy')
+  @ApiOperation({ summary: 'Create a taxonomy term' })
+  createTaxonomy(@Req() req: any, @Body() dto: Record<string, unknown>) {
+    return this.content.createTaxonomy(authenticatedUserId(req), dto);
+  }
+
+  @Put('taxonomy/reorder')
+  @ApiOperation({ summary: 'Apply a new order to one kind of taxonomy term' })
+  reorderTaxonomy(@Req() req: any, @Body() dto: Record<string, unknown>) {
+    return this.content.reorderTaxonomy(authenticatedUserId(req), dto);
+  }
+
+  @Patch('taxonomy/:id')
+  @ApiOperation({ summary: 'Rename, re-key, activate/deactivate or reorder a taxonomy term' })
+  updateTaxonomy(@Req() req: any, @Param('id') id: string, @Body() dto: Record<string, unknown>) {
+    return this.content.updateTaxonomy(authenticatedUserId(req), id, dto);
   }
 }

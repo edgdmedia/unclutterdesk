@@ -69,7 +69,8 @@ function setup() {
     $transaction: vi.fn(async (operations: Promise<unknown>[]) => Promise.all(operations)),
   };
   const audit: any = { record: vi.fn(async (entry: unknown) => entry) };
-  return { service: new AdminProfileContentService(prisma, audit), prisma, audit, rows };
+  const jobs: any = { enqueue: vi.fn(async () => ({ id: 1n })), runNow: vi.fn(async () => undefined) };
+  return { service: new AdminProfileContentService(prisma, audit, jobs), prisma, audit, jobs, rows };
 }
 
 describe('AdminProfileContentService (§6.6)', () => {

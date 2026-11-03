@@ -1,20 +1,31 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
-import { Prisma } from '@prisma/client';
+import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common';
+import { Prisma, type TaxonomyKind } from '@prisma/client';
 import { PrismaService } from '../../common/prisma/prisma.service';
 import { AuditService } from '../audit/audit.service';
+import { JobsService } from '../jobs/jobs.service';
 import { SECTION_ORDER, type SectionKey } from './completeness';
+import { PURGE_JOB, profileTag, type PurgePayload } from './profile-purge.job';
 import {
   parseGuidanceUpdate,
   parseTemplateUpdate,
   type TemplateSectionsInput,
   type TemplateUpdateInput,
 } from './profile-content.validation';
+import {
+  parseTaxonomyCreate,
+  parseTaxonomyReorder,
+  parseTaxonomyUpdate,
+  taxonomyKeyFromLabel,
+  type CreateTaxonomyInput,
+  type ReorderTaxonomyInput,
+  type UpdateTaxonomyInput,
+} from './taxonomy.validation';
 
 /**
- * Platform-admin editing of the profile templates and shared guidance
- * (spec §6.6). The seed migration inserts the starter content; after that the
- * database is the source of truth and every edit is written to the admin audit
- * log. Nothing here is tenant-scoped: templates and guidance are global.
+ * Platform-admin editing of the profile templates, shared guidance and
+ * taxonomy (spec §6.4, §6.6). The seed migration inserts the starter content;
+ * after that the database is the source of truth and every edit is written to
+ * the admin audit log. Nothing here is tenant-scoped: all three are global.
  */
 
 export const GENERAL_PROFILE_TEMPLATE_KEY = 'general';
@@ -66,6 +77,7 @@ export class AdminProfileContentService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly audit: AuditService,
+    private readonly jobs: JobsService,
   ) {}
 
   /** Every editable template; the internal `general` row is served by getGuidance instead. */
@@ -187,9 +199,166 @@ export class AdminProfileContentService {
     return { guidance: after };
   }
 
-  private pick(row: Record<string, unknown>, fields: (keyof TemplateUpdateInput)[]) {
+  /** Every term, including deactivated ones, with how many profiles still use it. */
+  async listTaxonomy() {
+    const rows = await this.prisma.taxonomyTerm.findMany({
+      orderBy: [{ kind: 'asc' }, { sortOrder: 'asc' }, { label: 'asc' }],
+      include: { _count: { select: { profiles: true } } },
+    });
+    return rows.map((row) => this.serialiseTerm(row, row._count?.profiles ?? 0));
+  }
+
+  /** Add a term. Keys are stable slugs and unique within their kind. */
+  async createTaxonomy(actorUserId: bigint, input: unknown) {
+    const create = parseTaxonomyCreate(input);
+    const key = create.key ?? taxonomyKeyFromLabel(create.label);
+    if (!key) throw new BadRequestException('key is required when the label has no Latin letters');
+
+    const existing = await this.prisma.taxonomyTerm.findUnique({
+      where: { kind_key: { kind: create.kind, key } },
+    });
+    if (existing) throw new ConflictException('A term with this key already exists');
+
+    const term = await this.prisma.taxonomyTerm.create({
+      data: { kind: create.kind, key, label: create.label, sortOrder: create.sortOrder ?? 0 },
+    });
+
+    await this.audit.record({
+      actorUserId,
+      action: 'profile.taxonomy.create',
+      targetType: 'TaxonomyTerm',
+      targetId: term.id,
+      reason: create.reason ?? null,
+      meta: { kind: create.kind, key, label: create.label } as Prisma.InputJsonValue,
+    });
+
+    return this.serialiseTerm(term, 0);
+  }
+
+  /**
+   * Rename, re-key, activate/deactivate or reorder one term. Any of those can
+   * change what a published profile shows, so the profiles using the term are
+   * purged from the public site's cache.
+   */
+  async updateTaxonomy(actorUserId: bigint, idInput: string, input: unknown) {
+    const update = parseTaxonomyUpdate(input);
+    const id = this.termId(idInput);
+    const existing = await this.prisma.taxonomyTerm.findUnique({
+      where: { id },
+      include: { _count: { select: { profiles: true } } },
+    });
+    if (!existing) throw new NotFoundException('Unknown term');
+
+    if (update.key !== undefined && update.key !== existing.key) {
+      const clash = await this.prisma.taxonomyTerm.findUnique({
+        where: { kind_key: { kind: existing.kind, key: update.key } },
+      });
+      if (clash && clash.id !== id) throw new ConflictException('A term with this key already exists');
+    }
+
+    const data: Prisma.TaxonomyTermUpdateInput = {};
+    const changed: (keyof UpdateTaxonomyInput)[] = [];
+    if (update.label !== undefined) {
+      data.label = update.label;
+      changed.push('label');
+    }
+    if (update.key !== undefined) {
+      data.key = update.key;
+      changed.push('key');
+    }
+    if (update.isActive !== undefined) {
+      data.isActive = update.isActive;
+      changed.push('isActive');
+    }
+    if (update.sortOrder !== undefined) {
+      data.sortOrder = update.sortOrder;
+      changed.push('sortOrder');
+    }
+
+    const updated = await this.prisma.taxonomyTerm.update({ where: { id }, data });
+
+    await this.audit.record({
+      actorUserId,
+      action: 'profile.taxonomy.update',
+      targetType: 'TaxonomyTerm',
+      targetId: id,
+      reason: update.reason ?? null,
+      meta: {
+        kind: existing.kind,
+        changed: changed.map(String),
+        before: this.pick(existing, changed),
+        after: this.pick(updated, changed),
+      } as Prisma.InputJsonValue,
+    });
+
+    if (changed.length) await this.purgeProfilesUsingTerms([id]);
+    return this.serialiseTerm(updated, existing._count?.profiles ?? 0);
+  }
+
+  /** Apply a drag-and-drop order to one kind. Every id must belong to that kind. */
+  async reorderTaxonomy(actorUserId: bigint, input: unknown) {
+    const reorder: ReorderTaxonomyInput = parseTaxonomyReorder(input);
+    const terms = await this.prisma.taxonomyTerm.findMany({
+      where: { id: { in: reorder.ids }, kind: reorder.kind },
+      select: { id: true },
+    });
+    if (terms.length !== reorder.ids.length) {
+      throw new BadRequestException('Every term must belong to the chosen kind');
+    }
+
+    await this.prisma.$transaction(
+      reorder.ids.map((id, index) =>
+        this.prisma.taxonomyTerm.update({ where: { id }, data: { sortOrder: index * 10 } }),
+      ),
+    );
+
+    await this.audit.record({
+      actorUserId,
+      action: 'profile.taxonomy.reorder',
+      targetType: 'TaxonomyKind',
+      targetId: reorder.kind,
+      reason: reorder.reason ?? null,
+      meta: { kind: reorder.kind, ids: reorder.ids.map(String) } as Prisma.InputJsonValue,
+    });
+
+    await this.purgeProfilesUsingTerms(reorder.ids);
+    return this.listTaxonomy();
+  }
+
+  /** Published profiles whose page shows any of these terms, purged at once (§6.12). */
+  private async purgeProfilesUsingTerms(termIds: bigint[]) {
+    if (!termIds.length) return;
+    const profiles = await this.prisma.practitionerProfile.findMany({
+      where: { status: 'PUBLISHED', taxonomy: { some: { termId: { in: termIds } } } },
+      select: { handle: true },
+    });
+    if (!profiles.length) return;
+
+    const payload: PurgePayload = { tags: [...new Set(profiles.map((profile) => profileTag(profile.handle)))] };
+    const job = await this.jobs.enqueue(PURGE_JOB, payload as never);
+    if (job) await this.jobs.runNow(job.id);
+  }
+
+  private termId(value: string): bigint {
+    if (!/^\d+$/.test(value)) throw new BadRequestException('Unknown term');
+    return BigInt(value);
+  }
+
+  private serialiseTerm(row: Record<string, any>, usageCount = 0) {
+    return {
+      id: String(row.id),
+      kind: row.kind as TaxonomyKind,
+      key: row.key,
+      label: row.label,
+      isActive: row.isActive,
+      sortOrder: row.sortOrder,
+      usageCount,
+    };
+  }
+
+  private pick(row: Record<string, unknown>, fields: readonly (keyof TemplateUpdateInput | keyof UpdateTaxonomyInput)[]) {
     const out: Record<string, unknown> = {};
-    for (const field of fields) out[field as string] = row[field as string];
+    for (const field of fields) out[String(field)] = row[String(field)];
     return out;
   }
 
