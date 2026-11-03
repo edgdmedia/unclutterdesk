@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Navigate } from 'react-router-dom';
 import { Copy, Check, Link2, Calendar, FileText, Video, Globe, Palette, Sparkles, TrendingUp, CheckCircle2, ArrowRight } from 'lucide-react';
 import { Button, Page, PageHeader, Grid, MetricTile } from '@unclutterdesk/ui';
 import { useAuth } from '../../context/AuthContext';
@@ -21,7 +21,17 @@ interface DashboardPageProps {
   sessions?: any[];
 }
 
+/**
+ * /dashboard. §6.8: a profile-first practice's home is the profile editor;
+ * everyone else gets the practice's Today view.
+ */
 export function DashboardPage(props: DashboardPageProps) {
+  const { profile } = useAuth();
+  if (profile?.onboardingIntent === 'PROFILE') return <Navigate to="/dashboard/profile" replace />;
+  return <PracticeToday {...props} />;
+}
+
+function PracticeToday(props: DashboardPageProps) {
   const navigate = useNavigate();
   const { profile: authUser, refreshProfile } = useAuth();
 

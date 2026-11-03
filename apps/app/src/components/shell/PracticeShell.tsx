@@ -4,7 +4,7 @@ import { useLocation } from 'react-router-dom';
 import { AppShell } from '@unclutterdesk/ui';
 import { NotificationBell } from './NotificationBell';
 import { useAuth } from '../../context/AuthContext';
-import { PRACTICE_BOTTOM_NAV, activeNavKey, practiceSections } from './practiceNav';
+import { activeNavKey, bottomNavFor, practiceSections } from './practiceNav';
 import { RouterLink } from './RouterLink';
 import { AccountMenu } from './AccountMenu';
 import { PracticeBrand } from './PracticeBrand';
@@ -37,8 +37,8 @@ export function PracticeShell({ banner, children }: { banner?: ReactNode; childr
 
   const sections = useMemo(() => practiceSections(profile, plan), [profile, plan]);
   const hrefs = useMemo(
-    () => [...sections.flatMap((s) => s.groups.flatMap((g) => g.items.map((i) => i.href))), ...PRACTICE_BOTTOM_NAV.map((i) => i.href)],
-    [sections],
+    () => [...sections.flatMap((s) => s.groups.flatMap((g) => g.items.map((i) => i.href))), ...bottomNavFor(profile).map((i) => i.href)],
+    [sections, profile],
   );
   const activeKey = activeNavKey(location.pathname, hrefs);
 
@@ -63,7 +63,7 @@ export function PracticeShell({ banner, children }: { banner?: ReactNode; childr
         writeFlag(COLLAPSED_KEY, next ? '1' : '0');
       }}
       bottomNav={{
-        items: PRACTICE_BOTTOM_NAV.map((i) => ({ key: i.href, label: i.label, href: i.href, icon: <i.icon strokeWidth={2.5} /> })),
+        items: bottomNavFor(profile).map((i) => ({ key: i.href, label: i.label, href: i.href, icon: <i.icon strokeWidth={2.5} /> })),
         active: activeKey,
         LinkComponent: RouterLink,
       }}

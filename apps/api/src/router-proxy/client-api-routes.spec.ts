@@ -35,6 +35,10 @@ const NEVER_PROXIED: string[] = [
   'POST /v1/admin/auth/login',
   // Client self-registration endpoint
   'POST /v1/auth/register',
+  // Therapist profile signup and its form helpers (the app, never a practice's booking site)
+  'POST /v1/auth/register-profile',
+  'GET /v1/auth/handle-check',
+  'GET /v1/auth/profile-templates',
   // Invite claim endpoint (auth flow, not client booking)
   'POST /v1/auth/invite/claim',
 ];

@@ -28,6 +28,7 @@ const SAFE_METHODS = new Set(['GET', 'HEAD', 'OPTIONS']);
 const EXEMPT_ROUTES = new Set([
   'POST /v1/auth/login',
   'POST /v1/auth/register',
+  'POST /v1/auth/register-profile',
   'POST /v1/auth/verify-email',
   'POST /v1/auth/resend-verification',
   'POST /v1/auth/forgot-password',
