@@ -29,7 +29,7 @@ function orderOf(a: AdminTaxonomyTerm, b: AdminTaxonomyTerm) {
  */
 export function AdminProfileTaxonomyPage() {
   const toast = useToast();
-  const { data: terms, isLoading, mutate } = useSWR<AdminTaxonomyTerm[]>(`${PROFILE_CONTENT_BASE}/taxonomy`);
+  const { data: terms, isLoading, error: loadError, mutate } = useSWR<AdminTaxonomyTerm[]>(`${PROFILE_CONTENT_BASE}/taxonomy`);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const selected = terms?.find((term) => term.id === selectedId) ?? null;
 
@@ -234,13 +234,14 @@ export function AdminProfileTaxonomyPage() {
         {error ? <p role="alert" className="text-[13px] font-semibold text-[#B91C1C]">{error}</p> : null}
 
         <div className="flex justify-end gap-2">
-          {selected ? <Button variant="secondary" onClick={() => startNew(selected.kind)}>Cancel</Button> : null}
           <Button onClick={save} disabled={saving}>{saving ? 'Saving…' : selected ? 'Save term' : 'Add term'}</Button>
         </div>
       </Card>
 
       {isLoading ? (
         <Card className="mt-5 p-[22px]"><p className="text-sm text-[#64748B]">Loading terms…</p></Card>
+      ) : loadError ? (
+        <Card className="mt-5 p-[22px]"><p className="text-sm text-[#B91C1C]">Could not load taxonomy. Please refresh.</p></Card>
       ) : (
         <div className="mt-5 space-y-4">
           {groups.map((group) => (
