@@ -1,5 +1,6 @@
 import { Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
+import { homePathFor } from '../../utils/homePath';
 import { ProfileSignupPage } from './ProfileSignupPage';
 
 /** /signup: signed-in people go to their home; otherwise the profile-first form for ?intent=profile, or the practice signup (query kept). */
@@ -9,7 +10,7 @@ export function SignupEntry() {
   // Already signed in: go where sign-in would have taken them, not to a signup form.
   if (isLoading) return null;
   if (profile) {
-    const home = profile.type === 'platform_admin' ? '/admin' : profile.type === 'user' ? '/portal' : '/dashboard';
+    const home = homePathFor(profile);
     return <Navigate to={home} replace />;
   }
   const params = new URLSearchParams(location.search);
