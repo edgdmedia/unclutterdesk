@@ -54,6 +54,7 @@ const SettingsDomainPage = lazy(() => import('./pages/practice/settings/Settings
 const SettingsEmailPage = lazy(() => import('./pages/practice/settings/SettingsEmailPage').then((m) => ({ default: m.SettingsEmailPage })));
 const LoginPage = lazy(() => import('./pages/auth/LoginPage').then((m) => ({ default: m.LoginPage })));
 const SignupPage = lazy(() => import('./pages/auth/SignupPage').then((m) => ({ default: m.SignupPage })));
+const ProfileSignupPage = lazy(() => import('./pages/auth/ProfileSignupPage').then((m) => ({ default: m.ProfileSignupPage })));
 const ForgotPasswordPage = lazy(() => import('./pages/auth/ForgotPasswordPage').then((m) => ({ default: m.ForgotPasswordPage })));
 const ResetPasswordPage = lazy(() => import('./pages/auth/ResetPasswordPage').then((m) => ({ default: m.ResetPasswordPage })));
 const VerifyEmailPage = lazy(() => import('./pages/auth/VerifyEmailPage').then((m) => ({ default: m.VerifyEmailPage })));
@@ -253,6 +254,14 @@ function PageFallback() {
 
 // ── Main AppLayout ─────────────────────────────────────────────────────────────
 
+/** /signup: the profile-first form for ?intent=profile, otherwise the practice signup (query kept). */
+function SignupEntry() {
+  const location = useLocation();
+  const params = new URLSearchParams(location.search);
+  if (params.get('intent') === 'profile') return <ProfileSignupPage />;
+  return <Navigate to={`/auth/signup${location.search}`} replace />;
+}
+
 function AppLayout() {
   const { profile, isAuthenticated, isLoading } = useAuth();
   const [tenantStatus, setTenantStatus] = useState<'ACTIVE' | 'PAUSED'>('ACTIVE');
@@ -354,6 +363,7 @@ function AppLayout() {
     location.pathname.startsWith('/forms') ||
     location.pathname === '/login' ||
     location.pathname === '/register' ||
+    location.pathname === '/signup' ||
     location.pathname === '/forgot-password' ||
     location.pathname.startsWith('/reset-password') ||
     location.pathname === '/verify-email';
@@ -379,6 +389,8 @@ function AppLayout() {
             <Route path="/auth/login" element={<LoginPage />} />
             <Route path="/auth/signup" element={<SignupPage />} />
             <Route path="/register" element={<SignupPage />} />
+            {/* §6.8: the profiles site's "Create your free therapist profile" sends people here with ?intent=profile. */}
+            <Route path="/signup" element={<SignupEntry />} />
             <Route path="/auth/forgot-password" element={<ForgotPasswordPage />} />
             <Route path="/forgot-password" element={<ForgotPasswordPage />} />
             <Route path="/auth/reset-password" element={<ResetPasswordPage />} />

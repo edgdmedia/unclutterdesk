@@ -11,7 +11,7 @@ export function VerifyEmailPage() {
   const navigate = useNavigate();
   const location = useLocation();
   const [searchParams] = useSearchParams();
-  const state = (location.state as { email?: string; emailSent?: boolean } | null) || null;
+  const state = (location.state as { email?: string; emailSent?: boolean; returnTo?: string } | null) || null;
   const emailFromState = state?.email;
   const emailFromQuery = searchParams.get('email') || '';
   const [email, setEmail] = useState(emailFromState || emailFromQuery || '');
@@ -124,7 +124,7 @@ export function VerifyEmailPage() {
         </p>
         <button
           type="button"
-          onClick={() => navigate('/login', { state: { email } })}
+          onClick={() => navigate('/login', { state: { email, returnTo: state?.returnTo } })}
           className="mt-[22px] w-full h-[54px] rounded-[14px] bg-[#0F3A53] text-white text-[15px] font-bold inline-flex items-center justify-center gap-[10px] cursor-pointer shadow-[0_10px_26px_rgba(15,58,83,0.26)] transition-[filter] hover:brightness-110"
         >
           <span>Continue to sign in</span>
@@ -141,7 +141,7 @@ export function VerifyEmailPage() {
       footer={
         <span className="text-[13px] text-[#64748B]">
           Already verified?{' '}
-          <Link to="/login" state={{ email }} className="font-bold text-[#0F172A] hover:underline">
+          <Link to="/login" state={{ email, returnTo: state?.returnTo }} className="font-bold text-[#0F172A] hover:underline">
             Sign in
           </Link>
         </span>
