@@ -11,6 +11,7 @@ import { StaffBookingDialog } from '../../components/booking/StaffBookingDialog'
 import { RouterLink } from '../../components/shell/RouterLink';
 import { PaymentChip } from '../../components/booking/PaymentChip';
 import type { SessionRow } from './SessionsPage';
+import { formatWhen } from '../../utils/displayFormat';
 
 interface ClientDetailPageProps {
   clients: Client[];
@@ -24,8 +25,7 @@ interface PaymentRow {
   discountCode: string | null; status: string; paidAt: string | null; reference: string | null; bookedAt: string;
 }
 
-const sessionWhen = (iso: string) =>
-  new Intl.DateTimeFormat('en-GB', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }).format(new Date(iso));
+const sessionWhen = (iso: string) => formatWhen(iso, 'withYear');
 
 const SESSION_COLUMNS: Column<SessionRow>[] = [
   {

@@ -20,12 +20,16 @@ import { BookingPaymentSettler } from '../billing/booking-payment-settler.servic
 import { onlineHoldExpiry } from './online-hold';
 import { assertWithinMonthlyLimit, monthlyLimitReached } from './booking-limits';
 import { PLAN_SELECT } from '../entitlements/entitlements';
+import { PersonFactsService } from '../practitioner-profile/person-facts.service';
 
 /** A Paystack checkout: the page to send the payer to, and the code its pop-up opens with. */
 type StartedPayment = { url: string; accessCode: string };
 
 /** Monday first, matching TherapistWeeklyTime.weekday. */
 const DAY_NAMES = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+
+/** §6.17: edited only in My profile (PractitionerProfile), never on the practice record. */
+export const PERSON_FIELDS = ['welcomeMessage', 'tagline', 'specialty', 'credentials', 'yearsExperience', 'modalities', 'languages'] as const;
 
 @Injectable()
 export class ConsultService {
@@ -41,7 +45,30 @@ export class ConsultService {
     private readonly manualPayments: ManualPaymentService,
     @Optional() private readonly notifier?: BookingNotifier,
     @Optional() private readonly settler?: BookingPaymentSettler,
+    @Optional() private readonly personFacts?: PersonFactsService,
   ) { }
+
+  /** §6.17: facts about each therapist come from their profile; the practice record only for someone without one. */
+  private async factsFor(rows: Array<{ profile: { userId: bigint | null; firstName: string | null; lastName: string | null; avatarUrl: string | null }; tagline: string | null; welcomeMessage: string | null; credentials: string | null; yearsExperience: number | null; specialty: string | null; modalities: string[]; languages: string[]; offersOnline: boolean; offersInPerson: boolean }>) {
+    const ids = rows.map((r) => r.profile.userId).filter((v): v is bigint => v !== null);
+    const found = this.personFacts ? await this.personFacts.forUsers(ids) : new Map();
+    return rows.map((r) =>
+      PersonFactsService.resolve(r.profile.userId !== null ? found.get(r.profile.userId.toString()) : undefined, {
+        firstName: r.profile.firstName,
+        lastName: r.profile.lastName,
+        avatarUrl: r.profile.avatarUrl,
+        tagline: r.tagline,
+        welcomeMessage: r.welcomeMessage,
+        credentials: r.credentials,
+        yearsExperience: r.yearsExperience,
+        specialty: r.specialty,
+        modalities: r.modalities,
+        languages: r.languages,
+        offersOnline: r.offersOnline,
+        offersInPerson: r.offersInPerson,
+      }),
+    );
+  }
 
   async getPublicTherapists(tenantId: bigint) {
     const practitioners = await this.prisma.consultTherapistProfile.findMany({
@@ -54,6 +81,7 @@ export class ConsultService {
         profile: {
           select: {
             id: true,
+            userId: true,
             firstName: true,
             lastName: true,
             email: true,
@@ -64,23 +92,32 @@ export class ConsultService {
       },
     });
 
-    return practitioners.map((p) => ({
-      profileId: p.profileId.toString(),
-      firstName: p.profile.firstName,
-      lastName: p.profile.lastName,
-      email: p.profile.email,
-      avatarUrl: p.profile.avatarUrl || p.profile.avatarUrl,
-      publicUsername: p.publicUsername,
-      specialty: p.specialty,
-      credentials: p.credentials,
-      yearsExperience: p.yearsExperience,
-      welcomeMessage: p.welcomeMessage,
-      tagline: p.tagline,
-      modalities: p.modalities,
-      languages: p.languages,
-      isPublic: p.isPublic,
-      status: p.profile.status,
-    }));
+    const facts = await this.factsFor(practitioners);
+    return practitioners.map((p, i) => {
+      const f = facts[i];
+      return {
+        profileId: p.profileId.toString(),
+        firstName: p.profile.firstName,
+        lastName: p.profile.lastName,
+        displayName: f.displayName,
+        email: p.profile.email,
+        avatarUrl: f.photoUrl,
+        publicUsername: p.publicUsername,
+        // Person facts (§6.17): from the therapist's profile. The old names are kept for the booking page.
+        specialty: f.specialties.join(', ') || null,
+        specialties: f.specialties,
+        credentials: f.credentials,
+        yearsExperience: f.yearsExperience,
+        welcomeMessage: f.about,
+        about: f.about,
+        tagline: f.headline,
+        headline: f.headline,
+        modalities: f.modalities,
+        languages: f.languages,
+        isPublic: p.isPublic,
+        status: p.profile.status,
+      };
+    });
   }
 
   async getTherapistProfile(tenantId: bigint, profileId: bigint) {
@@ -141,6 +178,12 @@ export class ConsultService {
     offersInPerson?: boolean;
     locationIds?: string[];
   }) {
+    // §6.17: facts about the therapist have one home, their profile. This
+    // record keeps only what is particular to this practice.
+    const moved = PERSON_FIELDS.filter((k) => (dto as Record<string, unknown>)[k] !== undefined);
+    if (moved.length) {
+      throw new BadRequestException({ message: 'Your specialty, about, headline, credentials, experience, approaches and languages are edited in My profile.', code: 'EDIT_IN_PROFILE', fields: moved });
+    }
     if (dto.firstName !== undefined || dto.lastName !== undefined || dto.phone !== undefined) {
       await this.prisma.profile.update({
         where: { id: profileId },
@@ -204,13 +247,6 @@ export class ConsultService {
         ...(dto.publicUsername ? { publicUsername: dto.publicUsername.trim() } : {}),
         ...(dto.bookingEmail ? { bookingEmail: dto.bookingEmail.trim() } : {}),
         ...(dto.notificationEmail ? { notificationEmail: dto.notificationEmail.trim() } : {}),
-        ...(dto.welcomeMessage !== undefined ? { welcomeMessage: dto.welcomeMessage } : {}),
-        ...(dto.tagline !== undefined ? { tagline: dto.tagline?.trim() || null } : {}),
-        ...(dto.specialty !== undefined ? { specialty: dto.specialty } : {}),
-        ...(dto.credentials !== undefined ? { credentials: dto.credentials } : {}),
-        ...(dto.yearsExperience !== undefined ? { yearsExperience: dto.yearsExperience } : {}),
-        ...(dto.modalities ? { modalities: dto.modalities } : {}),
-        ...(dto.languages ? { languages: dto.languages } : {}),
         ...(dto.isPublic !== undefined ? { isPublic: dto.isPublic } : {}),
         ...(dto.acceptsGeneralBooking !== undefined ? { acceptsGeneralBooking: dto.acceptsGeneralBooking } : {}),
         ...(videoProvider ? { videoProvider } : {}),

@@ -23,6 +23,7 @@ import { HANDLE_MESSAGES, handleProblem, normalizeHandle } from '../practitioner
 import { PRACTITIONER_KINDS } from '../practitioner-profile/kinds';
 import { isReservedSlug } from '../tenant/reserved-slugs';
 import { Prisma, type PractitionerKind } from '@prisma/client';
+import { PractitionerProfileService } from '../practitioner-profile/practitioner-profile.service';
 
 const BCRYPT_ROUNDS = 12;
 
@@ -73,6 +74,7 @@ export class AuthService {
     private readonly sessions: SessionService,
     private readonly invites?: InviteService,
     @Optional() private readonly defaultForms?: DefaultFormsService,
+    @Optional() private readonly practitionerProfiles?: PractitionerProfileService,
   ) {}
 
   /** `base`, or `base-xxxx` when an account already has that username. */
@@ -216,6 +218,14 @@ export class AuthService {
           isVerified: true,
         },
         });
+      // §6.17: the therapist's profile is the one home for facts about them.
+      // A failure here never loses the signup; the profile.ensure-drafts job
+      // creates any that are missing.
+      try {
+        await this.practitionerProfiles?.ensureDraft(user.id, profile.id);
+      } catch (err) {
+        this.logger.warn(`Draft profile not created for user ${user.id}: ${(err as Error).message}`);
+      }
     }
 
     this.authDebug('register', {

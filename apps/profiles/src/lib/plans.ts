@@ -1,6 +1,6 @@
 import type { ProfilesConfig } from './config';
 
-/** One plan, as GET /v1/billing/plans returns it (apps/api public-plans.ts). */
+/** One plan, as GET /v1/billing/public-plans returns it (apps/api public-plans.ts). */
 export interface Plan {
   tier: 'FREE' | 'STARTER' | 'PRO' | 'CLINIC';
   name: string;
@@ -17,7 +17,7 @@ export interface Plan {
 
 /** The plans from the API: the same tables that set the charge and the limits. No credentials are sent. */
 export async function fetchPlans(config: ProfilesConfig, fetchImpl: typeof fetch = fetch): Promise<Plan[]> {
-  const res = await fetchImpl(`${config.apiOrigin}/v1/billing/plans`, { headers: { accept: 'application/json' }, redirect: 'manual' });
+  const res = await fetchImpl(`${config.apiOrigin}/v1/billing/public-plans`, { headers: { accept: 'application/json' }, redirect: 'manual' });
   if (!res.ok) throw new Error(`Plans API answered ${res.status}`);
   const plans = (await res.json()) as Plan[];
   if (!Array.isArray(plans) || plans.length === 0) throw new Error('Plans API returned no plans');

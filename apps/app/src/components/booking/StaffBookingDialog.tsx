@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { CalendarPlus, Loader2, X } from 'lucide-react';
 import { api, TENANT_SLUG } from '../../utils/apiClient';
 import { useAuth } from '../../context/AuthContext';
+import { formatWhen } from '../../utils/displayFormat';
 
 type Service = { id: string; title: string; durationMinutes: number; priceKobo: string };
 type StaffRow = { kind: 'member' | 'invite'; id: string; firstName: string | null; lastName: string | null; status: string; isTherapist: boolean };
@@ -11,8 +12,7 @@ type Payment = 'LINK' | 'PAID' | 'NONE';
 export type StaffBookingResult = { bookingId: string; status: 'PENDING_PAYMENT' | 'CONFIRMED' };
 
 const naira = (kobo: string | number) => `₦${(Number(kobo) / 100).toLocaleString('en-NG')}`;
-const when = (iso: string) =>
-  new Intl.DateTimeFormat('en-GB', { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }).format(new Date(iso));
+const when = (iso: string) => formatWhen(iso, 'short');
 
 const PAYMENTS: Array<{ value: Payment; label: string; hint: string; frontDeskOnly?: boolean }> = [
   { value: 'LINK', label: 'Send a payment link', hint: 'The client pays online. The time is held for up to 48 hours.' },

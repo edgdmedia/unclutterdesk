@@ -101,6 +101,8 @@ model Tenant {
 
   /// v2 §6.8: how the owner arrived. PROFILE = profile-first signup.
   onboardingIntent        OnboardingIntent          @default(PRACTICE)
+  /// §6.17: while the practice is solo, its page fills empty fields from the owner's profile.
+  useProfileForPractice   Boolean                   @default(true)
   /// v2 §6.16: what a solo practice shows at `/`. Set once at the owner's first
   /// publish, then only by the therapist. Null until then.
   homePage                PracticeHomePage?

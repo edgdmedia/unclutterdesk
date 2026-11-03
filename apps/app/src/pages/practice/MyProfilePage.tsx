@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Save } from 'lucide-react';
 import { Eyebrow, useToast } from '@unclutterdesk/ui';
 import { api } from '../../utils/apiClient';
+import { Link } from 'react-router-dom';
 
 type ProfileRecord = {
   firstName?: string;
@@ -25,21 +26,23 @@ type ProfileRecord = {
   locationIds?: string[];
 };
 
+
+/** §6.17: edited in My profile only (the API refuses them on this record). */
+const PERSON_FIELDS = ['welcomeMessage', 'tagline', 'specialty', 'credentials', 'yearsExperience', 'modalities', 'languages'] as const;
 type LocationOption = { id: string; name: string; city: string };
 
 const inputCls = 'h-[46px] w-full px-[14px] rounded-[14px] bg-[#F8FAFC] border border-[#E2E8F0] text-sm font-medium text-[#0F172A] outline-none focus:bg-white focus:border-[#94A3B8]';
 
 /**
- * The therapist's settings at this practice. Inside the merged profile page
- * (`embedded`), it's the "This practice" tab. Once the therapist has a public
- * profile (`sharedFieldsInPublicProfile`), the fields the profile now owns
- * (specialty, tagline, credentials, years, modalities, languages) are edited
- * there and copied here by the API, so they are not shown twice.
+ * The therapist's settings at this practice: how clients reach them here,
+ * video, locations. Inside the merged profile page (`embedded`) it's the
+ * "This practice" tab. Facts about the person (about, headline, specialties,
+ * credentials and so on) have one home, My profile (§6.17); the API refuses
+ * them here.
  */
 export function MyProfilePage({
   embedded = false,
-  sharedFieldsInPublicProfile = false,
-}: { embedded?: boolean; sharedFieldsInPublicProfile?: boolean } = {}) {
+}: { embedded?: boolean } = {}) {
   const toast = useToast();
   const [profile, setProfile] = useState<ProfileRecord>({ modalities: [], languages: [] });
   const [loading, setLoading] = useState(true);
@@ -82,7 +85,9 @@ export function MyProfilePage({
     setSaving(true);
     setError(null);
     try {
-      await api.post('/v1/consult/therapist/profile', profile);
+      // §6.17: only what is particular to this practice; facts about you live in My profile.
+      const practiceOnly = Object.fromEntries(Object.entries(profile).filter(([k]) => !PERSON_FIELDS.includes(k as (typeof PERSON_FIELDS)[number])));
+      await api.post('/v1/consult/therapist/profile', practiceOnly);
       toast.success('Profile saved');
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Could not save your profile');
@@ -97,7 +102,7 @@ export function MyProfilePage({
       <header className={embedded ? 'flex items-center gap-5 pb-4' : 'h-[88px] bg-white border-b border-[#E2E8F0] px-[26px] flex items-center gap-5 shrink-0'}>
         <div>
           {embedded ? (
-            <p className="text-[13px] text-[#64748B] font-medium">Settings for this practice: how clients reach you, video, locations and your booking-page welcome.</p>
+            <p className="text-[13px] text-[#64748B] font-medium">Settings for this practice: how clients reach you here, video and locations.</p>
           ) : (
             <>
               <Eyebrow>ACCOUNT</Eyebrow>
@@ -123,29 +128,15 @@ export function MyProfilePage({
                   <div><label className="block text-[11.5px] font-bold text-[#475569] mb-1.5">First name</label><input className={inputCls} value={profile.firstName || ''} onChange={(e) => setProfile((p) => ({ ...p, firstName: e.target.value }))} /></div>
                   <div><label className="block text-[11.5px] font-bold text-[#475569] mb-1.5">Last name</label><input className={inputCls} value={profile.lastName || ''} onChange={(e) => setProfile((p) => ({ ...p, lastName: e.target.value }))} /></div>
                   <div><label className="block text-[11.5px] font-bold text-[#475569] mb-1.5">Phone</label><input className={inputCls} value={profile.phone || ''} onChange={(e) => setProfile((p) => ({ ...p, phone: e.target.value }))} /></div>
-                  {!sharedFieldsInPublicProfile && <div><label className="block text-[11.5px] font-bold text-[#475569] mb-1.5">Specialty</label><input className={inputCls} value={profile.specialty || ''} onChange={(e) => setProfile((p) => ({ ...p, specialty: e.target.value }))} /></div>}
                   <div><label className="block text-[11.5px] font-bold text-[#475569] mb-1.5">Booking email</label><input className={inputCls} value={profile.bookingEmail || ''} onChange={(e) => setProfile((p) => ({ ...p, bookingEmail: e.target.value }))} /></div>
                   <div><label className="block text-[11.5px] font-bold text-[#475569] mb-1.5">Notification email</label><input className={inputCls} value={profile.notificationEmail || ''} onChange={(e) => setProfile((p) => ({ ...p, notificationEmail: e.target.value }))} /></div>
                 </div>
-                {!sharedFieldsInPublicProfile && <div className="mt-4"><label className="block text-[11.5px] font-bold text-[#475569] mb-1.5">Tagline</label><input className={inputCls} value={profile.tagline || ''} maxLength={120} placeholder="One line under your name on the booking page" onChange={(e) => setProfile((p) => ({ ...p, tagline: e.target.value }))} /></div>}
-                <div className="mt-4"><label className="block text-[11.5px] font-bold text-[#475569] mb-1.5">Bio</label><textarea rows={5} className="w-full min-h-[96px] p-3.5 rounded-[14px] bg-[#F8FAFC] border border-[#E2E8F0] text-sm font-medium text-[#0F172A] outline-none focus:bg-white focus:border-[#94A3B8] resize-none leading-relaxed" value={profile.welcomeMessage || ''} onChange={(e) => setProfile((p) => ({ ...p, welcomeMessage: e.target.value }))} /></div>
               </div>
 
-              {sharedFieldsInPublicProfile ? (
-                <p className="rounded-[18px] border border-[#E2E8F0] bg-white px-5 py-4 text-[13px] text-[#475569]" role="note">
-                  Your specialty, headline, credentials, experience, modalities and languages are edited in your public profile and used here too.
-                </p>
-              ) : (
-              <div className="bg-white rounded-[24px] border border-[#E2E8F0] p-[24px_26px]">
-                <Eyebrow className="mb-1">CREDENTIALS</Eyebrow>
-                <div className="grid grid-cols-2 gap-4 mt-4">
-                  <div><label className="block text-[11.5px] font-bold text-[#475569] mb-1.5">Credentials</label><input className={inputCls} value={profile.credentials || ''} onChange={(e) => setProfile((p) => ({ ...p, credentials: e.target.value }))} /></div>
-                  <div><label className="block text-[11.5px] font-bold text-[#475569] mb-1.5">Years experience</label><input type="number" className={inputCls} value={profile.yearsExperience || 0} onChange={(e) => setProfile((p) => ({ ...p, yearsExperience: Number(e.target.value) || 0 }))} /></div>
-                  <div><label className="block text-[11.5px] font-bold text-[#475569] mb-1.5">Modalities</label><input className={inputCls} value={(profile.modalities || []).join(', ')} onChange={(e) => setProfile((p) => ({ ...p, modalities: e.target.value.split(',').map((v) => v.trim()).filter(Boolean) }))} /></div>
-                  <div><label className="block text-[11.5px] font-bold text-[#475569] mb-1.5">Languages</label><input className={inputCls} value={(profile.languages || []).join(', ')} onChange={(e) => setProfile((p) => ({ ...p, languages: e.target.value.split(',').map((v) => v.trim()).filter(Boolean) }))} /></div>
-                </div>
-              </div>
-              )}
+              <p className="rounded-[18px] border border-[#E2E8F0] bg-white px-5 py-4 text-[13px] text-[#475569]" role="note">
+                Your name as clients see it, photo, about, headline, specialties, credentials, experience, approaches and languages are edited once, in{' '}
+                <Link to="/dashboard/profile" className="font-bold text-[#0F3A53] underline">My profile</Link>, and used on your booking page here too.
+              </p>
 
               <div className="bg-white rounded-[24px] border border-[#E2E8F0] p-[24px_26px]">
                 <Eyebrow className="mb-1">SEES CLIENTS</Eyebrow>

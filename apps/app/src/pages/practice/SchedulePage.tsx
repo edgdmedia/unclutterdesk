@@ -10,6 +10,7 @@ function localDateInput(d: Date): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 }
 import { PaymentChip } from '../../components/booking/PaymentChip';
+import { formatClock } from '../../utils/displayFormat';
 
 interface Client {
   id: string;
@@ -692,15 +693,7 @@ export function SchedulePage({ sessions, setSessions, clients, tenantSlug, onRef
               <div className="flex items-center gap-2.5">
                 <Clock className="h-4 w-4 text-[#94A3B8]" />
                 <span>
-                  {new Date(selectedEvent.startsAt).toLocaleTimeString('en-US', {
-                    hour: 'numeric',
-                    minute: '2-digit',
-                  })}{' '}
-                  —{' '}
-                  {new Date(selectedEvent.endsAt).toLocaleTimeString('en-US', {
-                    hour: 'numeric',
-                    minute: '2-digit',
-                  })}
+                  {formatClock(selectedEvent.startsAt)} — {formatClock(selectedEvent.endsAt)}
                 </span>
               </div>
               <div className="flex items-center gap-2.5">

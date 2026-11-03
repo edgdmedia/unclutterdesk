@@ -884,6 +884,39 @@ On a custom domain such as `chente.com`, the API's sign-in cookies (on `api.uncl
 
 ---
 
+### 6.17 One home per fact (agreed 3 Nov 2026)
+
+A therapist should type each fact about themselves once. Three records hold overlapping fields today: the public profile (`PractitionerProfile`), the therapist's record in each practice (`ConsultTherapistProfile`, plus their `Profile`), and the practice (`Tenant`). Each fact gets **one home**. Every other screen and page **reads it from there**; nothing else edits it.
+
+**Where each fact lives**
+
+| Fact | Home | Read by |
+|---|---|---|
+| Name shown to clients | `PractitionerProfile.displayName` | Booking page, practice team list, emails to clients |
+| Photo | `PractitionerProfile.photoKey` | Same, instead of `Profile.avatarUrl` (the avatar stays for the staff account menu only) |
+| Headline, about, credentials, years, specialties, modalities, languages | `PractitionerProfile` (headline, about, credentialsText, selfReportedYears, taxonomy) | Booking page therapist card and "about" |
+| Online / in person | `PractitionerProfile.offersOnline / offersInPerson` as the person's default; a practice can narrow it per place (§6.9) | Booking page, profile |
+| Practice name, logo, address, phone, public email, welcome title | `Tenant` | Booking page header, emails, invoices |
+| Booking and notification email, video provider, session length, gaps, calendar sync, availability, work locations | `ConsultTherapistProfile` (practice-specific) | Booking engine |
+
+**What changes**
+- **Deprecated copies stop being written.** The fields on `ConsultTherapistProfile` (`tagline`, `credentials`, `yearsExperience`, `specialty`, `modalities`, `languages`) and its `welcomeMessage` stop being read: the booking page reads them from the person's profile. The existing `syncPracticeRecords` copy is then removed. The columns are dropped in a later migration, after one release.
+- **Staff with no public profile yet:** every therapist membership gets a `PractitionerProfile`, created as a DRAFT (not published) if missing, so the booking page has one source. Publishing stays opt-in (§6.1).
+- **One-time back-fill:** where the profile's field is empty, fill it from the practice record (the welcome message becomes `about`, tagline becomes headline, and so on). Never overwrite a field the therapist has already filled in.
+- **Screens:**
+  - **Profile → "This practice"** keeps only the practice-specific settings. Each moved field shows "Edited in My profile" with a link.
+  - **Settings → Practice profile** keeps only practice facts.
+
+**Solo practices (with §6.16)**
+- **Practice page:** a solo practice gets a "Use my profile for my practice page" switch, on by default. While it's on, the practice name defaults to the person's name and the practice welcome to their about. The logo falls back to their photo, and the city to theirs. Each can be overridden in Practice profile. An override is stored on `Tenant`, and clearing it returns to the profile.
+- **Team practices:** they never inherit facts from one person.
+
+**Done when:**
+- A solo therapist sets their name, photo and about once, in My profile, and sees them on the profile, the booking page and client emails.
+- No screen offers a second place to edit them.
+- A test fails if a booking-page response takes a person fact from anywhere but `PractitionerProfile`.
+
+
 ## 7. Phase 2 — Desk booking from profile & profile stats
 
 **Builds on:** Phase 1, the public booking flow (`pages/public/booking/useBookingData.ts`), `GET /v1/consult/public/services|availability`.

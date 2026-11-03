@@ -7,9 +7,10 @@ import { TenantService } from './tenant.service';
 import { CloudflareSaasService } from './cloudflare-saas.service';
 import { CustomDomainCron } from './custom-domain.cron';
 import { PrismaService } from '../../common/prisma/prisma.service';
+import { PractitionerProfileModule } from '../practitioner-profile/practitioner-profile.module';
 
 @Module({
-  imports: [IntakeModule],
+  imports: [IntakeModule, PractitionerProfileModule],
   controllers: [TenantController, LocationsController],
   providers: [TenantService, LocationsService, PrismaService, CloudflareSaasService, CustomDomainCron],
   exports: [TenantService, LocationsService, CloudflareSaasService],

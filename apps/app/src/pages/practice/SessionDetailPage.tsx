@@ -6,6 +6,7 @@ import { Card, Eyebrow, Page, PageHeader, StatTile, StatusBadge, useToast } from
 import { PaymentChip } from '../../components/booking/PaymentChip';
 import { api } from '../../utils/apiClient';
 import type { SessionRow } from './SessionsPage';
+import { formatWhen } from '../../utils/displayFormat';
 
 interface SessionDetail extends SessionRow {
   clientEmail: string;
@@ -21,8 +22,7 @@ interface SessionDetail extends SessionRow {
 }
 
 const naira = (kobo: string | null) => (kobo === null ? '—' : `₦${(Number(kobo) / 100).toLocaleString('en-NG')}`);
-const longWhen = (iso: string) =>
-  new Intl.DateTimeFormat('en-GB', { weekday: 'long', day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' }).format(new Date(iso));
+const longWhen = (iso: string) => formatWhen(iso, 'long');
 
 export function SessionDetailPage() {
   const { id } = useParams();
