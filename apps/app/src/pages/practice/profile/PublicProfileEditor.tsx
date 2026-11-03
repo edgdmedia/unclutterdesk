@@ -5,6 +5,7 @@ import { BookingChoice } from './BookingChoice';
 import { BookingNudge } from './BookingNudge';
 import { SocialLinksField } from './SocialLinksField';
 import { profilePath } from '../../../config/domains';
+import { api } from '../../../utils/apiClient';
 import {
   KIND_LABELS,
   SECTION_TITLES,
@@ -18,6 +19,43 @@ import {
   type TaxonomyTerm,
   type TimelineEntry,
 } from './profileApi';
+
+type PublicTenantInfo = {
+  id: string;
+  name: string;
+  slug: string;
+  shortName?: string | null;
+  welcomeTitle?: string | null;
+  welcomeMessage?: string | null;
+  tagline?: string | null;
+  category?: string | null;
+  city?: string | null;
+  address?: string | null;
+  publicEmail?: string | null;
+  publicPhone?: string | null;
+  primaryColor?: string;
+  secondaryColor?: string;
+  logoUrl?: string | null;
+  locations?: Array<{ name: string; city: string }>;
+  formats?: Array<'ONLINE' | 'IN_PERSON'>;
+};
+
+type PublicTherapist = {
+  profileId: string;
+  firstName: string;
+  lastName: string;
+  avatarUrl: string | null;
+  specialty: string | null;
+  credentials: string | null;
+  yearsExperience: number | null;
+  welcomeMessage: string | null;
+  tagline: string | null;
+  modalities: string[];
+  languages: string[];
+};
+
+type PublicAvailability = { id: string; startsAt: string; endsAt: string };
+type PublicReviewsPayload = { averageRating: number | null; count: number };
 
 /**
  * The public-profile editor (spec §6.4–§6.7). Sections follow §6.4's order;
@@ -284,7 +322,15 @@ function StartProfile({ templates, onCreated }: { templates: ProfileTemplate[]; 
   );
 }
 
-export function PublicProfileEditor({ onProfileChange }: { onProfileChange?: (p: OwnProfile | null) => void }) {
+interface PracticeBrand {
+  name?: string;
+  slug?: string;
+  logoUrl?: string | null;
+  primaryColor?: string;
+  secondaryColor?: string;
+}
+
+export function PublicProfileEditor({ onProfileChange, practiceBrand }: { onProfileChange?: (p: OwnProfile | null) => void; practiceBrand?: PracticeBrand | null }) {
   const toast = useToast();
   const [loading, setLoading] = useState(true);
   const [profile, setProfile] = useState<OwnProfile | null>(null);
@@ -297,6 +343,33 @@ export function PublicProfileEditor({ onProfileChange }: { onProfileChange?: (p:
   const [timeline, setTimeline] = useState<TimelineEntry[]>([]);
   const [saving, setSaving] = useState(false);
   const [dirty, setDirty] = useState({ fields: false, terms: false, timeline: false });
+
+  // Preview data for the AppearancePicker
+  const [previewTenant, setPreviewTenant] = useState<PublicTenantInfo | null>(null);
+  const [previewSlots, setPreviewSlots] = useState<PublicAvailability[]>([]);
+  const [previewReviews, setPreviewReviews] = useState<PublicReviewsPayload>({ averageRating: null, count: 0 });
+  const [previewLoading, setPreviewLoading] = useState(true);
+
+  const loadPreviewData = useCallback(async () => {
+    try {
+      const [tenantInfo, availability, reviewPayload] = await Promise.all([
+        api.get<PublicTenantInfo>('/v1/tenant/public/info'),
+        api.get<PublicAvailability[]>('/v1/consult/public/availability'),
+        api.get<PublicReviewsPayload>('/v1/intake/public/reviews'),
+      ]);
+      setPreviewTenant(tenantInfo);
+      setPreviewSlots(availability.slice(0, 3));
+      setPreviewReviews(reviewPayload);
+    } catch {
+      // Preview data is optional; fall back to practiceBrand
+    } finally {
+      setPreviewLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    void loadPreviewData();
+  }, [loadPreviewData]);
 
   const adopt = useCallback(
     (p: OwnProfile | null) => {
@@ -786,14 +859,45 @@ export function PublicProfileEditor({ onProfileChange }: { onProfileChange?: (p:
           </Card>
         )}
 
-        <AppearancePicker
-          layoutKey={profile.layoutKey}
-          themeKey={profile.themeKey}
-          name={profile.displayName}
-          kindLabel={KIND_LABELS[profile.kind as keyof typeof KIND_LABELS] ?? 'Therapist'}
-          headline={profile.headline}
-          onChange={(change) => void chooseAppearance(change)}
-        />
+        {(() => {
+          const hasAbout = Boolean(previewTenant?.welcomeTitle || previewTenant?.welcomeMessage || profile?.about || previewTenant?.tagline || profile?.headline || (profile?.taxonomy?.some((t) => t.term.kind === 'SPECIALTY')));
+          return (
+            <AppearancePicker
+              layoutKey={profile.layoutKey}
+              themeKey={profile.themeKey}
+              name={profile.displayName}
+              kindLabel={KIND_LABELS[profile.kind as keyof typeof KIND_LABELS] ?? 'Therapist'}
+              headline={profile.headline}
+              tenant={previewTenant ?? {
+                id: '',
+                name: practiceBrand?.name || '',
+                slug: practiceBrand?.slug || '',
+                logoUrl: practiceBrand?.logoUrl || null,
+                primaryColor: practiceBrand?.primaryColor,
+                secondaryColor: practiceBrand?.secondaryColor,
+                locations: [],
+                formats: [],
+              }}
+              therapist={profile ? {
+                profileId: profile.id,
+                firstName: profile.displayName.split(' ')[0] || '',
+                lastName: profile.displayName.split(' ').slice(1).join(' ') || '',
+                avatarUrl: null,
+                specialty: KIND_LABELS[profile.kind as keyof typeof KIND_LABELS] ?? 'Therapist',
+                credentials: profile.credentialsText,
+                yearsExperience: profile.selfReportedYears,
+                welcomeMessage: profile.about,
+                tagline: profile.headline,
+                modalities: profile.taxonomy.filter((t) => t.term.kind === 'MODALITY').map((t) => t.term.label),
+                languages: profile.taxonomy.filter((t) => t.term.kind === 'LANGUAGE').map((t) => t.term.label),
+              } : null}
+              slots={previewSlots}
+              reviews={previewReviews}
+              hasAbout={hasAbout}
+              onChange={(change) => void chooseAppearance(change)}
+            />
+          );
+        })()}
       </aside>
     </div>
   );

@@ -1,9 +1,49 @@
-import type { CSSProperties, ReactNode } from 'react';
-import { Card, PROFILE_LAYOUTS, PROFILE_THEMES, profileLayout, profileTheme, type ProfileLayoutKey, type ProfileTheme } from '@unclutterdesk/ui';
+import type { CSSProperties } from 'react';
+import { Card, PROFILE_LAYOUTS, PROFILE_THEMES, profileLayout, profileTheme, ScaledPreview, type ProfileLayoutKey, type ProfileTheme } from '@unclutterdesk/ui';
+import { PublicProfilePreview, type PublicProfilePreviewProps } from '../../public/PublicProfilePreview';
+import { profilePath } from '../../../config/domains';
+
+/** A small structural sketch of each layout, in neutral greys. */
+function LayoutThumb({ layout }: { layout: ProfileLayoutKey }) {
+  const bar = (w: string, h = 5, bg = '#CBD5E1'): CSSProperties => ({ width: w, height: h, borderRadius: 999, background: bg });
+  return (
+    <span aria-hidden className="h-[64px] rounded-[10px] bg-[#F1F5F9] overflow-hidden flex flex-col p-1.5 gap-1">
+      {layout === 'classic' && (
+        <span className="flex flex-col items-center gap-1 pt-1">
+          <span className="h-[18px] w-[18px] rounded-full bg-[#94A3B8]" />
+          <span style={bar('50%', 5, '#64748B')} />
+          <span style={bar('70%')} />
+          <span style={bar('80%', 7, '#94A3B8')} />
+        </span>
+      )}
+      {layout === 'editorial' && (
+        <>
+          <span className="h-[26px] -mx-1.5 -mt-1.5 bg-[#CBD5E1]" />
+          <span style={bar('60%', 6, '#64748B')} />
+          <span style={bar('85%', 4, '#94A3B8')} />
+        </>
+      )}
+      {layout === 'compact' && (
+        <>
+          <span className="flex items-center gap-1"><span className="h-[14px] w-[14px] rounded-[4px] bg-[#94A3B8]" /><span style={bar('45%', 5, '#64748B')} /></span>
+          <span className="h-[10px] rounded-[4px] bg-white" />
+          <span className="h-[10px] rounded-[4px] bg-white" />
+          <span className="h-[10px] rounded-[4px] bg-white" />
+        </>
+      )}
+      {layout === 'split' && (
+        <span className="flex gap-1 h-full">
+          <span className="flex-1 flex flex-col gap-1"><span style={bar('80%', 6, '#64748B')} /><span style={bar('100%')} /><span style={bar('90%')} /></span>
+          <span className="w-[38%] rounded-[5px] bg-white" />
+        </span>
+      )}
+    </span>
+  );
+}
 
 /**
  * How the public profile looks (spec §6.5): a layout and a colour palette,
- * chosen separately, with a live phone preview built from the same tokens the
+ * chosen separately, with a live scaled preview built from the same tokens the
  * public page uses. Any palette works on any layout; neither changes the words.
  */
 export function AppearancePicker({
@@ -12,6 +52,12 @@ export function AppearancePicker({
   name,
   kindLabel,
   headline,
+  // Full preview data
+  tenant,
+  therapist,
+  slots,
+  reviews,
+  hasAbout,
   onChange,
 }: {
   layoutKey: string;
@@ -19,10 +65,17 @@ export function AppearancePicker({
   name: string;
   kindLabel: string;
   headline: string | null;
+  tenant: PublicProfilePreviewProps['tenant'];
+  therapist: PublicProfilePreviewProps['therapist'];
+  slots: PublicProfilePreviewProps['slots'];
+  reviews: PublicProfilePreviewProps['reviews'];
+  hasAbout: PublicProfilePreviewProps['hasAbout'];
   onChange: (change: { layoutKey?: string; themeKey?: string }) => void;
 }) {
   const layout = profileLayout(layoutKey);
   const theme = profileTheme(themeKey);
+
+  const publicProfileUrl = tenant?.slug ? profilePath(tenant.slug) : null;
 
   return (
     <Card padding="lg">
@@ -75,111 +128,22 @@ export function AppearancePicker({
         ))}
       </div>
 
-      <span className="mt-4 block text-[9px] font-black tracking-[0.22em] uppercase text-[#94A3B8]">Preview · phone</span>
-      <div className="mt-2" aria-label={`Preview: ${layout.label} layout, ${theme.label} palette`} role="img">
-        <PhonePreview layout={layout.key} theme={theme} name={name} kindLabel={kindLabel} headline={headline} />
-      </div>
+      <ScaledPreview
+        width={1180}
+        minHeight={700}
+        showDeviceSwitch={true}
+        showFullScreen={true}
+        fullScreenLabel="View full profile"
+        onFullScreen={publicProfileUrl ? () => window.open(publicProfileUrl, '_blank') : undefined}
+      >
+        <PublicProfilePreview
+          tenant={tenant}
+          therapist={therapist}
+          slots={slots}
+          reviews={reviews}
+          hasAbout={hasAbout}
+        />
+      </ScaledPreview>
     </Card>
-  );
-}
-
-/** A small structural sketch of each layout, in neutral greys. */
-function LayoutThumb({ layout }: { layout: ProfileLayoutKey }) {
-  const bar = (w: string, h = 5, bg = '#CBD5E1'): CSSProperties => ({ width: w, height: h, borderRadius: 999, background: bg });
-  return (
-    <span aria-hidden className="h-[64px] rounded-[10px] bg-[#F1F5F9] overflow-hidden flex flex-col p-1.5 gap-1">
-      {layout === 'classic' && (
-        <span className="flex flex-col items-center gap-1 pt-1">
-          <span className="h-[18px] w-[18px] rounded-full bg-[#94A3B8]" />
-          <span style={bar('50%', 5, '#64748B')} />
-          <span style={bar('70%')} />
-          <span style={bar('80%', 7, '#94A3B8')} />
-        </span>
-      )}
-      {layout === 'editorial' && (
-        <>
-          <span className="h-[26px] -mx-1.5 -mt-1.5 bg-[#CBD5E1]" />
-          <span style={bar('60%', 6, '#64748B')} />
-          <span style={bar('85%', 4, '#94A3B8')} />
-        </>
-      )}
-      {layout === 'compact' && (
-        <>
-          <span className="flex items-center gap-1"><span className="h-[14px] w-[14px] rounded-[4px] bg-[#94A3B8]" /><span style={bar('45%', 5, '#64748B')} /></span>
-          <span className="h-[10px] rounded-[4px] bg-white" />
-          <span className="h-[10px] rounded-[4px] bg-white" />
-          <span className="h-[10px] rounded-[4px] bg-white" />
-        </>
-      )}
-      {layout === 'split' && (
-        <span className="flex gap-1 h-full">
-          <span className="flex-1 flex flex-col gap-1"><span style={bar('80%', 6, '#64748B')} /><span style={bar('100%')} /><span style={bar('90%')} /></span>
-          <span className="w-[38%] rounded-[5px] bg-white" />
-        </span>
-      )}
-    </span>
-  );
-}
-
-/** The top of the public page in the chosen layout and palette. */
-function PhonePreview({ layout, theme, name, kindLabel, headline }: { layout: ProfileLayoutKey; theme: ProfileTheme; name: string; kindLabel: string; headline: string | null }) {
-  const c = theme.colors;
-  const button = (text: string, round = false): ReactNode => (
-    <span
-      className="mt-1 flex h-[38px] items-center justify-center text-[12.5px] font-bold"
-      style={{ background: c.accent, color: c.accentText, borderRadius: round ? 999 : 11 }}
-    >
-      {text}
-    </span>
-  );
-  const line = headline || 'Your headline appears here.';
-  return (
-    <div className="mx-auto w-[240px] overflow-hidden rounded-[26px] border-[6px] border-[#0F172A]" style={{ background: c.background, color: c.text }}>
-      <div className="h-[330px] overflow-hidden">
-        {layout === 'classic' && (
-          <div className="flex flex-col items-center gap-1.5 px-4 py-5 text-center" style={{ background: c.surface }}>
-            <span className="h-[64px] w-[64px] rounded-full" style={{ background: c.soft }} />
-            <span className="text-[16px] font-extrabold tracking-[-0.03em]">{name}</span>
-            <span className="text-[11px] font-semibold" style={{ color: c.accent }}>{kindLabel}</span>
-            <span className="text-[11.5px] leading-snug">{line}</span>
-            <span className="w-full">{button('Book a session')}</span>
-          </div>
-        )}
-        {layout === 'editorial' && (
-          <div className="flex flex-col">
-            <span className="h-[120px]" style={{ background: c.soft }} />
-            <div className="flex flex-col gap-1.5 px-4 py-3">
-              <span className="text-[8px] font-black uppercase tracking-[0.22em]" style={{ color: c.accent }}>{kindLabel}</span>
-              <span className="text-[19px] font-extrabold leading-none tracking-[-0.04em]">{name}</span>
-              <span className="font-serif text-[13px] italic leading-snug">“{line}”</span>
-              {button('Book a session', true)}
-            </div>
-          </div>
-        )}
-        {layout === 'compact' && (
-          <div className="flex flex-col gap-2 px-3 py-4">
-            <span className="flex items-center gap-2">
-              <span className="h-[42px] w-[42px] shrink-0 rounded-[12px]" style={{ background: c.soft }} />
-              <span className="flex flex-col"><span className="text-[14px] font-extrabold">{name}</span><span className="text-[10.5px]" style={{ color: c.mutedText }}>{kindLabel}</span></span>
-            </span>
-            <span className="text-[11.5px] leading-snug">{line}</span>
-            {button('Get in touch')}
-            <span className="h-[34px] rounded-[10px] border" style={{ background: c.surface, borderColor: c.border }} />
-            <span className="h-[34px] rounded-[10px] border" style={{ background: c.surface, borderColor: c.border }} />
-          </div>
-        )}
-        {layout === 'split' && (
-          <div className="flex flex-col gap-1.5 px-3 py-4">
-            <span className="h-[110px] rounded-[14px]" style={{ background: c.soft }} />
-            <span className="text-[8px] font-black uppercase tracking-[0.22em]" style={{ color: c.accent }}>{kindLabel}</span>
-            <span className="text-[18px] font-extrabold leading-none tracking-[-0.04em]">{name}</span>
-            <span className="rounded-[12px] border p-2" style={{ background: c.surface, borderColor: c.border }}>
-              <span className="block text-[11px] font-bold">Sessions and fees</span>
-              {button('Book a session')}
-            </span>
-          </div>
-        )}
-      </div>
-    </div>
   );
 }

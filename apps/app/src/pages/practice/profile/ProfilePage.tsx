@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { Page, PageHeader, SegmentedControl } from '@unclutterdesk/ui';
+import { usePracticeBrand } from '../../../context/PracticeBrandContext';
 import { MyProfilePage } from '../MyProfilePage';
 import { PublicProfileEditor } from './PublicProfileEditor';
 import { ShareKit } from './ShareKit';
@@ -22,6 +23,7 @@ export function ProfilePage() {
   const requested = params.get('tab');
   const tab: Tab = requested === 'practice' ? 'This practice' : requested === 'share' ? 'Share' : 'Public profile';
   const [publicProfile, setPublicProfile] = useState<OwnProfile | null>(null);
+  const { brand } = usePracticeBrand();
 
   const select = (next: Tab) => {
     if (next === 'This practice') setParams({ tab: 'practice' }, { replace: true });
@@ -40,7 +42,10 @@ export function ProfilePage() {
       }
     >
       <div hidden={tab !== 'Public profile'}>
-        <PublicProfileEditor onProfileChange={setPublicProfile} />
+        <PublicProfileEditor
+          onProfileChange={setPublicProfile}
+          practiceBrand={brand}
+        />
       </div>
       {tab === 'Share' && <ShareKit />}
       {tab === 'This practice' && <MyProfilePage embedded sharedFieldsInPublicProfile={publicProfile !== null} />}
