@@ -23,9 +23,13 @@ const ACTION = /^[a-z][a-z0-9-]*(\.[a-z][a-z0-9-]*)+$/;
 export class AuditService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async record(entry: AuditEntry) {
+  /**
+   * Write one entry. Pass `db` (a transaction client) to write it in the same
+   * transaction as the change it records, so neither exists without the other.
+   */
+  async record(entry: AuditEntry, db: Pick<Prisma.TransactionClient, 'adminAuditLog'> = this.prisma) {
     if (!ACTION.test(entry.action)) throw new Error(`Audit action must be dotted lowercase: ${entry.action}`);
-    return this.prisma.adminAuditLog.create({
+    return db.adminAuditLog.create({
       data: {
         actorUserId: entry.actorUserId,
         action: entry.action,

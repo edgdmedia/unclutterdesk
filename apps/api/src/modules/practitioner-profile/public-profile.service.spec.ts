@@ -10,6 +10,7 @@ const ROW = {
   kind: 'COUNSELLOR',
   templateKey: 'private-practice-counsellor',
   themeKey: 'warm',
+  layoutKey: 'split',
   displayName: 'Adaeze Okonkwo',
   pronouns: 'she/her',
   photoKey: 'profiles/1/photo-ab.jpg',
@@ -64,7 +65,7 @@ describe('public profile reads (§6.11)', () => {
     expect(Object.keys(result.profile).sort()).toEqual(
       [
         'about', 'acceptingClients', 'approach', 'bookingMode', 'city', 'contactEmail', 'countryCode', 'credentialsText',
-        'displayName', 'externalBookingUrl', 'faithIntegration', 'feeRangeText', 'handle', 'headline', 'kind', 'languages',
+        'displayName', 'externalBookingUrl', 'faithIntegration', 'feeRangeText', 'handle', 'headline', 'kind', 'languages', 'layoutKey',
         'modalities', 'offersInPerson', 'offersOnline', 'photoUrl', 'populations', 'previewImageUrl', 'pronouns', 'publishedAt',
         'socialLinks', 'specialties', 'supervisedBy', 'themeKey', 'timeline', 'updatedAt', 'yearsInPractice',
       ].sort(),

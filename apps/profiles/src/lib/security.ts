@@ -15,7 +15,8 @@ export function securityHeaders(config: ProfilesConfig): Record<string, string> 
     `connect-src ${config.apiOrigin}`,
     "frame-ancestors 'none'",
     "base-uri 'none'",
-    `form-action ${config.apiOrigin}`,
+    // The report form posts to this site (§6.15); nothing else posts.
+    `form-action 'self' ${config.apiOrigin}`,
   ].join('; ');
   return {
     'Content-Security-Policy': csp,

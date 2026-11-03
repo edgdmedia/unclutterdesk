@@ -30,6 +30,7 @@ export interface PublicProfile {
   contactEmail: string | null;
   socialLinks: Record<string, string>;
   themeKey: string;
+  layoutKey: string;
   specialties: (PublicTerm & { primary: boolean })[];
   modalities: PublicTerm[];
   populations: PublicTerm[];

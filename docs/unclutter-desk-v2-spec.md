@@ -482,7 +482,8 @@ model PractitionerProfile {
   status             PractitionerProfileStatus @default(DRAFT)
   kind               PractitionerKind
   templateKey        String?                     // template used to start (§6.6)
-  themeKey           String   @default("calm")   // §6.5
+  themeKey           String   @default("calm")   // §6.5 palette
+  layoutKey          String   @default("classic") // §6.5 layout
   displayName        String
   pronouns           String?
   photoKey           String?                     // R2 object key (§4.4)
@@ -640,12 +641,20 @@ Every profile has the same sections, in this order. The editor and the public pa
 
 Requirements are light so a therapist can publish quickly; the completeness score (§6.7) encourages the rest. When `supervisedBy` is set, the page shows "Practising under supervision".
 
-### 6.5 Themes
+### 6.5 Layouts and palettes
 
-- 4–5 presets in v2, defined as token sets (colours, fonts, header layout, photo shape): e.g. `calm` (default), `warm`, `clinical`, `earth`, `night`. All themes on all plans.
-- Picker in the editor with live preview. Themes change appearance only, never content or section order.
-- All themes pass WCAG 2.1 AA contrast; a test checks each theme's text/background pairs.
-- Fonts self-hosted (CSP `font-src 'self'`).
+A profile's look is two separate choices, decided 3 Nov 2026 (design canvas "Therapysts.com design"). Any palette works on any layout. Both change appearance only, never content or section order.
+
+- **Layouts** (structure: header, photo treatment and placement, section arrangement, type pairing, density). `layoutKey`:
+  - `classic` (default): centred round portrait, one column, sections as cards. Outfit throughout.
+  - `editorial`: wide photo banner, the headline as a serif pull quote (Fraunces), numbered sections divided by rules.
+  - `compact`: small header with the photo or initials beside the name, sections as cards. Suits short profiles.
+  - `split`: on a desktop, the sessions-and-fees panel stays beside the profile; on a phone it comes straight after the introduction.
+- **Palettes** (colour tokens only). `themeKey` keeps its name and values: `calm` (default, pine), `warm` (clay), `clinical` (blue), `earth` (olive), `night` (dark).
+- Every palette passes WCAG 2.1 AA on every layout: body, muted and accent text at 4.5:1 on their backgrounds, and button text at 4.5:1 on the accent. A test checks each pair.
+- The editor shows both pickers with a live phone preview. All layouts and palettes are on all plans.
+- Fonts are self-hosted (CSP `font-src 'self'`): Outfit, and Fraunces for `editorial` only.
+- The public site and the dashboard share one design language: the Unclutter Desk design system, extended with a Public surface (larger type, one photograph per page, more air). The profile PDF (§6.10) and preview images (§6.3) follow the profile's layout and palette.
 
 ### 6.6 Templates
 
@@ -869,8 +878,8 @@ On a custom domain such as `chente.com`, the API's sign-in cookies (on `api.uncl
 - [ ] Security (§4.3): cache ignores cookies; renderer never reads them; credentialed requests from the profiles origin are rejected; CSP present; script/HTML payloads render inert
 - [ ] Leaving a practice removes only that place (via each of the four existing exit paths), promotes a new main place, falls back to NONE when none remain, and purges the page
 - [ ] Share link, QR and PDF use `profilePath()`; PDF gated by profile entitlements
-- [ ] Report → `ProfileReport` queue → takedown works end to end and is audited; `PlatformRequest` unchanged; terms updated
-- [ ] `POST /v1/tenant/register` is platform-admin only
+- [x] Report → `ProfileReport` queue → takedown works end to end and is audited; `PlatformRequest` unchanged; terms updated — built 3 Nov 2026 on `phase1/profile-reports` (admin actions: unpublish, suspend, lift suspension)
+- [x] `POST /v1/tenant/register` is platform-admin only — done (PR from `phase1/admin-register`)
 - [ ] Public page SSR, readable without JS, Lighthouse accessibility ≥ 95
 
 ---

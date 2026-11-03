@@ -7,11 +7,22 @@ import { ProfilePurgeJob } from './profile-purge.job';
 import { PublicProfileService } from './public-profile.service';
 import { PublicProfilesController } from './public-profiles.controller';
 import { StorageModule } from '../storage/storage.module';
+import { PlatformAdminGuard } from '../admin/platform-admin.guard';
+import { AdminProfileReportsController } from './admin-profile-reports.controller';
+import { ProfileReportsService } from './profile-reports.service';
 
 @Module({
   imports: [StorageModule],
-  controllers: [PractitionerProfileController, PublicProfilesController],
-  providers: [PractitionerProfileService, PublicProfileService, ProfilePhotoJob, ProfilePurgeJob, PrismaService],
+  controllers: [PractitionerProfileController, PublicProfilesController, AdminProfileReportsController],
+  providers: [
+    PractitionerProfileService,
+    PublicProfileService,
+    ProfileReportsService,
+    ProfilePhotoJob,
+    ProfilePurgeJob,
+    PlatformAdminGuard,
+    PrismaService,
+  ],
   exports: [PractitionerProfileService],
 })
 export class PractitionerProfileModule {}

@@ -19,7 +19,7 @@ describe('security headers (§4.3)', () => {
       'connect-src https://api.example.test',
       "frame-ancestors 'none'",
       "base-uri 'none'",
-      'form-action https://api.example.test',
+      "form-action 'self' https://api.example.test",
     ]) expect(csp).toContain(part);
     expect(csp).not.toMatch(/unsafe-inline|unsafe-eval|\*/);
   });

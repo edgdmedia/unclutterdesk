@@ -1,0 +1,88 @@
+---
+import { env } from 'cloudflare:workers';
+import SitePage from '../../components/SitePage.astro';
+import { config as loadConfig } from '../../lib/env';
+import { lookupProfile } from '../../lib/profiles';
+import { DETAILS_MAX, OUTCOME_MESSAGES, REPORT_REASONS, parseReportForm, sendReport, withinRateLimit, type RateLimiter } from '../../lib/report';
+
+/**
+ * /{handle}/report (spec §6.15). GET shows the form; POST checks it and
+ * forwards it to the API. Never cached: it varies by what was posted.
+ */
+const config = loadConfig();
+const handle = (Astro.params.handle ?? '').toLowerCase();
+Astro.response.headers.set('Cache-Control', 'no-store');
+
+const result = await lookupProfile(config, handle);
+if (result.kind === 'moved') return Astro.redirect(`/${result.handle}/report`, 301);
+const profile = result.kind === 'found' ? result.profile : null;
+if (!profile) Astro.response.status = 404;
+
+let sent = false;
+let error: string | null = null;
+let chosen = '';
+let details = '';
+
+if (profile && Astro.request.method === 'POST') {
+  const parsed = parseReportForm(await Astro.request.formData());
+  if (!parsed.ok) {
+    error = parsed.error;
+    Astro.response.status = 400;
+  } else {
+    chosen = parsed.form.type;
+    details = parsed.form.details;
+    const limiter = (env as unknown as { REPORT_LIMITER?: RateLimiter }).REPORT_LIMITER;
+    const allowed = await withinRateLimit(limiter, Astro.request.headers.get('cf-connecting-ip'));
+    const outcome = allowed ? await sendReport(config, profile.handle, parsed.form) : 'limited';
+    if (outcome === 'sent') sent = true;
+    else {
+      error = OUTCOME_MESSAGES[outcome];
+      Astro.response.status = outcome === 'limited' ? 429 : outcome === 'missing' ? 404 : outcome === 'invalid' ? 400 : 502;
+    }
+  }
+}
+---
+<SitePage title={profile ? `Report ${profile.displayName}’s profile` : 'Profile not found'} noindex>
+  <main id="main" class="wrap">
+    {!profile && (
+      <>
+        <h1>We couldn’t find that profile</h1>
+        <p><a href="/">Find out about therapist profiles</a></p>
+      </>
+    )}
+    {profile && sent && (
+      <section class="report card" aria-live="polite">
+        <h1>Thank you. We’ll look into it.</h1>
+        <p>Someone on our team reviews every report and acts on it if the profile breaks our terms.</p>
+        <p class="notice">If you or someone else is in danger right now, contact local emergency services.</p>
+        <p><a href={`/${profile.handle}`}>Back to the profile</a></p>
+      </section>
+    )}
+    {profile && !sent && (
+      <form class="report card" method="post" action={`/${profile.handle}/report`}>
+        <h1>Report this profile</h1>
+        <p>You’re reporting {profile.displayName}’s profile. We review every report. The therapist isn’t told who sent it.</p>
+        {error && <p class="error" role="alert">{error}</p>}
+        <fieldset>
+          <legend>What’s wrong?</legend>
+          {REPORT_REASONS.map((r) => (
+            <label class="choice">
+              <input type="radio" name="type" value={r.value} required checked={chosen === r.value} />
+              <span><strong>{r.label}</strong>{r.hint && <span class="muted">{r.hint}</span>}</span>
+            </label>
+          ))}
+        </fieldset>
+        <label class="field">
+          <span><strong>Tell us more</strong> <span class="muted">(optional)</span></span>
+          <textarea name="details" rows="4" maxlength={DETAILS_MAX}>{details}</textarea>
+          <span class="muted small">Please don’t include anyone’s private health details.</span>
+        </label>
+        <div class="hp" aria-hidden="true">
+          <label>Leave this empty <input type="text" name="website" tabindex="-1" autocomplete="off" /></label>
+        </div>
+        <button class="btn" type="submit">Send report</button>
+        <p><a href={`/${profile.handle}`}>Cancel</a></p>
+      </form>
+    )}
+  </main>
+</SitePage>

@@ -321,6 +321,14 @@ describe('PractitionerProfileService', () => {
       await expect(service.updateOwn(ME, { themeKey: 'neon' })).rejects.toBeInstanceOf(BadRequestException);
     });
 
+    it('accepts a known layout, separately from the palette, and refuses others', async () => {
+      const { service, prisma } = setup();
+      ownProfile(prisma);
+      await service.updateOwn(ME, { layoutKey: 'editorial' });
+      expect(prisma.practitionerProfile.update.mock.calls[0][0].data).toEqual({ layoutKey: 'editorial' });
+      await expect(service.updateOwn(ME, { layoutKey: 'brutalist' })).rejects.toBeInstanceOf(BadRequestException);
+    });
+
     it('accepts only an active template', async () => {
       const { service, prisma } = setup();
       ownProfile(prisma);

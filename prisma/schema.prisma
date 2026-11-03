@@ -1001,7 +1001,8 @@ model PractitionerProfile {
   status                    PractitionerProfileStatus @default(DRAFT)
   kind                      PractitionerKind
   templateKey               String? // template used to start (§6.6)
-  themeKey                  String                    @default("calm") // §6.5
+  themeKey                  String                    @default("calm") // §6.5 palette
+  layoutKey                 String                    @default("classic") // §6.5 layout
   displayName               String
   pronouns                  String?
   photoKey                  String? // R2 object key (§4.4)
@@ -1037,6 +1038,7 @@ model PractitionerProfile {
   taxonomy      PractitionerTaxonomy[]
   timeline      PractitionerTimelineEntry[]
   handleHistory PractitionerHandleHistory[]
+  reports       ProfileReport[]
 
   @@index([status, countryCode])
 }
@@ -1161,4 +1163,49 @@ model AdminAuditLog {
 
   @@index([targetType, targetId])
   @@index([actorUserId, createdAt])
+}
+
+// ── v2 Phase 1: profile reports (spec §6.15) ────────────────────────────────
+
+enum ProfileReportType {
+  IMPERSONATION
+  MISLEADING
+  UNSAFE
+  OTHER
+  REMOVAL_REQUEST // Phase 5 directory removal requests (§10.4)
+}
+
+enum ProfileReportStatus {
+  OPEN
+  ACTIONED
+  DISMISSED
+}
+
+/// A report about a public profile, from anyone. Never stored in the
+/// practitioner's own practice records, and never shown to them with the
+/// reporter's details.
+model ProfileReport {
+  id             BigInt              @id @default(autoincrement())
+  /// Null if the profile has since been deleted.
+  profileId      BigInt?
+  /// The handle as reported, kept even if the profile moves or goes.
+  handle         String              @db.VarChar(30)
+  type           ProfileReportType
+  /// Plain text.
+  details        String?
+  reporterName   String?             @db.VarChar(120)
+  /// Removal requests only; never shown publicly.
+  reporterEmail  String?             @db.VarChar(254)
+  /// Removal requests: "this is me" / "acting for them".
+  relationship   String?             @db.VarChar(40)
+  status         ProfileReportStatus @default(OPEN)
+  reviewerUserId BigInt?
+  reviewNote     String?
+  createdAt      DateTime            @default(now())
+  reviewedAt     DateTime?
+
+  profile PractitionerProfile? @relation(fields: [profileId], references: [id], onDelete: SetNull)
+
+  @@index([status, createdAt])
+  @@index([profileId])
 }

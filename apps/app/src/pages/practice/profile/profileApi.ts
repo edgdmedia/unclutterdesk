@@ -62,6 +62,7 @@ export interface OwnProfile {
   kind: PractitionerKind;
   templateKey: string | null;
   themeKey: string;
+  layoutKey: string;
   displayName: string;
   pronouns: string | null;
   photoKey: string | null;
