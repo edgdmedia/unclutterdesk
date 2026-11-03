@@ -7,7 +7,6 @@ on:
   workflow_dispatch: {}
   push:
     branches:
-      - main
       - dev
     paths:
       - 'apps/api/**'
@@ -20,7 +19,6 @@ on:
       - '.github/workflows/e2e-custom-domain.yml'
   pull_request:
     branches:
-      - main
       - dev
     paths:
       - 'apps/api/**'

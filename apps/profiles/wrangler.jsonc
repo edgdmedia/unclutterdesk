@@ -12,10 +12,13 @@
   "cache": { "enabled": true },
   // Secret, not a var: PROFILES_PURGE_SECRET, shared with the API's
   // profile.purge job. Set with: pnpm exec wrangler secret put PROFILES_PURGE_SECRET
-  // Domain config (spec §4.1a): this site's addresses. The route is added at
-  // deploy (spec §4.2); it lives on the new account's marketing domain.
+  // Profiles live on their target domain from the start (spec §4.1b), as a
+  // Workers Custom Domain on the therapysts.com zone in the new account.
+  "routes": [{ "pattern": "therapysts.com", "custom_domain": true }],
+
+  // Domain config (spec §4.1a): this site's addresses.
   "vars": {
-    "PROFILE_PUBLIC_URL": "https://profiles.unclutterdesk.com",
+    "PROFILE_PUBLIC_URL": "https://therapysts.com",
     "API_URL": "https://api.unclutterdesk.com",
     "APP_URL": "https://app.unclutterdesk.com",
     "MARKETING_URL": "https://unclutterdesk.com",

@@ -81,4 +81,20 @@ describe('domain settings', () => {
     const overridden = await import('./auth.config');
     expect(overridden.csrfCookieOptions().domain).toBe('.example.org');
   });
+
+  describe('the public media origin (R2_PUBLIC_URL)', () => {
+    it('accepts an https origin, trailing slash or not', async () => {
+      expect((await load({ R2_PUBLIC_URL: 'https://media.therapysts.com/' })).MEDIA_ORIGIN).toBe('https://media.therapysts.com');
+    });
+
+    it.each(['R2_PUBLIC_URL', 'media.therapysts.com', 'http://media.therapysts.com', 'https://media.therapysts.com/sub'])(
+      'treats %j as unset rather than building broken links',
+      async (value) => {
+        const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+        expect((await load({ R2_PUBLIC_URL: value })).MEDIA_ORIGIN).toBeNull();
+        expect(warn).toHaveBeenCalled();
+        warn.mockRestore();
+      },
+    );
+  });
 });
