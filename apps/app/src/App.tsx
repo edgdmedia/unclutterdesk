@@ -1,6 +1,7 @@
 import React, { lazy, Suspense, useState, useCallback, useMemo } from 'react';
 import { UpgradePrompt } from './components/billing/UpgradePrompt';
 import { CLIENT_PORTAL_ROUTES, ClientBrandProvider } from './routes/clientRoutes';
+import { homePathFor } from './utils/homePath';
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { SWRConfig } from 'swr';
 import useSWR from 'swr';
@@ -424,6 +425,13 @@ function AppLayout() {
     );
   }
 
+  // The practice workspace is for practice staff only. A client (or a
+  // platform admin) who opens a workspace link goes to their own home
+  // instead of a workspace whose every request the API refuses.
+  if (profile && homePathFor(profile) !== '/dashboard') {
+    return <Navigate to={homePathFor(profile)} replace />;
+  }
+
   return (
     <BrandProvider brand={practiceBrand}>
       <PracticeShell
@@ -569,8 +577,7 @@ function RootRedirect() {
     return <Navigate to="/login" replace />;
   }
 
-  const destination = profile.type === 'platform_admin' ? '/admin' : profile.type === 'user' ? '/portal' : '/dashboard';
-  return <Navigate to={destination} replace />;
+  return <Navigate to={homePathFor(profile)} replace />;
 }
 
 export function App() {

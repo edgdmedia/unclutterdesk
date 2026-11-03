@@ -4,6 +4,11 @@ import { ChevronLeft, ChevronRight, Plus, Settings, X, Calendar, Clock, User, Tr
 import { useBrand, useToast } from '@unclutterdesk/ui';
 import { StaffBookingDialog } from '../../components/booking/StaffBookingDialog';
 import { api, getBookingUrl, TENANT_SLUG } from '../../utils/apiClient';
+
+/** YYYY-MM-DD in the viewer's own time zone (toISOString would use UTC and can be a day off). */
+function localDateInput(d: Date): string {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
 import { PaymentChip } from '../../components/booking/PaymentChip';
 
 interface Client {
@@ -49,7 +54,7 @@ export function SchedulePage({ sessions, setSessions, clients, tenantSlug, onRef
   const [showBooking, setShowBooking] = useState(false);
   const [scheduleError, setScheduleError] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<'week' | 'day' | 'month'>('week');
-  const [currentDate, setCurrentDate] = useState<Date>(new Date('2026-08-03T09:00:00'));
+  const [currentDate, setCurrentDate] = useState<Date>(() => new Date());
   const navigate = useNavigate();
 
   // Modals state
@@ -61,7 +66,7 @@ export function SchedulePage({ sessions, setSessions, clients, tenantSlug, onRef
   // Form state
   const [formClientName, setFormClientName] = useState('');
   const [formType, setFormType] = useState('Individual Therapy');
-  const [formDate, setFormDate] = useState('2026-08-03');
+  const [formDate, setFormDate] = useState(() => localDateInput(new Date()));
   const [formTime, setFormTime] = useState('09:00');
   const [formDuration, setFormDuration] = useState(50);
   const [formVideoProvider, setFormVideoProvider] = useState('DEFAULT');
