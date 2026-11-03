@@ -43,6 +43,18 @@ A and B can both exist: A for the clinic's own site, B as its public listing on 
 
 **Team pages:** only Clinic practices can have more than one therapist (`staffInviteRoles` includes `THERAPIST` on Clinic only), so team pages are Clinic-only in practice. Groups that don't run their practice on the dashboard, such as NGOs, university or church counselling units, workplace wellbeing (EAP) providers, training institutes listing trainees and supervisors, and associations, are a different feature: **organisation pages**, where therapists link themselves to an organisation. Proposed for Phase 4 with the directory; not decided.
 
+### c) Where each address goes (proposed, 3 Nov)
+
+| Address | Serves |
+|---|---|
+| `therapysts.com` | The one marketing site (today's `unclutterdesk.com` landing moves here) and every profile at `/{handle}` |
+| `therapysts.app` (bare) | 301 to `therapysts.com`, so there's one front door and one place to rank in search |
+| `app.therapysts.app` | The dashboard and sign-in |
+| `{practice}.therapysts.app` | Each practice's booking site (and `/team` for clinics) |
+| `unclutterdesk.com` and its subdomains | 301 to the matching new address after the move (docs/DOMAIN_MOVE.md) |
+
+The home page hero is two slides, the profile and the dashboard (canvas: "therapysts.com home"). On the live site it must work without JavaScript: two tabs that are links, and no autoplay.
+
 ## 3. Selling domains
 
 What Cloudflare offers today (checked 3 Nov 2026):

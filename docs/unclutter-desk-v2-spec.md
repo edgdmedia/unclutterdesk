@@ -869,8 +869,8 @@ On a custom domain such as `chente.com`, the API's sign-in cookies (on `api.uncl
 - [ ] Security (§4.3): cache ignores cookies; renderer never reads them; credentialed requests from the profiles origin are rejected; CSP present; script/HTML payloads render inert
 - [ ] Leaving a practice removes only that place (via each of the four existing exit paths), promotes a new main place, falls back to NONE when none remain, and purges the page
 - [ ] Share link, QR and PDF use `profilePath()`; PDF gated by profile entitlements
-- [ ] Report → `ProfileReport` queue → takedown works end to end and is audited; `PlatformRequest` unchanged; terms updated
-- [ ] `POST /v1/tenant/register` is platform-admin only
+- [x] Report → `ProfileReport` queue → takedown works end to end and is audited; `PlatformRequest` unchanged; terms updated — built 3 Nov 2026 on `phase1/profile-reports` (admin actions: unpublish, suspend, lift suspension)
+- [x] `POST /v1/tenant/register` is platform-admin only — done (PR from `phase1/admin-register`)
 - [ ] Public page SSR, readable without JS, Lighthouse accessibility ≥ 95
 
 ---
