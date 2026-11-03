@@ -21,6 +21,7 @@ import { writingTips } from './writing-tips';
 import { HANDLE_MESSAGES, handleProblem, normalizeHandle, suggestHandle } from './handles';
 import { PHOTO_BACKFILL_JOB, type PhotoBackfillPayload } from './profile-photo.job';
 import { SITEMAP_TAG, profileTag, queuePurge } from './profile-purge.job';
+import { PREVIEW_JOB, type PreviewPayload } from './profile-preview.job';
 
 /**
  * A therapist's own public profile (spec §6.1).
@@ -535,6 +536,7 @@ export class PractitionerProfileService {
     });
     const live = await this.requireOwn(userId);
     await this.purge([profileTag(live.handle), SITEMAP_TAG]);
+    await this.queuePreview(live.id);
     return { profile: await this.getOwn(userId), warnings: { unchangedTemplateText: checklist.unchangedTemplateText } };
   }
 
@@ -619,8 +621,16 @@ export class PractitionerProfileService {
 
   /** After a change to a published profile, purge its page (§6.12). Drafts and hidden profiles aren't served, so there is nothing to purge. */
   private async purgeIfPublished(userId: bigint) {
-    const profile = await this.prisma.practitionerProfile.findUnique({ where: { userId }, select: { handle: true, status: true } });
-    if (profile?.status === 'PUBLISHED') await this.purge([profileTag(profile.handle)]);
+    const profile = await this.prisma.practitionerProfile.findUnique({ where: { userId }, select: { id: true, handle: true, status: true } });
+    if (profile?.status !== 'PUBLISHED') return;
+    await this.purge([profileTag(profile.handle)]);
+    await this.queuePreview(profile.id);
+  }
+
+  /** Re-render the link-preview image (§6.3) on the next job run; one queued render per profile at a time. */
+  private async queuePreview(profileId: bigint) {
+    const payload: PreviewPayload = { practitionerProfileId: profileId.toString() };
+    await this.jobs.enqueue(PREVIEW_JOB, payload as never, { dedupeKey: `${PREVIEW_JOB}:${profileId}` });
   }
 
   private async purge(tags: string[]) {
