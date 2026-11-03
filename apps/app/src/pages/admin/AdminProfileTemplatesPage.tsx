@@ -29,7 +29,7 @@ function sectionError(section: keyof typeof SECTION_TITLES): string {
  */
 export function AdminProfileTemplatesPage() {
   const toast = useToast();
-  const { data: templates, isLoading, mutate } = useSWR<AdminProfileTemplate[]>(`${PROFILE_CONTENT_BASE}/templates`);
+  const { data: templates, isLoading, error: loadError, mutate } = useSWR<AdminProfileTemplate[]>(`${PROFILE_CONTENT_BASE}/templates`);
   const [selectedKey, setSelectedKey] = useState<string | null>(null);
   const selected = templates?.find((template) => template.key === selectedKey) ?? templates?.[0] ?? null;
 
@@ -129,6 +129,8 @@ export function AdminProfileTemplatesPage() {
 
       {isLoading ? (
         <Card className="mt-5 p-[22px]"><p className="text-sm text-[#64748B]">Loading templates…</p></Card>
+      ) : loadError ? (
+        <Card className="mt-5 p-[22px]"><p className="text-sm text-[#B91C1C]">Could not load templates. Please refresh.</p></Card>
       ) : !templates?.length ? (
         <Card className="mt-5 p-[22px]"><p className="text-sm text-[#64748B]">No templates exist yet.</p></Card>
       ) : (

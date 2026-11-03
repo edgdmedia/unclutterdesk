@@ -10,8 +10,9 @@ function authenticatedUserId(req: any): bigint {
 }
 
 /**
- * Platform-admin content screens for the practitioner profile (spec §6.6):
- * the selectable templates and the shared per-section guidance. Separate from
+ * Platform-admin content screens for the practitioner profile (spec §6.4/§6.6):
+ * the selectable templates, the shared per-section guidance, and the taxonomy
+ * (specialties, modalities, populations, languages). Separate from
  * PractitionerProfileController, which is for a practitioner editing their own
  * profile, and guarded by PlatformAdminGuard rather than a practice role.
  */

@@ -126,7 +126,7 @@ describe('AdminProfileContentService taxonomy (§6.4)', () => {
       expect.objectContaining({ action: 'profile.taxonomy.update', targetType: 'TaxonomyTerm', targetId: 2n }),
         expect.anything(),
     );
-    expect(jobs.enqueue).toHaveBeenCalledWith('profile.purge', { tags: ['profile:adaeze', 'profile:bola'] });
+    expect(jobs.enqueue).toHaveBeenCalledWith('profile.purge', { tags: ['profile:adaeze', 'profile:bola'] }, { dedupeKey: 'profile.purge:profile:adaeze,profile:bola' });
     expect(jobs.runNow).toHaveBeenCalledWith(9n);
   });
 
@@ -189,7 +189,7 @@ describe('AdminProfileContentService taxonomy (§6.4)', () => {
       expect.objectContaining({ action: 'profile.taxonomy.reorder', targetType: 'TaxonomyKind', targetId: 'SPECIALTY' }),
         expect.anything(),
     );
-    expect(jobs.enqueue).toHaveBeenCalledWith('profile.purge', { tags: ['profile:adaeze', 'profile:bola'] });
+    expect(jobs.enqueue).toHaveBeenCalledWith('profile.purge', { tags: ['profile:adaeze', 'profile:bola'] }, { dedupeKey: 'profile.purge:profile:adaeze,profile:bola' });
   });
 
   it('refuses to reorder a term from another kind', async () => {

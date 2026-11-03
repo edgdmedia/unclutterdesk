@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import useSWR from 'swr';
 import { ArrowDown, ArrowUp, Plus } from 'lucide-react';
 import { Badge, Button, Card, Eyebrow, Input, Toggle, useToast } from '@unclutterdesk/ui';
@@ -29,7 +29,7 @@ function orderOf(a: AdminTaxonomyTerm, b: AdminTaxonomyTerm) {
  */
 export function AdminProfileTaxonomyPage() {
   const toast = useToast();
-  const { data: terms, isLoading, mutate } = useSWR<AdminTaxonomyTerm[]>(`${PROFILE_CONTENT_BASE}/taxonomy`);
+  const { data: terms, isLoading, error: loadError, mutate } = useSWR<AdminTaxonomyTerm[]>(`${PROFILE_CONTENT_BASE}/taxonomy`);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const selected = terms?.find((term) => term.id === selectedId) ?? null;
 
@@ -37,6 +37,10 @@ export function AdminProfileTaxonomyPage() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [reason, setReason] = useState<string>('');
+  // "Deactivate" from the list: open the term switched off and ask why, so
+  // the audit always records a real reason (the API requires one).
+  const deactivating = useRef<string | null>(null);
+  const reasonRef = useRef<HTMLTextAreaElement>(null);
 
   const groups = useMemo(
     () =>
@@ -60,6 +64,15 @@ export function AdminProfileTaxonomyPage() {
     setReason('');
     setError(null);
   }, [selected?.id, selected?.label, selected?.key, selected?.sortOrder, selected?.isActive]);
+
+  // Runs after the form above has loaded the term, so it is never overwritten.
+  useEffect(() => {
+    if (!selected || deactivating.current !== selected.id) return;
+    deactivating.current = null;
+    setForm((current) => ({ ...current, isActive: false }));
+    setError('Say why this term is being deactivated, then save.');
+    reasonRef.current?.focus();
+  });
 
   function nextSortOrder(kind: TaxonomyKind): number {
     const group = (terms ?? []).filter((term) => term.kind === kind);
@@ -127,13 +140,23 @@ export function AdminProfileTaxonomyPage() {
   }
 
   async function toggleActive(term: AdminTaxonomyTerm) {
+    if (term.isActive) {
+      deactivating.current = term.id;
+      setSelectedId(term.id);
+      // Same term already open: no reload will happen, so apply it here.
+      if (selectedId === term.id) {
+        deactivating.current = null;
+        setForm((current) => ({ ...current, isActive: false }));
+        setReason('');
+        setError('Say why this term is being deactivated, then save.');
+        reasonRef.current?.focus();
+      }
+      return;
+    }
     try {
-      await adminProfileContentApi.updateTaxonomy(term.id, { 
-        isActive: !term.isActive,
-        reason: term.isActive ? reason.trim() || 'Deactivated by admin' : null 
-      });
+      await adminProfileContentApi.updateTaxonomy(term.id, { isActive: true, reason: null });
       await mutate();
-      toast.success(term.isActive ? 'Term deactivated' : 'Term reactivated');
+      toast.success('Term reactivated');
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Could not change the term');
     }
@@ -221,8 +244,10 @@ export function AdminProfileTaxonomyPage() {
         ) : null}
 
         <div className="space-y-1">
-          <label className="text-[11.5px] font-bold text-[#475569]">Reason for change</label>
-          <textarea 
+          <label htmlFor="taxonomy-reason" className="text-[11.5px] font-bold text-[#475569]">Reason for change</label>
+          <textarea
+            id="taxonomy-reason"
+            ref={reasonRef}
             className="w-full rounded-[12px] border border-[#E2E8F0] bg-white px-3 py-2 text-[13.5px] text-[#0F172A] min-h-[80px]"
             placeholder="Optional, unless deactivating or changing the key."
             maxLength={500}
@@ -234,13 +259,14 @@ export function AdminProfileTaxonomyPage() {
         {error ? <p role="alert" className="text-[13px] font-semibold text-[#B91C1C]">{error}</p> : null}
 
         <div className="flex justify-end gap-2">
-          {selected ? <Button variant="secondary" onClick={() => startNew(selected.kind)}>Cancel</Button> : null}
           <Button onClick={save} disabled={saving}>{saving ? 'Saving…' : selected ? 'Save term' : 'Add term'}</Button>
         </div>
       </Card>
 
       {isLoading ? (
         <Card className="mt-5 p-[22px]"><p className="text-sm text-[#64748B]">Loading terms…</p></Card>
+      ) : loadError ? (
+        <Card className="mt-5 p-[22px]"><p className="text-sm text-[#B91C1C]">Could not load taxonomy. Please refresh.</p></Card>
       ) : (
         <div className="mt-5 space-y-4">
           {groups.map((group) => (

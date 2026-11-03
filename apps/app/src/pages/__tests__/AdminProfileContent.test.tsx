@@ -157,10 +157,18 @@ describe('Admin → Profile content', () => {
     expect(patch.mock.calls[0][0]).toBe('/v1/admin/practitioner-profile/taxonomy/1');
     expect(patch.mock.calls[0][1]).toMatchObject({ label: 'Anxiety & worry', key: 'anxiety', isActive: true });
 
+    // Deactivating asks why first: nothing is sent until a reason is given.
     fireEvent.click(screen.getAllByRole('button', { name: 'Deactivate' })[0]);
+    expect(await screen.findByText('Say why this term is being deactivated, then save.')).toBeTruthy();
+    expect(patch).toHaveBeenCalledTimes(1);
+    fireEvent.click(screen.getByRole('button', { name: 'Save term' }));
+    expect(await screen.findAllByText('Reason is required when deactivating or changing the key of a term.')).toBeTruthy();
+    expect(patch).toHaveBeenCalledTimes(1);
+    fireEvent.change(screen.getByLabelText('Reason for change'), { target: { value: 'Merged into Anxiety & worry' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Save term' }));
     await waitFor(() => expect(patch).toHaveBeenCalledTimes(2));
     expect(patch.mock.calls[1][0]).toBe('/v1/admin/practitioner-profile/taxonomy/1');
-    expect(patch.mock.calls[1][1]).toEqual({ isActive: false });
+    expect(patch.mock.calls[1][1]).toMatchObject({ isActive: false, reason: 'Merged into Anxiety & worry' });
   });
 
   it('moves a taxonomy term up within its kind', async () => {
