@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { Outlet, useLocation } from 'react-router-dom';
-import { BadgePercent, Building2, ClipboardList, Flag, Inbox, LayoutDashboard, ShieldCheck, Ticket, Video } from 'lucide-react';
+import { BadgePercent, BookOpen, Building2, ClipboardList, FileText, Flag, Inbox, LayoutDashboard, ShieldCheck, Tags, Ticket, Video } from 'lucide-react';
 import { AppShell, UnclutterMark, type SidebarSection } from '@unclutterdesk/ui';
 import { RouterLink } from '../../components/shell/RouterLink';
 import { AdminAccountMenu } from '../../components/shell/AdminAccountMenu';
@@ -12,6 +12,9 @@ const ADMIN_NAV = [
   { href: '/admin/invites', label: 'Invite codes', icon: Ticket },
   { href: '/admin/complimentary', label: 'Complimentary plans', icon: BadgePercent },
   { href: '/admin/assessments', label: 'Assessment library', icon: ClipboardList },
+  { href: '/admin/profile-content/templates', label: 'Profile templates', icon: FileText },
+  { href: '/admin/profile-content/taxonomy', label: 'Profile taxonomy', icon: Tags },
+  { href: '/admin/profile-content/guidance', label: 'Profile guidance', icon: BookOpen },
   { href: '/admin/requests', label: 'Requests', icon: Inbox },
   { href: '/admin/video', label: 'Video usage', icon: Video },
   { href: '/admin/profile-reports', label: 'Profile reports', icon: Flag },

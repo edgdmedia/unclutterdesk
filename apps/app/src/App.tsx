@@ -70,6 +70,9 @@ const AdminRequestsPage = lazy(() => import('./pages/admin/AdminRequestsPage').t
 const AdminVideoUsagePage = lazy(() => import('./pages/admin/AdminVideoUsagePage').then((m) => ({ default: m.AdminVideoUsagePage })));
 const AdminProfileReportsPage = lazy(() => import('./pages/admin/AdminProfileReportsPage').then((m) => ({ default: m.AdminProfileReportsPage })));
 const AdminAssessmentsPage = lazy(() => import('./pages/admin/AdminAssessmentsPage').then((m) => ({ default: m.AdminAssessmentsPage })));
+const AdminProfileTemplatesPage = lazy(() => import('./pages/admin/AdminProfileTemplatesPage').then((m) => ({ default: m.AdminProfileTemplatesPage })));
+const AdminProfileTaxonomyPage = lazy(() => import('./pages/admin/AdminProfileTaxonomyPage').then((m) => ({ default: m.AdminProfileTaxonomyPage })));
+const AdminProfileGuidancePage = lazy(() => import('./pages/admin/AdminProfileGuidancePage').then((m) => ({ default: m.AdminProfileGuidancePage })));
 const RequestsPage = lazy(() => import('./pages/practice/RequestsPage').then((m) => ({ default: m.RequestsPage })));
 const AssessmentsPage = lazy(() => import('./pages/practice/AssessmentsPage').then((m) => ({ default: m.AssessmentsPage })));
 const HoursLogPage = lazy(() => import('./pages/practice/HoursLogPage').then((m) => ({ default: m.HoursLogPage })));
@@ -525,6 +528,10 @@ function AdminShell() {
           <Route path="/admin/complimentary" element={<AdminComplimentaryPage />} />
           <Route path="/admin/requests" element={<AdminRequestsPage />} />
           <Route path="/admin/assessments" element={<AdminAssessmentsPage />} />
+          <Route path="/admin/profile-content" element={<Navigate to="/admin/profile-content/templates" replace />} />
+          <Route path="/admin/profile-content/templates" element={<AdminProfileTemplatesPage />} />
+          <Route path="/admin/profile-content/taxonomy" element={<AdminProfileTaxonomyPage />} />
+          <Route path="/admin/profile-content/guidance" element={<AdminProfileGuidancePage />} />
           <Route path="/admin/video" element={<AdminVideoUsagePage />} />
           <Route path="/admin/profile-reports" element={<AdminProfileReportsPage />} />
           <Route path="*" element={<NotFoundPage homeHref="/admin" />} />
