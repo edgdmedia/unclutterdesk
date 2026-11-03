@@ -21,7 +21,7 @@
 - [x] **2. Sign-in routing.** The signed-in profile (login, refresh, /me) carries `onboardingIntent`. `LoginPage` sends PROFILE-intent owners to `/dashboard/profile`, never to the practice wizard.
 - [x] **3. App: the signup form** at `/signup?intent=profile`: name, email, password, handle (with live check), kind, template (optional). Then the existing code step, then sign in, then the editor.
 - [ ] **4. Profile-first dashboard.** For PROFILE intent, home is the profile editor; practice features sit under one "Set up booking" entry. After the first publish, a dismissible "Want clients to book you here?" card.
-- [ ] **5. Release unverified signups after 7 days**, inside the existing daily 3 a.m. cron.
+- [x] **5. Release unverified signups after 7 days**, inside the existing daily 3 a.m. cron.
   - Covers owner self-signups only.
   - Removes them only if nothing beyond what signup created exists; otherwise flags them for an admin.
   - Everything is removed in one transaction, with an audit entry.

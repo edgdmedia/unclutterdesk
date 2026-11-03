@@ -1,3 +1,4 @@
+import { UnverifiedSignupsService } from './unverified-signups.service';
 import { Module } from '@nestjs/common';
 import { APP_GUARD } from '@nestjs/core';
 import { JwtModule } from '@nestjs/jwt';
@@ -26,11 +27,12 @@ import { JWT_SECRET, JWT_EXPIRES_IN } from '../../common/auth.config';
   providers: [
     AuthService,
     SessionService,
+    UnverifiedSignupsService,
     JwtStrategy,
     PrismaService,
     CsrfGuard,
     { provide: APP_GUARD, useClass: CsrfGuard },
   ],
-  exports: [AuthService, SessionService, JwtModule],
+  exports: [AuthService, SessionService, UnverifiedSignupsService, JwtModule],
 })
 export class AuthModule {}
