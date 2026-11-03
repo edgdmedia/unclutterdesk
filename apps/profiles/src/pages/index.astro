@@ -1,18 +1,97 @@
 ---
-import Base from '../components/Base.astro';
+import SitePage from '../components/SitePage.astro';
 import { config as loadConfig } from '../lib/env';
 import { PAGE_CACHE } from '../lib/security';
 
-// Becomes the directory in Phase 4 (§6.11).
+/*
+ * The front door (the approved design canvas, home board). The free profile is
+ * the way in; the dashboard is the product. The hero has two slides, picked
+ * with two links and CSS :target, so it works without JavaScript and never
+ * moves on its own. Becomes the directory in Phase 4 (§6.11).
+ */
 const config = loadConfig();
 Astro.response.headers.set('Cache-Control', PAGE_CACHE);
 ---
-<Base title="Therapist profiles" description="Create a free, clear profile clients can find and share." canonical={`${config.publicOrigin}/`}>
-  <main id="main" class="wrap">
-    <header class="hero">
-      <h1>A clear, free profile for every therapist</h1>
-      <p class="headline">Show clients who you help, how you work and how to book, on a page you can share anywhere.</p>
-      <div class="actions"><a class="btn" href="/join">Create your free therapist profile</a></div>
-    </header>
+<SitePage
+  title="Therapysts · A free professional profile for therapists"
+  description="One link that tells clients who you are, how you work and how to reach you. When you're ready, the same account runs your whole practice."
+  canonical={`${config.publicOrigin}/`}
+  fullNav
+>
+  <main id="main" class="home">
+    <div class="slides">
+      <nav class="slide-tabs" aria-label="What Therapysts gives you">
+        <a class="slide-tab tab-profile" href="#profile">Your profile</a>
+        <a class="slide-tab tab-dashboard" href="#dashboard">Your practice dashboard</a>
+      </nav>
+
+      <section id="profile" class="slide slide-profile" aria-labelledby="h-profile">
+        <div class="slide-copy">
+          <p class="eyebrow">For therapists, counsellors and psychologists</p>
+          <h1 id="h-profile">A professional profile in ten minutes. Free.</h1>
+          <p class="lead">One link that tells clients who you are, how you work and how to reach you. Share it on WhatsApp, Instagram and your business card. When you're ready, the same account runs your whole practice.</p>
+          <p class="cta-row"><a class="btn" href="/join">Create your free profile</a></p>
+          <p class="muted small">No card needed · Your address: {config.publicOrigin.replace(/^https:\/\//, '')}/yourname</p>
+        </div>
+        <div class="slide-art" aria-hidden="true">
+          <div class="mock-card">
+            <span class="mock-band"></span>
+            <span class="mock-photo"></span>
+            <span class="mock-name">Dr. Folake Adeyemi</span>
+            <span class="mock-kind">Clinical Psychologist · Lagos</span>
+            <span class="mock-line">Helping adults through anxiety, burnout and big life changes.</span>
+            <span class="mock-chips"><span>Anxiety</span><span>Burnout</span><span>Grief</span></span>
+            <span class="mock-btn">Book a session</span>
+          </div>
+        </div>
+      </section>
+
+      <section id="dashboard" class="slide slide-dashboard" aria-labelledby="h-dashboard">
+        <div class="slide-copy">
+          <p class="eyebrow clay">When you're ready to grow</p>
+          <h2 id="h-dashboard" class="h1">Run your whole practice from one calm place.</h2>
+          <p class="lead">Bookings, payments in naira, video sessions, intake forms and client records. Switch it on from the same account as your profile; nothing to move or set up twice.</p>
+          <p class="cta-row"><a class="btn" href="/join">Start free</a> <a class="btn secondary" href="#features">See what's included</a></p>
+          <p class="muted small">Free to start · Paid plans when the practice grows</p>
+        </div>
+        <div class="slide-art" aria-hidden="true">
+          <div class="mock-dash">
+            <span class="mock-side"><span></span><span></span><span></span><span></span></span>
+            <span class="mock-main">
+              <span class="mock-eyebrow">Client sessions today</span>
+              <span class="mock-row"><b>Adaeze Okonkwo</b><i>10:00 · Video</i></span>
+              <span class="mock-row"><b>Ibrahim Sani</b><i>13:30 · In person</i></span>
+              <span class="mock-row"><b>Kelechi Okafor</b><i>16:00 · Video</i></span>
+            </span>
+          </div>
+        </div>
+      </section>
+    </div>
+
+    <section class="band" aria-labelledby="how">
+      <div class="band-inner">
+        <h2 id="how">How it works</h2>
+        <ol class="steps">
+          <li><span class="step-n" aria-hidden="true">1</span><h3>Pick a starting point</h3><p>Choose a template for your kind of practice. Each section comes with prompts and example wording to rewrite in your own words.</p></li>
+          <li><span class="step-n" aria-hidden="true">2</span><h3>Make it look like you</h3><p>Pick a layout and a colour palette. Change either at any time; your words stay where they are.</p></li>
+          <li><span class="step-n" aria-hidden="true">3</span><h3>Publish and share</h3><p>Get your link, a QR code for flyers, and an email signature. Clients can reach you the same day.</p></li>
+        </ol>
+      </div>
+    </section>
+
+    <section id="features" class="features" aria-labelledby="h-features">
+      <div class="features-copy">
+        <p class="eyebrow clay">When you're ready</p>
+        <h2 id="h-features">Your profile is the front door. The dashboard runs the practice.</h2>
+        <p class="lead">Switch on booking and the same account becomes your practice. Nothing to move, nothing to set up twice.</p>
+        <p><a href={`${config.marketingOrigin}/#pricing`}>See plans and pricing</a></p>
+      </div>
+      <ul class="feature-grid">
+        <li><h3>Online booking</h3><p>Your hours, your services, your fees. Clients pick a time from your profile.</p></li>
+        <li><h3>Payments in naira</h3><p>Card and bank transfer through Paystack, paid straight to your account.</p></li>
+        <li><h3>Video sessions</h3><p>Secure session links sent with every booking. No extra app for clients.</p></li>
+        <li><h3>Client records</h3><p>Intake forms, notes and assessments, encrypted and kept with each client.</p></li>
+      </ul>
+    </section>
   </main>
-</Base>
+</SitePage>

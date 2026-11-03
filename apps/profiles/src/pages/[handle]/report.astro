@@ -1,6 +1,6 @@
 ---
 import { env } from 'cloudflare:workers';
-import Base from '../../components/Base.astro';
+import SitePage from '../../components/SitePage.astro';
 import { config as loadConfig } from '../../lib/env';
 import { lookupProfile } from '../../lib/profiles';
 import { DETAILS_MAX, OUTCOME_MESSAGES, REPORT_REASONS, parseReportForm, sendReport, withinRateLimit, type RateLimiter } from '../../lib/report';
@@ -42,7 +42,7 @@ if (profile && Astro.request.method === 'POST') {
   }
 }
 ---
-<Base title={profile ? `Report ${profile.displayName}’s profile` : 'Profile not found'} noindex theme={profile?.themeKey}>
+<SitePage title={profile ? `Report ${profile.displayName}’s profile` : 'Profile not found'} noindex>
   <main id="main" class="wrap">
     {!profile && (
       <>
@@ -51,7 +51,7 @@ if (profile && Astro.request.method === 'POST') {
       </>
     )}
     {profile && sent && (
-      <section class="report" aria-live="polite">
+      <section class="report card" aria-live="polite">
         <h1>Thank you. We’ll look into it.</h1>
         <p>Someone on our team reviews every report and acts on it if the profile breaks our terms.</p>
         <p class="notice">If you or someone else is in danger right now, contact local emergency services.</p>
@@ -59,7 +59,7 @@ if (profile && Astro.request.method === 'POST') {
       </section>
     )}
     {profile && !sent && (
-      <form class="report" method="post" action={`/${profile.handle}/report`}>
+      <form class="report card" method="post" action={`/${profile.handle}/report`}>
         <h1>Report this profile</h1>
         <p>You’re reporting {profile.displayName}’s profile. We review every report. The therapist isn’t told who sent it.</p>
         {error && <p class="error" role="alert">{error}</p>}
@@ -85,4 +85,4 @@ if (profile && Astro.request.method === 'POST') {
       </form>
     )}
   </main>
-</Base>
+</SitePage>

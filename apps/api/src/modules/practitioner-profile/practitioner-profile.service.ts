@@ -16,7 +16,8 @@ import {
   type ProfileSnapshot,
   type SectionKey,
 } from './completeness';
-import { isThemeKey } from './themes';
+import { isLayoutKey, isThemeKey } from './themes';
+import { PRACTITIONER_KIND_LABELS } from './kinds';
 import { PROFILE_PUBLIC_ORIGIN } from '../../common/origins';
 import { EntitlementsService } from '../entitlements/entitlements.service';
 import { profileQr } from './share/qr';
@@ -25,6 +26,7 @@ import { writingTips } from './writing-tips';
 import { HANDLE_MESSAGES, handleProblem, normalizeHandle, suggestHandle } from './handles';
 import { PHOTO_BACKFILL_JOB, type PhotoBackfillPayload } from './profile-photo.job';
 import { SITEMAP_TAG, profileTag, queuePurge } from './profile-purge.job';
+import { PREVIEW_JOB, type PreviewPayload } from './profile-preview.job';
 
 /**
  * A therapist's own public profile (spec §6.1).
@@ -46,15 +48,7 @@ export const PRACTITIONER_KINDS: readonly PractitionerKind[] = [
   'TRAINEE',
 ];
 
-/** The words a profile shows for each kind (§6.1). */
-export const PRACTITIONER_KIND_LABELS: Record<PractitionerKind, string> = {
-  COUNSELLOR: 'Counsellor',
-  PSYCHOTHERAPIST: 'Psychotherapist',
-  PSYCHOLOGIST: 'Psychologist',
-  PSYCHIATRIST: 'Psychiatrist',
-  SOCIAL_WORKER: 'Social worker',
-  TRAINEE: 'Trainee counsellor',
-};
+export { PRACTITIONER_KIND_LABELS } from './kinds';
 
 /** Plain-text fields and their limits (§6.1). Text is stored as typed; the renderer escapes it. */
 const TEXT_LIMITS = {
@@ -89,7 +83,7 @@ export type ProfileUpdateInput = Partial<Record<TextField, string | null>> &
   };
 
 /** Fields that also choose appearance or starting content. */
-export type ProfileAppearanceInput = { themeKey?: string; templateKey?: string | null };
+export type ProfileAppearanceInput = { themeKey?: string; layoutKey?: string; templateKey?: string | null };
 
 export interface TimelineInput {
   type: string;
@@ -270,6 +264,10 @@ export class PractitionerProfileService {
     if ('themeKey' in input) {
       if (!isThemeKey(input.themeKey)) throw new BadRequestException('Unknown theme');
       data.themeKey = input.themeKey;
+    }
+    if ('layoutKey' in input) {
+      if (!isLayoutKey(input.layoutKey)) throw new BadRequestException('Unknown layout');
+      data.layoutKey = input.layoutKey;
     }
     if ('templateKey' in input) {
       if (input.templateKey === null) {
@@ -546,6 +544,7 @@ export class PractitionerProfileService {
     });
     const live = await this.requireOwn(userId);
     await this.purge([profileTag(live.handle), SITEMAP_TAG]);
+    await this.queuePreview(live.id);
     return { profile: await this.getOwn(userId), warnings: { unchangedTemplateText: checklist.unchangedTemplateText } };
   }
 
@@ -696,8 +695,16 @@ export class PractitionerProfileService {
 
   /** After a change to a published profile, purge its page (§6.12). Drafts and hidden profiles aren't served, so there is nothing to purge. */
   private async purgeIfPublished(userId: bigint) {
-    const profile = await this.prisma.practitionerProfile.findUnique({ where: { userId }, select: { handle: true, status: true } });
-    if (profile?.status === 'PUBLISHED') await this.purge([profileTag(profile.handle)]);
+    const profile = await this.prisma.practitionerProfile.findUnique({ where: { userId }, select: { id: true, handle: true, status: true } });
+    if (profile?.status !== 'PUBLISHED') return;
+    await this.purge([profileTag(profile.handle)]);
+    await this.queuePreview(profile.id);
+  }
+
+  /** Re-render the link-preview image (§6.3) on the next job run; one queued render per profile at a time. */
+  private async queuePreview(profileId: bigint) {
+    const payload: PreviewPayload = { practitionerProfileId: profileId.toString() };
+    await this.jobs.enqueue(PREVIEW_JOB, payload as never, { dedupeKey: `${PREVIEW_JOB}:${profileId}` });
   }
 
   private async purge(tags: string[]) {

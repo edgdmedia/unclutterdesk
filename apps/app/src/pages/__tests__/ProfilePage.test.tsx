@@ -57,6 +57,7 @@ const PROFILE = {
   kind: 'COUNSELLOR',
   templateKey: 'private-practice-counsellor',
   themeKey: 'calm',
+  layoutKey: 'classic',
   displayName: 'Adaeze Okonkwo',
   pronouns: null,
   photoKey: null,
@@ -213,6 +214,18 @@ describe('the public profile tab', () => {
     fireEvent.click(await screen.findByRole('radio', { name: /Warm/ }));
     await waitFor(() => expect(patch).toHaveBeenCalledWith('/v1/practitioner-profile/me', { themeKey: 'warm' }));
     expect((await screen.findByRole('radio', { name: /Warm/ })).getAttribute('aria-checked')).toBe('true');
+  });
+
+  it('picks a layout separately from the palette, and previews both', async () => {
+    serve();
+    renderWithApp(<ProfilePage />, { route: '/dashboard/profile' });
+    const layouts = await screen.findByRole('radiogroup', { name: 'Layout' });
+    expect(within(layouts).getByRole('radio', { name: /Classic/ }).getAttribute('aria-checked')).toBe('true');
+    expect(screen.getByRole('img', { name: 'Preview: Classic layout, Calm palette' })).toBeTruthy();
+    fireEvent.click(within(layouts).getByRole('radio', { name: /Editorial/ }));
+    await waitFor(() => expect(patch).toHaveBeenCalledWith('/v1/practitioner-profile/me', { layoutKey: 'editorial' }));
+    expect(patch).not.toHaveBeenCalledWith('/v1/practitioner-profile/me', expect.objectContaining({ themeKey: expect.anything() }));
+    expect(within(screen.getByRole('radiogroup', { name: 'Colour palette' })).getAllByRole('radio')).toHaveLength(5);
   });
 });
 

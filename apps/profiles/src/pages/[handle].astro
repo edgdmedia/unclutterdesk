@@ -1,5 +1,6 @@
 ---
 import Base from '../components/Base.astro';
+import SitePage from '../components/SitePage.astro';
 import ProfileView from '../components/ProfileView.astro';
 import { config as loadConfig } from '../lib/env';
 import { KIND_TITLES, lookupProfile, personJsonLd } from '../lib/profiles';
@@ -40,10 +41,21 @@ const canonical = profile ? `${config.publicOrigin}/${profile.handle}` : undefin
     <ProfileView profile={profile} config={config} />
   </Base>
 ) : (
-  <Base title={result.kind === 'gone' ? 'Profile no longer available' : 'Profile not found'} noindex>
+  <SitePage title={result.kind === 'gone' ? 'Profile no longer available' : 'Profile not found'} noindex>
     <main id="main" class="wrap">
-      <h1>{result.kind === 'gone' ? 'This profile is no longer available' : 'We couldn’t find that profile'}</h1>
-      <p><a href="/">Find out about therapist profiles</a></p>
+      {result.kind === 'gone' ? (
+        <div class="card notice-page">
+          <h1>This profile is no longer available</h1>
+          <p class="muted">The therapist may have taken it down. If you were seeing them, contact them directly.</p>
+          <p><a class="btn" href="/">Go to Therapysts</a></p>
+        </div>
+      ) : (
+        <div class="card notice-page">
+          <h1>We couldn’t find that profile</h1>
+          <p class="muted">Check the spelling of the address. Profile addresses look like {config.publicOrigin.replace(/^https:\/\//, '')}/name.</p>
+          <p><a href="/join">Create your own free profile</a></p>
+        </div>
+      )}
     </main>
-  </Base>
+  </SitePage>
 )}
