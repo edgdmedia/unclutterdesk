@@ -127,6 +127,18 @@ export class PractitionerProfileController {
   }
 
   @Permissions('clinical.record')
+  @Get('me/share/pdf')
+  @ApiOperation({ summary: 'A one-page profile PDF to print or attach (paid plans)' })
+  async sharePdf(@Req() req: any, @Res() res: Response) {
+    const { pdf, filename } = await this.profiles.renderOwnProfilePdf(authenticatedUserId(req));
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+    res.setHeader('Cache-Control', 'private, no-store');
+    res.setHeader('X-Content-Type-Options', 'nosniff');
+    res.send(pdf);
+  }
+
+  @Permissions('clinical.record')
   @Get('templates')
   @ApiOperation({ summary: 'Profile templates: prompts, examples and guidance per section' })
   templates() {

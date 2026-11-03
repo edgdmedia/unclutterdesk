@@ -87,6 +87,24 @@ export class StorageService {
     await this.require(bucket).send(new DeleteObjectCommand({ Bucket: this.buckets[bucket], Key: this.checkKey(key) }));
   }
 
+  /**
+   * Read a file back. `null` when the bucket says the key does not exist, so
+   * callers can treat a missing file (an old photo, a not-yet-uploaded asset)
+   * as an optional input rather than an error. Every other failure propagates.
+   */
+  async get(bucket: StorageBucket, key: string): Promise<Buffer | null> {
+    try {
+      const result = await this.require(bucket).send(new GetObjectCommand({ Bucket: this.buckets[bucket], Key: this.checkKey(key) }));
+      const body = result?.Body as { transformToByteArray?: () => Promise<Uint8Array> } | undefined;
+      if (!body?.transformToByteArray) return null;
+      return Buffer.from(await body.transformToByteArray());
+    } catch (err) {
+      const name = (err as { name?: string })?.name;
+      if (name === 'NoSuchKey' || name === 'NotFound') return null;
+      throw err;
+    }
+  }
+
   /** Where a public file is served. */
   publicUrl(key: string): string {
     if (!MEDIA_ORIGIN) throw new StorageNotConfiguredError('public');
