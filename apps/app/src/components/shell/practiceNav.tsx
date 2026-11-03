@@ -8,6 +8,13 @@ import { includesFeature, TIER_NAMES, type EntitlementSummary, type GatedFeature
 export interface NavProfile {
   role?: string | null;
   type?: string | null;
+  /** §6.8: PROFILE-first practices lead with the profile; practice features wait under "Set up booking". */
+  onboardingIntent?: string | null;
+}
+
+/** Whether this practice signed up for a profile first and hasn't switched on booking yet (§6.8). */
+export function isProfileFirst(profile: NavProfile | null | undefined): boolean {
+  return profile?.onboardingIntent === 'PROFILE';
 }
 
 interface NavEntry {
@@ -131,6 +138,17 @@ function PlanTag({ tier }: { tier: string }) {
   );
 }
 
+/** §6.8: the profile-first phone bar. */
+const PROFILE_FIRST_BOTTOM_NAV: typeof PRACTICE_BOTTOM_NAV = [
+  { href: '/dashboard/profile', label: 'Profile', icon: IdCard },
+  { href: '/dashboard/settings', label: 'Settings', icon: Settings },
+];
+
+/** The phone's bottom bar for this person. */
+export function bottomNavFor(profile: NavProfile | null | undefined): typeof PRACTICE_BOTTOM_NAV {
+  return isProfileFirst(profile) ? PROFILE_FIRST_BOTTOM_NAV : PRACTICE_BOTTOM_NAV;
+}
+
 /** The practice sidebar for this person: filtered by role, tagged by plan. */
 export function practiceSections(profile: NavProfile | null | undefined, plan: EntitlementSummary | null | undefined): SidebarSection[] {
   const receptionist = isRole(profile, 'RECEPTIONIST');
@@ -143,6 +161,20 @@ export function practiceSections(profile: NavProfile | null | undefined, plan: E
     badge: missingPlanFor(e.requires, plan) ? <PlanTag tier={missingPlanFor(e.requires, plan)!} /> : undefined,
     tourId: e.tourId,
   });
+  if (isProfileFirst(profile)) {
+    // §6.8: the profile leads; the practice features are one quiet entry away.
+    return [
+      { key: 'main', groups: [{ key: 'main', items: [toItem({ href: '/dashboard/profile', label: 'My profile', icon: IdCard })] }] },
+      {
+        key: 'booking',
+        label: 'Set up booking',
+        icon: <Calendar className="h-3.5 w-3.5" />,
+        collapsible: true,
+        groups: [{ key: 'booking', items: [...MAIN, ...FORMS].map(toItem) }],
+      },
+      { key: 'settings', groups: [{ key: 'settings', items: SETTINGS.map(toItem) }] },
+    ];
+  }
   return [
     { key: 'main', groups: [{ key: 'main', items: MAIN.filter((e) => !e.clinicalOnly || !receptionist).map(toItem) }] },
     {
