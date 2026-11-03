@@ -56,6 +56,10 @@ function mergeSections(existing: unknown, patch: TemplateSectionsInput): StoredR
   const sections = objectAt(stored, 'sections');
 
   for (const [section, update] of Object.entries(patch)) {
+    if (!update) {
+      delete sections[section];
+      continue;
+    }
     const current = objectAt(sections, section);
     const next: StoredRecord = { ...current, prompt: update.prompt };
     if ('example' in update) next.example = update.example;

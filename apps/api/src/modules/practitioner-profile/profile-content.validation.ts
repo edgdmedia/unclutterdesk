@@ -28,7 +28,7 @@ export interface TemplateSectionInput {
   example?: string | null;
 }
 
-export type TemplateSectionsInput = Partial<Record<SectionKey, TemplateSectionInput>>;
+export type TemplateSectionsInput = Partial<Record<SectionKey, TemplateSectionInput | null>>;
 
 export interface TemplateUpdateInput {
   title?: string;
@@ -70,13 +70,17 @@ function knownKeys(value: Record<string, unknown>, allowed: readonly string[], f
   }
 }
 
-/** Prompts and examples, keyed by profile section. */
+/** Prompts and examples, keyed by profile section. `null` removes the section. */
 export function parseTemplateSections(value: unknown): TemplateSectionsInput {
   const input = record(value, 'sections');
   const out: TemplateSectionsInput = {};
 
   for (const [section, raw] of Object.entries(input)) {
     if (!SECTION_KEYS.has(section)) throw new BadRequestException(`Unknown profile section: ${section}`);
+    if (raw === null) {
+      out[section as SectionKey] = null;
+      continue;
+    }
     const entry = record(raw, `sections.${section}`);
     knownKeys(entry, ['prompt', 'example'], `sections.${section}`);
 

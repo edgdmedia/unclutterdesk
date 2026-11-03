@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import React from 'react';
 import { SWRConfig } from 'swr';
-import { cleanup, fireEvent, renderWithApp, screen, waitFor } from '../../test/renderWithApp';
+import { cleanup, fireEvent, renderWithApp, screen, waitFor, within } from '../../test/renderWithApp';
 
 const get = vi.fn();
 const post = vi.fn();
@@ -105,6 +105,19 @@ describe('Admin → Profile content', () => {
       isActive: true,
       sortOrder: 10,
     });
+  });
+
+  it('removes a section when both its fields are cleared', async () => {
+    renderPage(<AdminProfileTemplatesPage />);
+
+    const example = await screen.findByDisplayValue(/People often come to me/);
+    const card = example.closest('div') as HTMLElement;
+    fireEvent.change(within(card).getByLabelText('Prompt'), { target: { value: '' } });
+    fireEvent.change(example, { target: { value: '' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Save template' }));
+
+    await waitFor(() => expect(patch).toHaveBeenCalled());
+    expect(patch.mock.calls[0][1].sections.about).toBeNull();
   });
 
   it('shows the shared guidance and saves a changed line', async () => {

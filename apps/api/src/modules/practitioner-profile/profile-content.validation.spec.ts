@@ -99,4 +99,12 @@ describe('profile content validation (§6.6)', () => {
       about: { prompt: 'What is it like?' },
     });
   });
+
+  it('accepts null to remove a section', () => {
+    expect(parseTemplateUpdate({ sections: { about: null } })).toEqual({ sections: { about: null } });
+    expect(parseTemplateSections({ about: null, identity: { prompt: 'Who?' } })).toEqual({
+      about: null,
+      identity: { prompt: 'Who?' },
+    });
+  });
 });

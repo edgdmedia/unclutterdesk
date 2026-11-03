@@ -70,10 +70,13 @@ export function AdminProfileTemplatesPage() {
       return;
     }
 
-    const clean: Record<string, { prompt: string; example: string | null }> = {};
+    const clean: Record<string, { prompt: string; example: string | null } | null> = {};
     for (const section of SECTION_ORDER) {
       const draft = sections[section];
-      if (!draft.prompt.trim() && !draft.example.trim()) continue;
+      if (!draft.prompt.trim() && !draft.example.trim()) {
+        clean[section] = null;
+        continue;
+      }
       if (!draft.prompt.trim()) {
         const message = sectionError(section);
         setError(message);
@@ -203,7 +206,7 @@ export function AdminProfileTemplatesPage() {
                 <div>
                   <p className="text-[16px] font-bold text-[#0F172A]">Section prompts and examples</p>
                   <p className="mt-1 text-[12.5px] text-[#64748B]">
-                    Leave a section blank to hide it from this template. A section with an example needs a prompt.
+                    Leave a section blank to remove it from this template. A section with an example needs a prompt.
                   </p>
                 </div>
 

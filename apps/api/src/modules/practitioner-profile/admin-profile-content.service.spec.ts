@@ -131,6 +131,14 @@ describe('AdminProfileContentService (§6.6)', () => {
     });
   });
 
+  it('removes a section when null is sent, keeping the rest intact', async () => {
+    const { service, prisma } = setup();
+    await service.updateTemplate(3n, 'private-practice-counsellor', { sections: { about: null } });
+    const sections = prisma.profileTemplate.update.mock.calls[0][0].data.sections.sections;
+    expect(sections.about).toBeUndefined();
+    expect(sections.identity).toEqual({ prompt: 'Old prompt', example: 'Old example' });
+  });
+
   it('edits shared guidance on every template so the editor sees it at once', async () => {
     const { service, prisma, audit } = setup();
     const result = await service.updateGuidance(3n, { guidance: { about: 'New about guidance' }, reason: 'tone' });
