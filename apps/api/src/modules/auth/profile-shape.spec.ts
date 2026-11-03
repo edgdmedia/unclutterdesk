@@ -24,6 +24,7 @@ const FIELDS = [
   'avatarUrl',
   'practiceName',
   'tenantSlug',
+  'onboardingIntent',
   'plan',
   'isTherapist',
   'platformAdmin',
@@ -73,6 +74,8 @@ describe('the signed-in profile', () => {
   // The field the booking link and the practice branding are built from.
   it('carries the practice slug', () => {
     expect(build(PROFILE).tenantSlug).toBe('ada-therapy');
+    expect(build(PROFILE).onboardingIntent).toBe('PRACTICE');
+    expect(build({ ...PROFILE, tenant: { ...PROFILE.tenant, onboardingIntent: 'PROFILE' } } as any).onboardingIntent).toBe('PROFILE');
   });
 
   it('carries the practice name', () => {
