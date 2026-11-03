@@ -12,7 +12,7 @@
  * becomes an href.
  */
 import type { ProfilesConfig } from '../lib/config';
-import { KIND_TITLES, type PublicProfile } from '../lib/profiles';
+import { KIND_TITLES, socialItems, type PublicProfile } from '../lib/profiles';
 import { safeHttpsUrl } from '../lib/security';
 import { initialsOf, layoutOf } from '../lib/layout';
 
@@ -33,11 +33,9 @@ const countryName = (() => {
 const kind = KIND_TITLES[p.kind] ?? 'Therapist';
 const where = [p.city, countryName].filter(Boolean).join(', ');
 const modes = [p.offersOnline && 'Online', p.offersInPerson && 'In person'].filter(Boolean).join(' · ');
-const bookUrl = p.bookingMode === 'EXTERNAL' ? safeHttpsUrl(p.externalBookingUrl) : null;
-const social = Object.entries(p.socialLinks)
-  .map(([k, v]) => [k, safeHttpsUrl(v)] as const)
-  .filter(([, v]) => v);
-const socialLabel: Record<string, string> = { website: 'Website', instagram: 'Instagram', linkedin: 'LinkedIn', facebook: 'Facebook', x: 'X', tiktok: 'TikTok', youtube: 'YouTube' };
+const bookUrl =
+  p.bookingMode === 'EXTERNAL' ? safeHttpsUrl(p.externalBookingUrl) : p.bookingMode === 'DESK' ? safeHttpsUrl(p.deskBookingUrl) : null;
+const social = socialItems(p.socialLinks, safeHttpsUrl);
 const photo = p.photoUrl && config.mediaOrigin && p.photoUrl.startsWith(config.mediaOrigin + '/') ? p.photoUrl : null;
 const initials = initialsOf(p.displayName);
 const signup = `${config.appOrigin}/signup?intent=profile&ref=profile&handle=${encodeURIComponent(p.handle)}`;
@@ -163,7 +161,7 @@ const showFees = Boolean(p.feeRangeText) || (layout === 'split' && action !== nu
               <h2 id="contact">Contact</h2>
               <ul class="links">
                 {p.contactEmail && <li><a href={`mailto:${p.contactEmail}`}>{p.contactEmail}</a></li>}
-                {social.map(([k, v]) => <li><a href={v!} rel="noopener nofollow me">{socialLabel[k] ?? k}</a></li>)}
+                {social.map((l) => <li><a href={l.url} rel="noopener nofollow me" data-platform={l.platform}>{l.label}</a></li>)}
               </ul>
             </section>
           )}

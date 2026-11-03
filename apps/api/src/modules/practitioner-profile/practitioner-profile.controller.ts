@@ -56,6 +56,20 @@ export class PractitionerProfileController {
   }
 
   @Permissions('clinical.record')
+  @Get('me/booking')
+  @ApiOperation({ summary: 'How clients book me, and whether booking through the practice is ready' })
+  booking(@Req() req: any) {
+    return this.profiles.getBooking(authenticatedUserId(req), authenticatedProfileId(req));
+  }
+
+  @Permissions('clinical.record')
+  @Put('me/booking')
+  @ApiOperation({ summary: 'Choose how clients book me: through the practice, my own link, or contact only' })
+  setBooking(@Req() req: any, @Body() dto: { mode?: unknown; externalBookingUrl?: unknown }) {
+    return this.profiles.setBooking(authenticatedUserId(req), authenticatedProfileId(req), dto ?? {});
+  }
+
+  @Permissions('clinical.record')
   @Put('me/handle')
   @ApiOperation({ summary: 'Change my handle; the old one keeps redirecting' })
   changeHandle(@Req() req: any, @Body() dto: { handle?: string }) {
