@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { useNavigate, Navigate } from 'react-router-dom';
+import { useNavigate, Navigate, Link } from 'react-router-dom';
 import { Copy, Check, Link2, Calendar, FileText, Video, Globe, Palette, Sparkles, TrendingUp, CheckCircle2, ArrowRight } from 'lucide-react';
 import { Button, Page, PageHeader, Grid, MetricTile } from '@unclutterdesk/ui';
 import { useAuth } from '../../context/AuthContext';
@@ -9,6 +9,9 @@ import { DashboardTour } from '../../components/onboarding/DashboardTour';
 import { api, practiceBookingUrl } from '../../utils/apiClient';
 import { TIER_NAMES, useEntitlements, type Tier } from '../../utils/entitlements';
 import { LapseNotice } from '../../components/billing/LapseNotice';
+import { JoinButton } from '../../components/video/JoinButton';
+import { useDisplayFormat } from '../../utils/displayFormat';
+import { sessionBadge, upcomingSessions } from './upcomingSessions';
 
 interface DashboardPageProps {
   tenantStatus?: 'ACTIVE' | 'PAUSED';
@@ -77,9 +80,11 @@ function PracticeToday(props: DashboardPageProps) {
 
   const bookingUrl = practiceBookingUrl(authUser?.tenantSlug, customDomain, customDomainStatus);
 
-  // The photo lives on the server, not just in this screen: after saving, the
-  // signed-in profile is re-read so the account menu shows it too.
+  // §6.17: the photo clients see lives on the therapist's profile (booking
+  // page and the public profile). The account menu’s picture is updated with it,
+  // and the signed-in profile re-read so the menu shows it.
   async function savePhoto(dataUrl: string) {
+    await api.put('/v1/practitioner-profile/me/photo', { image: dataUrl });
     await api.post('/v1/consult/therapist/profile/avatar', { avatarUrl: dataUrl });
     await refreshProfile();
     // GEN-02: done means gone — the card retires the moment the server has it.
@@ -197,21 +202,10 @@ function PracticeToday(props: DashboardPageProps) {
 
   const changePercent = summary.revenueChangePercent;
 
-  // Render list of actual sessions
-  const dynamicSessions = (props.sessions || []).map(s => {
-    const startObj = new Date(s.startsAt);
-    const endObj = new Date(s.endsAt);
-    const formatTime = (d: Date) => d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false });
-    return {
-      id: s.id,
-      time: formatTime(startObj),
-      end: formatTime(endObj),
-      name: s.title,
-      type: s.type,
-      mode: s.type.includes('Supervision') || s.type.includes('Notes') ? 'Internal Block' : 'Telehealth',
-      status: 'Confirmed'
-    };
-  });
+  // Only sessions that haven't ended, soonest first; the rest are under "All sessions".
+  const fmt = useDisplayFormat();
+  const now = new Date();
+  const { shown: upcoming, more: moreUpcoming } = upcomingSessions(props.sessions || [], now);
 
   return (
     <Page
@@ -406,66 +400,82 @@ function PracticeToday(props: DashboardPageProps) {
                 <span className="os-eyebrow block">UPCOMING</span>
                 <h2 className="text-[17px] font-bold text-[#0F172A] tracking-[-0.02em]">Client sessions scheduled</h2>
               </div>
-              <div className="flex items-center gap-2">
-                <span className="h-[32px] px-3 rounded-[10px] bg-[#F1F5F9] text-[#475569] text-[12.5px] font-bold flex items-center gap-1.5">
-                  <Calendar className="h-3.5 w-3.5 text-[#64748B]" />
-                  <span>{new Date().toLocaleString('en-US', { month: 'long', year: 'numeric' })}</span>
-                </span>
-              </div>
+              <Link
+                to="/dashboard/sessions"
+                className="h-[32px] px-3 rounded-[10px] bg-[#F1F5F9] text-[#475569] text-[12.5px] font-bold flex items-center gap-1.5 hover:bg-[#E2E8F0]"
+              >
+                <Calendar className="h-3.5 w-3.5 text-[#64748B]" aria-hidden />
+                <span>All sessions</span>
+              </Link>
             </div>
 
             {/* Client Session Rows */}
             <div className="space-y-2.5 overflow-x-auto pb-1">
-              {dynamicSessions.map((s) => (
+              {upcoming.map((s) => {
+                const badge = sessionBadge(s, now);
+                const online = s.format !== 'IN_PERSON';
+                return (
                 <div
                   key={s.id}
-                  className="p-[14px_16px] rounded-[18px] border border-[#E2E8F0] flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4 hover:shadow-[0_8px_24px_rgba(15,23,42,.08)] hover:-translate-y-[1px] transition-all bg-white min-w-0"
+                  className="relative p-[14px_16px] rounded-[18px] border border-[#E2E8F0] flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4 hover:shadow-[0_8px_24px_rgba(15,23,42,.08)] hover:-translate-y-[1px] transition-all bg-white min-w-0"
                 >
-                  <div className="flex items-center gap-4">
-                    <div className="w-[52px] shrink-0 text-center">
-                      <span className="text-[15px] font-extrabold text-[#0F172A] block leading-none">{s.time}</span>
-                      <span className="text-[10.5px] font-semibold text-[#94A3B8]">{s.end}</span>
+                  <div className="flex items-center gap-4 min-w-0">
+                    <div className="w-[64px] shrink-0 text-center">
+                      <span className="text-[10.5px] font-bold uppercase tracking-wide text-[#64748B] block">{fmt.day(s.startsAt, now)}</span>
+                      <span className="text-[14px] font-extrabold text-[#0F172A] block leading-tight">{fmt.time(s.startsAt)}</span>
+                      <span className="text-[10.5px] font-semibold text-[#94A3B8]">{fmt.time(s.endsAt)}</span>
                     </div>
 
                     <div className="hidden sm:block h-[34px] w-[1px] bg-[#E2E8F0]" />
 
-                    <div className="h-[38px] w-[38px] rounded-[12px] bg-[#0F3A53]/10 text-[#0F3A53] font-extrabold flex items-center justify-center text-sm shrink-0">
-                      {s.name.split(' ').map(n => n[0]).join('')}
+                    <div className="h-[38px] w-[38px] rounded-[12px] bg-[#0F3A53]/10 text-[#0F3A53] font-extrabold flex items-center justify-center text-sm shrink-0" aria-hidden>
+                      {s.title.split(' ').map(n => n[0]).join('').slice(0, 2)}
                     </div>
 
-                    <div>
-                      <h3 className="text-[14.5px] font-bold text-[#0F172A] leading-snug">{s.name}</h3>
-                      <p className="text-[12px] text-[#64748B] font-medium">{s.type} · {s.mode}</p>
+                    <div className="min-w-0">
+                      {/* The whole card opens the session; the buttons sit above this link. */}
+                      <Link to={`/dashboard/sessions/${s.id}`} className="text-[14.5px] font-bold text-[#0F172A] leading-snug hover:underline after:absolute after:inset-0 after:rounded-[18px] after:content-['']">
+                        {s.title}
+                      </Link>
+                      <p className="text-[12px] text-[#64748B] font-medium">{s.type} · {online ? 'Online' : 'In person'}</p>
                     </div>
                   </div>
 
-                  <div className="flex items-center gap-2">
-                    <span className="px-2.5 py-1 rounded-full text-[11px] font-bold bg-[#ECFDF5] text-[#059669] border border-[#A7F3D0]">
-                      {s.status}
+                  <div className="relative z-10 flex items-center gap-2">
+                    <span className={`px-2.5 py-1 rounded-full text-[11px] font-bold border ${badge.tone === 'live' ? 'bg-[#EFF6FF] text-[#1D4ED8] border-[#BFDBFE]' : badge.tone === 'wait' ? 'bg-[#FFFBEB] text-[#B45309] border-[#FDE68A]' : 'bg-[#ECFDF5] text-[#059669] border-[#A7F3D0]'}`}>
+                      {badge.label}
                     </span>
 
                     <button
                       onClick={() => navigate(`/session/${s.id}/prep`)}
                       className="h-[34px] px-3 rounded-[11px] bg-[#F1F5F9] text-[#475569] text-xs font-bold hover:bg-[#E2E8F0] flex items-center gap-1.5 cursor-pointer">
                       <FileText className="h-3.5 w-3.5" />
-                      <span>Notes</span>
+                      <span>Prep</span>
                     </button>
 
-                    <button
-                      onClick={() => navigate(`/session/${s.id}/prep`)}
-                      className="h-[34px] px-3 rounded-[11px] text-white text-xs font-bold flex items-center gap-1.5 transition-opacity cursor-pointer"
-                      style={{ backgroundColor: primaryColor }}
-                    >
-                      <Video className="h-3.5 w-3.5" />
-                      <span>Start session</span>
-                    </button>
+                    {online && (s.status ?? '').toUpperCase() === 'CONFIRMED' ? (
+                      <JoinButton
+                        startsAt={s.startsAt}
+                        endsAt={s.endsAt}
+                        to={`/session/${s.id}`}
+                        label="Start session"
+                        className="h-[34px] px-3 rounded-[11px] text-white text-xs font-bold flex items-center gap-1.5 cursor-pointer bg-[#0F3A53]"
+                        waitingClassName="h-[34px] px-3 rounded-[11px] bg-[#E2E8F0] text-[#64748B] text-xs font-bold flex items-center gap-1.5 cursor-not-allowed"
+                      />
+                    ) : null}
                   </div>
                 </div>
-              ))}
-              {dynamicSessions.length === 0 && (
+                );
+              })}
+              {upcoming.length === 0 && (
                 <div className="text-center py-6 text-slate-400 text-xs font-semibold">
                   No upcoming sessions.
                 </div>
+              )}
+              {moreUpcoming > 0 && (
+                <Link to="/dashboard/sessions" className="block text-center pt-1 text-[12.5px] font-bold text-[#0F3A53] hover:underline">
+                  {moreUpcoming} more upcoming · See all sessions
+                </Link>
               )}
             </div>
           </div>

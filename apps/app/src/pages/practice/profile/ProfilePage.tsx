@@ -48,7 +48,7 @@ export function ProfilePage() {
         />
       </div>
       {tab === 'Share' && <ShareKit />}
-      {tab === 'This practice' && <MyProfilePage embedded sharedFieldsInPublicProfile={publicProfile !== null} />}
+      {tab === 'This practice' && <MyProfilePage embedded />}
     </Page>
   );
 }

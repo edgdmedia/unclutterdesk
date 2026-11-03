@@ -8,6 +8,7 @@ import { activeNavKey, bottomNavFor, practiceSections } from './practiceNav';
 import { RouterLink } from './RouterLink';
 import { AccountMenu } from './AccountMenu';
 import { PracticeBrand } from './PracticeBrand';
+import { DisplayPrefsSync } from '../DisplayPrefsSync';
 
 const COLLAPSED_KEY = 'unclutter_sidebar_collapsed';
 // Each collapsible section remembers whether it was left open: forms, booking, …
@@ -73,6 +74,7 @@ export function PracticeShell({ banner, children }: { banner?: ReactNode; childr
       banner={banner}
       header={<NotificationBell allHref="/dashboard/notifications" />}
     >
+      <DisplayPrefsSync />
       {children}
     </AppShell>
   );

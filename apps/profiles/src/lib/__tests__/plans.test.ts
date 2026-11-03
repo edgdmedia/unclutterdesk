@@ -23,7 +23,7 @@ describe('plans', () => {
     const config = profilesConfig({ API_URL: 'https://api.example.test' });
     const ok = vi.fn().mockResolvedValue(new Response(JSON.stringify([base]), { status: 200 }));
     await expect(fetchPlans(config, ok)).resolves.toEqual([base]);
-    expect(ok.mock.calls[0][0]).toBe('https://api.example.test/v1/billing/plans');
+    expect(ok.mock.calls[0][0]).toBe('https://api.example.test/v1/billing/public-plans');
     expect(ok.mock.calls[0][1].credentials).toBeUndefined();
     await expect(fetchPlans(config, vi.fn().mockResolvedValue(new Response('[]', { status: 200 })))).rejects.toThrow();
     await expect(fetchPlans(config, vi.fn().mockResolvedValue(new Response('', { status: 500 })))).rejects.toThrow();

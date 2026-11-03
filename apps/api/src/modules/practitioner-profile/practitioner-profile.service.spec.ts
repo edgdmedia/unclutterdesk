@@ -455,33 +455,12 @@ describe('PractitionerProfileService', () => {
     });
   });
 
-  describe('one place to edit (merged profile page)', () => {
-    it("copies the public profile's fields to every practice record of this person, and nothing else", async () => {
+  describe('one home per fact (§6.17)', () => {
+    it('keeps facts about the therapist on the profile only: saving never writes copies to practice records', async () => {
       const { service, prisma } = setup();
-      ownProfile(prisma, {
-        headline: 'Calm support',
-        credentialsText: 'MSc',
-        selfReportedYears: 6,
-        taxonomy: [
-          { isPrimary: true, term: { kind: 'SPECIALTY', label: 'Grief & loss', sortOrder: 40 } },
-          { isPrimary: false, term: { kind: 'SPECIALTY', label: 'Anxiety', sortOrder: 10 } },
-          { isPrimary: false, term: { kind: 'MODALITY', label: 'Person-centred', sortOrder: 60 } },
-          { isPrimary: false, term: { kind: 'LANGUAGE', label: 'Yoruba', sortOrder: 20 } },
-          { isPrimary: false, term: { kind: 'LANGUAGE', label: 'English', sortOrder: 10 } },
-        ],
-      });
-      await service.updateOwn(ME, { headline: 'Calm support' });
-      expect(prisma.consultTherapistProfile.updateMany).toHaveBeenCalledWith({
-        where: { profile: { userId: ME } },
-        data: {
-          tagline: 'Calm support',
-          credentials: 'MSc',
-          yearsExperience: 6,
-          specialty: 'Grief & loss',
-          modalities: ['Person-centred'],
-          languages: ['English', 'Yoruba'],
-        },
-      });
+      ownProfile(prisma, { headline: 'Calm support', credentialsText: 'MSc', selfReportedYears: 6 });
+      await service.updateOwn(ME, { headline: 'Calm support', about: 'Hello' });
+      expect(prisma.consultTherapistProfile.updateMany).not.toHaveBeenCalled();
     });
   });
 

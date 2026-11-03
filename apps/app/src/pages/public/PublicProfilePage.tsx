@@ -30,6 +30,7 @@ type PublicTherapist = {
   profileId: string;
   firstName: string;
   lastName: string;
+  displayName?: string | null;
   avatarUrl: string | null;
   specialty: string | null;
   credentials: string | null;

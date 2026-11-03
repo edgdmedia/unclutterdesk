@@ -246,20 +246,28 @@ describe('the public profile tab', () => {
 });
 
 describe('the practice tab', () => {
-  it('holds the practice settings, and leaves the shared fields to the public profile', async () => {
-    serve();
-    renderWithApp(<ProfilePage />, { route: '/dashboard/profile?tab=practice' });
-    expect(await screen.findByText(/edited in your public profile and used here too/)).toBeTruthy();
-    expect(screen.getByText('Booking email')).toBeTruthy();
-    expect(screen.queryByText('Specialty')).toBeNull();
-    expect(screen.queryByText('Tagline')).toBeNull();
+  it('holds only the practice settings; facts about the therapist are edited once, in My profile (§6.17)', async () => {
+    for (const profile of [undefined, null]) {
+      serve(profile === null ? { profile: null } : undefined);
+      const { unmount } = renderWithApp(<ProfilePage />, { route: '/dashboard/profile?tab=practice' });
+      expect(await screen.findByText('Booking email')).toBeTruthy();
+      expect(screen.getByRole('link', { name: 'My profile' }).getAttribute('href')).toBe('/dashboard/profile');
+      for (const moved of ['Specialty', 'Tagline', 'Bio', 'Credentials', 'Years experience', 'Modalities', 'Languages']) {
+        expect(screen.queryByText(moved, { selector: 'label' })).toBeNull();
+      }
+      unmount();
+    }
   });
 
-  it('keeps every field on the practice tab for someone without a public profile', async () => {
-    serve({ profile: null });
+  it('saves only practice settings, never the facts that live on the profile', async () => {
+    serve();
+    post.mockResolvedValue({});
     renderWithApp(<ProfilePage />, { route: '/dashboard/profile?tab=practice' });
-    expect(await screen.findByText('Specialty')).toBeTruthy();
-    expect(screen.getByText('Tagline')).toBeTruthy();
+    await screen.findByText('Booking email');
+    fireEvent.click(screen.getByRole('button', { name: /Save changes/ }));
+    await waitFor(() => expect(post).toHaveBeenCalledWith('/v1/consult/therapist/profile', expect.any(Object)));
+    const sent = post.mock.calls.find((c) => c[0] === '/v1/consult/therapist/profile')![1] as Record<string, unknown>;
+    for (const k of ['welcomeMessage', 'tagline', 'specialty', 'credentials', 'yearsExperience', 'modalities', 'languages']) expect(sent).not.toHaveProperty(k);
   });
 
   it('switches tabs from the header', async () => {

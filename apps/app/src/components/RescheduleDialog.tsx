@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { AlertCircle, Loader2, X } from 'lucide-react';
 import { api } from '../utils/apiClient';
 import { useToast } from '@unclutterdesk/ui';
+import { formatClock } from '../utils/displayFormat';
 
 interface Slot {
   id: string;
@@ -19,16 +20,15 @@ interface Options {
 }
 
 const DAY = new Intl.DateTimeFormat('en-GB', { weekday: 'short', day: 'numeric', month: 'short' });
-const TIME = new Intl.DateTimeFormat('en-GB', { hour: '2-digit', minute: '2-digit' });
 
 function formatSlot(startsAt: string, endsAt: string): string {
   const start = new Date(startsAt);
-  return `${DAY.format(start)} · ${TIME.format(start)} — ${TIME.format(new Date(endsAt))}`;
+  return `${DAY.format(start)} · ${formatClock(start)} — ${formatClock(endsAt)}`;
 }
 
 function formatMoment(iso: string): string {
   const at = new Date(iso);
-  return `${DAY.format(at)} at ${TIME.format(at)}`;
+  return `${DAY.format(at)} at ${formatClock(at)}`;
 }
 
 /**

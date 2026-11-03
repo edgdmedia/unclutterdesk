@@ -32,7 +32,7 @@ const NEVER_PROXIED: string[] = [
   // Tenant slug availability check (public but not for booking)
   'GET /v1/tenant/check-slug/:slug',
   // Plans for the public pricing page (the profiles site renders them server-side)
-  'GET /v1/billing/plans',
+  'GET /v1/billing/public-plans',
   // Admin authentication endpoint
   'POST /v1/admin/auth/login',
   // Client self-registration endpoint

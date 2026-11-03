@@ -11,12 +11,14 @@ import { SessionService } from './session.service';
 import { PrismaService } from '../../common/prisma/prisma.service';
 import { InviteModule } from '../invites/invite.module';
 import { IntakeModule } from '../intake/intake.module';
+import { PractitionerProfileModule } from '../practitioner-profile/practitioner-profile.module';
 import { JWT_SECRET, JWT_EXPIRES_IN } from '../../common/auth.config';
 
 @Module({
   imports: [
     IntakeModule,
     InviteModule,
+    PractitionerProfileModule,
     PassportModule.register({ defaultStrategy: 'jwt' }),
     JwtModule.register({
       secret: JWT_SECRET,

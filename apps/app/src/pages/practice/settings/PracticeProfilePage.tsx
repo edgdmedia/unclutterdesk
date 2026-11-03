@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Save, Info } from 'lucide-react';
-import { Eyebrow, Page, PageHeader, useToast } from '@unclutterdesk/ui';
+import { Eyebrow, Page, PageHeader, Toggle, useToast } from '@unclutterdesk/ui';
 import { api } from '../../../utils/apiClient';
 
 type PracticeProfile = {
@@ -15,9 +15,21 @@ type PracticeProfile = {
   city?: string;
   address?: string;
   category?: string;
+  /** §6.17: a solo practice can use its owner's profile for its page. */
+  useProfileForPractice?: boolean;
+  /** From the API: whether this practice is solo, and what the profile fills in. Not saved. */
+  solo?: boolean;
+  fromProfile?: { welcomeMessage?: string; tagline?: string; city?: string; logoUrl?: string };
 };
 
 const inputCls = 'h-[46px] w-full px-[14px] rounded-[14px] bg-[#F8FAFC] border border-[#E2E8F0] text-sm text-[#0F172A] outline-none focus:bg-white focus:border-[#94A3B8]';
+
+/** While a solo practice uses its owner's profile, an empty field shows what will appear instead. */
+function fromProfileHint(p: PracticeProfile, field: 'welcomeMessage' | 'tagline'): string | null {
+  if (!p.solo || p.useProfileForPractice === false) return null;
+  const v = p.fromProfile?.[field];
+  return v ? `From your profile: ${v}` : null;
+}
 
 export function PracticeProfilePage() {
   const toast = useToast();
@@ -47,7 +59,8 @@ export function PracticeProfilePage() {
     setSaving(true);
     setError(null);
     try {
-      await api.patch('/v1/tenant/brand', profile);
+      const { solo: _solo, fromProfile: _from, ...editable } = profile;
+      await api.patch('/v1/tenant/brand', editable);
       toast.success('Practice profile saved');
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Could not save the practice profile');
@@ -79,6 +92,25 @@ export function PracticeProfilePage() {
           {error ? <div className="rounded-[18px] border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-medium text-rose-700">{error}</div> : null}
           {loading ? <div className="rounded-[24px] border border-[#E2E8F0] bg-white px-6 py-10 text-sm font-medium text-[#64748B]">Loading practice profile...</div> : (
             <>
+              {profile.solo ? (
+                <div className="bg-white rounded-[24px] border border-[#E2E8F0] p-[20px_26px] flex items-start gap-4">
+                  <Toggle
+                    width={48}
+                    checked={profile.useProfileForPractice !== false}
+                    onChange={(next: boolean) => setProfile((p) => ({ ...p, useProfileForPractice: next }))}
+                    aria-label="Use my profile for my practice page"
+                  />
+                  <div>
+                    <p className="text-[14px] font-bold text-[#0F172A]">Use my profile for my practice page</p>
+                    <p className="text-[12.5px] text-[#64748B] mt-0.5">
+                      You're the only therapist here, so your booking page can show what's in{' '}
+                      <Link to="/dashboard/profile" className="font-bold text-[#0F3A53] underline">My profile</Link>: your about, headline, city and photo.
+                      Anything you fill in below is used instead.
+                    </p>
+                  </div>
+                </div>
+              ) : null}
+
               <div className="bg-white rounded-[24px] border border-[#E2E8F0] p-[24px_26px]">
                 <Eyebrow className="mb-1">PRACTICE IDENTITY</Eyebrow>
                 <div className="grid grid-cols-2 gap-4 mt-4">
@@ -86,8 +118,8 @@ export function PracticeProfilePage() {
                   <div><label className="block text-[11.5px] font-bold text-[#475569] mb-1.5">Short name</label><input className={inputCls} value={profile.shortName || ''} onChange={(e) => setProfile((p) => ({ ...p, shortName: e.target.value }))} /></div>
                 </div>
                 <div className="mt-4"><label className="block text-[11.5px] font-bold text-[#475569] mb-1.5">Welcome headline</label><input className="h-[46px] w-full px-[14px] rounded-[14px] bg-[#F8FAFC] border border-[#E2E8F0] text-sm font-medium text-[#0F172A] outline-none focus:bg-white focus:border-[#94A3B8]" value={profile.welcomeTitle || ''} maxLength={120} placeholder="Headline in the About section of your booking page" onChange={(e) => setProfile((p) => ({ ...p, welcomeTitle: e.target.value }))} /></div>
-                <div className="mt-4"><label className="block text-[11.5px] font-bold text-[#475569] mb-1.5">Tagline</label><input className="h-[46px] w-full px-[14px] rounded-[14px] bg-[#F8FAFC] border border-[#E2E8F0] text-sm font-medium text-[#0F172A] outline-none focus:bg-white focus:border-[#94A3B8]" value={profile.tagline || ''} maxLength={120} placeholder="One line under your name on the booking page" onChange={(e) => setProfile((p) => ({ ...p, tagline: e.target.value }))} /></div>
-                <div className="mt-4"><label className="block text-[11.5px] font-bold text-[#475569] mb-1.5">Bio</label><textarea rows={4} className="w-full px-[14px] py-3 rounded-[14px] bg-[#F8FAFC] border border-[#E2E8F0] text-sm text-[#0F172A] outline-none focus:bg-white focus:border-[#94A3B8] resize-none leading-relaxed" value={profile.welcomeMessage || ''} onChange={(e) => setProfile((p) => ({ ...p, welcomeMessage: e.target.value }))} /></div>
+                <div className="mt-4"><label className="block text-[11.5px] font-bold text-[#475569] mb-1.5">Tagline</label><input className="h-[46px] w-full px-[14px] rounded-[14px] bg-[#F8FAFC] border border-[#E2E8F0] text-sm font-medium text-[#0F172A] outline-none focus:bg-white focus:border-[#94A3B8]" value={profile.tagline || ''} maxLength={120} placeholder={fromProfileHint(profile, 'tagline') ?? 'One line under your name on the booking page'} onChange={(e) => setProfile((p) => ({ ...p, tagline: e.target.value }))} /></div>
+                <div className="mt-4"><label className="block text-[11.5px] font-bold text-[#475569] mb-1.5">Welcome message</label><textarea rows={4} className="w-full px-[14px] py-3 rounded-[14px] bg-[#F8FAFC] border border-[#E2E8F0] text-sm text-[#0F172A] outline-none focus:bg-white focus:border-[#94A3B8] resize-none leading-relaxed" value={profile.welcomeMessage || ''} placeholder={fromProfileHint(profile, 'welcomeMessage') ?? undefined} onChange={(e) => setProfile((p) => ({ ...p, welcomeMessage: e.target.value }))} /></div>
               </div>
 
               <div className="bg-white rounded-[24px] border border-[#E2E8F0] p-[24px_26px]">
