@@ -281,6 +281,12 @@ importers:
       '@astrojs/cloudflare':
         specifier: ^14.4.4
         version: 14.4.4(@types/node@24.13.3)(astro@7.4.5(@types/node@24.13.3)(esbuild@0.28.2)(jiti@2.7.0)(terser@5.49.2)(tsx@4.19.2)(yaml@2.9.1))(esbuild@0.28.2)(jiti@2.7.0)(terser@5.49.2)(tsx@4.19.2)(workerd@1.20261102.1)(wrangler@4.156.2(@types/node@24.13.3))(yaml@2.9.1)
+      '@fontsource-variable/outfit':
+        specifier: ^5.3.0
+        version: 5.3.0
+      '@fontsource/fraunces':
+        specifier: ^5.3.0
+        version: 5.3.0
       '@unclutterdesk/ui':
         specifier: workspace:*
         version: link:../../packages/ui
@@ -2062,6 +2068,12 @@ packages:
     engines: {node: '>=18'}
     cpu: [x64]
     os: [win32]
+
+  '@fontsource-variable/outfit@5.3.0':
+    resolution: {integrity: sha512-fPb5XnYK0k7SbR++HEmm4+ZqDszmLKQ+sPRUr8oQ/KNC0vy6r6hazJFe8iYozv4cqlHbvJ/JECkJWrfDodUMVQ==}
+
+  '@fontsource/fraunces@5.3.0':
+    resolution: {integrity: sha512-LEHTOBiZufQzAvnAe2rZ8ZknbDS28Q9kzwb0L+gZJEmjLGr8hhZ/5NuHXwDuHBWhVXYoiGGXmrb0H6Ko/RrHTg==}
 
   '@img/colour@1.1.0':
     resolution: {integrity: sha512-Td76q7j57o/tLVdgS746cYARfSyxk8iEfRxewL9h4OMzYhbW4TAcppl0mT4eyqXddh6L/jwoM75mo7ixa/pCeQ==}
@@ -8941,6 +8953,10 @@ snapshots:
 
   '@esbuild/win32-x64@0.28.2':
     optional: true
+
+  '@fontsource-variable/outfit@5.3.0': {}
+
+  '@fontsource/fraunces@5.3.0': {}
 
   '@img/colour@1.1.0': {}
 

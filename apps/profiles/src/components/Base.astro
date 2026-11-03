@@ -1,4 +1,9 @@
 ---
+// Self-hosted fonts (spec §6.5; CSP font-src 'self'). Vite bundles the woff2
+// files with the site. A face only downloads when a page uses it, so Fraunces
+// (the Editorial layout's quote face) costs nothing on the other layouts.
+import '@fontsource-variable/outfit/wght.css';
+import '@fontsource/fraunces/500-italic.css';
 import '../styles/profile.css';
 import { safeJsonLd } from '../lib/security';
 
