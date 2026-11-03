@@ -213,7 +213,7 @@ export function SubscriptionSettingsPage() {
         {loading || !subscription || !plans ? <div className="rounded-[24px] border border-[#E2E8F0] bg-white px-6 py-10 text-sm font-medium text-[#64748B]">Loading subscription...</div> : (
           <>
             <div className="grid grid-cols-3 gap-5">
-              {plans.map((p) => {
+              {plans.filter((p): p is Plan & { tier: PaidTier } => p.tier in PLAN_FEATURES).map((p) => {
                 const plan = {
                   key: p.tier,
                   name: p.name,

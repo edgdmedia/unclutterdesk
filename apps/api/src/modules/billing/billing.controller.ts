@@ -24,8 +24,12 @@ import { authenticatedTenantId } from '../../common/authenticated-tenant';
 @ApiTags('Billing')
 @Controller('v1/billing')
 export class BillingController {
-  /** Public: the plans and what each includes, for the pricing page. Same tables as the charge and the limits. */
-  @Get('plans')
+  /**
+   * Public: every plan (Free included) and what each includes, for the
+   * pricing page on the profiles site. Same tables as the charge and the
+   * limits. Not GET plans: that is the signed-in subscription page's list.
+   */
+  @Get('public-plans')
   @Header('Cache-Control', 'public, max-age=300')
   @ApiOperation({ summary: 'Plans, prices and what each includes' })
   plans() {
