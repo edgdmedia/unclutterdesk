@@ -1,5 +1,6 @@
-import { Body, Controller, Delete, Get, Param, Patch, Post, Put, Req, UnauthorizedException, UseGuards } from '@nestjs/common';
+import { Body, BadRequestException, Controller, Delete, Get, Param, Patch, Post, Put, Query, Req, Res, UnauthorizedException, UseGuards } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
+import type { Response } from 'express';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { RolesGuard } from '../../common/roles.guard';
 import { Permissions } from '../../common/permissions';
@@ -12,6 +13,7 @@ import {
   type TimelineInput,
   type TaxonomySelection,
 } from './practitioner-profile.service';
+import { profileQr } from './share/qr';
 
 function authenticatedUserId(req: any): bigint {
   const userId = req?.user?.userId;
@@ -107,6 +109,21 @@ export class PractitionerProfileController {
   @ApiOperation({ summary: 'Take my profile off the web' })
   unpublish(@Req() req: any) {
     return this.profiles.unpublishOwn(authenticatedUserId(req));
+  }
+
+  @Permissions('clinical.record')
+  @Get('me/share/qr')
+  @ApiOperation({ summary: 'A QR code for my public profile (svg or png), for sharing' })
+  async shareQr(@Req() req: any, @Query('format') format: string, @Res() res: Response) {
+    const kind = format === 'png' ? 'png' : format === 'svg' ? 'svg' : null;
+    if (!kind) throw new BadRequestException('format must be svg or png');
+    const { handle, url } = await this.profiles.shareTarget(authenticatedUserId(req));
+    const image = await profileQr(url, kind);
+    res.setHeader('Content-Type', kind === 'svg' ? 'image/svg+xml' : 'image/png');
+    res.setHeader('Content-Disposition', `attachment; filename="${handle}-qr.${kind}"`);
+    res.setHeader('Cache-Control', 'private, no-store');
+    res.setHeader('X-Content-Type-Options', 'nosniff');
+    res.send(image);
   }
 
   @Permissions('clinical.record')

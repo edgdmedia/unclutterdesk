@@ -17,6 +17,7 @@ import {
   type SectionKey,
 } from './completeness';
 import { isThemeKey } from './themes';
+import { PROFILE_PUBLIC_ORIGIN } from '../../common/origins';
 import { writingTips } from './writing-tips';
 import { HANDLE_MESSAGES, handleProblem, normalizeHandle, suggestHandle } from './handles';
 import { PHOTO_BACKFILL_JOB, type PhotoBackfillPayload } from './profile-photo.job';
@@ -545,6 +546,20 @@ export class PractitionerProfileService {
       await this.purge([profileTag(hidden.handle), SITEMAP_TAG]);
     }
     return this.getOwn(userId);
+  }
+
+  /**
+   * The signed-in user's public address and handle, for the share kit (§6.10).
+   * Built from PROFILE_PUBLIC_ORIGIN and the profile's own handle, never from
+   * anything the caller sent.
+   */
+  async shareTarget(userId: bigint): Promise<{ handle: string; url: string }> {
+    const profile = await this.prisma.practitionerProfile.findUnique({
+      where: { userId },
+      select: { handle: true },
+    });
+    if (!profile) throw new NotFoundException('You have no profile yet');
+    return { handle: profile.handle, url: `${PROFILE_PUBLIC_ORIGIN}/${profile.handle}` };
   }
 
   /** Active templates for the picker (§6.6), with their guidance and examples. */
