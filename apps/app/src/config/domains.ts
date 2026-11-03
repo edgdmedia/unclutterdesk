@@ -36,7 +36,7 @@ export const APP_HOST = hostOf(PRODUCTION_APP_ORIGIN);
 export const MARKETING_HOST = hostOf(String(import.meta.env.VITE_MARKETING_URL || PRODUCTION_MARKETING_ORIGIN));
 
 /** Public profiles (spec §4.1). VITE_PROFILE_PUBLIC_URL. */
-export const PROFILE_PUBLIC_ORIGIN = trimSlash(String(import.meta.env.VITE_PROFILE_PUBLIC_URL || 'https://profiles.unclutterdesk.com'));
+export const PROFILE_PUBLIC_ORIGIN = trimSlash(String(import.meta.env.VITE_PROFILE_PUBLIC_URL || 'https://therapysts.com'));
 
 /** A profile's public address (spec §6.3): `${PROFILE_PUBLIC_ORIGIN}/{handle}`. */
 export function profilePath(handle: string): string {
