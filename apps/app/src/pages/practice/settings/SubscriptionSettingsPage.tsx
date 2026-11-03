@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Check, TrendingUp } from 'lucide-react';
-import { Eyebrow, useToast } from '@unclutterdesk/ui';
+import { Eyebrow, Page, PageHeader, useToast } from '@unclutterdesk/ui';
 import { useBrand } from '@unclutterdesk/ui';
 import { api } from '../../../utils/apiClient';
 import { formatFee, TIER_NAMES, useEntitlements, type Tier } from '../../../utils/entitlements';
@@ -158,24 +158,18 @@ export function SubscriptionSettingsPage() {
   }
 
   return (
-    <div className="flex-1 min-w-0 flex flex-col bg-[#F8FAFC]">
-      <header className="h-[88px] bg-white border-b border-[#E2E8F0] px-[26px] flex items-center justify-between gap-5 shrink-0">
-        <div>
-          <Eyebrow>SETTINGS</Eyebrow>
-          <h1 className="text-[20px] font-bold tracking-[-0.02em] text-[#0F172A]">Subscription</h1>
-          <p className="text-xs text-[#64748B] font-medium">
-            {!subscription
-              ? 'Loading subscription...'
-              : subscription.complimentaryUntil
-                ? `Free until ${formatDate(subscription.complimentaryUntil)}`
-                : subscription.nextBillingDate
-                  ? `Next charge ${subscription.nextChargeAmount} on ${subscription.nextBillingDate}`
-                  : `${PLAN_NAMES[subscription.subscriptionTier]} plan`}
-          </p>
-        </div>
-      </header>
+    <Page header={<PageHeader eyebrow="SETTINGS" title="Subscription" />}>
+      <p className="text-xs text-[#64748B] font-medium">
+        {!subscription
+          ? 'Loading subscription...'
+          : subscription.complimentaryUntil
+            ? `Free until ${formatDate(subscription.complimentaryUntil)}`
+            : subscription.nextBillingDate
+              ? `Next charge ${subscription.nextChargeAmount} on ${subscription.nextBillingDate}`
+              : `${PLAN_NAMES[subscription.subscriptionTier]} plan`}
+      </p>
 
-      <main className="p-[24px_26px_30px] space-y-6 flex-1">
+      <div className="space-y-6">
         {error ? <div className="rounded-[18px] border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-medium text-rose-700">{error}</div> : null}
         {inviteMessage ? <div className="rounded-[18px] border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-800">{inviteMessage}</div> : null}
         {subscription?.complimentaryUntil ? (
@@ -276,7 +270,7 @@ export function SubscriptionSettingsPage() {
             </div>
           </>
         )}
-      </main>
-    </div>
+      </div>
+    </Page>
   );
 }

@@ -44,6 +44,27 @@ describe('the availability page', () => {
     expect(screen.getAllByText('Either · Lekki clinic').length).toBeGreaterThan(0);
   });
 
+  it('opens on weekly hours and shows upcoming times only after switching tabs', async () => {
+    renderWithApp(<AvailabilitySettingsPage />);
+    await screen.findByText('Monday');
+    const weekly = screen.getByRole('tab', { name: 'Weekly hours' });
+    const upcoming = screen.getByRole('tab', { name: 'Upcoming times' });
+    expect(weekly.getAttribute('aria-selected')).toBe('true');
+    expect(upcoming.getAttribute('aria-selected')).toBe('false');
+    // Booked upcoming tile is not rendered until the tab is chosen.
+    expect(screen.queryByRole('button', { name: /Booked time/ })).toBeNull();
+    fireEvent.click(upcoming);
+    expect(screen.getByRole('tab', { name: 'Upcoming times' }).getAttribute('aria-selected')).toBe('true');
+    expect(await screen.findByText(/This date only|Thu/)).toBeTruthy();
+  });
+
+  it('opens the upcoming tab directly from ?tab=upcoming', async () => {
+    renderWithApp(<AvailabilitySettingsPage />, { route: '/dashboard/settings/availability?tab=upcoming' });
+    expect((await screen.findByRole('tab', { name: 'Upcoming times' })).getAttribute('aria-selected')).toBe('true');
+    expect(screen.queryByText('Monday')).toBeNull();
+    expect(await screen.findByRole('button', { name: /Booked time In person · Lekki clinic/ })).toBeTruthy();
+  });
+
   it('choosing a format on a tile and saving sends weeklyTimes', async () => {
     renderWithApp(<AvailabilitySettingsPage />);
     const tile = (await screen.findAllByRole('button', { name: /Format Online/ }))[0];
@@ -77,8 +98,9 @@ describe('the availability page', () => {
   it('an upcoming time changed to In person patches the slot and shows This date only', async () => {
     renderWithApp(<AvailabilitySettingsPage />);
     await screen.findByText('Monday');
+    fireEvent.click(screen.getByRole('tab', { name: 'Upcoming times' }));
     // The first upcoming tile (Thu 8 Oct 09:00Z slot id 30).
-    const slotTile = screen.getAllByRole('button', { name: /Format Online/ })[1];
+    const slotTile = (await screen.findAllByRole('button', { name: /Format Online/ }))[0];
     fireEvent.click(slotTile);
     fireEvent.click(await screen.findByRole('menuitem', { name: 'In person' }));
     await waitFor(() => expect(patch).toHaveBeenCalledWith('/v1/consult/therapist/slots/30', { formats: ['IN_PERSON'], locationId: '4' }));
@@ -87,7 +109,8 @@ describe('the availability page', () => {
   it('a booked upcoming time cannot be changed', async () => {
     renderWithApp(<AvailabilitySettingsPage />);
     await screen.findByText('Monday');
-    const booked = screen.getByRole('button', { name: /Booked time In person · Lekki clinic/ });
+    fireEvent.click(screen.getByRole('tab', { name: 'Upcoming times' }));
+    const booked = await screen.findByRole('button', { name: /Booked time In person · Lekki clinic/ });
     expect(booked.hasAttribute('disabled')).toBe(true);
   });
 

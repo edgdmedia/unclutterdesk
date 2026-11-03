@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { AlertTriangle, ClipboardCheck, Lock, Send } from 'lucide-react';
-import { Card, Eyebrow, useBrand, useToast } from '@unclutterdesk/ui';
+import { Card, Page, PageHeader, useBrand, useToast } from '@unclutterdesk/ui';
 import { api } from '../../utils/apiClient';
 import { useAuth } from '../../context/AuthContext';
 import { PLAN_LABEL, severityStyle, type LibraryEntry, type PracticeAssignment } from '../../utils/assessments';
@@ -69,32 +69,35 @@ export function AssessmentsPage() {
   }
 
   return (
-    <div className="flex-1 flex flex-col bg-[#F8FAFC] min-w-0">
-      <header className="min-h-[72px] md:h-[88px] bg-white border-b border-[#E2E8F0] px-4 md:px-[26px] py-3 flex items-center justify-between gap-4 shrink-0">
-        <div>
-          <Eyebrow>CLINICAL</Eyebrow>
-          <h1 className="text-[16px] md:text-[20px] font-bold tracking-[-0.02em] text-[#0F172A]">Assessments</h1>
-          <p className="hidden md:block text-xs text-[#64748B] font-medium">
-            Standard, scored questionnaires. Switch on the ones you use, then send them from a client's page.
-          </p>
-        </div>
-        {clinical ? (
-          <div className="h-[40px] p-1 bg-[#EEF2F7] rounded-[14px] inline-flex gap-1 border border-[#E2E8F0] shrink-0">
-            {(['library', 'sent'] as const).map((t) => (
-              <button
-                key={t}
-                type="button"
-                onClick={() => setTab(t)}
-                className={`px-4 rounded-[10px] text-xs font-bold cursor-pointer ${tab === t ? 'bg-white text-[#0F172A] shadow-xs' : 'text-[#64748B]'}`}
-              >
-                {t === 'library' ? 'Library' : 'Sent'}
-              </button>
-            ))}
-          </div>
-        ) : null}
-      </header>
+    <Page
+      header={
+        <PageHeader
+          eyebrow="CLINICAL"
+          title="Assessments"
+          actions={
+            clinical ? (
+              <div className="h-[40px] p-1 bg-[#EEF2F7] rounded-[14px] inline-flex gap-1 border border-[#E2E8F0] shrink-0">
+                {(['library', 'sent'] as const).map((t) => (
+                  <button
+                    key={t}
+                    type="button"
+                    onClick={() => setTab(t)}
+                    className={`px-4 rounded-[10px] text-xs font-bold cursor-pointer ${tab === t ? 'bg-white text-[#0F172A] shadow-xs' : 'text-[#64748B]'}`}
+                  >
+                    {t === 'library' ? 'Library' : 'Sent'}
+                  </button>
+                ))}
+              </div>
+            ) : undefined
+          }
+        />
+      }
+    >
+      <p className="text-xs text-[#64748B] font-medium">
+        Standard, scored questionnaires. Switch on the ones you use, then send them from a client's page.
+      </p>
 
-      <main className="p-4 md:p-[24px_26px_30px] grid grid-cols-1 lg:grid-cols-12 gap-4 md:gap-6 items-start">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 md:gap-6 items-start">
         <div className="lg:col-span-7 space-y-3">
           {error ? (
             <div role="alert" className="rounded-[18px] border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-medium text-rose-700">
@@ -233,7 +236,7 @@ export function AssessmentsPage() {
             </Link>
           </Card>
         </div>
-      </main>
-    </div>
+      </div>
+    </Page>
   );
 }

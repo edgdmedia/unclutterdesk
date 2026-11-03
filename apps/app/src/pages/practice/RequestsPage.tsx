@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { MessageSquarePlus } from 'lucide-react';
-import { Card, Eyebrow, useBrand, useToast } from '@unclutterdesk/ui';
+import { Card, Page, PageHeader, useBrand, useToast } from '@unclutterdesk/ui';
 import { api } from '../../utils/apiClient';
 import {
   REQUEST_STATUS_LABEL,
@@ -63,18 +63,12 @@ export function RequestsPage() {
   }
 
   return (
-    <div className="flex-1 flex flex-col bg-[#F8FAFC] min-w-0">
-      <header className="min-h-[72px] md:h-[88px] bg-white border-b border-[#E2E8F0] px-4 md:px-[26px] py-3 flex items-center shrink-0">
-        <div>
-          <Eyebrow>HELP</Eyebrow>
-          <h1 className="text-[16px] md:text-[20px] font-bold tracking-[-0.02em] text-[#0F172A]">Requests & feedback</h1>
-          <p className="hidden md:block text-xs text-[#64748B] font-medium">
-            Ask us for a feature, an assessment or a service, or tell us what you think.
-          </p>
-        </div>
-      </header>
+    <Page header={<PageHeader eyebrow="HELP" title="Requests & feedback" />}>
+      <p className="text-xs text-[#64748B] font-medium">
+        Ask us for a feature, an assessment or a service, or tell us what you think.
+      </p>
 
-      <main className="p-4 md:p-[24px_26px_30px] grid grid-cols-1 lg:grid-cols-12 gap-4 md:gap-6 items-start">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 md:gap-6 items-start">
         <Card padding="p-[22px]" className="lg:col-span-6">
           <div className="flex items-center gap-2">
             <MessageSquarePlus className="h-4 w-4 text-[#475569]" />
@@ -143,7 +137,7 @@ export function RequestsPage() {
             </ul>
           )}
         </Card>
-      </main>
-    </div>
+      </div>
+    </Page>
   );
 }
