@@ -1,0 +1,44 @@
+name: CI
+
+# Every check runs here, on dev: on PRs into dev and on pushes to dev.
+# main receives only dev merges and only deploys (deploy-*.yml).
+on:
+  workflow_dispatch: {}
+  push:
+    branches:
+      - dev
+  pull_request:
+    branches:
+      - dev
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  checks:
+    name: Typecheck & Test
+    runs-on: ubuntu-latest
+    # A hung step fails in minutes, not after GitHub's six-hour default.
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - uses: pnpm/action-setup@v4
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Generate Prisma Client
+        run: pnpm exec prisma generate --schema prisma/schema.prisma
+      - name: Typecheck
+        run: pnpm --recursive run typecheck
+      - name: Test
+        run: >-
+          pnpm --filter @unclutterdesk/api test &&
+          pnpm --filter @unclutterdesk/ui test &&
+          pnpm --filter @unclutterdesk/app test &&
+          pnpm --filter @unclutterdesk/tenant-router test &&
+          pnpm --filter @unclutterdesk/profiles test

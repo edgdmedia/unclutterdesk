@@ -2,22 +2,9 @@ name: Deploy API
 
 on:
   # Manual redeploy without a code change, e.g. after a path-filtered push
-  # skipped the deploy or a verify failure blocked it.
+  # skipped the deploy.
   workflow_dispatch: {}
   push:
-    branches:
-      - main
-    paths:
-      - 'apps/api/**'
-      - 'prisma/**'
-      - 'deploy.sh'
-      - 'ecosystem.config.js'
-      - 'package.json'
-      - 'pnpm-lock.yaml'
-      - '.github/workflows/deploy-api.yml'
-  # Also on PRs, so `verify` reports a check before the merge rather
-  # than after the deploy has already started.
-  pull_request:
     branches:
       - main
     paths:
@@ -31,42 +18,13 @@ on:
 
 concurrency:
   group: deploy-api-${{ github.ref }}
-  # Never interrupt a deploy in flight; a superseded PR check is fine to drop.
-  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+  # Never interrupt a deploy in flight.
+  cancel-in-progress: false
 
 jobs:
-  verify:
-    name: Typecheck & Test
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Setup Node
-        uses: actions/setup-node@v4
-        with:
-          node-version: 22
-
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v4
-
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
-
-      - name: Generate Prisma Client
-        run: pnpm exec prisma generate --schema prisma/schema.prisma
-
-      - name: Typecheck
-        run: pnpm --recursive run typecheck
-
-      - name: Test
-        run: pnpm --filter @unclutterdesk/api test && pnpm --filter @unclutterdesk/ui test && pnpm --filter @unclutterdesk/app test && pnpm --filter @unclutterdesk/tenant-router test
-
   deploy:
-    needs: verify
-    if: github.event_name == 'push'
+    # Checks ran on dev (ci.yml); main only deploys. Manual runs redeploy too.
+    timeout-minutes: 30
     name: Deploy API To Server
     runs-on: ubuntu-latest
     permissions:
