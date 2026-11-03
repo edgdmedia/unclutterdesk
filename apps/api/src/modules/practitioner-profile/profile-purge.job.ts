@@ -11,6 +11,13 @@ export interface PurgePayload {
 export const profileTag = (handle: string) => `profile:${handle}`;
 export const SITEMAP_TAG = 'sitemap';
 
+/** Queue a purge with retries, then try it at once so the change shows within a minute. */
+export async function queuePurge(jobs: JobsService, tags: string[]): Promise<void> {
+  const payload: PurgePayload = { tags };
+  const job = await jobs.enqueue(PURGE_JOB, payload as never, { dedupeKey: `${PURGE_JOB}:${[...tags].sort().join(',')}` });
+  if (job) await jobs.runNow(job.id);
+}
+
 /**
  * Freshness (spec §6.12): after a published profile changes, its page is
  * purged from the profile site's cache. Workers Caching can only be purged
