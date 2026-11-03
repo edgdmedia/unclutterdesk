@@ -16,6 +16,11 @@
   // Workers Custom Domain on the therapysts.com zone in the new account.
   "routes": [{ "pattern": "therapysts.com", "custom_domain": true }],
 
+  // "Report this profile" (spec §6.15): at most 5 reports a minute from one
+  // visitor IP, counted at the edge before the API is called. The IP is only
+  // the counter's key; it is never stored or forwarded.
+  "ratelimits": [{ "name": "REPORT_LIMITER", "namespace_id": "1501", "simple": { "limit": 5, "period": 60 } }],
+
   // Domain config (spec §4.1a): this site's addresses.
   "vars": {
     "PROFILE_PUBLIC_URL": "https://therapysts.com",
