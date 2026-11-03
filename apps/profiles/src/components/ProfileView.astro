@@ -1,19 +1,27 @@
 ---
 /*
- * One profile, in §6.4's section order. Everything a therapist wrote is
- * rendered as text (Astro escapes it); line breaks come from CSS. There is no
- * set:html, no Markdown and no client script here (§4.3 #4), and every link
- * is checked to be https before it becomes an href.
+ * One profile, in §6.4's section order, in one of four layouts (§6.5):
+ * classic, editorial, compact, split. Every layout renders this same markup
+ * and section list, so content and order can't drift between them; the
+ * layout only changes structure through the `layout-*` class and a few
+ * header variants below. The palette comes from the `theme-*` class on <body>.
+ *
+ * Everything a therapist wrote is rendered as text (Astro escapes it); line
+ * breaks come from CSS. There is no set:html, no Markdown and no client
+ * script here (§4.3 #4), and every link is checked to be https before it
+ * becomes an href.
  */
 import type { ProfilesConfig } from '../lib/config';
 import { KIND_TITLES, type PublicProfile } from '../lib/profiles';
 import { safeHttpsUrl } from '../lib/security';
+import { initialsOf, layoutOf } from '../lib/layout';
 
 interface Props {
   profile: PublicProfile;
   config: ProfilesConfig;
 }
 const { profile: p, config } = Astro.props;
+const layout = layoutOf(p.layoutKey);
 
 const countryName = (() => {
   try {
@@ -22,6 +30,7 @@ const countryName = (() => {
     return p.countryCode;
   }
 })();
+const kind = KIND_TITLES[p.kind] ?? 'Therapist';
 const where = [p.city, countryName].filter(Boolean).join(', ');
 const modes = [p.offersOnline && 'Online', p.offersInPerson && 'In person'].filter(Boolean).join(' · ');
 const bookUrl = p.bookingMode === 'EXTERNAL' ? safeHttpsUrl(p.externalBookingUrl) : null;
@@ -30,98 +39,143 @@ const social = Object.entries(p.socialLinks)
   .filter(([, v]) => v);
 const socialLabel: Record<string, string> = { website: 'Website', instagram: 'Instagram', linkedin: 'LinkedIn', facebook: 'Facebook', x: 'X', tiktok: 'TikTok', youtube: 'YouTube' };
 const photo = p.photoUrl && config.mediaOrigin && p.photoUrl.startsWith(config.mediaOrigin + '/') ? p.photoUrl : null;
+const initials = initialsOf(p.displayName);
 const signup = `${config.appOrigin}/signup?intent=profile&ref=profile&handle=${encodeURIComponent(p.handle)}`;
 const years = (y: { startYear: number | null; endYear: number | null }) =>
-  y.startYear ? `${y.startYear}–${y.endYear ?? 'present'}` : y.endYear ? String(y.endYear) : '';
+  y.startYear ? `${y.startYear}–${y.endYear ?? 'now'}` : y.endYear ? String(y.endYear) : '';
+const primary = p.specialties.filter((t) => t.primary);
+const others = p.specialties.filter((t) => !t.primary);
+const hasFacts = p.populations.length > 0 || p.faithIntegration || p.languages.length > 0 || p.yearsInPractice !== null;
+const action = bookUrl
+  ? { href: bookUrl, label: 'Book a session', external: true }
+  : p.contactEmail
+    ? { href: `mailto:${p.contactEmail}`, label: 'Get in touch', external: false }
+    : null;
+// The Editorial layout leads with the headline as a quote; the others show it as plain text.
+const quote = layout === 'editorial' && p.headline;
+// The fees panel shows when there are fees, and always on Split, where it
+// carries the desktop Book button beside the profile.
+const showFees = Boolean(p.feeRangeText) || (layout === 'split' && action !== null);
 ---
-<main id="main" class="wrap">
-  <header class="hero">
-    {photo && <img class="photo" src={photo} alt={`Photo of ${p.displayName}`} width="120" height="120" />}
-    <div>
-      <h1>{p.displayName}{p.pronouns && <span class="muted"> ({p.pronouns})</span>}</h1>
-      <p class="kind">{KIND_TITLES[p.kind] ?? 'Therapist'}</p>
-      {p.headline && <p class="headline">{p.headline}</p>}
-      {(where || modes) && <p class="meta">{[where, modes].filter(Boolean).join(' · ')}</p>}
-      {p.supervisedBy && <p class="badge">Practising under supervision</p>}
-      {!p.acceptingClients && <p class="badge">Not taking new clients at the moment</p>}
-      <div class="actions">
-        {bookUrl && <a class="btn" href={bookUrl} rel="noopener nofollow">Book a session</a>}
-        {!bookUrl && p.contactEmail && <a class="btn" href={`mailto:${p.contactEmail}`}>Get in touch</a>}
+<div class={`profile layout-${layout}`}>
+  <div class="topbar">
+    <a class="wordmark" href="/">therapysts</a>
+  </div>
+
+  <main id="main">
+    <header class="hero">
+      <div class="portrait">
+        {photo ? (
+          <img class="photo" src={photo} alt={`Photo of ${p.displayName}`} width="400" height="400" />
+        ) : (
+          <span class="initials" aria-hidden="true">{initials}</span>
+        )}
       </div>
-    </div>
-  </header>
+      <div class="intro">
+        {(layout === 'editorial' || layout === 'split') && <p class="eyebrow">{[kind, p.city].filter(Boolean).join(' · ')}</p>}
+        <h1>{p.displayName}</h1>
+        {layout !== 'editorial' && layout !== 'split' && <p class="kind">{kind}</p>}
+        {quote ? <p class="quote">“{p.headline}”</p> : p.headline && <p class="headline">{p.headline}</p>}
+        <p class="meta">{[where, p.pronouns].filter(Boolean).join(' · ')}</p>
+        {p.supervisedBy && <p class="badge">Practising under supervision</p>}
+        {!p.acceptingClients && <p class="badge">Not taking new clients at the moment</p>}
+        {action && (
+          <p class="actions">
+            <a class="btn" href={action.href} rel={action.external ? 'noopener nofollow' : undefined}>{action.label}</a>
+          </p>
+        )}
+        {modes && <p class="meta small">{modes}</p>}
+      </div>
+    </header>
 
-  {p.about && (
-    <section aria-labelledby="about"><h2 id="about">About</h2><p class="text">{p.about}</p></section>
-  )}
+    <div class="body">
+      <div class="sections">
+        {p.about && (
+          <section aria-labelledby="about"><h2 id="about">About</h2><p class="text">{p.about}</p></section>
+        )}
 
-  {(p.credentialsText || p.timeline.length > 0) && (
-    <section aria-labelledby="qualifications">
-      <h2 id="qualifications">Qualifications & training</h2>
-      {p.credentialsText && <p class="text">{p.credentialsText}</p>}
-      {p.supervisedBy && <p class="text muted">Supervised by {p.supervisedBy}</p>}
-      {p.timeline.length > 0 && (
-        <ul class="timeline">
-          {p.timeline.map((e) => (
-            <li><strong>{e.title}</strong>{e.organisation && <span>, {e.organisation}</span>}{years(e) && <span class="muted"> · {years(e)}</span>}{e.description && <p class="text muted">{e.description}</p>}</li>
-          ))}
-        </ul>
+        {(p.credentialsText || p.timeline.length > 0) && (
+          <section aria-labelledby="qualifications">
+            <h2 id="qualifications">Qualifications and training</h2>
+            {p.credentialsText && <p class="text">{p.credentialsText}</p>}
+            {p.supervisedBy && <p class="text muted">Supervised by {p.supervisedBy}</p>}
+            {p.timeline.length > 0 && (
+              <ol class="timeline">
+                {p.timeline.map((e) => (
+                  <li>
+                    {years(e) && <span class="when">{years(e)}</span>}
+                    <span class="what">{e.title}{e.organisation && <span class="muted">, {e.organisation}</span>}</span>
+                    {e.description && <span class="text muted">{e.description}</span>}
+                  </li>
+                ))}
+              </ol>
+            )}
+          </section>
+        )}
+
+        {p.specialties.length > 0 && (
+          <section aria-labelledby="specialties">
+            <h2 id="specialties">Specialties</h2>
+            {primary.length > 0 && <ul class="chips">{primary.map((t) => <li class="primary">{t.label}</li>)}</ul>}
+            {others.length > 0 && <ul class="chips">{others.map((t) => <li>{t.label}</li>)}</ul>}
+          </section>
+        )}
+
+        {(p.approach || p.modalities.length > 0) && (
+          <section aria-labelledby="approach">
+            <h2 id="approach">Approach</h2>
+            {p.approach && <p class="text">{p.approach}</p>}
+            {p.modalities.length > 0 && <ul class="chips outline">{p.modalities.map((t) => <li>{t.label}</li>)}</ul>}
+          </section>
+        )}
+
+        {hasFacts && (
+          <section aria-label="About my practice" class="facts">
+            {(p.populations.length > 0 || p.faithIntegration) && (
+              <div>
+                <h2 class="fact-label">Who I work with</h2>
+                {p.populations.length > 0 && <p class="fact">{p.populations.map((t) => t.label).join(' · ')}</p>}
+                {p.faithIntegration && <p class="fact text">{p.faithIntegration}</p>}
+              </div>
+            )}
+            {p.languages.length > 0 && (
+              <div><h2 class="fact-label">Languages</h2><p class="fact">{p.languages.map((t) => t.label).join(' · ')}</p></div>
+            )}
+            {p.yearsInPractice !== null && (
+              <div><h2 class="fact-label">Experience</h2><p class="fact">{`${p.yearsInPractice} ${p.yearsInPractice === 1 ? 'year' : 'years'}`}</p></div>
+            )}
+          </section>
+        )}
+      </div>
+
+      {(showFees || p.contactEmail || social.length > 0) && (
+        <aside class="side" aria-label="Sessions and contact">
+          {showFees && (
+            <section aria-labelledby="fees">
+              <h2 id="fees">Sessions and fees</h2>
+              {modes && <p class="text muted">{modes}</p>}
+              {p.feeRangeText && <p class="text">{p.feeRangeText}</p>}
+              {action && <p class="actions"><a class="btn wide" href={action.href} rel={action.external ? 'noopener nofollow' : undefined}>{action.label}</a></p>}
+            </section>
+          )}
+          {(p.contactEmail || social.length > 0) && (
+            <section aria-labelledby="contact">
+              <h2 id="contact">Contact</h2>
+              <ul class="links">
+                {p.contactEmail && <li><a href={`mailto:${p.contactEmail}`}>{p.contactEmail}</a></li>}
+                {social.map(([k, v]) => <li><a href={v!} rel="noopener nofollow me">{socialLabel[k] ?? k}</a></li>)}
+              </ul>
+            </section>
+          )}
+        </aside>
       )}
-    </section>
-  )}
+    </div>
+  </main>
 
-  {p.specialties.length > 0 && (
-    <section aria-labelledby="specialties">
-      <h2 id="specialties">Specialties</h2>
-      <ul class="chips">{p.specialties.map((t) => <li class={t.primary ? 'primary' : undefined}>{t.label}</li>)}</ul>
-    </section>
-  )}
-
-  {(p.approach || p.modalities.length > 0) && (
-    <section aria-labelledby="approach">
-      <h2 id="approach">Approach</h2>
-      {p.approach && <p class="text">{p.approach}</p>}
-      {p.modalities.length > 0 && <ul class="chips">{p.modalities.map((t) => <li>{t.label}</li>)}</ul>}
-    </section>
-  )}
-
-  {(p.populations.length > 0 || p.faithIntegration) && (
-    <section aria-labelledby="who">
-      <h2 id="who">Who I work with</h2>
-      {p.populations.length > 0 && <ul class="chips">{p.populations.map((t) => <li>{t.label}</li>)}</ul>}
-      {p.faithIntegration && <p class="text">{p.faithIntegration}</p>}
-    </section>
-  )}
-
-  {p.languages.length > 0 && (
-    <section aria-labelledby="languages">
-      <h2 id="languages">Languages</h2>
-      <ul class="chips">{p.languages.map((t) => <li>{t.label}</li>)}</ul>
-    </section>
-  )}
-
-  {p.yearsInPractice !== null && (
-    <section aria-labelledby="experience"><h2 id="experience">Experience</h2><p class="text">{`${p.yearsInPractice} ${p.yearsInPractice === 1 ? 'year' : 'years'} in practice`}</p></section>
-  )}
-
-  {p.feeRangeText && (
-    <section aria-labelledby="fees"><h2 id="fees">Sessions & fees</h2><p class="text">{p.feeRangeText}</p></section>
-  )}
-
-  {(p.contactEmail || social.length > 0) && (
-    <section aria-labelledby="contact">
-      <h2 id="contact">Contact</h2>
-      <ul class="chips">
-        {p.contactEmail && <li><a href={`mailto:${p.contactEmail}`}>{p.contactEmail}</a></li>}
-        {social.map(([k, v]) => <li><a href={v!} rel="noopener nofollow me">{socialLabel[k] ?? k}</a></li>)}
-      </ul>
-    </section>
-  )}
-
-  <footer>
-    <a href={signup}>Create your free therapist profile</a>
+  <footer class="site-footer">
+    <a class="strong" href={signup}>Create your free therapist profile</a>
     <a href={`/${p.handle}/report`} rel="nofollow">Report this profile</a>
     <a href={`${config.marketingOrigin}/terms`}>Terms</a>
     <a href={`${config.marketingOrigin}/privacy`}>Privacy</a>
   </footer>
-</main>
+</div>
