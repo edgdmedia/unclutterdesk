@@ -284,7 +284,15 @@ function StartProfile({ templates, onCreated }: { templates: ProfileTemplate[]; 
   );
 }
 
-export function PublicProfileEditor({ onProfileChange }: { onProfileChange?: (p: OwnProfile | null) => void }) {
+interface PracticeBrand {
+  name?: string;
+  slug?: string;
+  logoUrl?: string | null;
+  primaryColor?: string;
+  secondaryColor?: string;
+}
+
+export function PublicProfileEditor({ onProfileChange, practiceBrand }: { onProfileChange?: (p: OwnProfile | null) => void; practiceBrand?: PracticeBrand | null }) {
   const toast = useToast();
   const [loading, setLoading] = useState(true);
   const [profile, setProfile] = useState<OwnProfile | null>(null);
@@ -792,6 +800,7 @@ export function PublicProfileEditor({ onProfileChange }: { onProfileChange?: (p:
           name={profile.displayName}
           kindLabel={KIND_LABELS[profile.kind as keyof typeof KIND_LABELS] ?? 'Therapist'}
           headline={profile.headline}
+          handle={profile.handle}
           onChange={(change) => void chooseAppearance(change)}
         />
       </aside>

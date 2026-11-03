@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Palette, Sparkles } from 'lucide-react';
-import { Eyebrow, Card, BookingLinkField, useToast } from '@unclutterdesk/ui';
+import { Card, Eyebrow, Page, PageHeader, BookingLinkField, useToast, ScaledPreview } from '@unclutterdesk/ui';
 import { BookingWizardPage } from '../../public/booking/BookingWizardPage';
 import { BookingConfirmedPage } from '../../public/BookingConfirmedPage';
 import { api, practiceBookingUrl } from '../../../utils/apiClient';
@@ -91,16 +91,16 @@ export function BrandSettingsPage() {
   }
 
   return (
-    <div className="flex-1 min-w-0 flex flex-col bg-[#F8FAFC]">
-      <header className="h-[80px] bg-white border-b border-[#E2E8F0] px-4 md:px-[26px] flex items-center justify-between gap-3 md:gap-5 shrink-0">
-        <div>
-          <Eyebrow>BRAND & BOOKING PAGE</Eyebrow>
-          <h1 className="text-[16px] md:text-[20px] font-bold tracking-[-0.02em] text-[#0F172A]">How clients see your practice</h1>
-        </div>
-        {slug ? <BookingLinkField url={bookingUrl} className="ml-auto hidden md:flex" /> : null}
-      </header>
-
-      <main className="p-4 md:p-[24px_26px_30px] grid grid-cols-1 lg:grid-cols-12 gap-4 md:gap-6 items-start flex-1">
+    <Page
+      header={
+        <PageHeader
+          eyebrow="BRAND & BOOKING PAGE"
+          title="How clients see your practice"
+          actions={slug ? <BookingLinkField url={bookingUrl} className="hidden md:flex" /> : undefined}
+        />
+      }
+    >
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 md:gap-6 items-start">
         <div className="lg:col-span-5 space-y-4 md:space-y-5">
           {error ? <div role="alert" className="rounded-[18px] border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-medium text-rose-700">{error}</div> : null}
 
@@ -137,20 +137,19 @@ export function BrandSettingsPage() {
         </div>
 
         <div className="lg:col-span-7 space-y-4">
-          <Card padding="p-[22px]" className="space-y-4">
-            <div className="flex items-center justify-between border-b border-[#E2E8F0] pb-3">
-              <div className="flex items-center gap-2"><Sparkles className="h-4 w-4 text-amber-500" /><Eyebrow>LIVE SCALED PREVIEW PANE</Eyebrow></div>
-              <div className="flex items-center gap-1 bg-[#F1F5F9] p-1 rounded-[12px]">
-                <button onClick={() => setPreviewTab('booking')} className={`px-3 py-1 text-xs font-bold rounded-[8px] transition-all ${previewTab === 'booking' ? 'bg-white text-[#0F172A] shadow-xs' : 'text-[#64748B]'}`}>Booking Page</button>
-                <button onClick={() => setPreviewTab('confirmed')} className={`px-3 py-1 text-xs font-bold rounded-[8px] transition-all ${previewTab === 'confirmed' ? 'bg-white text-[#0F172A] shadow-xs' : 'text-[#64748B]'}`}>Confirmed State</button>
-              </div>
-            </div>
-            <div className="rounded-[20px] border border-[#E2E8F0] bg-[#F8FAFC] p-4 min-h-[500px] flex items-center justify-center overflow-hidden">
-              <div className="w-full h-[580px] overflow-auto relative rounded-[16px] bg-slate-50 border border-[#E2E8F0]"><div className="absolute origin-top-left pointer-events-none select-none" aria-hidden="true" style={{ width: '1180px', transform: 'scale(0.62)' }}>{previewTab === 'booking' ? <BookingWizardPage previewSlug={slug} /> : <BookingConfirmedPage />}</div></div>
-            </div>
-          </Card>
+          <ScaledPreview
+            width={1180}
+            minHeight={580}
+            showDeviceSwitch={true}
+            showFullScreen={true}
+            fullScreenLabel="View full booking page"
+            onFullScreen={() => window.open(bookingUrl, '_blank')}
+            className="h-full"
+          >
+            {previewTab === 'booking' ? <BookingWizardPage previewSlug={slug} /> : <BookingConfirmedPage />}
+          </ScaledPreview>
         </div>
-      </main>
-    </div>
+      </div>
+    </Page>
   );
 }

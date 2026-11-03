@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Plus, Pencil, Power, PowerOff, Clock } from 'lucide-react';
-import { Card, Eyebrow, useBrand, useToast } from '@unclutterdesk/ui';
+import { Card, Eyebrow, Page, PageHeader, useBrand, useToast } from '@unclutterdesk/ui';
 import { api } from '../../../utils/apiClient';
 
 type ServiceFormat = { format: 'ONLINE' | 'IN_PERSON'; priceKobo: string; isActive: boolean };
@@ -136,30 +136,31 @@ export function ServicesSettingsPage() {
   }
 
   return (
-    <div className="flex-1 flex flex-col bg-[#F8FAFC] min-w-0">
-      <header className="min-h-[72px] md:h-[88px] bg-white border-b border-[#E2E8F0] px-4 md:px-[26px] py-3 flex items-center justify-between gap-4 shrink-0">
-        <div>
-          <Eyebrow>SETTINGS</Eyebrow>
-          <h1 className="text-[16px] md:text-[20px] font-bold tracking-[-0.02em] text-[#0F172A]">Services & pricing</h1>
-          <p className="hidden md:block text-xs text-[#64748B] font-medium">
-            What clients can book, how long it takes, and what it costs.
-          </p>
-        </div>
-        <button
-          type="button"
-          onClick={() => {
-            setError(null);
-            setDraft({ ...EMPTY_DRAFT });
-          }}
-          className="h-10 px-4 rounded-[12px] text-white text-xs font-bold flex items-center gap-2 hover:brightness-110 transition-all cursor-pointer shrink-0"
-          style={{ backgroundColor: primaryColor }}
-        >
-          <Plus className="h-4 w-4" />
-          Add service
-        </button>
-      </header>
+    <Page
+      header={
+        <PageHeader
+          eyebrow="SETTINGS"
+          title="Services & pricing"
+          actions={
+            <button
+              type="button"
+              onClick={() => {
+                setError(null);
+                setDraft({ ...EMPTY_DRAFT });
+              }}
+              className="h-10 px-4 rounded-[12px] text-white text-xs font-bold flex items-center gap-2 hover:brightness-110 transition-all cursor-pointer shrink-0"
+              style={{ backgroundColor: primaryColor }}
+            >
+              <Plus className="h-4 w-4" />
+              Add service
+            </button>
+          }
+        />
+      }
+    >
+      <p className="text-xs text-[#64748B] font-medium">What clients can book, how long it takes, and what it costs.</p>
 
-      <main className="p-4 md:p-[24px_26px_30px] grid grid-cols-1 lg:grid-cols-12 gap-4 md:gap-6 items-start">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 md:gap-6 items-start">
         <div className="lg:col-span-7 space-y-3">
           {error ? (
             <div role="alert" className="rounded-[18px] border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-medium text-rose-700">
@@ -291,7 +292,7 @@ export function ServicesSettingsPage() {
             </Card>
           )}
         </div>
-      </main>
-    </div>
+      </div>
+    </Page>
   );
 }

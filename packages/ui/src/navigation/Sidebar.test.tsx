@@ -53,6 +53,22 @@ describe('Sidebar, full', () => {
     expect(screen.queryByRole('link', { name: /Team & staff/ })).toBeNull();
   });
 
+  it('toggles a collapsible section itself when the caller does not control it', () => {
+    // The forms group in the app is collapsible but the shell only passes some
+    // keys; the Sidebar must still expand and collapse it on click.
+    render(<Sidebar sections={SECTIONS} mode="full" brand={brand} />);
+    const toggle = screen.getByRole('button', { name: /Practice/ });
+    expect(toggle.getAttribute('aria-expanded')).toBe('true');
+    expect(toggle.tagName).toBe('BUTTON');
+    expect(toggle.getAttribute('type')).toBe('button');
+    fireEvent.click(toggle);
+    expect(toggle.getAttribute('aria-expanded')).toBe('false');
+    expect(screen.queryByRole('link', { name: /Team & staff/ })).toBeNull();
+    fireEvent.click(toggle);
+    expect(toggle.getAttribute('aria-expanded')).toBe('true');
+    expect(screen.getByRole('link', { name: /Team & staff/ })).toBeTruthy();
+  });
+
   it('offers Collapse when a toggle is given', () => {
     const onToggleCollapse = vi.fn();
     render(<Sidebar sections={SECTIONS} mode="full" brand={brand} onToggleCollapse={onToggleCollapse} />);

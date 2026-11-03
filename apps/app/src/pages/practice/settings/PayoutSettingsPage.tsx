@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { AlertTriangle, ShieldCheck, X } from 'lucide-react';
-import { Eyebrow, Card, useToast } from '@unclutterdesk/ui';
+import { Card, Eyebrow, Page, PageHeader, useToast } from '@unclutterdesk/ui';
 import { ManualPaymentSettingsCard } from '../../../components/payments/ManualPaymentSettingsCard';
 import { useBrand } from '@unclutterdesk/ui';
 import { api } from '../../../utils/apiClient';
@@ -102,17 +102,22 @@ export function PayoutSettingsPage() {
   };
 
   return (
-    <div className="flex-1 min-w-[1192px] flex flex-col bg-[#F8FAFC]">
-      <header className="h-[88px] bg-white border-b border-[#E2E8F0] px-[26px] flex items-center justify-between gap-5 shrink-0">
-        <div>
-          <Eyebrow>SETTINGS</Eyebrow>
-          <h1 className="text-[20px] font-bold tracking-[-0.02em] text-[#0F172A]">Payouts</h1>
-          <p className="text-xs text-[#64748B] font-medium">Manage the verified bank account where practice payouts land</p>
-        </div>
-        {account?.isVerified ? <span className="h-7 px-3 rounded-full bg-[#ECFDF5] text-[#059669] text-xs font-bold border border-[#A7F3D0] flex items-center gap-1.5"><ShieldCheck className="h-4 w-4" /><span>Payouts active</span></span> : null}
-      </header>
+    <Page
+      header={
+        <PageHeader
+          eyebrow="SETTINGS"
+          title="Payouts"
+          actions={
+            account?.isVerified ? (
+              <span className="h-7 px-3 rounded-full bg-[#ECFDF5] text-[#059669] text-xs font-bold border border-[#A7F3D0] flex items-center gap-1.5"><ShieldCheck className="h-4 w-4" /><span>Payouts active</span></span>
+            ) : undefined
+          }
+        />
+      }
+    >
+      <p className="text-xs text-[#64748B] font-medium">Manage the verified bank account where practice payouts land</p>
 
-      <main className="p-[24px_26px_30px] space-y-6 flex-1">
+      <div className="space-y-6">
         {error ? <div className="rounded-[18px] border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-medium text-rose-700">{error}</div> : null}
         {account && !account.isVerified ? (
           <div role="alert" className="max-w-[560px] rounded-[18px] border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-800 flex items-start gap-2.5">
@@ -159,7 +164,7 @@ export function PayoutSettingsPage() {
             </div>
           ))}
         </Card>
-      </main>
+      </div>
 
       {showBankModal && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-xs flex items-center justify-center p-6 z-50">
@@ -175,6 +180,6 @@ export function PayoutSettingsPage() {
           </form>
         </div>
       )}
-    </div>
+    </Page>
   );
 }

@@ -221,11 +221,27 @@ describe('the public profile tab', () => {
     renderWithApp(<ProfilePage />, { route: '/dashboard/profile' });
     const layouts = await screen.findByRole('radiogroup', { name: 'Layout' });
     expect(within(layouts).getByRole('radio', { name: /Classic/ }).getAttribute('aria-checked')).toBe('true');
-    expect(screen.getByRole('img', { name: 'Preview: Classic layout, Calm palette' })).toBeTruthy();
+    // Preview is now in ScaledPreview component with device switch
+    expect(screen.getByText('LIVE SCALED PREVIEW')).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Phone' })).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Tablet' })).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Desktop' })).toBeTruthy();
     fireEvent.click(within(layouts).getByRole('radio', { name: /Editorial/ }));
     await waitFor(() => expect(patch).toHaveBeenCalledWith('/v1/practitioner-profile/me', { layoutKey: 'editorial' }));
     expect(patch).not.toHaveBeenCalledWith('/v1/practitioner-profile/me', expect.objectContaining({ themeKey: expect.anything() }));
     expect(within(screen.getByRole('radiogroup', { name: 'Colour palette' })).getAllByRole('radio')).toHaveLength(5);
+  });
+
+  it('changing the palette updates the preview', async () => {
+    serve();
+    renderWithApp(<ProfilePage />, { route: '/dashboard/profile' });
+    const palette = await screen.findByRole('radiogroup', { name: 'Colour palette' });
+    expect(within(palette).getByRole('radio', { name: /Calm/ }).getAttribute('aria-checked')).toBe('true');
+    fireEvent.click(within(palette).getByRole('radio', { name: /Warm/ }));
+    await waitFor(() => expect(patch).toHaveBeenCalledWith('/v1/practitioner-profile/me', { themeKey: 'warm' }));
+    expect(within(palette).getByRole('radio', { name: /Warm/ }).getAttribute('aria-checked')).toBe('true');
+    // Preview still renders (LayoutThumb + ProfilePreview inside ScaledPreview)
+    expect(screen.getByText('LIVE SCALED PREVIEW')).toBeTruthy();
   });
 });
 

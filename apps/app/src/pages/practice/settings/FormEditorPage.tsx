@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { ArrowLeft, GripVertical, Trash2, Plus } from 'lucide-react';
-import { Eyebrow, useToast } from '@unclutterdesk/ui';
+import { Eyebrow, Page, PageHeader, useToast } from '@unclutterdesk/ui';
 import { api } from '../../../utils/apiClient';
 import { SaveAsTemplateDialog } from './SaveAsTemplateDialog';
 
@@ -179,63 +179,72 @@ export function FormEditorPage() {
   const primaryColor = '#0F3A53';
 
   return (
-    <div className="min-h-screen bg-[#F1F5F9] text-[#0F172A] font-outfit flex flex-col justify-between">
-      <header className="h-[78px] bg-white border-b border-[#E2E8F0] px-6 flex items-center justify-between shrink-0">
-        <div className="flex items-center gap-4">
-          <Link to="/dashboard/settings/forms" className="inline-flex items-center gap-1.5 text-xs font-bold text-[#64748B] hover:text-[#0F172A]">
-            <ArrowLeft className="h-4 w-4" />
-            <span>Back to forms</span>
-          </Link>
-          <div className="h-5 w-[1px] bg-[#E2E8F0]" />
-          <input
-            type="text"
-            value={formTitle}
-            onChange={(event) => setFormTitle(event.target.value)}
-            disabled={isSystemTemplate}
-            className="w-[300px] text-[16px] font-bold text-[#0F172A] bg-transparent outline-none border-b border-transparent focus:border-[#0F3A53]"
-          />
-          <select
-            value={category}
-            onChange={(event) => setCategory(event.target.value)}
-            disabled={isSystemTemplate}
-            className="h-7 px-3 rounded-full bg-[#F1F5F9] text-[10px] font-black tracking-wider uppercase border border-[#E2E8F0]"
-          >
-            <option value="INTAKE">INTAKE</option>
-            <option value="ASSESSMENT">ASSESSMENT</option>
-            <option value="FEEDBACK">FEEDBACK</option>
-            <option value="CONSENT">CONSENT</option>
-            <option value="REVIEW">REVIEW</option>
-          </select>
-        </div>
-
-        <div className="flex items-center gap-3">
-          <span className="flex items-center gap-1.5 text-xs text-[#B45309] font-bold">
-            <span className="h-2 w-2 rounded-full bg-[#E3B341]" />
-            <span>{saving ? 'Saving...' : `${isSystemTemplate ? 'System template' : isNew ? 'New' : 'Live'} · ${questions.length} questions`}</span>
-          </span>
-          {/* FRM-01: only a saved custom form; system assessments stay locked. */}
-          {!isNew && !isSystemTemplate ? (
-            <button
-              type="button"
-              onClick={() => setTemplateOpen(true)}
-              className="h-[40px] px-4 rounded-[14px] border border-[#E2E8F0] bg-white text-[#0F172A] font-bold text-xs cursor-pointer"
-            >
-              Save as template
-            </button>
-          ) : null}
-          <button
-            type="button"
-            onClick={() => void handleSave()}
-            disabled={saving || !formTitle.trim()}
-            className="os-brand-btn h-[40px] px-5 rounded-[14px] font-bold text-xs cursor-pointer disabled:opacity-60"
-            style={{ backgroundColor: primaryColor }}
-          >
-            {saving ? 'Saving form...' : isSystemTemplate ? 'Save activation state' : 'Save form'}
-          </button>
-        </div>
-      </header>
-
-      <main className="flex-1 grid grid-cols-[250px_1fr_392px] items-stretch min-h-[680px]">
+    <Page
+      header={
+        <PageHeader
+          eyebrow="SETTINGS"
+          breadcrumb={
+            <Link to="/dashboard/settings/forms" className="inline-flex items-center gap-1.5 text-xs font-bold text-[#64748B] hover:text-[#0F172A]">
+              <ArrowLeft className="h-4 w-4" />
+              <span>Back to forms</span>
+            </Link>
+          }
+          title={
+            <span className="flex items-center gap-3">
+              <input
+                type="text"
+                aria-label="Form title"
+                value={formTitle}
+                onChange={(event) => setFormTitle(event.target.value)}
+                disabled={isSystemTemplate}
+                className="w-[300px] max-w-full text-[16px] font-bold text-[#0F172A] bg-transparent outline-none border-b border-transparent focus:border-[#0F3A53]"
+              />
+              <select
+                value={category}
+                aria-label="Form category"
+                onChange={(event) => setCategory(event.target.value)}
+                disabled={isSystemTemplate}
+                className="h-7 px-3 rounded-full bg-[#F1F5F9] text-[10px] font-black tracking-wider uppercase border border-[#E2E8F0]"
+              >
+                <option value="INTAKE">INTAKE</option>
+                <option value="ASSESSMENT">ASSESSMENT</option>
+                <option value="FEEDBACK">FEEDBACK</option>
+                <option value="CONSENT">CONSENT</option>
+                <option value="REVIEW">REVIEW</option>
+              </select>
+            </span>
+          }
+          actions={
+            <>
+              <span className="flex items-center gap-1.5 text-xs text-[#B45309] font-bold">
+                <span className="h-2 w-2 rounded-full bg-[#E3B341]" />
+                <span>{saving ? 'Saving...' : `${isSystemTemplate ? 'System template' : isNew ? 'New' : 'Live'} · ${questions.length} questions`}</span>
+              </span>
+              {/* FRM-01: only a saved custom form; system assessments stay locked. */}
+              {!isNew && !isSystemTemplate ? (
+                <button
+                  type="button"
+                  onClick={() => setTemplateOpen(true)}
+                  className="h-[40px] px-4 rounded-[14px] border border-[#E2E8F0] bg-white text-[#0F172A] font-bold text-xs cursor-pointer"
+                >
+                  Save as template
+                </button>
+              ) : null}
+              <button
+                type="button"
+                onClick={() => void handleSave()}
+                disabled={saving || !formTitle.trim()}
+                className="os-brand-btn h-[40px] px-5 rounded-[14px] font-bold text-xs cursor-pointer disabled:opacity-60"
+                style={{ backgroundColor: primaryColor }}
+              >
+                {saving ? 'Saving form...' : isSystemTemplate ? 'Save activation state' : 'Save form'}
+              </button>
+            </>
+          }
+        />
+      }
+    >
+      <div className="grid grid-cols-1 xl:grid-cols-[250px_1fr_392px] items-stretch min-h-[680px] rounded-[16px] border border-[#E2E8F0] overflow-hidden bg-white">
         <div className="bg-white border-r border-[#E2E8F0] p-5 space-y-4">
           <div>
             <Eyebrow className="mb-1">COMPONENTS</Eyebrow>
@@ -432,8 +441,8 @@ export function FormEditorPage() {
             </div>
           </div>
         </div>
-      </main>
+      </div>
       {templateOpen && id ? <SaveAsTemplateDialog formId={id} onClose={() => setTemplateOpen(false)} /> : null}
-    </div>
+    </Page>
   );
 }
