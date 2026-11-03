@@ -155,7 +155,7 @@ export function AdminProfileTaxonomyPage() {
             <p className="text-[16px] font-bold text-[#0F172A]">{selected ? 'Edit term' : 'Add a term'}</p>
             <p className="mt-1 text-[12.5px] text-[#64748B]">
               {selected
-                ? 'Changing the key affects templates and saved profile data that refer to it.'
+                ? 'Changing the key rewrites it in every template that suggests it. Profiles keep the term they chose, so they are unaffected.'
                 : 'The key is the stable slug; leave it blank to make one from the label.'}
             </p>
           </div>

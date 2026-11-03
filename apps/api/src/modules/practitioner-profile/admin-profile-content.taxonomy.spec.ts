@@ -22,7 +22,22 @@ function terms(): Term[] {
 
 function setup(profiles: { handle: string }[] = [{ handle: 'adaeze' }, { handle: 'adaeze' }, { handle: 'bola' }]) {
   const rows = terms();
+  const templates = [
+    {
+      key: 'private-practice-counsellor',
+      sections: { suggested: { SPECIALTY: ['anxiety', 'grief'], MODALITY: ['cbt'] }, sections: {} } as Record<string, any>,
+    },
+  ];
   const prisma: any = {
+    profileTemplate: {
+      findMany: vi.fn(async () => templates.map((template) => ({ ...template, sections: JSON.parse(JSON.stringify(template.sections)) }))),
+      update: vi.fn(async ({ where, data }: any) => {
+        const template = templates.find((candidate) => candidate.key === where.key);
+        if (!template) throw new Error('missing template');
+        template.sections = data.sections;
+        return template;
+      }),
+    },
     taxonomyTerm: {
       findMany: vi.fn(async ({ where }: any = {}) => {
         let out = rows;
@@ -56,7 +71,7 @@ function setup(profiles: { handle: string }[] = [{ handle: 'adaeze' }, { handle:
   };
   const audit: any = { record: vi.fn(async (entry: unknown) => entry) };
   const jobs: any = { enqueue: vi.fn(async () => ({ id: 9n })), runNow: vi.fn(async () => undefined) };
-  return { service: new AdminProfileContentService(prisma, audit, jobs), prisma, audit, jobs, rows };
+  return { service: new AdminProfileContentService(prisma, audit, jobs), prisma, audit, jobs, rows, templates };
 }
 
 describe('AdminProfileContentService taxonomy (§6.4)', () => {
@@ -113,6 +128,24 @@ describe('AdminProfileContentService taxonomy (§6.4)', () => {
     );
     expect(jobs.enqueue).toHaveBeenCalledWith('profile.purge', { tags: ['profile:adaeze', 'profile:bola'] });
     expect(jobs.runNow).toHaveBeenCalledWith(9n);
+  });
+
+  it('rewrites a re-key in template suggested lists in the same transaction', async () => {
+    const { service, prisma, templates } = setup();
+    await service.updateTaxonomy(3n, '1', { key: 'anxiety-disorders', reason: 'plainer scope' });
+
+    expect(prisma.$transaction).toHaveBeenCalledOnce();
+    expect(templates[0].sections.suggested.SPECIALTY).toEqual(['anxiety-disorders', 'grief']);
+    expect(templates[0].sections.suggested.MODALITY).toEqual(['cbt']);
+    expect(prisma.profileTemplate.update).toHaveBeenCalledWith(
+      expect.objectContaining({ where: { key: 'private-practice-counsellor' } }),
+    );
+  });
+
+  it('does not touch template suggestions when the key is unchanged', async () => {
+    const { service, prisma } = setup();
+    await service.updateTaxonomy(3n, '1', { key: 'anxiety', label: 'Anxiety disorders' });
+    expect(prisma.profileTemplate.update).not.toHaveBeenCalled();
   });
 
   it('deactivates without deleting, and purges the public pages', async () => {

@@ -76,6 +76,23 @@ function withGuidance(existing: unknown, guidance: Partial<Record<SectionKey, st
   return stored;
 }
 
+/** Replace a term's old slug with its new one in one template's suggested lists. */
+function rewriteSuggestedKey(
+  existing: unknown,
+  kind: TaxonomyKind,
+  oldKey: string,
+  newKey: string,
+): { sections: StoredRecord; changed: boolean } {
+  const stored = storedRecord(existing);
+  const suggested = objectAt(stored, 'suggested');
+  const list = suggested[kind];
+  if (!Array.isArray(list) || !list.includes(oldKey)) return { sections: stored, changed: false };
+
+  suggested[kind] = [...new Set(list.map((key) => (key === oldKey ? newKey : key)))];
+  stored.suggested = suggested;
+  return { sections: stored, changed: true };
+}
+
 @Injectable()
 export class AdminProfileContentService {
   constructor(
@@ -256,7 +273,8 @@ export class AdminProfileContentService {
   /**
    * Rename, re-key, activate/deactivate or reorder one term. Any of those can
    * change what a published profile shows, so the profiles using the term are
-   * purged from the public site's cache.
+   * purged from the public site's cache. A re-key also rewrites the slug in
+   * every template's suggested list in the same transaction.
    */
   async updateTaxonomy(actorUserId: bigint, idInput: string, input: unknown) {
     const update = parseTaxonomyUpdate(input);
@@ -268,6 +286,7 @@ export class AdminProfileContentService {
         include: { _count: { select: { profiles: true } } },
       });
       if (!existing) throw new NotFoundException('Unknown term');
+      const oldKey = existing.key;
 
       if (update.key !== undefined && update.key !== existing.key) {
         const clash = await tx.taxonomyTerm.findUnique({
@@ -297,6 +316,22 @@ export class AdminProfileContentService {
 
       const updated = await tx.taxonomyTerm.update({ where: { id }, data });
 
+      // A re-key would orphan the slugs that templates store for suggestions,
+      // so rewrite them in the same transaction.
+      let cascadedTemplates = 0;
+      if (update.key !== undefined && update.key !== oldKey) {
+        const templates = await tx.profileTemplate.findMany({ select: { key: true, sections: true } });
+        for (const template of templates) {
+          const rewritten = rewriteSuggestedKey(template.sections, existing.kind, oldKey, update.key);
+          if (!rewritten.changed) continue;
+          await tx.profileTemplate.update({
+            where: { key: template.key },
+            data: { sections: rewritten.sections as Prisma.InputJsonValue },
+          });
+          cascadedTemplates += 1;
+        }
+      }
+
       await this.audit.record(
         {
           actorUserId,
@@ -309,6 +344,7 @@ export class AdminProfileContentService {
             changed: changed.map(String),
             before: this.pick(existing, changed),
             after: this.pick(updated, changed),
+            cascadedTemplates,
           } as Prisma.InputJsonValue,
         },
         tx,
