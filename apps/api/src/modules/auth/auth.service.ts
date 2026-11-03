@@ -24,6 +24,7 @@ import { PRACTITIONER_KINDS } from '../practitioner-profile/kinds';
 import { isReservedSlug } from '../tenant/reserved-slugs';
 import { Prisma, type PractitionerKind } from '@prisma/client';
 import { PractitionerProfileService } from '../practitioner-profile/practitioner-profile.service';
+import { joinOpensMinutes } from '../video/join-window';
 
 const BCRYPT_ROUNDS = 12;
 
@@ -1263,7 +1264,7 @@ export class AuthService {
     // Required, not optional: a caller that forgets the include would otherwise
     // hand back tenantSlug: null, which is worse than the inconsistency this
     // replaces — silently wrong instead of visibly absent.
-    tenant: ({ name: string; slug: string; onboardingIntent?: 'PROFILE' | 'PRACTICE' } & PlanFields) | null;
+    tenant: ({ name: string; slug: string; onboardingIntent?: 'PROFILE' | 'PRACTICE'; joinOpensMinutesBefore?: number } & PlanFields) | null;
     consultTherapistProfile: unknown | null;
   }, platformRole?: string | null) {
     return {
@@ -1284,6 +1285,8 @@ export class AuthService {
       tenantSlug: profile.tenant?.slug ?? null,
       // §6.8: a profile-first practice starts in the profile editor, not the practice wizard.
       onboardingIntent: profile.tenant?.onboardingIntent ?? 'PRACTICE',
+      // VID-02: how early this practice's video rooms open, for the Join buttons.
+      joinOpensMinutesBefore: joinOpensMinutes(profile.tenant?.joinOpensMinutesBefore),
       // The practice's plan, so the app can mark what is and is not included.
       plan: effectiveTier(profile.tenant),
       isTherapist: !!profile.consultTherapistProfile,

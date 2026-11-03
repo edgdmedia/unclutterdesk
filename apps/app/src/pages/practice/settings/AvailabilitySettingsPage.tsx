@@ -3,6 +3,7 @@ import { Info, Plus, Save } from 'lucide-react';
 import { Button, Card, Eyebrow, Page, PageHeader, useToast } from '@unclutterdesk/ui';
 import { api } from '../../../utils/apiClient';
 import { formatClock } from '../../../utils/displayFormat';
+import { VideoRoomOpensSetting } from '../../../components/settings/VideoRoomOpensSetting';
 
 type Format = 'ONLINE' | 'IN_PERSON';
 type Window = { start: string; end: string };
@@ -388,6 +389,7 @@ export function AvailabilitySettingsPage() {
                   {[12, 24, 48].map((h) => <option key={h} value={h}>{h} hours</option>)}
                 </select>
               </label>
+              <VideoRoomOpensSetting />
               <div className="p-3.5 rounded-[14px] bg-[#EFF6FB] text-[#0F3A53] text-xs font-medium flex items-start gap-2.5 leading-relaxed">
                 <Info className="h-4 w-4 shrink-0 mt-0.5" />
                 <span>Saving regenerates the next 28 days of open times from this week.</span>
