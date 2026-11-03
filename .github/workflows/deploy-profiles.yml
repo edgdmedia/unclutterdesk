@@ -1,6 +1,6 @@
 name: Deploy Profiles
 
-# The public profile site (apps/profiles) on therapysts.com, in the Cloudflare
+# The public profile site (apps/profiles), in the Cloudflare
 # account that owns the therapysts domains. Checks run on dev (ci.yml);
 # main only deploys.
 on:
