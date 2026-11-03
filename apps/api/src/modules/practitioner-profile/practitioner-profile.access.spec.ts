@@ -64,4 +64,16 @@ describe('practitioner profile access (§6.1)', () => {
       expect(r.roles, `${r.target} is not for clients`).not.toContain('CLIENT');
     }
   });
+
+  it('guards the share routes with sign-in and no profile id', () => {
+    // §6.10: a practitioner gets only their own QR and PDF. There is no handle
+    // or id in either path, so the route itself cannot name someone else.
+    for (const target of ['GET /v1/practitioner-profile/me/share/qr', 'GET /v1/practitioner-profile/me/share/pdf']) {
+      const route = allRoutes().find((r) => r.target === target);
+      expect(route, `${target} is missing`).toBeDefined();
+      expect(route!.authenticated).toBe(true);
+      expect(route!.roles).not.toContain('CLIENT');
+      expect(target).not.toMatch(/:(id|profileId|userId)\b/);
+    }
+  });
 });

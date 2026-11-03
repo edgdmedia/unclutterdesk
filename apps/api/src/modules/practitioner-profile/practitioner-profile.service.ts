@@ -17,6 +17,10 @@ import {
   type SectionKey,
 } from './completeness';
 import { isThemeKey } from './themes';
+import { PROFILE_PUBLIC_ORIGIN } from '../../common/origins';
+import { EntitlementsService } from '../entitlements/entitlements.service';
+import { profileQr } from './share/qr';
+import { renderProfilePdf } from './share/profile-pdf';
 import { writingTips } from './writing-tips';
 import { HANDLE_MESSAGES, handleProblem, normalizeHandle, suggestHandle } from './handles';
 import { PHOTO_BACKFILL_JOB, type PhotoBackfillPayload } from './profile-photo.job';
@@ -41,6 +45,16 @@ export const PRACTITIONER_KINDS: readonly PractitionerKind[] = [
   'SOCIAL_WORKER',
   'TRAINEE',
 ];
+
+/** The words a profile shows for each kind (§6.1). */
+export const PRACTITIONER_KIND_LABELS: Record<PractitionerKind, string> = {
+  COUNSELLOR: 'Counsellor',
+  PSYCHOTHERAPIST: 'Psychotherapist',
+  PSYCHOLOGIST: 'Psychologist',
+  PSYCHIATRIST: 'Psychiatrist',
+  SOCIAL_WORKER: 'Social worker',
+  TRAINEE: 'Trainee counsellor',
+};
 
 /** Plain-text fields and their limits (§6.1). Text is stored as typed; the renderer escapes it. */
 const TEXT_LIMITS = {
@@ -150,6 +164,7 @@ export class PractitionerProfileService {
     private readonly prisma: PrismaService,
     private readonly jobs: JobsService,
     private readonly storage: StorageService,
+    private readonly entitlements: EntitlementsService,
   ) {}
 
   /**
@@ -545,6 +560,72 @@ export class PractitionerProfileService {
       await this.purge([profileTag(hidden.handle), SITEMAP_TAG]);
     }
     return this.getOwn(userId);
+  }
+
+  /**
+   * The signed-in user's public address and handle, for the share kit (§6.10).
+   * Built from PROFILE_PUBLIC_ORIGIN and the profile's own handle, never from
+   * anything the caller sent.
+   */
+  async shareTarget(userId: bigint): Promise<{ handle: string; url: string }> {
+    const profile = await this.prisma.practitionerProfile.findUnique({
+      where: { userId },
+      select: { handle: true },
+    });
+    if (!profile) throw new NotFoundException('You have no profile yet');
+    return { handle: profile.handle, url: `${PROFILE_PUBLIC_ORIGIN}/${profile.handle}` };
+  }
+
+  /**
+   * The signed-in user's one-page profile PDF (§6.10). Paid plans only: the
+   * entitlement check runs first and throws the 402 before any work is done.
+   * The photo is optional — a missing or unreadable one falls back to initials.
+   */
+  async renderOwnProfilePdf(userId: bigint): Promise<{ pdf: Buffer; filename: string }> {
+    await this.entitlements.assertProfile(userId, 'downloadablePdf');
+
+    const profile = await this.prisma.practitionerProfile.findUnique({
+      where: { userId },
+      include: { taxonomy: { include: { term: true } } },
+    });
+    if (!profile) throw new NotFoundException('You have no profile yet');
+
+    const url = `${PROFILE_PUBLIC_ORIGIN}/${profile.handle}`;
+    const qrPng = (await profileQr(url, 'png')) as Buffer;
+    const photo = await this.loadPublicPhoto(profile.photoKey);
+    const labelsFor = (kind: string, primaryOnly = false) =>
+      profile.taxonomy
+        .filter((t) => t.term.kind === kind && (!primaryOnly || t.isPrimary))
+        .sort((a, b) => a.term.sortOrder - b.term.sortOrder)
+        .map((t) => t.term.label);
+    const primary = labelsFor('SPECIALTY', true);
+
+    const pdf = await renderProfilePdf({
+      name: profile.displayName,
+      kindLabel: PRACTITIONER_KIND_LABELS[profile.kind] ?? 'Practitioner',
+      headline: profile.headline,
+      place: [profile.city, profile.countryCode].filter(Boolean).join(', '),
+      qualifications: profile.credentialsText,
+      primarySpecialties: primary.length ? primary : labelsFor('SPECIALTY'),
+      specialties: labelsFor('SPECIALTY'),
+      languages: labelsFor('LANGUAGE'),
+      url,
+      qrPng,
+      photo,
+      themeKey: profile.themeKey,
+    });
+    return { pdf, filename: `${profile.handle}-profile.pdf` };
+  }
+
+  /** A profile photo from the public bucket, or null when it is unset or cannot be read. */
+  private async loadPublicPhoto(key: string | null): Promise<Buffer | null> {
+    if (!key || !this.storage.configured('public')) return null;
+    try {
+      return await this.storage.get('public', key);
+    } catch (err) {
+      this.logger.warn(`could not load profile photo ${key} for the PDF: ${(err as Error).message}`);
+      return null;
+    }
   }
 
   /** Active templates for the picker (§6.6), with their guidance and examples. */
