@@ -6,12 +6,14 @@ import {
   Req,
   UseGuards,
   Headers,
+  Header,
   BadRequestException,
   RawBodyRequest,
 } from '@nestjs/common';
 import { Request } from 'express';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { BillingService } from './billing.service';
+import { publicPlans } from './public-plans';
 import { SubscriptionLapseService } from './subscription-lapse.service';
 import { PaystackService } from './paystack.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
@@ -22,6 +24,14 @@ import { authenticatedTenantId } from '../../common/authenticated-tenant';
 @ApiTags('Billing')
 @Controller('v1/billing')
 export class BillingController {
+  /** Public: the plans and what each includes, for the pricing page. Same tables as the charge and the limits. */
+  @Get('plans')
+  @Header('Cache-Control', 'public, max-age=300')
+  @ApiOperation({ summary: 'Plans, prices and what each includes' })
+  plans() {
+    return publicPlans();
+  }
+
   constructor(
     private readonly billingService: BillingService,
     private readonly lapseService: SubscriptionLapseService,
