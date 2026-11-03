@@ -1109,9 +1109,59 @@ Update every access rule and test that assumes `userId` is non-null.
 
 - **Profile builder:** drag-and-drop sections and custom blocks beyond themes and templates. Must keep the plain-text rendering rule (§4.3) or introduce a vetted, allow-listed block format.
 - **Per-practice timezones:** add a timezone to `Tenant` once there are practices outside West Africa time; until then booking limits use Africa/Lagos (§5.5).
-- **Referrals** between practitioners.
+- **Session plans, consultations and referrals:** agreed 3 Nov 2026, see §11.1–§11.4.
 
 Design implications: keep public DTOs allow-listed and taxonomy controlled (not free text), so new surfaces can reuse them.
+
+### 11.1 Consultations (agreed 3 Nov 2026)
+
+A short first session to decide whether to continue: for example 30 minutes for ₦20,000.
+
+- **It's an ordinary service.** The practice adds it under Services like any other; no special code is needed to sell it.
+- **Later, one flag:** `ConsultService.isConsultation`, so the profile and booking page can offer "Start with a consultation" next to the full services, and §11.2 can link a plan to the consultation it came from.
+- **It is never required.** Anyone can book a full session or buy a plan directly.
+- **Its fee is separate.** It is not deducted from the plan or from later sessions.
+
+### 11.2 Session plans: several sessions, times chosen later (agreed 3 Nov 2026)
+
+A client pays for several sessions now and picks each time when they know it. The client sees **sessions**, not credits or a balance.
+
+**Flow**
+1. **Recommendation (optional).** After a consultation, the therapist recommends a plan from the session record, for example "8 × Individual Therapy, weekly". The client gets it by email and in the portal.
+2. **Buying.** The client pays for all of the plan, part of it ("4 now"), or one session at a time. Anyone can also buy a plan directly from the booking page without a consultation.
+3. **Paying ahead.** When several sessions are paid together, a discount applies. The default is **5%**, and the practice can change it per service.
+4. **Unscheduled sessions.** Each paid session appears in the portal as **"Session 2 of 8 · Not scheduled · Choose a time"**. Choosing a time opens that therapist's open times for that service and books it with no further payment. The therapist sees paid, booked and unscheduled counts, and can schedule one on the client's behalf.
+5. **More sessions.** When the paid sessions are used up and the plan has more, the portal offers "Pay for the next sessions".
+
+**Rules**
+- **Refunds:** unscheduled sessions can be refunded, in full or in part, by the practice. A refund cancels that many unscheduled sessions and goes back through Paystack, minus the discount already given. The client can ask from the portal; the practice approves.
+- **Expiry:** none by default. Refunds are the way out, and they are always possible.
+- **Booking limits and fees:** a session counts toward the monthly booking limit (§5.5) when it is scheduled, not when it is paid. The platform fee is charged on payment, as today.
+- **One service per plan for now.** Mixing services (for example 6 individual and 2 couples sessions) comes later, so keep each line's service on the line, not on the plan.
+
+**Data (sketch)**
+- `SessionPlan`: tenant, client, therapist, recommended count, status (RECOMMENDED / ACTIVE / COMPLETED / CANCELLED), source consultation booking (optional).
+- `SessionPlanLine`: plan, service, count, unit price and discount at purchase.
+- `PlanSession`: one per paid session. Holds its payment, and its booking once scheduled; a null booking means "not scheduled". It moves through PAID → SCHEDULED → COMPLETED, or to REFUNDED.
+- Reuses `ConsultBooking`, Paystack payments and refunds, reminders and the booking wizard; a scheduled plan session is an ordinary booking with no payment step.
+
+### 11.3 Client referrals between practices (agreed 3 Nov 2026)
+
+Practice A refers a client to Practice B, for example to a specialist, or because A is full.
+
+- **Consent first.** The client consents to each referral in writing, in the portal or by a signed link. That consent names the receiving practice and what is shared. Nothing is sent without it, and the consent is kept with the referral.
+- **What's shared:** the client's full details, plus what the referring therapist chooses to include (a referral note, intake answers, relevant records). It is sent practice to practice inside the platform, never by email attachment. It is encrypted at rest like other clinical records.
+- **Referral fee:** the referring practice earns a fee when the referred client's first paid session at B happens. The amount is a percentage or a fixed sum, agreed when B accepts the referral. It is settled through Paystack split payments, or recorded for manual settlement where a split isn't possible.
+- **Receiving practice:** B can accept or decline. On accepting, the client is invited to B's portal with the shared details already on their record.
+- **Audit:** every referral, consent, share and fee is in the audit log.
+
+### 11.4 Practice-to-practice invitations to Therapysts (agreed 3 Nov 2026)
+
+A practice invites another practice to join the platform.
+
+- **Reward:** the inviting practice earns **subscription credit** when the invited practice starts paying. The credit is used against its own subscription charges (§5.3) before the card is charged.
+- **Tracking:** an invite link or code per practice, with the invited practice recorded at signup.
+- **Open questions:** the credit amount (for example one month of the inviter's plan, or a fixed sum); whether the invited practice also gets a discount; whether credit expires; and a cap per practice.
 
 ---
 

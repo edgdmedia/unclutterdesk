@@ -35,6 +35,7 @@ const ROW = {
   externalBookingUrl: 'https://cal.example/ada',
   contactEmailPublic: 'hello@ada.example',
   socialLinks: { website: 'https://ada.example', instagram: 'javascript:alert(1)', unknown: 'https://x.example' },
+  places: [],
   completenessScore: 80,
   publishedAt: new Date('2026-11-01T10:00:00Z'),
   lastActiveAt: new Date(),
@@ -65,7 +66,7 @@ describe('public profile reads (§6.11)', () => {
     expect(Object.keys(result.profile).sort()).toEqual(
       [
         'about', 'acceptingClients', 'approach', 'bookingMode', 'city', 'contactEmail', 'countryCode', 'credentialsText',
-        'displayName', 'externalBookingUrl', 'faithIntegration', 'feeRangeText', 'handle', 'headline', 'kind', 'languages', 'layoutKey',
+        'deskBookingUrl', 'displayName', 'externalBookingUrl', 'faithIntegration', 'feeRangeText', 'handle', 'headline', 'kind', 'languages', 'layoutKey',
         'modalities', 'offersInPerson', 'offersOnline', 'photoUrl', 'populations', 'previewImageUrl', 'pronouns', 'publishedAt',
         'socialLinks', 'specialties', 'supervisedBy', 'themeKey', 'timeline', 'updatedAt', 'yearsInPractice',
       ].sort(),
@@ -88,7 +89,7 @@ describe('public profile reads (§6.11)', () => {
 
   it('keeps only known https social links', async () => {
     const { service } = setup();
-    expect(((await service.byHandle('adaeze')) as any).profile.socialLinks).toEqual({ website: 'https://ada.example' });
+    expect(((await service.byHandle('adaeze')) as any).profile.socialLinks).toEqual([{ platform: 'website', label: 'Website', url: 'https://ada.example/' }]);
   });
 
   it('shows the external booking link only in EXTERNAL mode', async () => {

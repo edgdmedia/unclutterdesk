@@ -1,6 +1,7 @@
 import React, { lazy, Suspense, useState, useCallback, useMemo } from 'react';
 import { UpgradePrompt } from './components/billing/UpgradePrompt';
 import { CLIENT_PORTAL_ROUTES, ClientBrandProvider } from './routes/clientRoutes';
+import { homePathFor } from './utils/homePath';
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { SWRConfig } from 'swr';
 import useSWR from 'swr';
@@ -70,6 +71,9 @@ const AdminRequestsPage = lazy(() => import('./pages/admin/AdminRequestsPage').t
 const AdminVideoUsagePage = lazy(() => import('./pages/admin/AdminVideoUsagePage').then((m) => ({ default: m.AdminVideoUsagePage })));
 const AdminProfileReportsPage = lazy(() => import('./pages/admin/AdminProfileReportsPage').then((m) => ({ default: m.AdminProfileReportsPage })));
 const AdminAssessmentsPage = lazy(() => import('./pages/admin/AdminAssessmentsPage').then((m) => ({ default: m.AdminAssessmentsPage })));
+const AdminProfileTemplatesPage = lazy(() => import('./pages/admin/AdminProfileTemplatesPage').then((m) => ({ default: m.AdminProfileTemplatesPage })));
+const AdminProfileTaxonomyPage = lazy(() => import('./pages/admin/AdminProfileTaxonomyPage').then((m) => ({ default: m.AdminProfileTaxonomyPage })));
+const AdminProfileGuidancePage = lazy(() => import('./pages/admin/AdminProfileGuidancePage').then((m) => ({ default: m.AdminProfileGuidancePage })));
 const RequestsPage = lazy(() => import('./pages/practice/RequestsPage').then((m) => ({ default: m.RequestsPage })));
 const AssessmentsPage = lazy(() => import('./pages/practice/AssessmentsPage').then((m) => ({ default: m.AssessmentsPage })));
 const HoursLogPage = lazy(() => import('./pages/practice/HoursLogPage').then((m) => ({ default: m.HoursLogPage })));
@@ -421,6 +425,13 @@ function AppLayout() {
     );
   }
 
+  // The practice workspace is for practice staff only. A client (or a
+  // platform admin) who opens a workspace link goes to their own home
+  // instead of a workspace whose every request the API refuses.
+  if (profile && homePathFor(profile) !== '/dashboard') {
+    return <Navigate to={homePathFor(profile)} replace />;
+  }
+
   return (
     <BrandProvider brand={practiceBrand}>
       <PracticeShell
@@ -525,6 +536,10 @@ function AdminShell() {
           <Route path="/admin/complimentary" element={<AdminComplimentaryPage />} />
           <Route path="/admin/requests" element={<AdminRequestsPage />} />
           <Route path="/admin/assessments" element={<AdminAssessmentsPage />} />
+          <Route path="/admin/profile-content" element={<Navigate to="/admin/profile-content/templates" replace />} />
+          <Route path="/admin/profile-content/templates" element={<AdminProfileTemplatesPage />} />
+          <Route path="/admin/profile-content/taxonomy" element={<AdminProfileTaxonomyPage />} />
+          <Route path="/admin/profile-content/guidance" element={<AdminProfileGuidancePage />} />
           <Route path="/admin/video" element={<AdminVideoUsagePage />} />
           <Route path="/admin/profile-reports" element={<AdminProfileReportsPage />} />
           <Route path="*" element={<NotFoundPage homeHref="/admin" />} />
@@ -562,8 +577,7 @@ function RootRedirect() {
     return <Navigate to="/login" replace />;
   }
 
-  const destination = profile.type === 'platform_admin' ? '/admin' : profile.type === 'user' ? '/portal' : '/dashboard';
-  return <Navigate to={destination} replace />;
+  return <Navigate to={homePathFor(profile)} replace />;
 }
 
 export function App() {

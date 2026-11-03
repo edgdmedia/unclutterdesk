@@ -34,6 +34,7 @@ export * from './layout/Grid';
 export * from './layout/Page';
 export * from './layout/PageHeader';
 export * from './layout/AppShell';
+export { useHeaderSlot } from './layout/headerSlot';
 export * from './data/sort';
 export * from './data/ResponsiveTable';
 export * from './brand/tenantBrandStyle';

@@ -2,6 +2,8 @@ import { GoneException, Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../../common/prisma/prisma.service';
 import { StorageService } from '../storage/storage.service';
 import { HANDLE_PATTERN, normalizeHandle } from './handles';
+import { tenantWebOrigin } from '../../common/origins';
+import { describeSocialLink, readSocialLinks, type SocialLink } from './social-links';
 
 /**
  * What the public-profile site may read (spec §6.11). No auth, no cookies.
@@ -41,8 +43,10 @@ export interface PublicProfile {
   feeRangeText: string | null;
   bookingMode: 'NONE' | 'DESK' | 'EXTERNAL';
   externalBookingUrl: string | null;
+  /** DESK: the main place's booking page. Null in any other mode, or with no place (shown as contact only). */
+  deskBookingUrl: string | null;
   contactEmail: string | null;
-  socialLinks: Record<string, string>;
+  socialLinks: SocialLink[];
   themeKey: string;
   layoutKey: string;
   specialties: (PublicTerm & { primary: boolean })[];
@@ -56,7 +60,6 @@ export interface PublicProfile {
 
 export type PublicProfileResult = { profile: PublicProfile } | { redirectTo: string };
 
-const SOCIAL_KEYS = ['website', 'instagram', 'linkedin', 'facebook', 'x', 'tiktok', 'youtube'];
 
 @Injectable()
 export class PublicProfileService {
@@ -74,6 +77,7 @@ export class PublicProfileService {
       include: {
         taxonomy: { include: { term: { select: { kind: true, key: true, label: true, sortOrder: true, isActive: true } } } },
         timeline: { orderBy: { sortOrder: 'asc' } },
+        places: { where: { isMain: true }, select: { tenant: { select: { slug: true, customDomain: true, customDomainStatus: true } } } },
       },
     });
 
@@ -95,10 +99,7 @@ export class PublicProfileService {
         .map((t) => ({ key: t.term.key, label: t.term.label, primary: t.isPrimary }));
     const plain = (list: (PublicTerm & { primary: boolean })[]) => list.map(({ key, label }) => ({ key, label }));
 
-    const links = (profile.socialLinks && typeof profile.socialLinks === 'object' ? profile.socialLinks : {}) as Record<string, unknown>;
-    const socialLinks = Object.fromEntries(
-      SOCIAL_KEYS.filter((k) => typeof links[k] === 'string' && String(links[k]).startsWith('https://')).map((k) => [k, String(links[k])]),
-    );
+    const socialLinks = readSocialLinks(profile.socialLinks).map(describeSocialLink);
     const publicUrl = (key: string | null) => (key && this.storage.configured('public') ? this.storage.publicUrl(key) : null);
 
     return {
@@ -124,6 +125,7 @@ export class PublicProfileService {
         feeRangeText: profile.feeRangeText,
         bookingMode: profile.bookingMode,
         externalBookingUrl: profile.bookingMode === 'EXTERNAL' && profile.externalBookingUrl?.startsWith('https://') ? profile.externalBookingUrl : null,
+        deskBookingUrl: profile.bookingMode === 'DESK' && profile.places[0] ? `${tenantWebOrigin(profile.places[0].tenant)}/book` : null,
         contactEmail: profile.contactEmailPublic,
         socialLinks,
         themeKey: profile.themeKey,
