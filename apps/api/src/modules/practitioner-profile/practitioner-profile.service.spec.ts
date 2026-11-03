@@ -32,8 +32,20 @@ function setup() {
     $transaction: vi.fn(async (ops: unknown[]) => ops),
   };
   const jobs: any = { enqueue: vi.fn().mockResolvedValue({ id: 1n }), runNow: vi.fn().mockResolvedValue(undefined) };
-  const storage: any = { configured: vi.fn().mockReturnValue(true), put: vi.fn(), remove: vi.fn() };
-  return { service: new PractitionerProfileService(prisma, jobs, storage), prisma, jobs, storage };
+  const storage: any = {
+    configured: vi.fn().mockReturnValue(true),
+    put: vi.fn(),
+    remove: vi.fn(),
+    get: vi.fn().mockResolvedValue(null),
+  };
+  const entitlements: any = { assertProfile: vi.fn().mockResolvedValue(undefined), forProfile: vi.fn() };
+  return {
+    service: new PractitionerProfileService(prisma, jobs, storage, entitlements),
+    prisma,
+    jobs,
+    storage,
+    entitlements,
+  };
 }
 
 const therapist = (over: Record<string, unknown> = {}) => ({

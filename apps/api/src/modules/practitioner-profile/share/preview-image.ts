@@ -21,7 +21,7 @@ export interface PreviewInput {
   kindLabel: string;
   headline: string | null;
   place: string | null;
-  /** Shown bottom right, e.g. "therapysts.com/folake". */
+  /** Shown bottom right, the profile address without https://. */
   address: string;
   layoutKey: string;
   themeKey: string;

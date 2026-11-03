@@ -1,11 +1,11 @@
 import { randomBytes } from 'node:crypto';
 import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
-import type { PractitionerKind } from '@prisma/client';
 import { PrismaService } from '../../common/prisma/prisma.service';
 import { PROFILE_PUBLIC_ORIGIN } from '../../common/origins';
 import { JobDeferredError, JobsService } from '../jobs/jobs.service';
 import { StorageService } from '../storage/storage.service';
 import { profileTag, queuePurge } from './profile-purge.job';
+import { PRACTITIONER_KIND_LABELS } from './kinds';
 import { renderPreviewPng } from './share/preview-image';
 
 export const PREVIEW_JOB = 'profile.preview';
@@ -13,17 +13,6 @@ export const PREVIEW_JOB = 'profile.preview';
 export interface PreviewPayload {
   practitionerProfileId: string;
 }
-
-// The words a profile shows for each kind. Same as the profile site's
-// KIND_TITLES; to be shared with PRACTITIONER_KIND_LABELS once PR #75 lands.
-const KIND_LABELS: Record<PractitionerKind, string> = {
-  COUNSELLOR: 'Counsellor',
-  PSYCHOTHERAPIST: 'Psychotherapist',
-  PSYCHOLOGIST: 'Psychologist',
-  PSYCHIATRIST: 'Psychiatrist',
-  SOCIAL_WORKER: 'Social worker',
-  TRAINEE: 'Trainee counsellor',
-};
 
 /** Up to two initials, skipping a title: "Dr. Folake Adeyemi" → "FA". */
 export function initialsOf(name: string): string {
@@ -79,7 +68,7 @@ export class ProfilePreviewJob implements OnModuleInit {
     const photo = profile.photoKey ? await this.storage.get('public', profile.photoKey) : null;
     const png = await renderPreviewPng({
       name: profile.displayName,
-      kindLabel: KIND_LABELS[profile.kind] ?? 'Therapist',
+      kindLabel: PRACTITIONER_KIND_LABELS[profile.kind] ?? 'Therapist',
       headline: profile.headline,
       place: [profile.city, countryName(profile.countryCode)].filter(Boolean).join(' · ') || null,
       address: `${PROFILE_PUBLIC_ORIGIN.replace(/^https?:\/\//, '')}/${profile.handle}`,
