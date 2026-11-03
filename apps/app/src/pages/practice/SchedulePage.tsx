@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ChevronLeft, ChevronRight, Plus, Settings, X, Calendar, Clock, User, Trash2, CheckCircle2, CalendarPlus } from 'lucide-react';
-import { useBrand, useToast } from '@unclutterdesk/ui';
+import { Page, PageHeader, useBrand, useToast } from '@unclutterdesk/ui';
 import { StaffBookingDialog } from '../../components/booking/StaffBookingDialog';
 import { api, getBookingUrl, TENANT_SLUG } from '../../utils/apiClient';
 
@@ -238,69 +238,69 @@ export function SchedulePage({ sessions, setSessions, clients, tenantSlug, onRef
   };
 
   return (
-    <div className="flex-1 min-w-0 flex flex-col bg-[#F8FAFC]">
-      {/* Top Header Bar */}
-      <header className="h-[80px] bg-white border-b border-[#E2E8F0] px-4 md:px-[26px] flex items-center justify-between gap-3 md:gap-5 shrink-0">
-        <div>
-          <span className="os-eyebrow block hidden md:block">PRACTICE CALENDAR</span>
-          <h1 className="text-[16px] md:text-[20px] font-bold tracking-[-0.02em] text-[#0F172A]">Schedule</h1>
-        </div>
+    <Page
+      header={
+        <PageHeader
+          eyebrow="PRACTICE CALENDAR"
+          title="Schedule"
+          actions={
+            <>
+              {/* Segmented Control */}
+              <div className="h-[40px] p-1 bg-[#F1F5F9] border border-[#E2E8F0] rounded-[14px] flex gap-1">
+                {(['week', 'day', 'month'] as const).map((m) => (
+                  <button
+                    key={m}
+                    onClick={() => setViewMode(m)}
+                    className={`px-4 rounded-[10px] text-xs font-bold capitalize transition-all cursor-pointer ${
+                      viewMode === m ? 'bg-white text-[#0F172A] shadow-xs' : 'text-[#64748B]'
+                    }`}
+                  >
+                    {m}
+                  </button>
+                ))}
+              </div>
 
-        <div className="flex items-center gap-3 ml-auto">
-          {/* Segmented Control */}
-          <div className="h-[40px] p-1 bg-[#F1F5F9] border border-[#E2E8F0] rounded-[14px] flex gap-1">
-            {(['week', 'day', 'month'] as const).map((m) => (
               <button
-                key={m}
-                onClick={() => setViewMode(m)}
-                className={`px-4 rounded-[10px] text-xs font-bold capitalize transition-all cursor-pointer ${
-                  viewMode === m ? 'bg-white text-[#0F172A] shadow-xs' : 'text-[#64748B]'
-                }`}
+                onClick={() => navigate('/dashboard/settings/availability')}
+                className="hidden sm:flex h-[40px] px-4 rounded-[14px] bg-white border border-[#CBD5E1] text-[#0F172A] text-xs font-bold hover:bg-[#F8FAFC] items-center gap-1.5 cursor-pointer"
               >
-                {m}
+                <Settings className="h-3.5 w-3.5" />
+                <span>Set availability</span>
               </button>
-            ))}
-          </div>
 
-          <button
-            onClick={() => navigate('/dashboard/settings/availability')}
-            className="hidden sm:flex h-[40px] px-4 rounded-[14px] bg-white border border-[#CBD5E1] text-[#0F172A] text-xs font-bold hover:bg-[#F8FAFC] items-center gap-1.5 cursor-pointer"
-          >
-            <Settings className="h-3.5 w-3.5" />
-            <span>Set availability</span>
-          </button>
+              <button
+                onClick={() => {
+                  setFormDate(currentDate.toISOString().split('T')[0]);
+                  setFormTime('09:00');
+                  setFormClientName(clients[0]?.name || '');
+                  setFormType('Individual Therapy');
+                  setFormDuration(50);
+                  setShowNewSessionModal(true);
+                }}
+                className="os-brand-btn h-[40px] px-3 md:px-4 rounded-[14px] font-bold text-xs flex items-center gap-1.5 cursor-pointer"
+                style={{ backgroundColor: primaryColor }}
+              >
+                <Plus className="h-4 w-4" />
+                <span className="hidden sm:inline">+ New session</span>
+                <span className="sm:hidden">New</span>
+              </button>
 
-          <button
-            onClick={() => {
-              setFormDate(currentDate.toISOString().split('T')[0]);
-              setFormTime('09:00');
-              setFormClientName(clients[0]?.name || '');
-              setFormType('Individual Therapy');
-              setFormDuration(50);
-              setShowNewSessionModal(true);
-            }}
-            className="os-brand-btn h-[40px] px-3 md:px-4 rounded-[14px] font-bold text-xs flex items-center gap-1.5 cursor-pointer"
-            style={{ backgroundColor: primaryColor }}
-          >
-            <Plus className="h-4 w-4" />
-            <span className="hidden sm:inline">+ New session</span>
-            <span className="sm:hidden">New</span>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => setShowBooking(true)}
-            className="flex h-[40px] px-3 md:px-4 rounded-[14px] bg-[#0F3A53] text-white text-xs font-bold items-center gap-1.5 cursor-pointer"
-          >
-            <CalendarPlus className="h-4 w-4" />
-            <span className="hidden sm:inline">New booking</span>
-            <span className="sm:hidden">Book</span>
-          </button>
-        </div>
-      </header>
-
+              <button
+                type="button"
+                onClick={() => setShowBooking(true)}
+                className="flex h-[40px] px-3 md:px-4 rounded-[14px] bg-[#0F3A53] text-white text-xs font-bold items-center gap-1.5 cursor-pointer"
+              >
+                <CalendarPlus className="h-4 w-4" />
+                <span className="hidden sm:inline">New booking</span>
+                <span className="sm:hidden">Book</span>
+              </button>
+            </>
+          }
+        />
+      }
+    >
       {/* Main Workspace */}
-      <main className="p-4 md:p-[24px_26px_30px] space-y-4 flex-1 flex flex-col">
+      <div className="p-0 space-y-4 flex-1 flex flex-col">
         {/* Title Bar & Legend */}
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 shrink-0">
           <div className="flex items-center gap-3 justify-between md:justify-start">
@@ -505,7 +505,7 @@ export function SchedulePage({ sessions, setSessions, clients, tenantSlug, onRef
             </div>
           </div>
         )}
-      </main>
+      </div>
 
       {/* New Session Modal */}
       {showNewSessionModal && (
@@ -813,6 +813,6 @@ export function SchedulePage({ sessions, setSessions, clients, tenantSlug, onRef
           onBooked={async () => { setShowBooking(false); await onRefresh?.(); }}
         />
       )}
-    </div>
+    </Page>
   );
 }

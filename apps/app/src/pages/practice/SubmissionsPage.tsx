@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { CheckCircle2, EyeOff, MessageSquare, ShieldAlert, Sparkles, Star } from 'lucide-react';
-import { Eyebrow, useToast } from '@unclutterdesk/ui';
+import { Eyebrow, Page, PageHeader, useToast } from '@unclutterdesk/ui';
 import { api } from '../../utils/apiClient';
 
 type SubmissionAnswer = {
@@ -144,7 +144,8 @@ export function SubmissionsPage() {
     }).length;
 
   return (
-    <div className="flex-1 min-w-[1192px] flex min-h-0 bg-white">
+    <Page header={<PageHeader eyebrow="CLINICAL" title="Submissions" />}>
+      <div className="flex min-h-[600px] rounded-[20px] border border-[#E2E8F0] overflow-hidden bg-white">
       <aside className="w-[400px] shrink-0 border-r border-[#E2E8F0] flex flex-col min-h-0 bg-white">
         <div className="px-[22px] pt-[22px] pb-4 border-b border-[#F1F5F9]">
           <Eyebrow>QUEUE</Eyebrow>
@@ -374,6 +375,7 @@ export function SubmissionsPage() {
           </div>
         )}
       </section>
-    </div>
+      </div>
+    </Page>
   );
 }

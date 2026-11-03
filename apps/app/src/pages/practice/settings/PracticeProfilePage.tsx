@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Save, Info } from 'lucide-react';
-import { Eyebrow, useToast } from '@unclutterdesk/ui';
+import { Eyebrow, Page, PageHeader, useToast } from '@unclutterdesk/ui';
 import { api } from '../../../utils/apiClient';
 
 type PracticeProfile = {
@@ -58,20 +58,23 @@ export function PracticeProfilePage() {
   }
 
   return (
-    <div className="flex-1 min-w-0 flex flex-col bg-[#F8FAFC]">
-      <header className="h-[88px] bg-white border-b border-[#E2E8F0] px-[26px] flex items-center justify-between gap-5 shrink-0">
-        <div>
-          <Eyebrow>PRACTICE</Eyebrow>
-          <h1 className="text-[20px] font-bold tracking-[-0.02em] text-[#0F172A]">Practice profile</h1>
-          <p className="text-xs text-[#64748B] font-medium">Public practice details shown on your booking page.</p>
-        </div>
-        <button onClick={() => void handleSave()} className="os-brand-btn h-[44px] px-5 rounded-[14px] font-bold text-sm flex items-center gap-2 text-white cursor-pointer disabled:opacity-60" style={{ backgroundColor: '#0F3A53' }} disabled={saving || loading}>
-          <Save className="h-4 w-4" />
-          {saving ? 'Saving...' : 'Save changes'}
-        </button>
-      </header>
+    <Page
+      header={
+        <PageHeader
+          eyebrow="PRACTICE"
+          title="Practice profile"
+          actions={
+            <button onClick={() => void handleSave()} className="os-brand-btn h-[44px] px-5 rounded-[14px] font-bold text-sm flex items-center gap-2 text-white cursor-pointer disabled:opacity-60" style={{ backgroundColor: '#0F3A53' }} disabled={saving || loading}>
+              <Save className="h-4 w-4" />
+              {saving ? 'Saving...' : 'Save changes'}
+            </button>
+          }
+        />
+      }
+    >
+      <p className="text-xs text-[#64748B] font-medium">Public practice details shown on your booking page.</p>
 
-      <main className="p-[24px_26px_30px] grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_372px] gap-[20px] items-start flex-1">
+      <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_372px] gap-[20px] items-start">
         <div className="space-y-5">
           {error ? <div className="rounded-[18px] border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-medium text-rose-700">{error}</div> : null}
           {loading ? <div className="rounded-[24px] border border-[#E2E8F0] bg-white px-6 py-10 text-sm font-medium text-[#64748B]">Loading practice profile...</div> : (
@@ -113,7 +116,7 @@ export function PracticeProfilePage() {
             <span>Changes go live on your booking page as soon as you save.</span>
           </div>
         </div>
-      </main>
-    </div>
+      </div>
+    </Page>
   );
 }

@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { AlertCircle, Check, Info, Loader2, Monitor, Save } from 'lucide-react';
-import { Eyebrow, useToast } from '@unclutterdesk/ui';
+import { Eyebrow, Page, PageHeader, useToast } from '@unclutterdesk/ui';
 import { api } from '../../../utils/apiClient';
 import { useAuth } from '../../../context/AuthContext';
 
@@ -408,45 +408,39 @@ export function AccountPreferencesPage() {
   }, [prefs]);
 
   return (
-    <div className="flex-1 min-w-0 flex flex-col bg-[#F8FAFC]">
-      <header className="h-[88px] bg-white border-b border-[#E2E8F0] px-[26px] flex items-center gap-5 shrink-0">
-        <div>
-          <Eyebrow>ACCOUNT</Eyebrow>
-          <h1 className="text-[20px] font-bold tracking-[-0.02em] text-[#0F172A]">
-            Account &amp; preferences
-          </h1>
-          <p className="text-xs text-[#64748B] font-medium">
-            Sign-in, and how dates and numbers are shown to you
-          </p>
-        </div>
-        <div className="ml-auto flex items-center gap-3">
-          {saved ? (
-            <span
-              role="status"
-              className="text-[12px] font-bold text-[#15803D] flex items-center gap-1.5"
-            >
-              <Check className="h-4 w-4" strokeWidth={2.6} />
-              Saved
-            </span>
-          ) : (
-            <span className="text-[11.5px] text-[#94A3B8] font-medium">
-              Changes apply to your account only
-            </span>
-          )}
-          <button
-            type="button"
-            onClick={savePreferences}
-            disabled={!prefs || saving}
-            className="os-brand-btn h-[44px] px-5 rounded-[14px] font-bold text-sm flex items-center gap-2 text-white cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
-            style={{ backgroundColor: '#0F3A53' }}
-          >
-            {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
-            {saving ? 'Saving…' : 'Save preferences'}
-          </button>
-        </div>
-      </header>
+    <Page
+      header={
+        <PageHeader
+          eyebrow="ACCOUNT"
+          title="Account & preferences"
+          actions={
+            <>
+              {saved ? (
+                <span role="status" className="text-[12px] font-bold text-[#15803D] flex items-center gap-1.5">
+                  <Check className="h-4 w-4" strokeWidth={2.6} />
+                  Saved
+                </span>
+              ) : (
+                <span className="text-[11.5px] text-[#94A3B8] font-medium">Changes apply to your account only</span>
+              )}
+              <button
+                type="button"
+                onClick={savePreferences}
+                disabled={!prefs || saving}
+                className="os-brand-btn h-[44px] px-5 rounded-[14px] font-bold text-sm flex items-center gap-2 text-white cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
+                style={{ backgroundColor: '#0F3A53' }}
+              >
+                {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+                {saving ? 'Saving…' : 'Save preferences'}
+              </button>
+            </>
+          }
+        />
+      }
+    >
+      <p className="text-xs text-[#64748B] font-medium">Sign-in, and how dates and numbers are shown to you</p>
 
-      <main className="flex-1 min-h-0 overflow-auto p-[24px_26px_32px] grid grid-cols-[minmax(0,1fr)_352px] gap-[20px] items-start">
+      <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_352px] gap-[20px] items-start">
         <div className="flex flex-col gap-5">
           {loadError ? (
             <div className="rounded-[18px] border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-medium text-rose-700">
@@ -822,8 +816,8 @@ export function AccountPreferencesPage() {
             )}
           </div>
         </div>
-      </main>
-    </div>
+      </div>
+    </Page>
   );
 }
 

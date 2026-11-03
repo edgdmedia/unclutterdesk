@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Plus, FileText, Activity, ShieldCheck, MessageSquare, Edit2 } from 'lucide-react';
-import { Eyebrow, useToast } from '@unclutterdesk/ui';
+import { Eyebrow, Page, PageHeader, useToast } from '@unclutterdesk/ui';
 import { api } from '../../../utils/apiClient';
 import { FormTemplateLibrary } from './FormTemplateLibrary';
 
@@ -82,25 +82,27 @@ export function FormsManagerPage() {
   );
 
   return (
-    <div className="flex-1 min-w-[1192px] flex flex-col bg-[#F8FAFC]">
-      <header className="h-[88px] bg-white border-b border-[#E2E8F0] px-[26px] flex items-center justify-between gap-5 shrink-0">
-        <div>
-          <Eyebrow>SETTINGS</Eyebrow>
-          <h1 className="text-[20px] font-bold tracking-[-0.02em] text-[#0F172A]">Form & assessment templates</h1>
-          <p className="text-xs text-[#64748B] font-medium">Real forms from your practice library. Review forms publish to your landing page.</p>
-        </div>
-
-        <Link
+    <Page
+      header={
+        <PageHeader
+          eyebrow="SETTINGS"
+          title="Form & assessment templates"
+          actions={
+            <Link
               to="/dashboard/settings/forms/new"
-          className="os-brand-btn h-[44px] px-5 rounded-[14px] font-bold text-xs flex items-center gap-2"
-          style={{ backgroundColor: primaryColor }}
-        >
-          <Plus className="h-4 w-4" />
-          <span>Create custom form</span>
-        </Link>
-      </header>
+              className="os-brand-btn h-[44px] px-5 rounded-[14px] font-bold text-xs flex items-center gap-2"
+              style={{ backgroundColor: primaryColor }}
+            >
+              <Plus className="h-4 w-4" />
+              <span>Create custom form</span>
+            </Link>
+          }
+        />
+      }
+    >
+      <p className="text-xs text-[#64748B] font-medium">Real forms from your practice library. Review forms publish to your landing page.</p>
 
-      <main className="p-[24px_26px_30px] space-y-6 flex-1">
+      <div className="space-y-6">
         <div className="h-[38px] p-1 bg-[#EEF2F7] rounded-[14px] inline-flex gap-1 border border-[#E2E8F0]">
           {[
             { id: 'all', label: 'ALL' },
@@ -236,7 +238,7 @@ export function FormsManagerPage() {
         )}
 
         <FormTemplateLibrary onUsed={(formId) => navigate(`/dashboard/settings/forms/${formId}`)} />
-      </main>
-    </div>
+      </div>
+    </Page>
   );
 }

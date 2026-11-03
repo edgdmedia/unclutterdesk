@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Palette, Sparkles } from 'lucide-react';
-import { Eyebrow, Card, BookingLinkField, useToast } from '@unclutterdesk/ui';
+import { Card, Eyebrow, Page, PageHeader, BookingLinkField, useToast } from '@unclutterdesk/ui';
 import { BookingWizardPage } from '../../public/booking/BookingWizardPage';
 import { BookingConfirmedPage } from '../../public/BookingConfirmedPage';
 import { api, practiceBookingUrl } from '../../../utils/apiClient';
@@ -91,16 +91,16 @@ export function BrandSettingsPage() {
   }
 
   return (
-    <div className="flex-1 min-w-0 flex flex-col bg-[#F8FAFC]">
-      <header className="h-[80px] bg-white border-b border-[#E2E8F0] px-4 md:px-[26px] flex items-center justify-between gap-3 md:gap-5 shrink-0">
-        <div>
-          <Eyebrow>BRAND & BOOKING PAGE</Eyebrow>
-          <h1 className="text-[16px] md:text-[20px] font-bold tracking-[-0.02em] text-[#0F172A]">How clients see your practice</h1>
-        </div>
-        {slug ? <BookingLinkField url={bookingUrl} className="ml-auto hidden md:flex" /> : null}
-      </header>
-
-      <main className="p-4 md:p-[24px_26px_30px] grid grid-cols-1 lg:grid-cols-12 gap-4 md:gap-6 items-start flex-1">
+    <Page
+      header={
+        <PageHeader
+          eyebrow="BRAND & BOOKING PAGE"
+          title="How clients see your practice"
+          actions={slug ? <BookingLinkField url={bookingUrl} className="hidden md:flex" /> : undefined}
+        />
+      }
+    >
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 md:gap-6 items-start">
         <div className="lg:col-span-5 space-y-4 md:space-y-5">
           {error ? <div role="alert" className="rounded-[18px] border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-medium text-rose-700">{error}</div> : null}
 
@@ -150,7 +150,7 @@ export function BrandSettingsPage() {
             </div>
           </Card>
         </div>
-      </main>
-    </div>
+      </div>
+    </Page>
   );
 }

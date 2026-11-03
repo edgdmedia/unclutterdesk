@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Save } from 'lucide-react';
-import { Eyebrow, useToast } from '@unclutterdesk/ui';
+import { Eyebrow, Page, PageHeader, useToast } from '@unclutterdesk/ui';
 import { api } from '../../utils/apiClient';
 
 type ProfileRecord = {
@@ -92,27 +92,15 @@ export function MyProfilePage({
     }
   }
 
-  return (
-    <div className={embedded ? 'flex flex-col' : 'flex-1 min-w-[1192px] flex flex-col bg-[#F8FAFC]'}>
-      <header className={embedded ? 'flex items-center gap-5 pb-4' : 'h-[88px] bg-white border-b border-[#E2E8F0] px-[26px] flex items-center gap-5 shrink-0'}>
-        <div>
-          {embedded ? (
-            <p className="text-[13px] text-[#64748B] font-medium">Settings for this practice: how clients reach you, video, locations and your booking-page welcome.</p>
-          ) : (
-            <>
-              <Eyebrow>ACCOUNT</Eyebrow>
-              <h1 className="text-[20px] font-bold tracking-[-0.02em] text-[#0F172A]">My profile</h1>
-              <p className="text-xs text-[#64748B] font-medium">Real therapist profile data used on your booking page</p>
-            </>
-          )}
-        </div>
-        <button onClick={() => void handleSave()} className="os-brand-btn ml-auto h-[44px] px-5 rounded-[14px] font-bold text-sm flex items-center gap-2 text-white cursor-pointer disabled:opacity-60" style={{ backgroundColor: '#0F3A53' }} disabled={saving || loading}>
-          <Save className="h-4 w-4" />
-          {saving ? 'Saving...' : 'Save changes'}
-        </button>
-      </header>
+  const saveButton = (
+    <button onClick={() => void handleSave()} className="os-brand-btn h-[44px] px-5 rounded-[14px] font-bold text-sm flex items-center gap-2 text-white cursor-pointer disabled:opacity-60" style={{ backgroundColor: '#0F3A53' }} disabled={saving || loading}>
+      <Save className="h-4 w-4" />
+      {saving ? 'Saving...' : 'Save changes'}
+    </button>
+  );
 
-      <main className={embedded ? 'grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_352px] gap-[20px] items-start' : 'flex-1 min-h-0 overflow-auto p-[24px_26px_32px] grid grid-cols-[minmax(0,1fr)_352px] gap-[20px] items-start'}>
+  const body = (
+    <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_352px] gap-[20px] items-start">
         <div className="flex flex-col gap-5">
           {error ? <div className="rounded-[18px] border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-medium text-rose-700">{error}</div> : null}
           {loading ? <div className="rounded-[24px] border border-[#E2E8F0] bg-white px-6 py-10 text-sm font-medium text-[#64748B]">Loading profile...</div> : (
@@ -258,7 +246,25 @@ export function MyProfilePage({
             <div><strong className="text-[#0F172A]">Languages:</strong> {(profile.languages || []).join(', ') || 'Not set'}</div>
           </div>
         </div>
-      </main>
-    </div>
+      </div>
+  );
+
+  if (embedded) {
+    return (
+      <div className="flex flex-col gap-4">
+        <div className="flex flex-wrap items-center gap-4">
+          <p className="text-[13px] text-[#64748B] font-medium">Settings for this practice: how clients reach you, video, locations and your booking-page welcome.</p>
+          <span className="ml-auto">{saveButton}</span>
+        </div>
+        {body}
+      </div>
+    );
+  }
+
+  return (
+    <Page header={<PageHeader eyebrow="ACCOUNT" title="My profile" actions={saveButton} />}>
+      <p className="text-xs text-[#64748B] font-medium">Real therapist profile data used on your booking page</p>
+      {body}
+    </Page>
   );
 }
