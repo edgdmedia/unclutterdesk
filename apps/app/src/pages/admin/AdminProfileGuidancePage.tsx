@@ -13,7 +13,7 @@ import { SECTION_TITLES } from '../practice/profile/profileApi';
  */
 export function AdminProfileGuidancePage() {
   const toast = useToast();
-  const { data, isLoading, mutate } = useSWR<{ guidance: AdminGuidance }>(`${PROFILE_CONTENT_BASE}/guidance`);
+  const { data, isLoading, error: loadError, mutate } = useSWR<{ guidance: AdminGuidance }>(`${PROFILE_CONTENT_BASE}/guidance`);
   const [guidance, setGuidance] = useState<AdminGuidance>({});
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -66,6 +66,8 @@ export function AdminProfileGuidancePage() {
 
       {isLoading ? (
         <Card className="mt-5 p-[22px]"><p className="text-sm text-[#64748B]">Loading guidance…</p></Card>
+      ) : loadError ? (
+        <Card className="mt-5 p-[22px]"><p className="text-sm text-[#B91C1C]">Could not load guidance. Please refresh.</p></Card>
       ) : (
         <div className="mt-5 space-y-5">
           <Card className="p-[22px] space-y-5">

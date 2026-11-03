@@ -90,13 +90,13 @@ export function taxonomyKey(value: unknown): string {
 }
 
 export function taxonomyKeyFromLabel(label: string): string {
-  return label
+  const raw = label
     .normalize('NFKD')
     .replace(/[\u0300-\u036f]/g, '')
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, '-')
-    .replace(/^-+|-+$/g, '')
-    .slice(0, TAXONOMY_LIMITS.key);
+    .replace(/^-+|-+$/g, '');
+  return raw.slice(0, TAXONOMY_LIMITS.key).replace(/-+$/g, '');
 }
 
 export function parseTaxonomyCreate(value: unknown): CreateTaxonomyInput {

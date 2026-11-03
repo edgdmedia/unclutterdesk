@@ -249,15 +249,16 @@ export class AdminProfileContentService {
     const key = create.key ?? taxonomyKeyFromLabel(create.label);
     if (!key) throw new BadRequestException('key is required when the label has no Latin letters');
 
-    return this.prisma.$transaction(async (tx) => {
-      const existing = await tx.taxonomyTerm.findUnique({
-        where: { kind_key: { kind: create.kind, key } },
-      });
-      if (existing) throw new ConflictException('A term with this key already exists');
+    try {
+      return this.prisma.$transaction(async (tx) => {
+        const existing = await tx.taxonomyTerm.findUnique({
+          where: { kind_key: { kind: create.kind, key } },
+        });
+        if (existing) throw new ConflictException('A term with this key already exists');
 
-      const term = await tx.taxonomyTerm.create({
-        data: { kind: create.kind, key, label: create.label, sortOrder: create.sortOrder ?? 0 },
-      });
+        const term = await tx.taxonomyTerm.create({
+          data: { kind: create.kind, key, label: create.label, sortOrder: create.sortOrder ?? 0 },
+        });
 
       await this.audit.record(
         {
@@ -273,6 +274,12 @@ export class AdminProfileContentService {
 
       return this.serialiseTerm(term, 0);
     });
+    } catch (error) {
+      if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
+        throw new ConflictException('A term with this key already exists');
+      }
+      throw error;
+    }
   }
 
   /**
