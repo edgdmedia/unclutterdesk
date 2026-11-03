@@ -78,7 +78,7 @@ const SETTINGS_TABS: TabDefinition[] = [
   // You
   { href: '/dashboard/profile', label: 'My profile', icon: IdCard, group: 'You', ownerOnly: false },
   { href: '/dashboard/settings/account', label: 'Account & preferences', icon: UserCog, group: 'You', ownerOnly: false },
-  { href: '/dashboard/settings/notifications', label: 'Notifications', icon: Bell, group: 'You', ownerOnly: false },
+  { href: '/dashboard/settings/notifications', label: 'Notifications', icon: Bell, group: 'You', ownerOnly: true },
 
   // Practice
   { href: '/dashboard/settings/profile', label: 'Practice profile', icon: IdCard, group: 'Practice', ownerOnly: true },

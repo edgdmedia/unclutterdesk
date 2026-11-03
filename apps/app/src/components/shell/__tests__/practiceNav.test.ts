@@ -76,11 +76,11 @@ describe('settingsTabsFor (GEN-04)', () => {
   it('receptionists and therapists only get their own availability and account', () => {
     for (const role of ['RECEPTIONIST', 'THERAPIST']) {
       const tabs = settingsTabsFor({ role: role as never, type: role.toLowerCase() });
-      // Receptionists/therapists see: You group (My profile external, Account & preferences, Notifications), Practice group (Availability)
-      // Internal tabs only: Account & preferences, Notifications, Availability
+      // Receptionists/therapists see: You group (My profile external, Account & preferences), Practice group (Availability)
+      // Notifications is owner-only
+      // Internal tabs only: Account & preferences, Availability
       expect(tabs.filter((t) => t.href.startsWith('/dashboard/settings/')).map((t) => t.href)).toEqual([
         '/dashboard/settings/account',
-        '/dashboard/settings/notifications',
         '/dashboard/settings/availability',
       ]);
     }

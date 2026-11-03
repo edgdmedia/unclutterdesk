@@ -50,13 +50,15 @@ export function SettingsHub() {
   );
 }
 
-/** `/dashboard/settings` itself, and any internal tab that does not exist: first internal tab wins. */
+/** `/dashboard/settings` itself: owners land on Practice profile; others land on their first visible internal tab. */
 export function SettingsIndex() {
   const { profile } = useAuth();
   const tabs = settingsTabsFor(profile as never);
   const internalTabs = tabs.filter((t) => t.href.startsWith('/dashboard/settings/'));
-  const first = internalTabs[0];
-  return <Navigate to={first ? first.href.replace('/dashboard/settings/', '') : 'profile'} replace />;
+  const isOwner = [profile?.role, profile?.type].some((r) => String(r ?? '').toUpperCase() === 'OWNER');
+  const practiceProfile = internalTabs.find((t) => t.href.endsWith('/profile'));
+  const target = isOwner && practiceProfile ? 'profile' : internalTabs[0]?.href.replace('/dashboard/settings/', '') || 'profile';
+  return <Navigate to={target} replace />;
 }
 
 function TabLink({ tab, compact }: { tab: SettingsTab; compact?: boolean }) {
