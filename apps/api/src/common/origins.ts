@@ -24,8 +24,11 @@ export const MARKETING_ORIGIN = trimSlash(setting('MARKETING_URL') ?? 'https://u
 const DEFAULT_APP_ORIGIN = 'https://app.unclutterdesk.com';
 const DEFAULT_API_ORIGIN = 'https://api.unclutterdesk.com';
 
-/** Public profile pages (spec §4.1). PROFILE_PUBLIC_URL, default https://profiles.unclutterdesk.com. */
-export const PROFILE_PUBLIC_ORIGIN = trimSlash(setting('PROFILE_PUBLIC_URL') ?? 'https://profiles.unclutterdesk.com');
+/**
+ * Public profile pages (spec §4.1, §4.1b). PROFILE_PUBLIC_URL. Profiles went
+ * straight to their target domain, so the default is the live address.
+ */
+export const PROFILE_PUBLIC_ORIGIN = trimSlash(setting('PROFILE_PUBLIC_URL') ?? 'https://therapysts.com');
 
 /**
  * Where public R2 files are served (R2_PUBLIC_URL, the public bucket's custom

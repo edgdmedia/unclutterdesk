@@ -1,0 +1,44 @@
+name: Deploy Profiles
+
+# The public profile site (apps/profiles) on therapysts.com, in the Cloudflare
+# account that owns the therapysts domains. Checks run on dev (ci.yml);
+# main only deploys.
+on:
+  workflow_dispatch: {}
+  push:
+    branches:
+      - main
+    paths:
+      - 'apps/profiles/**'
+      - 'packages/ui/src/brand/**'
+      - 'package.json'
+      - 'pnpm-lock.yaml'
+      - '.github/workflows/deploy-profiles.yml'
+
+concurrency:
+  group: deploy-profiles-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: Deploy Profiles To Cloudflare Workers
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - uses: pnpm/action-setup@v4
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Build
+        run: pnpm --filter @unclutterdesk/profiles build
+      - name: Deploy
+        working-directory: apps/profiles
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.THERAPYSTS_CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.THERAPYSTS_CLOUDFLARE_ACCOUNT_ID }}
+        run: pnpm exec wrangler deploy

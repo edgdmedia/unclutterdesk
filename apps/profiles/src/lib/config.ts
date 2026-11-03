@@ -13,7 +13,7 @@ export interface ProfilesEnv {
 }
 
 export interface ProfilesConfig {
-  /** This site, e.g. https://profiles.<root> today, https://therapysts.com after the move. */
+  /** This site: https://therapysts.com (profiles moved straight to their target domain, §4.1b). */
   publicOrigin: string;
   /** Where the server renderer reads the public API. Never called from the browser with credentials. */
   apiOrigin: string;
@@ -28,7 +28,7 @@ const trim = (v: string) => v.replace(/\/+$/, '');
 
 export function profilesConfig(env: ProfilesEnv): ProfilesConfig {
   return {
-    publicOrigin: trim(env.PROFILE_PUBLIC_URL || 'https://profiles.unclutterdesk.com'),
+    publicOrigin: trim(env.PROFILE_PUBLIC_URL || 'https://therapysts.com'),
     apiOrigin: trim(env.API_URL || 'https://api.unclutterdesk.com'),
     appOrigin: trim(env.APP_URL || 'https://app.unclutterdesk.com'),
     mediaOrigin: env.MEDIA_URL ? trim(env.MEDIA_URL) : null,
