@@ -96,6 +96,8 @@ export interface CalendarEvent {
   holdExpiresAt?: string | null;
   bookedBy?: string | null;
   bookingStatus?: string;
+  /** Online (video) or in person; from the booking. */
+  format?: 'ONLINE' | 'IN_PERSON';
 }
 
 export interface EmergencyContact {
@@ -168,6 +170,7 @@ interface ApiBooking {
   amountKobo?: string | null;
   holdExpiresAt?: string | null;
   bookedBy?: string | null;
+  format?: 'ONLINE' | 'IN_PERSON';
 }
 
 // ── Staff shape returned by API ───────────────────────────────────────────────
@@ -208,6 +211,7 @@ function bookingToEvent(b: ApiBooking): CalendarEvent {
     holdExpiresAt: b.holdExpiresAt,
     bookedBy: b.bookedBy,
     bookingStatus: b.status,
+    format: b.format,
   };
 }
 

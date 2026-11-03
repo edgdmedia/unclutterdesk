@@ -3,6 +3,7 @@ import { Page, PageHeader, ResponsiveTable, StatusBadge, type Column } from '@un
 import { api } from '../../utils/apiClient';
 import { RouterLink } from '../../components/shell/RouterLink';
 import { PaymentChip } from '../../components/booking/PaymentChip';
+import { formatWhen } from '../../utils/displayFormat';
 
 export interface SessionRow {
   id: string;
@@ -19,8 +20,7 @@ export interface SessionRow {
   channel: string;
 }
 
-const when = (iso: string) =>
-  new Intl.DateTimeFormat('en-GB', { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }).format(new Date(iso));
+const when = (iso: string) => formatWhen(iso, 'short');
 
 const TABS = ['Upcoming', 'Past', 'All'] as const;
 

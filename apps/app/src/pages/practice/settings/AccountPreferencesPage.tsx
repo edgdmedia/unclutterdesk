@@ -3,6 +3,8 @@ import { AlertCircle, Check, Info, Loader2, Monitor, Save } from 'lucide-react';
 import { Eyebrow, useToast } from '@unclutterdesk/ui';
 import { api } from '../../../utils/apiClient';
 import { useAuth } from '../../../context/AuthContext';
+import { mutate } from 'swr';
+import { PREFERENCES_KEY, formatDate, formatTime, type DateFmt, type TimeFmt } from '../../../utils/displayFormat';
 
 /**
  * Account and preferences.
@@ -22,8 +24,6 @@ import { useAuth } from '../../../context/AuthContext';
  * is not has been removed rather than left looking real — see the note at the
  * end of the file.
  */
-type DateFmt = 'DD/MM/YYYY' | 'MM/DD/YYYY' | 'YYYY-MM-DD' | 'D MMM YYYY';
-type TimeFmt = '24-hour' | '12-hour';
 type WeekStart = 'Monday' | 'Sunday';
 type NumFmt = '1,234.56' | '1.234,56';
 
@@ -71,39 +71,11 @@ const TIMEZONES = [
 const SAMPLE = new Date('2026-08-14T10:00:00Z');
 
 function formatSampleDate(fmt: DateFmt, locale: string, timezone: string): string {
-  const parts = new Intl.DateTimeFormat(locale, {
-    timeZone: timezone,
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-  })
-    .formatToParts(SAMPLE)
-    .reduce<Record<string, string>>((acc, p) => ({ ...acc, [p.type]: p.value }), {});
-
-  switch (fmt) {
-    case 'DD/MM/YYYY':
-      return `${parts.day}/${parts.month}/${parts.year}`;
-    case 'MM/DD/YYYY':
-      return `${parts.month}/${parts.day}/${parts.year}`;
-    case 'YYYY-MM-DD':
-      return `${parts.year}-${parts.month}-${parts.day}`;
-    default:
-      return new Intl.DateTimeFormat(locale, {
-        timeZone: timezone,
-        day: 'numeric',
-        month: 'short',
-        year: 'numeric',
-      }).format(SAMPLE);
-  }
+  return formatDate(SAMPLE, { locale, timezone, dateFormat: fmt, timeFormat: '24-hour' });
 }
 
 function formatSampleTime(fmt: TimeFmt, locale: string, timezone: string): string {
-  return new Intl.DateTimeFormat(locale, {
-    timeZone: timezone,
-    hour: '2-digit',
-    minute: '2-digit',
-    hour12: fmt === '12-hour',
-  }).format(SAMPLE);
+  return formatTime(SAMPLE, { locale, timezone, dateFormat: 'D MMM YYYY', timeFormat: fmt });
 }
 
 function formatSampleNumber(fmt: NumFmt): string {
@@ -297,6 +269,8 @@ export function AccountPreferencesPage() {
         weekStartsOn: prefs.weekStartsOn,
         numberFormat: prefs.numberFormat,
       });
+      // Every page formats through these; refresh them now.
+      void mutate(PREFERENCES_KEY, updated, { revalidate: false });
       // Show what was stored, not what was sent.
       setPrefs(updated);
       setSaved(true);
