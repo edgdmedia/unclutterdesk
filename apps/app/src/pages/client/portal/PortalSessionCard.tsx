@@ -41,7 +41,7 @@ export function PortalSessionCard({ session, onReschedule }: { session: PortalSe
         </button>
       ) : null}
       {session.status === 'CONFIRMED' && session.format !== 'IN_PERSON' ? (
-        <JoinButton startsAt={session.startsAt} endsAt={session.endsAt} to={`/portal/sessions/${session.id}/room`} />
+        <JoinButton opensAt={session.joinOpensAt} startsAt={session.startsAt} endsAt={session.endsAt} to={`/portal/sessions/${session.id}/room`} />
       ) : null}
     </div>
   );

@@ -149,7 +149,7 @@ export function PortalHomePage() {
                 </button>
               ) : null}
               {nextSession.status === 'CONFIRMED' && nextSession.format !== 'IN_PERSON' ? (
-                <JoinButton startsAt={nextSession.startsAt} endsAt={nextSession.endsAt} to={`/portal/sessions/${nextSession.id}/room`} />
+                <JoinButton opensAt={nextSession.joinOpensAt} startsAt={nextSession.startsAt} endsAt={nextSession.endsAt} to={`/portal/sessions/${nextSession.id}/room`} />
               ) : null}
             </div>
           </div>

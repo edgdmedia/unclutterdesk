@@ -428,9 +428,9 @@ export class ConsultService {
   }
 
   /** VID-02: the room's open and close times for an online session; null in person. */
-  private joinWindowFields(b: { format?: string | null; availability: { startsAt: Date; endsAt: Date } }) {
+  private joinWindowFields(b: { format?: string | null; availability: { startsAt: Date; endsAt: Date } }, opensMinutesBefore?: number) {
     if (b.format === 'IN_PERSON') return { joinOpensAt: null, joinClosesAt: null };
-    const w = joinWindow(b.availability.startsAt, b.availability.endsAt);
+    const w = joinWindow(b.availability.startsAt, b.availability.endsAt, opensMinutesBefore);
     return { joinOpensAt: w.opensAt.toISOString(), joinClosesAt: w.closesAt.toISOString() };
   }
 
@@ -1700,6 +1700,7 @@ export class ConsultService {
     });
 
     const now = new Date();
+    const practice = await this.prisma.tenant.findUnique({ where: { id: tenantId }, select: { joinOpensMinutesBefore: true } });
     const manualDetails = bookings.some((b) => b.paymentMethod === 'MANUAL' && b.status === 'PENDING_PAYMENT')
       ? await this.manualPayments.available(tenantId)
       : null;
@@ -1714,7 +1715,7 @@ export class ConsultService {
       therapistName: `${booking.availability.therapist.profile.firstName || ''} ${booking.availability.therapist.profile.lastName || ''}`.trim() || 'Your therapist',
       ...this.bookingFormatFields(booking),
       // VID-02: when an online session's room is open. Clients join in the app, never by a provider link.
-      ...this.joinWindowFields(booking),
+      ...this.joinWindowFields(booking, practice?.joinOpensMinutesBefore),
       paymentMethod: booking.paymentMethod,
       // How to pay a transfer that is still due.
       manualPayment:

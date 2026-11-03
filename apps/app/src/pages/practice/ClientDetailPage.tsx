@@ -11,7 +11,8 @@ import { StaffBookingDialog } from '../../components/booking/StaffBookingDialog'
 import { RouterLink } from '../../components/shell/RouterLink';
 import { PaymentChip } from '../../components/booking/PaymentChip';
 import type { SessionRow } from './SessionsPage';
-import { formatWhen } from '../../utils/displayFormat';
+import { activeDisplayPrefs, formatWhen } from '../../utils/displayFormat';
+import { sessionStatus } from '../../utils/sessionStatus';
 
 interface ClientDetailPageProps {
   clients: Client[];
@@ -41,7 +42,7 @@ const SESSION_COLUMNS: Column<SessionRow>[] = [
     className: 'w-full max-w-0',
   },
   { key: 'provider', header: 'Practitioner', priority: 'md', cell: (r) => <span className="truncate">{r.provider.name}</span> },
-  { key: 'status', header: 'Status', priority: 'md', cell: (r) => <StatusBadge status={r.status} /> },
+  { key: 'status', header: 'Status', priority: 'md', cell: (r) => { const st = sessionStatus(r.status, r.startsAt, r.endsAt, new Date(), activeDisplayPrefs().timezone); return <StatusBadge status={st.label} tone={st.tone} />; } },
   { key: 'payment', header: 'Payment', priority: 'lg', cell: (r) => <PaymentChip status={r.status} paymentMethod={r.paymentMethod} holdExpiresAt={r.holdExpiresAt} /> },
 ];
 

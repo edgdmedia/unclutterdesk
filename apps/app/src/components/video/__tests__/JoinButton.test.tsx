@@ -6,7 +6,7 @@ import { renderWithApp, screen, cleanup, act } from '../../../test/renderWithApp
 import { JoinButton } from '../JoinButton';
 
 /**
- * VID-02: a Join button only works while the room is open (15 minutes before
+ * VID-02: a Join button only works while the room is open (10 minutes before by default, or the practice's choice; 
  * the start to 60 minutes after the end), and says when it will open.
  * 08:00Z is 9:00 AM in Lagos.
  */
@@ -20,14 +20,14 @@ afterEach(() => {
 
 describe('joinState', () => {
   const at = (iso: string) => joinState(new Date(iso), new Date(STARTS), new Date(ENDS));
-  it('is early until 15 minutes before, open until 60 minutes after the end, then over', () => {
-    expect(at('2026-10-06T07:44:00Z')).toBe('early');
-    expect(at('2026-10-06T07:45:00Z')).toBe('open');
+  it('is early until 10 minutes before by default, open until 60 minutes after the end, then over', () => {
+    expect(at('2026-10-06T07:49:00Z')).toBe('early');
+    expect(at('2026-10-06T07:50:00Z')).toBe('open');
     expect(at('2026-10-06T09:50:00Z')).toBe('open');
     expect(at('2026-10-06T09:51:00Z')).toBe('over');
   });
   it('gives the window itself', () => {
-    expect(joinWindow(new Date(STARTS), new Date(ENDS))).toEqual({ opensAt: new Date('2026-10-06T07:45:00Z'), closesAt: new Date('2026-10-06T09:50:00Z') });
+    expect(joinWindow(new Date(STARTS), new Date(ENDS))).toEqual({ opensAt: new Date('2026-10-06T07:50:00Z'), closesAt: new Date('2026-10-06T09:50:00Z') });
   });
 });
 
@@ -44,15 +44,15 @@ describe('JoinButton', () => {
   it('says when the room opens, and cannot be used before then', () => {
     vi.useFakeTimers().setSystemTime(new Date('2026-10-05T12:00:00Z'));
     show();
-    const early = screen.getByRole('button', { name: 'Opens at 8:45 AM' });
+    const early = screen.getByRole('button', { name: 'Opens at 8:50 AM' });
     expect((early as HTMLButtonElement).disabled).toBe(true);
     expect(screen.queryByRole('link', { name: /join session/i })).toBeNull();
   });
 
   it('turns into Join session when the room opens, without a reload', () => {
-    vi.useFakeTimers().setSystemTime(new Date('2026-10-06T07:44:30Z'));
+    vi.useFakeTimers().setSystemTime(new Date('2026-10-06T07:49:30Z'));
     show();
-    expect(screen.getByRole('button', { name: 'Opens at 8:45 AM' })).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Opens at 8:50 AM' })).toBeTruthy();
     act(() => {
       vi.advanceTimersByTime(60_000);
     });

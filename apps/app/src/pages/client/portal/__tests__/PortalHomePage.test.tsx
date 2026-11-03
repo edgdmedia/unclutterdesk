@@ -11,9 +11,10 @@ vi.mock('../../../../utils/apiClient', () => ({
   TENANT_SLUG: 'dr-smith',
   API_BASE: '',
 }));
-vi.mock('../../../../context/AuthContext', () => ({
-  useAuth: () => ({ isAuthenticated: true, profile: { email: 'ada@example.com', type: 'user', firstName: 'Ada' }, logout: vi.fn() }),
-}));
+vi.mock('../../../../context/AuthContext', () => {
+  const auth = ({ isAuthenticated: true, profile: { email: 'ada@example.com', type: 'user', firstName: 'Ada' }, logout: vi.fn() });
+  return { useAuth: () => auth, useOptionalAuth: () => auth };
+});
 
 const { ClientShell } = await import('../../../../components/shell/ClientShell');
 const { PortalHomePage } = await import('../PortalHomePage');
