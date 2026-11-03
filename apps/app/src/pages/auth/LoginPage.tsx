@@ -43,6 +43,13 @@ export function LoginPage() {
         return;
       }
 
+      // §6.8: a profile-first owner lands in the profile editor and never sees
+      // the practice set-up wizard; booking is there when they want it.
+      if (profile.type !== 'user' && profile.onboardingIntent === 'PROFILE') {
+        navigate('/dashboard/profile');
+        return;
+      }
+
       if (profile.type !== 'user') {
         const hasSavedOnboarding = !!profile.tenantId && !!localStorage.getItem(onboardingDraftKey(profile.tenantId));
 

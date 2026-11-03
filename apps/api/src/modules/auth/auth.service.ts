@@ -19,6 +19,10 @@ import { DefaultFormsService } from '../intake/default-forms.service';
 import { effectivePermissions } from '../../common/permissions';
 import { appOrigin } from '../../common/origins';
 import { effectiveTier, NEW_PRACTICE_TIER, type PlanFields } from '../entitlements/entitlements';
+import { HANDLE_MESSAGES, handleProblem, normalizeHandle } from '../practitioner-profile/handles';
+import { PRACTITIONER_KINDS } from '../practitioner-profile/kinds';
+import { isReservedSlug } from '../tenant/reserved-slugs';
+import { Prisma, type PractitionerKind } from '@prisma/client';
 
 const BCRYPT_ROUNDS = 12;
 
@@ -113,19 +117,7 @@ export class AuthService {
       );
     }
 
-    // Password policy: min 8 chars with upper, lower, digit and a special char.
-    if (!dto.password || dto.password.length < 8) {
-      throw new BadRequestException('Password must be at least 8 characters');
-    }
-    if (!/[A-Z]/.test(dto.password) || !/[a-z]/.test(dto.password)) {
-      throw new BadRequestException('Password must contain both uppercase and lowercase letters');
-    }
-    if (!/[0-9]/.test(dto.password)) {
-      throw new BadRequestException('Password must contain at least one number');
-    }
-    if (!/[^A-Za-z0-9]/.test(dto.password)) {
-      throw new BadRequestException('Password must contain at least one special character');
-    }
+    assertPasswordPolicy(dto.password);
 
     if (inviteCode) {
       if (!this.invites) throw new BadRequestException('Invite codes are not available right now.');
@@ -238,24 +230,7 @@ export class AuthService {
     // New accounts must verify their email before they can sign in. If a
     // profile already existed and was verified, skip re-verification.
     const alreadyVerified = profile.emailVerified === true;
-    let emailSent = false;
-    if (!alreadyVerified) {
-      const code = await this.createEmailVerificationCode(user.id);
-      try {
-        const result = await this.notifications.sendEmail({
-          to: profile.email,
-          type: 'auth.email_verification',
-          title: 'Verify your email address',
-          message: `Welcome to Unclutter Desk! Enter this code in the app to activate your account. It expires in 30 minutes.`,
-          code,
-          tenantId: profile.tenantId,
-          profileId: profile.id,
-        });
-        emailSent = result.success === true;
-      } catch (err) {
-        this.logger.warn(`Failed to send verification email to ${profile.email}: ${(err as Error).message}`);
-      }
-    }
+    const emailSent = alreadyVerified ? false : await this.sendVerificationCode(user.id, profile);
 
     return {
       message: 'Registration successful. Please verify your email before logging in.',
@@ -263,6 +238,157 @@ export class AuthService {
       email_sent: emailSent,
       profile_id: profile.id.toString(),
       ...(invite ? { invite } : {}),
+    };
+  }
+
+  /** Create a fresh 6-digit code and email it. True when the email went out; a failed send is logged, never thrown. */
+  private async sendVerificationCode(
+    userId: bigint,
+    profile: { id: bigint; email: string; tenantId: bigint | null },
+    message = 'Welcome to Unclutter Desk! Enter this code in the app to activate your account. It expires in 30 minutes.',
+  ): Promise<boolean> {
+    const code = await this.createEmailVerificationCode(userId);
+    try {
+      const result = await this.notifications.sendEmail({
+        to: profile.email,
+        type: 'auth.email_verification',
+        title: 'Verify your email address',
+        message,
+        code,
+        tenantId: profile.tenantId,
+        profileId: profile.id,
+      });
+      return result.success === true;
+    } catch (err) {
+      this.logger.warn(`Failed to send verification email to ${profile.email}: ${(err as Error).message}`);
+      return false;
+    }
+  }
+
+  /**
+   * Whether `input` can be a new therapist's handle (§6.2): well-formed, not
+   * reserved, and held by nobody, now or in the past. For the signup form's
+   * live check, so it takes no account and says nothing about who holds it.
+   */
+  async handleCheck(input: unknown): Promise<{ handle: string; available: boolean; message?: string }> {
+    const handle = normalizeHandle(String(input ?? ''));
+    const problem = handleProblem(handle);
+    if (problem) return { handle, available: false, message: HANDLE_MESSAGES[problem] };
+    const [current, past] = await Promise.all([
+      this.prisma.practitionerProfile.findUnique({ where: { handle }, select: { id: true } }),
+      this.prisma.practitionerHandleHistory.findUnique({ where: { handle }, select: { handle: true } }),
+    ]);
+    if (current || past) return { handle, available: false, message: HANDLE_MESSAGES.taken };
+    return { handle, available: true };
+  }
+
+  /** Active templates for the signup form, without the guidance-only "general" one. */
+  async signupTemplates() {
+    return this.prisma.profileTemplate.findMany({
+      where: { isActive: true, key: { not: 'general' } },
+      orderBy: [{ sortOrder: 'asc' }, { title: 'asc' }],
+      select: { key: true, title: true, description: true },
+    });
+  }
+
+    /** The handle as the practice slug when it's free and allowed, else the handle with -2, -3 and so on (§6.2). */
+  private async freeSlug(handle: string): Promise<string> {
+    for (let n = 1; n < 100; n++) {
+      const candidate = n === 1 ? handle : `${handle}-${n}`;
+      if (isReservedSlug(candidate)) continue;
+      const taken = await this.prisma.tenant.findUnique({ where: { slug: candidate }, select: { id: true } });
+      if (!taken) return candidate;
+    }
+    return `${handle}-${randomBytes(3).toString('hex')}`;
+  }
+
+  /**
+   * Profile-first signup (§6.8). Creates, in one transaction, the user, a Free
+   * practice marked PROFILE-first (slug from the handle), the OWNER profile,
+   * the therapist record and a DRAFT public profile, then emails Desk's usual
+   * 6-digit code. Sign-in rules don't change: the person verifies, then signs
+   * in, and lands in the profile editor.
+   */
+  async registerProfile(dto: {
+    firstName?: unknown;
+    lastName?: unknown;
+    email?: unknown;
+    password?: unknown;
+    handle?: unknown;
+    kind?: unknown;
+    templateKey?: unknown;
+  }) {
+    const text = (v: unknown, max: number) => (typeof v === 'string' ? v.trim().slice(0, max) : '');
+    const firstName = text(dto.firstName, 60);
+    const lastName = text(dto.lastName, 60);
+    if (!firstName || !lastName) throw new BadRequestException('Enter your first and last name');
+    const email = text(dto.email, 254).toLowerCase();
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) throw new BadRequestException('Enter a valid email address');
+    assertPasswordPolicy(dto.password);
+    const kind = dto.kind as PractitionerKind;
+    if (!PRACTITIONER_KINDS.includes(kind)) throw new BadRequestException('Choose what kind of practitioner you are');
+
+    const check = await this.handleCheck(dto.handle);
+    if (!check.available) throw new BadRequestException(check.message);
+    const handle = check.handle;
+
+    let templateKey: string | null = null;
+    if (typeof dto.templateKey === 'string' && dto.templateKey) {
+      const template = await this.prisma.profileTemplate.findFirst({ where: { key: dto.templateKey, isActive: true }, select: { key: true } });
+      if (!template) throw new BadRequestException('That template is not available');
+      templateKey = template.key;
+    }
+
+    if (await this.prisma.user.findUnique({ where: { email }, select: { id: true } })) {
+      throw new ConflictException('An account with this email already exists. Please log in or reset your password.');
+    }
+
+    const username = await this.freeUsername(handle);
+    const slug = await this.freeSlug(handle);
+    const displayName = `${firstName} ${lastName}`;
+    const password = await bcrypt.hash(dto.password as string, BCRYPT_ROUNDS);
+
+    let created;
+    try {
+      created = await this.prisma.$transaction(async (tx) => {
+        const user = await tx.user.create({ data: { email, username, password } });
+        const tenant = await tx.tenant.create({
+          data: { name: displayName, slug, subscriptionTier: NEW_PRACTICE_TIER, isActive: true, onboardingIntent: 'PROFILE' },
+        });
+        const profile = await tx.profile.create({
+          data: { tenantId: tenant.id, userId: user.id, email, username, firstName, lastName, type: 'therapist', role: 'OWNER', status: 'pending', emailVerified: false },
+        });
+        await tx.consultTherapistProfile.create({
+          data: {
+            tenantId: tenant.id, profileId: profile.id, publicUsername: username, bookingEmail: email, notificationEmail: email,
+            isPublic: true, acceptsGeneralBooking: true, isVerified: true,
+          },
+        });
+        await tx.practitionerProfile.create({ data: { userId: user.id, handle, kind, displayName, templateKey, status: 'DRAFT' } });
+        return { user, tenant, profile };
+      });
+    } catch (err) {
+      // Someone took the email, handle or slug between the checks and the write.
+      if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === 'P2002') {
+        throw new ConflictException('That handle or email was just taken. Please try again.');
+      }
+      throw err;
+    }
+
+    // BKG-06: a new practice starts with its default forms. Not part of the
+    // account itself, so a failure here never undoes the signup.
+    await this.defaultForms?.ensureFor(created.tenant.id).catch(() => undefined);
+    const emailSent = await this.sendVerificationCode(
+      created.user.id,
+      created.profile,
+      'Welcome to Therapysts! Enter this code to confirm your email and start your free profile. It expires in 30 minutes.',
+    );
+
+    return {
+      message: 'Account created. Enter the code we emailed you to continue.',
+      verification_required: true,
+      email_sent: emailSent,
+      handle,
     };
   }
 
@@ -1127,7 +1253,7 @@ export class AuthService {
     // Required, not optional: a caller that forgets the include would otherwise
     // hand back tenantSlug: null, which is worse than the inconsistency this
     // replaces — silently wrong instead of visibly absent.
-    tenant: ({ name: string; slug: string } & PlanFields) | null;
+    tenant: ({ name: string; slug: string; onboardingIntent?: 'PROFILE' | 'PRACTICE' } & PlanFields) | null;
     consultTherapistProfile: unknown | null;
   }, platformRole?: string | null) {
     return {
@@ -1146,6 +1272,8 @@ export class AuthService {
       avatarUrl: profile.avatarUrl,
       practiceName: profile.tenant?.name ?? null,
       tenantSlug: profile.tenant?.slug ?? null,
+      // §6.8: a profile-first practice starts in the profile editor, not the practice wizard.
+      onboardingIntent: profile.tenant?.onboardingIntent ?? 'PRACTICE',
       // The practice's plan, so the app can mark what is and is not included.
       plan: effectiveTier(profile.tenant),
       isTherapist: !!profile.consultTherapistProfile,
@@ -1411,6 +1539,22 @@ export class AuthService {
  * padded so every code is equally likely. It used to use a non-cryptographic
  * generator, and only ever produced 100000-999999.
  */
+/** Desk's password rules: at least 8 characters, upper and lower case, a number and a symbol. */
+export function assertPasswordPolicy(password: unknown): void {
+  if (typeof password !== 'string' || password.length < 8) {
+    throw new BadRequestException('Password must be at least 8 characters');
+  }
+  if (!/[A-Z]/.test(password) || !/[a-z]/.test(password)) {
+    throw new BadRequestException('Password must contain both uppercase and lowercase letters');
+  }
+  if (!/[0-9]/.test(password)) {
+    throw new BadRequestException('Password must contain at least one number');
+  }
+  if (!/[^A-Za-z0-9]/.test(password)) {
+    throw new BadRequestException('Password must contain at least one special character');
+  }
+}
+
 export function verificationCode(): string {
   return randomInt(0, 1_000_000).toString().padStart(6, '0');
 }
