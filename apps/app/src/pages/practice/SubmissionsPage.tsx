@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { CheckCircle2, EyeOff, MessageSquare, ShieldAlert, Sparkles, Star } from 'lucide-react';
 import { Eyebrow, useToast } from '@unclutterdesk/ui';
 import { api } from '../../utils/apiClient';
+import { formatWhen } from '../../utils/displayFormat';
 
 type SubmissionAnswer = {
   id: string;
@@ -52,12 +53,7 @@ const FILTER_LABELS: Record<QueueFilter, string> = {
 };
 
 function formatDate(value: string) {
-  return new Intl.DateTimeFormat('en-GB', {
-    day: 'numeric',
-    month: 'short',
-    hour: '2-digit',
-    minute: '2-digit',
-  }).format(new Date(value));
+  return formatWhen(value, 'short');
 }
 
 function formatAnswerValue(value: unknown) {

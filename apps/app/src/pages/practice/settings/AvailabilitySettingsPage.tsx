@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { Info, Plus, Save } from 'lucide-react';
 import { Button, Card, Eyebrow, Page, PageHeader, useToast } from '@unclutterdesk/ui';
 import { api } from '../../../utils/apiClient';
+import { formatClock } from '../../../utils/displayFormat';
 
 type Format = 'ONLINE' | 'IN_PERSON';
 type Window = { start: string; end: string };
@@ -346,7 +347,7 @@ export function AvailabilitySettingsPage() {
                   <div className="flex flex-wrap gap-2">
                     {daySlots.map((slot) => (
                       <div key={slot.id} className="flex items-center gap-1">
-                        <span className="text-[12px] font-bold text-[#475569]">{new Date(slot.startsAt).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', timeZone: 'Africa/Lagos' })}</span>
+                        <span className="text-[12px] font-bold text-[#475569]">{formatClock(slot.startsAt)}</span>
                         <Tile
                           id={`slot-${slot.id}`}
                           formats={slot.formats}

@@ -4,6 +4,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { ArrowLeft, Video } from 'lucide-react';
 import { Eyebrow } from '@unclutterdesk/ui';
 import { api } from '../../utils/apiClient';
+import { formatWhen } from '../../utils/displayFormat';
 
 type PrepPayload = {
   booking: {
@@ -45,7 +46,7 @@ type PrepPayload = {
 };
 
 function formatDateTime(value: string) {
-  return new Intl.DateTimeFormat('en-GB', { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }).format(new Date(value));
+  return formatWhen(value, 'short');
 }
 
 export function SessionPrepPage() {
