@@ -17,6 +17,7 @@ export function AdminProfileGuidancePage() {
   const [guidance, setGuidance] = useState<AdminGuidance>({});
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [reason, setReason] = useState<string>('');
 
   useEffect(() => {
     if (data?.guidance) setGuidance(data.guidance);
@@ -40,6 +41,7 @@ export function AdminProfileGuidancePage() {
     try {
       await adminProfileContentApi.updateGuidance({
         guidance: Object.fromEntries(SECTION_ORDER.map((section) => [section, (guidance[section] ?? '').trim()])),
+        reason: reason.trim() || null,
       });
       await mutate();
       toast.success('Guidance saved');
@@ -79,6 +81,18 @@ export function AdminProfileGuidancePage() {
                 <p className="mt-1 text-right text-[11px] text-[#94A3B8]">{(guidance[section] ?? '').length}/600</p>
               </div>
             ))}
+          </Card>
+
+          <Card className="p-[22px] space-y-2">
+            <label className="text-[11.5px] font-bold text-[#475569]">Reason for change</label>
+            <p className="text-[12px] text-[#64748B]">Optional.</p>
+            <Textarea
+              value={reason}
+              rows={2}
+              maxLength={500}
+              placeholder="Why update guidance?"
+              onChange={(e: any) => setReason(e.target.value)}
+            />
           </Card>
 
           {error ? <p role="alert" className="text-[13px] font-semibold text-[#B91C1C]">{error}</p> : null}

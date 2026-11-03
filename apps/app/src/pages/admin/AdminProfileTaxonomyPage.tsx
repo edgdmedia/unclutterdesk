@@ -36,6 +36,7 @@ export function AdminProfileTaxonomyPage() {
   const [form, setForm] = useState<TermForm>(blankForm());
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [reason, setReason] = useState<string>('');
 
   const groups = useMemo(
     () =>
@@ -56,6 +57,7 @@ export function AdminProfileTaxonomyPage() {
       sortOrder: selected.sortOrder,
       isActive: selected.isActive,
     });
+    setReason('');
     setError(null);
   }, [selected?.id, selected?.label, selected?.key, selected?.sortOrder, selected?.isActive]);
 
@@ -81,6 +83,16 @@ export function AdminProfileTaxonomyPage() {
       return;
     }
 
+    // Check if deactivating or re-keying
+    const isDeactivating = selected && selected.isActive && !form.isActive;
+    const isRekeying = selected && selected.key !== form.key.trim();
+
+    if ((isDeactivating || isRekeying) && !reason.trim()) {
+      setError('Reason is required when deactivating or changing the key of a term.');
+      toast.error('Reason is required when deactivating or changing the key of a term.');
+      return;
+    }
+
     setSaving(true);
     try {
       if (selected) {
@@ -89,6 +101,7 @@ export function AdminProfileTaxonomyPage() {
           ...(form.key.trim() ? { key: form.key.trim() } : {}),
           isActive: form.isActive,
           sortOrder: form.sortOrder,
+          reason: reason.trim() || null,
         });
         toast.success('Term saved');
         await mutate();
@@ -98,6 +111,7 @@ export function AdminProfileTaxonomyPage() {
           label: form.label.trim(),
           ...(form.key.trim() ? { key: form.key.trim() } : {}),
           sortOrder: form.sortOrder,
+          reason: reason.trim() || null,
         });
         toast.success('Term added');
         await mutate();
@@ -114,7 +128,10 @@ export function AdminProfileTaxonomyPage() {
 
   async function toggleActive(term: AdminTaxonomyTerm) {
     try {
-      await adminProfileContentApi.updateTaxonomy(term.id, { isActive: !term.isActive });
+      await adminProfileContentApi.updateTaxonomy(term.id, { 
+        isActive: !term.isActive,
+        reason: term.isActive ? reason.trim() || 'Deactivated by admin' : null 
+      });
       await mutate();
       toast.success(term.isActive ? 'Term deactivated' : 'Term reactivated');
     } catch (err) {
@@ -202,6 +219,17 @@ export function AdminProfileTaxonomyPage() {
             </span>
           </div>
         ) : null}
+
+        <div className="space-y-1">
+          <label className="text-[11.5px] font-bold text-[#475569]">Reason for change</label>
+          <textarea 
+            className="w-full rounded-[12px] border border-[#E2E8F0] bg-white px-3 py-2 text-[13.5px] text-[#0F172A] min-h-[80px]"
+            placeholder="Optional, unless deactivating or changing the key."
+            maxLength={500}
+            value={reason}
+            onChange={(e) => setReason(e.target.value)}
+          />
+        </div>
 
         {error ? <p role="alert" className="text-[13px] font-semibold text-[#B91C1C]">{error}</p> : null}
 

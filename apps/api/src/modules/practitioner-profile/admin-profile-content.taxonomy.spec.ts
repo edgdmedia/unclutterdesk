@@ -150,7 +150,7 @@ describe('AdminProfileContentService taxonomy (§6.4)', () => {
 
   it('deactivates without deleting, and purges the public pages', async () => {
     const { service, rows, jobs } = setup();
-    const updated = await service.updateTaxonomy(3n, '1', { isActive: false });
+    const updated = await service.updateTaxonomy(3n, '1', { isActive: false, reason: 'no longer offered' });
 
     expect(updated.isActive).toBe(false);
     expect(rows.find((row) => row.id === 1n)).toBeDefined();
@@ -159,13 +159,13 @@ describe('AdminProfileContentService taxonomy (§6.4)', () => {
 
   it('does not enqueue a purge when no published profile uses the term', async () => {
     const { service, jobs } = setup([]);
-    await service.updateTaxonomy(3n, '2', { label: 'Bereavement' });
+    await service.updateTaxonomy(3n, '2', { label: 'Bereavement', reason: 'typo fix' });
     expect(jobs.enqueue).not.toHaveBeenCalled();
   });
 
   it('refuses a re-key that another term already holds', async () => {
     const { service } = setup();
-    await expect(service.updateTaxonomy(3n, '2', { key: 'anxiety' })).rejects.toBeInstanceOf(ConflictException);
+    await expect(service.updateTaxonomy(3n, '2', { key: 'anxiety', reason: 'test' })).rejects.toBeInstanceOf(ConflictException);
   });
 
   it('answers 404 for an unknown term and rejects a malformed id', async () => {

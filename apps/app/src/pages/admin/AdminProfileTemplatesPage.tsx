@@ -41,6 +41,7 @@ export function AdminProfileTemplatesPage() {
   const [sections, setSections] = useState<TemplateSectionDrafts>(blankTemplateSections());
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [reason, setReason] = useState<string>('');
 
   useEffect(() => {
     if (!selected) return;
@@ -50,6 +51,7 @@ export function AdminProfileTemplatesPage() {
     setIsActive(selected.isActive);
     setSortOrder(selected.sortOrder);
     setSections(draftSections(selected));
+    setReason('');
     setError(null);
   }, [selected?.key, selected?.updatedAt]);
 
@@ -67,6 +69,13 @@ export function AdminProfileTemplatesPage() {
     }
     if (!description.trim()) {
       setError('Add a description.');
+      return;
+    }
+
+    // Reason required when deactivating
+    if (isActive === false && selected.isActive === true && !reason.trim()) {
+      setError('Reason is required when deactivating a template.');
+      toast.error('Reason is required when deactivating a template.');
       return;
     }
 
@@ -95,6 +104,7 @@ export function AdminProfileTemplatesPage() {
         isActive,
         sortOrder,
         sections: clean,
+        reason: reason.trim() || null,
       });
       await mutate();
       toast.success('Template saved');
@@ -242,6 +252,18 @@ export function AdminProfileTemplatesPage() {
               </Card>
 
               {error ? <p role="alert" className="text-[13px] font-semibold text-[#B91C1C]">{error}</p> : null}
+
+              <Card className="p-[22px]">
+                <p className="text-[12.5px] font-bold text-[#0F172A]">Reason for change</p>
+                <p className="mt-0.5 text-[12px] text-[#64748B]">Optional, unless deactivating this template.</p>
+                <Textarea
+                  value={reason}
+                  rows={2}
+                  maxLength={500}
+                  placeholder="Why this change?"
+                  onChange={(e: any) => setReason(e.target.value)}
+                />
+              </Card>
 
               <div className="flex justify-end">
                 <Button onClick={save} disabled={saving}>

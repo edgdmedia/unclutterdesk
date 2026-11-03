@@ -131,6 +131,11 @@ export class AdminProfileContentService {
       const existing = await tx.profileTemplate.findUnique({ where: { key } });
       if (!existing) throw new NotFoundException('Unknown template');
 
+      // Reason required for deactivation
+      if (update.isActive !== undefined && update.isActive === false && existing.isActive === true && !update.reason) {
+        throw new BadRequestException('Reason is required when deactivating a template');
+      }
+
       const data: Prisma.ProfileTemplateUpdateInput = {};
       const changed: (keyof TemplateUpdateInput)[] = [];
 
@@ -287,6 +292,13 @@ export class AdminProfileContentService {
       });
       if (!existing) throw new NotFoundException('Unknown term');
       const oldKey = existing.key;
+
+      // Reason required for deactivation and re-keying
+      const isDeactivating = update.isActive !== undefined && update.isActive === false && existing.isActive === true;
+      const isRekeying = update.key !== undefined && update.key !== oldKey;
+      if ((isDeactivating || isRekeying) && !update.reason) {
+        throw new BadRequestException('Reason is required when deactivating or changing the key of a taxonomy term');
+      }
 
       if (update.key !== undefined && update.key !== existing.key) {
         const clash = await tx.taxonomyTerm.findUnique({
