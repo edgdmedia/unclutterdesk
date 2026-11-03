@@ -39,7 +39,9 @@ A and B can both exist: A for the clinic's own site, B as its public listing on 
 
 **Decided (Olalekan, 3 Nov):** (b) both A and B, as recommended. A comes straight after §6.16 (it reuses it); B comes with the directory (Phase 4) or earlier if it's cheap.
 
-**Still open:** (a) option 1 or 2, and whether team pages are Clinic-plan only.
+**Decided (Olalekan, 3 Nov):** (a) option 1: a profile-only therapist upgrades to Pro for a custom domain; no add-on.
+
+**Team pages:** only Clinic practices can have more than one therapist (`staffInviteRoles` includes `THERAPIST` on Clinic only), so team pages are Clinic-only in practice. Groups that don't run their practice on the dashboard, such as NGOs, university or church counselling units, workplace wellbeing (EAP) providers, training institutes listing trainees and supervisors, and associations, are a different feature: **organisation pages**, where therapists link themselves to an organisation. Proposed for Phase 4 with the directory; not decided.
 
 ## 3. Selling domains
 
