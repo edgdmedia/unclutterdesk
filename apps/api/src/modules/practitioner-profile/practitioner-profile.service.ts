@@ -16,7 +16,7 @@ import {
   type ProfileSnapshot,
   type SectionKey,
 } from './completeness';
-import { isThemeKey } from './themes';
+import { isLayoutKey, isThemeKey } from './themes';
 import { writingTips } from './writing-tips';
 import { HANDLE_MESSAGES, handleProblem, normalizeHandle, suggestHandle } from './handles';
 import { PHOTO_BACKFILL_JOB, type PhotoBackfillPayload } from './profile-photo.job';
@@ -75,7 +75,7 @@ export type ProfileUpdateInput = Partial<Record<TextField, string | null>> &
   };
 
 /** Fields that also choose appearance or starting content. */
-export type ProfileAppearanceInput = { themeKey?: string; templateKey?: string | null };
+export type ProfileAppearanceInput = { themeKey?: string; layoutKey?: string; templateKey?: string | null };
 
 export interface TimelineInput {
   type: string;
@@ -255,6 +255,10 @@ export class PractitionerProfileService {
     if ('themeKey' in input) {
       if (!isThemeKey(input.themeKey)) throw new BadRequestException('Unknown theme');
       data.themeKey = input.themeKey;
+    }
+    if ('layoutKey' in input) {
+      if (!isLayoutKey(input.layoutKey)) throw new BadRequestException('Unknown layout');
+      data.layoutKey = input.layoutKey;
     }
     if ('templateKey' in input) {
       if (input.templateKey === null) {

@@ -18,7 +18,7 @@
 ## Tasks
 
 - [x] **1. Palettes and layout keys.** New palette values from the design (pine, clay, blue, olive, night), a `soft` token, `PROFILE_LAYOUTS`, API `LAYOUT_KEYS`, a contrast test that includes chip text on the soft fill. `themes.css.ts` emits `--soft`.
-- [ ] **2. `layoutKey` on the profile.** Migration (`layoutKey TEXT NOT NULL DEFAULT 'classic'`), validation in `updateOwn` (like `themeKey`), in the owner and public DTOs, and a purge on change.
+- [x] **2. `layoutKey` on the profile.** Migration (`layoutKey TEXT NOT NULL DEFAULT 'classic'`), validation in `updateOwn` (like `themeKey`), in the owner and public DTOs, and a purge on change.
 - [ ] **3. Self-hosted fonts.** Outfit (variable, all layouts) and Fraunces (italic 500, Editorial only) as woff2 under `apps/profiles/public/fonts/`, with `@font-face` and `font-display: swap`. Fraunces loads only on Editorial pages.
 - [ ] **4. Profile layouts.** Replace `ProfileView.astro` with one component per layout (`layouts/Classic.astro`, `Editorial.astro`, `Compact.astro`, `Split.astro`) that share section partials, so the content and order can't drift between them. Match the canvas boards. Every layout gets a no-photo state (initials), long and short content, and the "Practising under supervision" badge.
 - [ ] **5. Public pages.** Home (`/`) with the two-slide hero as two tab links (no JavaScript, no autoplay), the report page and its thank-you state, and the 404 and 410 pages, all from the canvas.

@@ -44,6 +44,7 @@ export interface PublicProfile {
   contactEmail: string | null;
   socialLinks: Record<string, string>;
   themeKey: string;
+  layoutKey: string;
   specialties: (PublicTerm & { primary: boolean })[];
   modalities: PublicTerm[];
   populations: PublicTerm[];
@@ -126,6 +127,7 @@ export class PublicProfileService {
         contactEmail: profile.contactEmailPublic,
         socialLinks,
         themeKey: profile.themeKey,
+        layoutKey: profile.layoutKey,
         specialties: terms('SPECIALTY'),
         modalities: plain(terms('MODALITY')),
         populations: plain(terms('POPULATION')),
