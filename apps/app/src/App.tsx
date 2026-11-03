@@ -28,6 +28,8 @@ const SubscriptionSettingsPage = lazy(() => import('./pages/practice/settings/Su
 const PayoutSettingsPage = lazy(() => import('./pages/practice/settings/PayoutSettingsPage').then((m) => ({ default: m.PayoutSettingsPage })));
 const FormsManagerPage = lazy(() => import('./pages/practice/settings/FormsManagerPage').then((m) => ({ default: m.FormsManagerPage })));
 const FormEditorPage = lazy(() => import('./pages/practice/settings/FormEditorPage').then((m) => ({ default: m.FormEditorPage })));
+// Redirects for old settings URLs
+const SettingsRedirect = lazy(() => import('./pages/practice/settings/SettingsRedirect').then((m) => ({ default: m.SettingsRedirect })));
 const ServicesSettingsPage = lazy(() => import('./pages/practice/settings/ServicesSettingsPage').then((m) => ({ default: m.ServicesSettingsPage })));
 const DiscountSettingsPage = lazy(() => import('./pages/practice/settings/DiscountSettingsPage').then((m) => ({ default: m.DiscountSettingsPage })));
 const LocationsSettingsPage = lazy(() => import('./pages/practice/settings/LocationsSettingsPage').then((m) => ({ default: m.LocationsSettingsPage })));
@@ -491,9 +493,10 @@ function AppLayout() {
                 <Route path="*" element={<SettingsIndex />} />
               </Route>
               <Route path="/dashboard/profile" element={<ProfilePage />} />
-              <Route path="/dashboard/settings/payouts" element={<PayoutSettingsPage />} />
-              <Route path="/dashboard/settings/forms" element={<FormsManagerPage />} />
-              <Route path="/dashboard/settings/forms/:id" element={<FormEditorPage />} />
+              <Route path="/dashboard/settings/payouts" element={<SettingsRedirect to="/dashboard/settings?tab=payouts" />} />
+              <Route path="/dashboard/settings/account" element={<SettingsRedirect to="/dashboard/settings?tab=account" />} />
+              <Route path="/dashboard/settings/forms" element={<SettingsRedirect to="/dashboard/settings?tab=forms" />} />
+              <Route path="/dashboard/settings/forms/:id" element={<SettingsRedirect to="/dashboard/settings/forms/:id" />} />
               {/* Every other route tree has these; signed-in staff got a 404. */}
               <Route path="/privacy" element={<ExternalRedirect to={LEGAL_URLS.privacy} />} />
               <Route path="/terms" element={<ExternalRedirect to={LEGAL_URLS.terms} />} />

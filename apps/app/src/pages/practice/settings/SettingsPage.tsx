@@ -1,5 +1,5 @@
 import React from 'react';
-import { NavLink, Navigate, Outlet } from 'react-router-dom';
+import { NavLink, Navigate, Outlet, Link } from 'react-router-dom';
 import { useAuth } from '../../../context/AuthContext';
 import { settingsTabsFor, type SettingsTab } from '../../../components/shell/practiceNav';
 import { useEntitlements } from '../../../utils/entitlements';
@@ -9,13 +9,22 @@ import { useEntitlements } from '../../../utils/entitlements';
  * grouped tab rail; the tab's content is the existing settings page, mounted
  * unchanged, at the same URL it always had. Staff see only the tabs that are
  * theirs; plan tags stay visible as an upgrade hint.
+ * 
+ * Some tabs (like "My profile") link to pages outside /dashboard/settings/.
+ * Those use a regular Link and are not mounted as child routes.
  */
 export function SettingsHub() {
   const { profile } = useAuth();
   const plan = useEntitlements();
   const tabs = settingsTabsFor(profile as never, plan);
   if (!tabs.length) return null;
-  const groups = [...new Set(tabs.map((t) => t.group))];
+  // Fixed group order per plan
+  const groupOrder = ['You', 'Practice', 'Booking page', 'Money'];
+  const groups = groupOrder.filter((g) => tabs.some((t) => t.group === g));
+
+  // Split tabs: internal (under /dashboard/settings/) and external
+  const internalTabs = tabs.filter((t) => t.href.startsWith('/dashboard/settings/'));
+  const externalTabs = tabs.filter((t) => !t.href.startsWith('/dashboard/settings/'));
 
   return (
     <div className="flex-1 flex flex-col md:flex-row min-w-0">
@@ -23,13 +32,15 @@ export function SettingsHub() {
         {groups.map((group) => (
           <nav key={group} aria-label={group} className="flex flex-col gap-0.5">
             <span className="px-2.5 pb-1 text-[9px] font-black tracking-[0.16em] uppercase text-[#94A3B8]">{group}</span>
-            {tabs.filter((t) => t.group === group).map((t) => <TabLink key={t.href} tab={t} />)}
+            {internalTabs.filter((t) => t.group === group).map((t) => <TabLink key={t.href} tab={t} />)}
+            {externalTabs.filter((t) => t.group === group).map((t) => <ExternalTabLink key={t.href} tab={t} />)}
           </nav>
         ))}
       </aside>
 
       <div className="md:hidden flex gap-2 px-3 py-2 bg-white border-b border-[#E2E8F0] overflow-x-auto">
-        {tabs.map((t) => <TabLink key={t.href} tab={t} compact />)}
+        {internalTabs.map((t) => <TabLink key={t.href} tab={t} compact />)}
+        {externalTabs.map((t) => <ExternalTabLink key={t.href} tab={t} compact />)}
       </div>
 
       <div className="flex-1 min-w-0 flex flex-col">
@@ -39,11 +50,12 @@ export function SettingsHub() {
   );
 }
 
-/** `/dashboard/settings` itself, and any tab that does not exist: first tab wins. */
+/** `/dashboard/settings` itself, and any internal tab that does not exist: first internal tab wins. */
 export function SettingsIndex() {
   const { profile } = useAuth();
   const tabs = settingsTabsFor(profile as never);
-  const first = tabs[0];
+  const internalTabs = tabs.filter((t) => t.href.startsWith('/dashboard/settings/'));
+  const first = internalTabs[0];
   return <Navigate to={first ? first.href.replace('/dashboard/settings/', '') : 'profile'} replace />;
 }
 
@@ -69,5 +81,26 @@ function TabLink({ tab, compact }: { tab: SettingsTab; compact?: boolean }) {
         </span>
       ) : null}
     </NavLink>
+  );
+}
+
+function ExternalTabLink({ tab, compact }: { tab: SettingsTab; compact?: boolean }) {
+  return (
+    <Link
+      to={tab.href}
+      className={[
+        'flex items-center gap-2.5 rounded-[10px] text-[13px] font-semibold whitespace-nowrap transition-colors duration-150 cursor-pointer',
+        compact ? 'h-[34px] px-3 border' : 'h-[36px] px-2.5',
+        compact ? 'bg-white text-[#475569] border-[#E2E8F0]' : 'text-[#475569] hover:bg-[#F8FAFC]',
+      ].join(' ')}
+    >
+      <tab.icon className="h-4 w-4 shrink-0" aria-hidden="true" />
+      <span className="truncate">{tab.label}</span>
+      {tab.badgeTier ? (
+        <span className="h-[16px] px-1.5 ml-auto rounded-[4px] text-[8.5px] font-extrabold uppercase tracking-wider flex items-center bg-[#F1F5F9] text-[#64748B] border border-[#E2E8F0]">
+          {tab.badgeTier}
+        </span>
+      ) : null}
+    </Link>
   );
 }
