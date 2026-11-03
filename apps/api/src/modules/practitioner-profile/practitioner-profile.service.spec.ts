@@ -229,7 +229,7 @@ describe('PractitionerProfileService', () => {
       async (link) => {
         const { service, prisma } = setup();
         ownProfile(prisma);
-        await expect(service.updateOwn(ME, { socialLinks: { website: link } })).rejects.toBeInstanceOf(BadRequestException);
+        await expect(service.updateOwn(ME, { socialLinks: [link] })).rejects.toBeInstanceOf(BadRequestException);
       },
     );
 

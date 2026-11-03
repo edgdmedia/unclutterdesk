@@ -18,7 +18,8 @@ import {
 } from './completeness';
 import { isLayoutKey, isThemeKey } from './themes';
 import { PRACTITIONER_KINDS, PRACTITIONER_KIND_LABELS } from './kinds';
-import { PROFILE_PUBLIC_ORIGIN } from '../../common/origins';
+import { PROFILE_PUBLIC_ORIGIN, tenantWebOrigin } from '../../common/origins';
+import { normaliseSocialLinks, readSocialLinks } from './social-links';
 import { EntitlementsService } from '../entitlements/entitlements.service';
 import { profileQr } from './share/qr';
 import { renderProfilePdf } from './share/profile-pdf';
@@ -61,8 +62,6 @@ type TextField = keyof typeof TEXT_LIMITS;
 const BOOLEAN_FIELDS = ['offersOnline', 'offersInPerson', 'acceptingClients', 'showPlatformExperience'] as const;
 type BooleanField = (typeof BOOLEAN_FIELDS)[number];
 
-const SOCIAL_KEYS = ['website', 'instagram', 'linkedin', 'facebook', 'x', 'tiktok', 'youtube'] as const;
-
 /** Fields a therapist edits with PATCH /v1/profile/me. Handle, status and booking mode have their own flows. */
 export type ProfileUpdateInput = Partial<Record<TextField, string | null>> &
   Partial<Record<BooleanField, boolean>> & {
@@ -70,7 +69,8 @@ export type ProfileUpdateInput = Partial<Record<TextField, string | null>> &
     countryCode?: string;
     selfReportedYears?: number | null;
     contactEmailPublic?: string | null;
-    socialLinks?: Partial<Record<(typeof SOCIAL_KEYS)[number], string>> | null;
+    /** Up to 8 https links, any site (social-links.ts). */
+    socialLinks?: string[] | null;
   };
 
 /** Fields that also choose appearance or starting content. */
@@ -177,7 +177,84 @@ export class PractitionerProfileService {
 
   /** The signed-in user's own profile, drafts included, or null before they have one. */
   async getOwn(userId: bigint) {
-    return this.prisma.practitionerProfile.findUnique({ where: { userId }, include: OWN_PROFILE_INCLUDE });
+    const profile = await this.prisma.practitionerProfile.findUnique({ where: { userId }, include: OWN_PROFILE_INCLUDE });
+    return profile ? { ...profile, socialLinks: readSocialLinks(profile.socialLinks) } : null;
+  }
+
+  /**
+   * How clients book (§6.9), with what the editor needs to offer each choice:
+   * DESK is only possible once the practice the therapist is signed into can
+   * take bookings (an active service and open times for them).
+   */
+  async getBooking(userId: bigint, therapistProfileId: bigint) {
+    const profile = await this.prisma.practitionerProfile.findUnique({
+      where: { userId },
+      select: { bookingMode: true, externalBookingUrl: true, places: { where: { isMain: true }, select: { tenant: { select: { slug: true, customDomain: true, customDomainStatus: true } } } } },
+    });
+    if (!profile) throw new NotFoundException('You have no profile yet');
+    const desk = await this.deskReadiness(therapistProfileId);
+    const main = profile.places[0]?.tenant;
+    return {
+      mode: profile.bookingMode,
+      externalBookingUrl: profile.externalBookingUrl,
+      deskReady: desk.ready,
+      deskMissing: desk.missing,
+      deskBookingUrl: profile.bookingMode === 'DESK' && main ? `${tenantWebOrigin(main)}/book` : null,
+    };
+  }
+
+  /** Can clients book this therapist in this practice? Lists what's missing, in set-up order. */
+  private async deskReadiness(therapistProfileId: bigint): Promise<{ ready: boolean; missing: ('service' | 'availability')[]; tenantId: bigint | null }> {
+    const member = await this.prisma.consultTherapistProfile.findUnique({ where: { profileId: therapistProfileId }, select: { profile: { select: { tenantId: true } } } });
+    const tenantId = member?.profile.tenantId ?? null;
+    if (!tenantId) return { ready: false, missing: ['service', 'availability'], tenantId: null };
+    const [services, slots] = await Promise.all([
+      this.prisma.consultService.count({ where: { tenantId, isActive: true } }),
+      this.prisma.consultAvailability.count({ where: { tenantId, providerProfileId: therapistProfileId, isActive: true, startsAt: { gt: new Date() } } }),
+    ]);
+    const missing = [...(services ? [] : (['service'] as const)), ...(slots ? [] : (['availability'] as const))];
+    return { ready: missing.length === 0, missing, tenantId };
+  }
+
+  /**
+   * Choose how clients book: through the practice (DESK), a link elsewhere
+   * (EXTERNAL) or contact only (NONE). DESK makes the signed-in practice this
+   * profile's main place and switches the dashboard to the full practice view.
+   */
+  async setBooking(userId: bigint, therapistProfileId: bigint, input: { mode?: unknown; externalBookingUrl?: unknown }) {
+    const own = await this.requireOwn(userId);
+    const mode = input.mode;
+    if (mode !== 'NONE' && mode !== 'DESK' && mode !== 'EXTERNAL') throw new BadRequestException('Choose how clients book');
+
+    if (mode === 'EXTERNAL') {
+      if (input.externalBookingUrl === undefined || input.externalBookingUrl === null || input.externalBookingUrl === '') {
+        throw new BadRequestException('Add the link where clients book you');
+      }
+      const url = httpsUrl(input.externalBookingUrl, 'Booking link');
+      await this.prisma.practitionerProfile.update({ where: { userId }, data: { bookingMode: 'EXTERNAL', externalBookingUrl: url } });
+    } else if (mode === 'NONE') {
+      await this.prisma.practitionerProfile.update({ where: { userId }, data: { bookingMode: 'NONE' } });
+    } else {
+      const desk = await this.deskReadiness(therapistProfileId);
+      if (!desk.ready || !desk.tenantId) {
+        throw new ConflictException({ message: 'Set up booking first: add a service and your open times', code: 'DESK_NOT_READY', missing: desk.missing });
+      }
+      const tenantId = desk.tenantId;
+      await this.prisma.$transaction(async (tx) => {
+        await tx.practitionerPlace.updateMany({ where: { profileId: own.id }, data: { isMain: false } });
+        await tx.practitionerPlace.upsert({
+          where: { profileId_therapistProfileId: { profileId: own.id, therapistProfileId } },
+          create: { profileId: own.id, tenantId, therapistProfileId, isMain: true },
+          update: { isMain: true },
+        });
+        await tx.practitionerProfile.update({ where: { userId }, data: { bookingMode: 'DESK' } });
+        await tx.tenant.update({ where: { id: tenantId }, data: { onboardingIntent: 'PRACTICE' } });
+      });
+    }
+
+    await this.refreshOwnScore(userId);
+    await this.purgeIfPublished(userId);
+    return this.getBooking(userId, therapistProfileId);
   }
 
   /**
@@ -308,19 +385,8 @@ export class PractitionerProfileService {
       data.contactEmailPublic = email;
     }
     if ('socialLinks' in input) {
-      const links = input.socialLinks;
-      if (links === null) {
-        data.socialLinks = Prisma.DbNull;
-      } else if (typeof links !== 'object' || Array.isArray(links)) {
-        throw new BadRequestException('socialLinks must be a set of links');
-      } else {
-        const clean: Record<string, string> = {};
-        for (const [key, value] of Object.entries(links)) {
-          if (!(SOCIAL_KEYS as readonly string[]).includes(key)) throw new BadRequestException(`Unknown link: ${key}`);
-          if (value) clean[key] = httpsUrl(value, key);
-        }
-        data.socialLinks = clean;
-      }
+      const links = normaliseSocialLinks(input.socialLinks);
+      data.socialLinks = links ?? Prisma.DbNull;
     }
 
     await this.requireOwn(userId);
@@ -720,7 +786,7 @@ export class PractitionerProfileService {
     if (!profile) return null;
     const terms = { SPECIALTY: 0, MODALITY: 0, POPULATION: 0, LANGUAGE: 0 };
     for (const t of profile.taxonomy) terms[t.term.kind] += 1;
-    const links = profile.socialLinks && typeof profile.socialLinks === 'object' ? Object.keys(profile.socialLinks as object) : [];
+    const links = readSocialLinks(profile.socialLinks);
     return {
       profile,
       snapshot: {

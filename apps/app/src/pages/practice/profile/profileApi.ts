@@ -81,7 +81,8 @@ export interface OwnProfile {
   selfReportedYears: number | null;
   feeRangeText: string | null;
   contactEmailPublic: string | null;
-  socialLinks: Record<string, string> | null;
+  /** Up to MAX_SOCIAL_LINKS https links, any site. */
+  socialLinks: string[];
   completenessScore: number;
   publishedAt: string | null;
   taxonomy: { termId: string; isPrimary: boolean; term: TaxonomyTerm }[];
@@ -117,12 +118,27 @@ export interface Checklist {
 
 const BASE = '/v1/practitioner-profile';
 
+export const MAX_SOCIAL_LINKS = 8;
+
+export type BookingMode = 'NONE' | 'DESK' | 'EXTERNAL';
+
+/** GET/PUT me/booking: how clients book, and whether booking through the practice is ready. */
+export interface BookingInfo {
+  mode: BookingMode;
+  externalBookingUrl: string | null;
+  deskReady: boolean;
+  deskMissing: ('service' | 'availability')[];
+  deskBookingUrl: string | null;
+}
+
 export const profileApi = {
   getOwn: () => api.get<OwnProfile | null>(`${BASE}/me`),
   create: (body: { handle?: string; kind?: PractitionerKind; displayName?: string }) => api.post<OwnProfile>(BASE, body),
   update: (body: Record<string, unknown>) => api.patch<OwnProfile>(`${BASE}/me`, body),
   setTaxonomy: (terms: { termId: string; isPrimary?: boolean }[]) => api.put<OwnProfile>(`${BASE}/me/taxonomy`, { terms }),
   setTimeline: (entries: TimelineEntry[]) => api.put<OwnProfile>(`${BASE}/me/timeline`, { entries }),
+  booking: () => api.get<BookingInfo>(`${BASE}/me/booking`),
+  setBooking: (body: { mode: BookingMode; externalBookingUrl?: string }) => api.put<BookingInfo>(`${BASE}/me/booking`, body),
   setPhoto: (image: string) => api.put<OwnProfile>(`${BASE}/me/photo`, { image }),
   removePhoto: () => api.delete<OwnProfile>(`${BASE}/me/photo`),
   changeHandle: (handle: string) => api.put<OwnProfile>(`${BASE}/me/handle`, { handle }),

@@ -1,4 +1,5 @@
-import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { HeaderSlotContext } from './headerSlot';
 import { useViewport } from './useViewport';
 import { Sidebar, type SidebarMode, type SidebarProps } from '../navigation/Sidebar';
 import { BottomNav, type BottomNavProps } from '../navigation/BottomNav';
@@ -10,7 +11,10 @@ export interface AppShellProps {
   onCollapsedChange?: (collapsed: boolean) => void;
   bottomNav?: Omit<BottomNavProps, 'onMore'>;
   banner?: ReactNode;
-  /** A slim bar above the page content, right-aligned — the notification bell lives here. */
+  /**
+   * Frame-wide header items (the notification bell). Shown at the right of
+   * the page's PageHeader; a slim right-aligned bar only on pages without one.
+   */
   header?: ReactNode;
   children: ReactNode;
 }
@@ -25,6 +29,12 @@ export function AppShell({ sidebar, collapsed = false, onCollapsedChange, bottom
   const viewport = useViewport();
   const [overlayOpen, setOverlayOpen] = useState(false);
   const opener = useRef<HTMLElement | null>(null);
+  const [claims, setClaims] = useState(0);
+  const claim = useCallback(() => {
+    setClaims((n) => n + 1);
+    return () => setClaims((n) => n - 1);
+  }, []);
+  const slot = useMemo(() => (header ? { items: header, claim } : null), [header, claim]);
 
   const openOverlay = () => {
     opener.current = document.activeElement as HTMLElement | null;
@@ -58,13 +68,13 @@ export function AppShell({ sidebar, collapsed = false, onCollapsedChange, bottom
       {inlineMode && sidebar ? <Sidebar {...sidebar} mode={inlineMode} onToggleCollapse={onToggleCollapse} /> : null}
       {overlayOpen && sidebar ? <Sidebar {...sidebar} mode="overlay" onClose={closeOverlay} onNavigate={closeOverlay} /> : null}
       <div data-testid="app-content" className={`flex-1 min-w-0 flex flex-col ${showBottom ? 'pb-[84px]' : ''}`.trim()}>
-        {header ? (
+        {header && claims === 0 ? (
           <div data-testid="app-header" className="flex items-center justify-end gap-2 px-4 py-2 md:px-6 shrink-0">
             {header}
           </div>
         ) : null}
         {banner}
-        {children}
+        <HeaderSlotContext.Provider value={slot}>{children}</HeaderSlotContext.Provider>
       </div>
       {showBottom && bottomNav ? (
         <div className="fixed bottom-0 inset-x-0 z-40">

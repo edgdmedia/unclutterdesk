@@ -27,8 +27,11 @@ export interface PublicProfile {
   feeRangeText: string | null;
   bookingMode: 'NONE' | 'DESK' | 'EXTERNAL';
   externalBookingUrl: string | null;
+  /** DESK mode: the practice's booking page. */
+  deskBookingUrl?: string | null;
   contactEmail: string | null;
-  socialLinks: Record<string, string>;
+  /** List form from the API; the older keyed form is still accepted (see socialItems). */
+  socialLinks: SocialLink[] | Record<string, string>;
   themeKey: string;
   layoutKey: string;
   specialties: (PublicTerm & { primary: boolean })[];
@@ -100,4 +103,31 @@ export function personJsonLd(profile: PublicProfile, url: string) {
     knowsLanguage: profile.languages.map((l) => l.label),
     address: { '@type': 'PostalAddress', addressCountry: profile.countryCode, ...(profile.city ? { addressLocality: profile.city } : {}) },
   };
+}
+
+export interface SocialLink {
+  platform: string;
+  label: string;
+  url: string;
+}
+
+const LEGACY_LABELS: Record<string, string> = { website: 'Website', instagram: 'Instagram', linkedin: 'LinkedIn', facebook: 'Facebook', x: 'X', tiktok: 'TikTok', youtube: 'YouTube' };
+
+/**
+ * The profile's links, safe to render: https only, at most 8. A website is
+ * labelled by its domain, so two websites read differently.
+ */
+export function socialItems(links: PublicProfile['socialLinks'], safe: (u: unknown) => string | null): SocialLink[] {
+  const list: SocialLink[] = Array.isArray(links)
+    ? links
+    : Object.entries(links ?? {}).map(([platform, url]) => ({ platform, label: LEGACY_LABELS[platform] ?? 'Website', url }));
+  const out: SocialLink[] = [];
+  for (const l of list) {
+    const url = safe(l?.url);
+    if (!url) continue;
+    const label = l.platform === 'website' ? new URL(url).hostname.replace(/^www\./, '') : String(l.label);
+    out.push({ platform: String(l.platform), label, url });
+    if (out.length === 8) break;
+  }
+  return out;
 }

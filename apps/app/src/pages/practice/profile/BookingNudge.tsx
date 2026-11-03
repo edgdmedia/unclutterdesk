@@ -1,10 +1,9 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { Bell, CalendarCheck, ClipboardList, CreditCard, FileText, Video, type LucideIcon } from 'lucide-react';
-import { Button, useToast } from '@unclutterdesk/ui';
+import { Button } from '@unclutterdesk/ui';
 import { useOptionalAuth } from '../../../context/AuthContext';
-import { api } from '../../../utils/apiClient';
 import { useEntitlements } from '../../../utils/entitlements';
+import { useStartBookingSetup } from './useStartBookingSetup';
 
 const dismissKey = (tenantId: string) => `booking-nudge-dismissed:${tenantId}`;
 
@@ -36,27 +35,13 @@ const STEPS = ['Set your hours', 'Add your services and fees', 'Connect your ban
  */
 export function BookingNudge({ published }: { published: boolean }) {
   const auth = useOptionalAuth();
-  const navigate = useNavigate();
-  const toast = useToast();
   const tenantId = auth?.profile?.tenantId ?? undefined;
   const eligible = published && auth?.profile?.onboardingIntent === 'PROFILE';
   const plan = useEntitlements(eligible);
   const [dismissed, setDismissed] = useState(() => readDismissed(tenantId));
-  const [busy, setBusy] = useState(false);
+  const { start, busy } = useStartBookingSetup();
 
   if (!eligible || dismissed) return null;
-
-  async function switchOn() {
-    setBusy(true);
-    try {
-      await api.post('/v1/tenant/switch-on-booking', {});
-      await auth?.refreshProfile();
-      navigate('/onboarding');
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Could not switch on booking');
-      setBusy(false);
-    }
-  }
 
   function notNow() {
     try {
@@ -120,7 +105,7 @@ export function BookingNudge({ published }: { published: boolean }) {
           {planLine && <p className="mt-2 text-[12.5px] text-[#475569]">{planLine}</p>}
         </div>
         <div className="flex flex-wrap gap-2 shrink-0">
-          <Button onClick={() => void switchOn()} disabled={busy}>{busy ? 'Switching on…' : 'Set up booking'}</Button>
+          <Button onClick={() => void start()} disabled={busy}>{busy ? 'Switching on…' : 'Set up booking'}</Button>
           <Button variant="ghost" onClick={notNow} disabled={busy}>Not now</Button>
         </div>
       </div>

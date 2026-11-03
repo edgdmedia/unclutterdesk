@@ -1,7 +1,9 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Button, Card, Input, ProgressRow, Textarea, useToast } from '@unclutterdesk/ui';
 import { AppearancePicker } from './AppearancePicker';
+import { BookingChoice } from './BookingChoice';
 import { BookingNudge } from './BookingNudge';
+import { SocialLinksField } from './SocialLinksField';
 import { profilePath } from '../../../config/domains';
 import {
   KIND_LABELS,
@@ -62,7 +64,7 @@ type Draft = Pick<
   | 'showPlatformExperience'
   | 'feeRangeText'
   | 'contactEmailPublic'
-> & { social: { website: string; instagram: string; linkedin: string } };
+> & { social: string[] };
 
 function draftOf(p: OwnProfile): Draft {
   return {
@@ -81,11 +83,7 @@ function draftOf(p: OwnProfile): Draft {
     showPlatformExperience: p.showPlatformExperience,
     feeRangeText: p.feeRangeText,
     contactEmailPublic: p.contactEmailPublic,
-    social: {
-      website: p.socialLinks?.website ?? '',
-      instagram: p.socialLinks?.instagram ?? '',
-      linkedin: p.socialLinks?.linkedin ?? '',
-    },
+    social: p.socialLinks ?? [],
   };
 }
 
@@ -406,8 +404,8 @@ export function PublicProfileEditor({ onProfileChange }: { onProfileChange?: (p:
       let latest: OwnProfile | null = null;
       if (dirty.fields) {
         const { social, ...fields } = draft;
-        const socialLinks = Object.fromEntries(Object.entries(social).filter(([, v]) => v.trim()));
-        latest = await profileApi.update({ ...fields, socialLinks: Object.keys(socialLinks).length ? socialLinks : null });
+        const socialLinks = social.map((l) => l.trim()).filter(Boolean);
+        latest = await profileApi.update({ ...fields, socialLinks: socialLinks.length ? socialLinks : null });
       }
       if (dirty.terms) {
         latest = await profileApi.setTaxonomy([...selected].map((termId) => ({ termId, isPrimary: primary.has(termId) })));
@@ -712,6 +710,7 @@ export function PublicProfileEditor({ onProfileChange }: { onProfileChange?: (p:
         </Section>
 
         <Section id="fees" guidance={guidance('fees')} prompt={prompt('fees')}>
+          <BookingChoice />
           <Input
             label="Fee range"
             optionalLabel="(e.g. ₦15,000–₦25,000 per session)"
@@ -728,17 +727,7 @@ export function PublicProfileEditor({ onProfileChange }: { onProfileChange?: (p:
             value={draft.contactEmailPublic ?? ''}
             onChange={text('contactEmailPublic')}
           />
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            {(['website', 'instagram', 'linkedin'] as const).map((k) => (
-              <Input
-                key={k}
-                label={k === 'linkedin' ? 'LinkedIn' : k === 'instagram' ? 'Instagram' : 'Website'}
-                optionalLabel="(https:// link)"
-                value={draft.social[k]}
-                onChange={(e: React.ChangeEvent<HTMLInputElement>) => set('social', { ...draft.social, [k]: e.target.value })}
-              />
-            ))}
-          </div>
+          <SocialLinksField value={draft.social} onChange={(links) => set('social', links)} />
         </Section>
 
         <div className="sticky bottom-4 flex justify-end">
