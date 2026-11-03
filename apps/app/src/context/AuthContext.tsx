@@ -14,6 +14,8 @@ interface AuthProfile {
   tenantId?: string;
   practiceName?: string;
   tenantSlug?: string;
+  /** §6.8: PROFILE for a therapist who signed up for a profile first; they start in the profile editor. */
+  onboardingIntent?: 'PROFILE' | 'PRACTICE';
   /** The practice's plan: FREE, STARTER, PRO or CLINIC. */
   plan?: string;
   platformRole?: string;
@@ -243,6 +245,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       {children}
     </AuthContext.Provider>
   );
+}
+
+/** The auth context when there is one: for components that also render outside the signed-in app. */
+export function useOptionalAuth(): AuthContextValue | null {
+  return useContext(AuthContext);
 }
 
 export function useAuth(): AuthContextValue {

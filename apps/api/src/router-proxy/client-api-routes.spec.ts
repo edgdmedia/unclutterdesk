@@ -31,10 +31,16 @@ const NEVER_PROXIED: string[] = [
   'GET /v1/tenant/public/invite/:claimToken',
   // Tenant slug availability check (public but not for booking)
   'GET /v1/tenant/check-slug/:slug',
+  // Plans for the public pricing page (the profiles site renders them server-side)
+  'GET /v1/billing/plans',
   // Admin authentication endpoint
   'POST /v1/admin/auth/login',
   // Client self-registration endpoint
   'POST /v1/auth/register',
+  // Therapist profile signup and its form helpers (the app, never a practice's booking site)
+  'POST /v1/auth/register-profile',
+  'GET /v1/auth/handle-check',
+  'GET /v1/auth/profile-templates',
   // Invite claim endpoint (auth flow, not client booking)
   'POST /v1/auth/invite/claim',
 ];

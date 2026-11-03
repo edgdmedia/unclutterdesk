@@ -97,6 +97,19 @@ export class TenantController {
     res.send(logo.body);
   }
 
+  /**
+   * §6.8: a profile-first practice switches on booking. From then on the
+   * dashboard is the full practice view. One way: there's nothing to undo.
+   */
+  @Permissions('practice.admin')
+  @Post('switch-on-booking')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @ApiBearerAuth('access-token')
+  @ApiOperation({ summary: 'Move a profile-first practice to the full practice view' })
+  switchOnBooking(@Req() req: any) {
+    return this.tenantService.switchOnBooking(authenticatedTenantId(req));
+  }
+
   @Permissions('practice.admin')
   @Patch('brand')
   @UseGuards(JwtAuthGuard, RolesGuard)

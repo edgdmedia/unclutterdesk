@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Button, Card, Input, ProgressRow, Textarea, useToast } from '@unclutterdesk/ui';
 import { AppearancePicker } from './AppearancePicker';
+import { BookingNudge } from './BookingNudge';
 import { profilePath } from '../../../config/domains';
 import {
   KIND_LABELS,
@@ -473,6 +474,7 @@ export function PublicProfileEditor({ onProfileChange }: { onProfileChange?: (p:
   return (
     <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_340px] gap-5 items-start">
       <div className="flex flex-col gap-5">
+        <BookingNudge published={profile.status === 'PUBLISHED'} />
         <Section id="identity" guidance={guidance('identity')} prompt={prompt('identity')}>
           <div className="flex items-center gap-4">
             <div

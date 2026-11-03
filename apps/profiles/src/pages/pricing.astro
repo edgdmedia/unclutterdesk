@@ -1,0 +1,62 @@
+---
+import SitePage from '../components/SitePage.astro';
+import { config as loadConfig } from '../lib/env';
+import { PAGE_CACHE, MISS_CACHE } from '../lib/security';
+import { PLAN_BLURBS, fetchPlans, planFeatures, type Plan } from '../lib/plans';
+
+/*
+ * Pricing, on this site (no hop to another domain). Plans come from the API's
+ * own tables, the same ones that set the Paystack charge and enforce the
+ * limits, so this page can't promise something different from what a
+ * practice gets.
+ */
+const config = loadConfig();
+let plans: Plan[] | null = null;
+try {
+  plans = await fetchPlans(config);
+  Astro.response.headers.set('Cache-Control', PAGE_CACHE);
+} catch {
+  Astro.response.status = 503;
+  Astro.response.headers.set('Cache-Control', MISS_CACHE);
+}
+const popular: Plan['tier'] = 'PRO';
+---
+<SitePage
+  title="Pricing · Therapysts"
+  description="Start with a free therapist profile and online booking. Paid plans when your practice grows."
+  canonical={`${config.publicOrigin}/pricing`}
+  fullNav
+>
+  <main id="main" class="pricing">
+    <header class="pricing-head">
+      <p class="eyebrow">Pricing</p>
+      <h1>Start free. Pay when the practice grows.</h1>
+      <p class="lead">Every plan includes your therapist profile. Prices are monthly, in naira. Change plan any time.</p>
+    </header>
+
+    {plans ? (
+      <ul class="plans">
+        {plans.map((p) => (
+          <li class={`plan${p.tier === popular ? ' plan-popular' : ''}`}>
+            {p.tier === popular && <span class="plan-flag">Most popular</span>}
+            <h2>{p.name}</h2>
+            <p class="plan-price"><span>{p.monthlyPrice}</span>{p.monthlyKobo > 0 && <span class="muted"> /month</span>}</p>
+            <p class="plan-blurb">{PLAN_BLURBS[p.tier]}</p>
+            <ul class="plan-features">
+              {planFeatures(p).map((f) => <li>{f}</li>)}
+            </ul>
+            <a class={p.tier === popular ? 'btn wide' : 'btn secondary wide'} href="/join">{p.monthlyKobo > 0 ? `Start free, then ${p.name}` : 'Start free'}</a>
+          </li>
+        ))}
+      </ul>
+    ) : (
+      <div class="card notice-page">
+        <h2>Prices are not available right now</h2>
+        <p class="muted">Please try again in a few minutes. You can still create your free profile.</p>
+        <p><a class="btn" href="/join">Create your free profile</a></p>
+      </div>
+    )}
+
+    <p class="pricing-foot muted">Payments go through Paystack and settle to your bank account. The free plan stays free.</p>
+  </main>
+</SitePage>

@@ -284,6 +284,12 @@ export class TenantService {
     return { locations, formats };
   }
 
+  /** §6.8: PROFILE-first becomes PRACTICE (the full dashboard). Idempotent. */
+  async switchOnBooking(tenantId: bigint) {
+    await this.prisma.tenant.update({ where: { id: tenantId }, data: { onboardingIntent: 'PRACTICE' } });
+    return { onboardingIntent: 'PRACTICE' as const };
+  }
+
   async updateTenantBrand(tenantId: bigint, dto: {
     name?: string;
     slug?: string;

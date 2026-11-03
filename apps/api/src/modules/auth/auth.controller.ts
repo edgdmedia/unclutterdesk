@@ -6,6 +6,7 @@ import {
   Delete,
   Param,
   Body,
+  Query,
   Req,
   Res,
   UseGuards,
@@ -48,6 +49,30 @@ export class AuthController {
   ) {
     const result = await this.authService.register(req.tenantId, dto);
     return result;
+  }
+
+  /** Profile-first signup (§6.8): account, Free practice and DRAFT profile in one go; then the 6-digit code. */
+  @Post('register-profile')
+  @Throttle({ default: { limit: 5, ttl: 60000 } })
+  @ApiOperation({ summary: 'Sign up for a free therapist profile' })
+  async registerProfile(@Body() dto: Record<string, unknown>) {
+    return this.authService.registerProfile(dto ?? {});
+  }
+
+  /** Live feedback on the signup form: is this handle free? Says nothing about who holds a taken one. */
+  @Get('handle-check')
+  @Throttle({ default: { limit: 30, ttl: 60000 } })
+  @ApiOperation({ summary: 'Whether a profile handle is free for a new signup' })
+  handleCheck(@Query('handle') handle: string) {
+    return this.authService.handleCheck(handle);
+  }
+
+  /** The starting points offered on the signup form (§6.6): titles only. */
+  @Get('profile-templates')
+  @Throttle({ default: { limit: 30, ttl: 60000 } })
+  @ApiOperation({ summary: 'Profile templates a new therapist can start from' })
+  profileTemplates() {
+    return this.authService.signupTemplates();
   }
 
   @Post('verify-email')

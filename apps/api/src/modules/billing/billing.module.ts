@@ -7,9 +7,10 @@ import { BillingCron } from './billing.cron';
 import { SubscriptionLapseService } from './subscription-lapse.service';
 import { PrismaService } from '../../common/prisma/prisma.service';
 import { CalendarModule } from '../calendar/calendar.module';
+import { AuthModule } from '../auth/auth.module';
 
 @Module({
-  imports: [CalendarModule],
+  imports: [CalendarModule, AuthModule],
   controllers: [BillingController],
   providers: [BillingService, PaystackService, BookingPaymentSettler, PrismaService, BillingCron, SubscriptionLapseService],
   exports: [BillingService, PaystackService, BookingPaymentSettler, SubscriptionLapseService],

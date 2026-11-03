@@ -5,9 +5,10 @@ import { PAGE_CACHE } from '../lib/security';
 
 /*
  * The front door (the approved design canvas, home board). The free profile is
- * the way in; the dashboard is the product. The hero has two slides, picked
- * with two links and CSS :target, so it works without JavaScript and never
- * moves on its own. Becomes the directory in Phase 4 (§6.11).
+ * the way in; the dashboard is the product. The hero is a swipeable two-slide
+ * carousel: CSS scroll-snap does the work, the arrows and labelled dots are
+ * plain links (so it works without JavaScript), and /slider.js only keeps the
+ * active dot in sync. It never moves on its own. Becomes the directory in Phase 4 (§6.11).
  */
 const config = loadConfig();
 Astro.response.headers.set('Cache-Control', PAGE_CACHE);
@@ -19,13 +20,10 @@ Astro.response.headers.set('Cache-Control', PAGE_CACHE);
   fullNav
 >
   <main id="main" class="home">
-    <div class="slides">
-      <nav class="slide-tabs" aria-label="What Therapysts gives you">
-        <a class="slide-tab tab-profile" href="#profile">Your profile</a>
-        <a class="slide-tab tab-dashboard" href="#dashboard">Your practice dashboard</a>
-      </nav>
+    <section class="hero-slider" aria-roledescription="carousel" aria-label="What Therapysts gives you">
+      <div class="slider" data-slider tabindex="0" aria-label="Slides, swipe or use the arrow keys">
 
-      <section id="profile" class="slide slide-profile" aria-labelledby="h-profile">
+      <div id="profile" class="slide" role="group" aria-roledescription="slide" aria-label="1 of 2: Your profile">
         <div class="slide-copy">
           <p class="eyebrow">For therapists, counsellors and psychologists</p>
           <h1 id="h-profile">A professional profile in ten minutes. Free.</h1>
@@ -44,9 +42,9 @@ Astro.response.headers.set('Cache-Control', PAGE_CACHE);
             <span class="mock-btn">Book a session</span>
           </div>
         </div>
-      </section>
+      </div>
 
-      <section id="dashboard" class="slide slide-dashboard" aria-labelledby="h-dashboard">
+      <div id="dashboard" class="slide" role="group" aria-roledescription="slide" aria-label="2 of 2: Your practice dashboard">
         <div class="slide-copy">
           <p class="eyebrow clay">When you're ready to grow</p>
           <h2 id="h-dashboard" class="h1">Run your whole practice from one calm place.</h2>
@@ -65,8 +63,19 @@ Astro.response.headers.set('Cache-Control', PAGE_CACHE);
             </span>
           </div>
         </div>
-      </section>
-    </div>
+      </div>
+      </div>
+      <nav class="slider-controls" aria-label="Slides">
+        <a class="slider-arrow" data-slide-prev href="#profile" aria-label="Previous slide">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 18-6-6 6-6"/></svg>
+        </a>
+        <a class="slider-dot" data-slide-dot href="#profile" aria-current="true">Your profile</a>
+        <a class="slider-dot" data-slide-dot href="#dashboard">Your practice dashboard</a>
+        <a class="slider-arrow" data-slide-next href="#dashboard" aria-label="Next slide">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg>
+        </a>
+      </nav>
+    </section>
 
     <section class="band" aria-labelledby="how">
       <div class="band-inner">
@@ -84,14 +93,15 @@ Astro.response.headers.set('Cache-Control', PAGE_CACHE);
         <p class="eyebrow clay">When you're ready</p>
         <h2 id="h-features">Your profile is the front door. The dashboard runs the practice.</h2>
         <p class="lead">Switch on booking and the same account becomes your practice. Nothing to move, nothing to set up twice.</p>
-        <p><a href={`${config.marketingOrigin}/#pricing`}>See plans and pricing</a></p>
+        <p><a href="/pricing">See plans and pricing</a></p>
       </div>
       <ul class="feature-grid">
         <li><h3>Online booking</h3><p>Your hours, your services, your fees. Clients pick a time from your profile.</p></li>
         <li><h3>Payments in naira</h3><p>Card and bank transfer through Paystack, paid straight to your account.</p></li>
         <li><h3>Video sessions</h3><p>Secure session links sent with every booking. No extra app for clients.</p></li>
-        <li><h3>Client records</h3><p>Intake forms, notes and assessments, encrypted and kept with each client.</p></li>
+        <li><h3>Client records</h3><p>Intake forms, notes and assessments, kept together with each client.</p></li>
       </ul>
     </section>
   </main>
+  <script src="/slider.js" defer></script>
 </SitePage>

@@ -17,7 +17,7 @@ import {
   type SectionKey,
 } from './completeness';
 import { isLayoutKey, isThemeKey } from './themes';
-import { PRACTITIONER_KIND_LABELS } from './kinds';
+import { PRACTITIONER_KINDS, PRACTITIONER_KIND_LABELS } from './kinds';
 import { PROFILE_PUBLIC_ORIGIN } from '../../common/origins';
 import { EntitlementsService } from '../entitlements/entitlements.service';
 import { profileQr } from './share/qr';
@@ -39,16 +39,7 @@ import { PREVIEW_JOB, type PreviewPayload } from './profile-preview.job';
  * module, not through these methods.
  */
 
-export const PRACTITIONER_KINDS: readonly PractitionerKind[] = [
-  'COUNSELLOR',
-  'PSYCHOTHERAPIST',
-  'PSYCHOLOGIST',
-  'PSYCHIATRIST',
-  'SOCIAL_WORKER',
-  'TRAINEE',
-];
-
-export { PRACTITIONER_KIND_LABELS } from './kinds';
+export { PRACTITIONER_KINDS, PRACTITIONER_KIND_LABELS } from './kinds';
 
 /** Plain-text fields and their limits (§6.1). Text is stored as typed; the renderer escapes it. */
 const TEXT_LIMITS = {

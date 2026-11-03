@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { activeNavKey, practiceSections, settingsTabsFor } from '../practiceNav';
+import { activeNavKey, bottomNavFor, practiceSections, settingsTabsFor } from '../practiceNav';
 import { summary } from '../../../test/entitlementSummary';
 
 const CLINIC = summary({ customDomain: true, bankTransferPayments: true, googleCalendarSync: true, staffInviteRoles: ['ADMIN', 'RECEPTIONIST', 'THERAPIST'] });
@@ -106,5 +106,28 @@ describe('activeNavKey', () => {
   });
   it('does not confuse a shared prefix', () => {
     expect(activeNavKey('/dashboard/clientsarchive', hrefs)).toBeUndefined();
+  });
+});
+
+describe('profile-first practices (§6.8)', () => {
+  const owner = { role: 'OWNER', type: 'therapist', onboardingIntent: 'PROFILE' };
+  const hrefs = (sections: ReturnType<typeof practiceSections>) => sections.flatMap((s) => s.groups.flatMap((g) => g.items.map((i) => i.href)));
+
+  it('lead with the profile and keep practice features under one "Set up booking" entry', () => {
+    const sections = practiceSections(owner, null);
+    expect(sections[0].groups[0].items.map((i) => i.href)).toEqual(['/dashboard/profile']);
+    const booking = sections.find((s) => s.key === 'booking')!;
+    expect(booking.label).toBe('Set up booking');
+    expect(booking.collapsible).toBe(true);
+    expect(booking.groups[0].items.map((i) => i.href)).toEqual(expect.arrayContaining(['/dashboard', '/dashboard/schedule', '/dashboard/clients']));
+    expect(hrefs(sections)).toContain('/dashboard/settings');
+    expect(bottomNavFor(owner).map((i) => i.href)).toEqual(['/dashboard/profile', '/dashboard/settings']);
+  });
+
+  it('go back to the full practice menu once booking is switched on', () => {
+    const practice = { ...owner, onboardingIntent: 'PRACTICE' };
+    expect(practiceSections(practice, null).find((s) => s.key === 'booking')).toBeUndefined();
+    expect(practiceSections(practice, null)[0].groups[0].items[0].href).toBe('/dashboard');
+    expect(bottomNavFor(practice)[0].href).toBe('/dashboard');
   });
 });
