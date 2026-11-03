@@ -20,7 +20,7 @@ import { isThemeKey } from './themes';
 import { writingTips } from './writing-tips';
 import { HANDLE_MESSAGES, handleProblem, normalizeHandle, suggestHandle } from './handles';
 import { PHOTO_BACKFILL_JOB, type PhotoBackfillPayload } from './profile-photo.job';
-import { PURGE_JOB, SITEMAP_TAG, profileTag, type PurgePayload } from './profile-purge.job';
+import { SITEMAP_TAG, profileTag, queuePurge } from './profile-purge.job';
 
 /**
  * A therapist's own public profile (spec §6.1).
@@ -619,11 +619,8 @@ export class PractitionerProfileService {
     if (profile?.status === 'PUBLISHED') await this.purge([profileTag(profile.handle)]);
   }
 
-  /** Queue a purge with retries, then try it at once so the change shows within a minute. */
   private async purge(tags: string[]) {
-    const payload: PurgePayload = { tags };
-    const job = await this.jobs.enqueue(PURGE_JOB, payload as never, { dedupeKey: `${PURGE_JOB}:${[...tags].sort().join(',')}` });
-    if (job) await this.jobs.runNow(job.id);
+    await queuePurge(this.jobs, tags);
   }
 
   /** Recompute and store the signed-in user's completeness score (§6.7: on every save). */
