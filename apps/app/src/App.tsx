@@ -67,6 +67,7 @@ const AdminInvitesPage = lazy(() => import('./pages/admin/AdminInvitesPage').the
 const AdminComplimentaryPage = lazy(() => import('./pages/admin/AdminComplimentaryPage').then((m) => ({ default: m.AdminComplimentaryPage })));
 const AdminRequestsPage = lazy(() => import('./pages/admin/AdminRequestsPage').then((m) => ({ default: m.AdminRequestsPage })));
 const AdminVideoUsagePage = lazy(() => import('./pages/admin/AdminVideoUsagePage').then((m) => ({ default: m.AdminVideoUsagePage })));
+const AdminProfileReportsPage = lazy(() => import('./pages/admin/AdminProfileReportsPage').then((m) => ({ default: m.AdminProfileReportsPage })));
 const AdminAssessmentsPage = lazy(() => import('./pages/admin/AdminAssessmentsPage').then((m) => ({ default: m.AdminAssessmentsPage })));
 const RequestsPage = lazy(() => import('./pages/practice/RequestsPage').then((m) => ({ default: m.RequestsPage })));
 const AssessmentsPage = lazy(() => import('./pages/practice/AssessmentsPage').then((m) => ({ default: m.AssessmentsPage })));
@@ -520,6 +521,7 @@ function AdminShell() {
           <Route path="/admin/requests" element={<AdminRequestsPage />} />
           <Route path="/admin/assessments" element={<AdminAssessmentsPage />} />
           <Route path="/admin/video" element={<AdminVideoUsagePage />} />
+          <Route path="/admin/profile-reports" element={<AdminProfileReportsPage />} />
           <Route path="*" element={<NotFoundPage homeHref="/admin" />} />
         </Route>
       </Routes>
