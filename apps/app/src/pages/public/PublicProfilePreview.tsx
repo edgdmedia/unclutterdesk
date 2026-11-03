@@ -51,6 +51,8 @@ export interface PublicProfilePreviewProps {
   reviews: PublicReviewsPayload;
   /** Whether to show the "Learn More" button (has about content) */
   hasAbout: boolean;
+  /** Whether buttons are interactive (real page) or disabled (preview) */
+  interactive?: boolean;
 }
 
 function formatSlotDate(value: string) {
@@ -72,6 +74,7 @@ export function PublicProfilePreview({
   slots,
   reviews,
   hasAbout,
+  interactive = false,
 }: PublicProfilePreviewProps) {
   const brand = useBrand();
   const primaryColor = tenant?.primaryColor || brand.primaryColor || '#0F3A53';
@@ -171,21 +174,41 @@ export function PublicProfilePreview({
               ) : null}
             </div>
             <div className="flex flex-col md:flex-row gap-3 pt-2 md:pt-0">
-              <button
-                className="w-full md:w-auto h-[48px] md:h-[52px] px-7 rounded-[14px] md:rounded-[16px] border-none text-white text-[14px] md:text-[15px] font-[700] shadow-[0_10px_26px_rgba(0,0,0,0.12)] cursor-pointer disabled"
-                style={{ backgroundColor: primaryColor }}
-                disabled
-              >
-                Book Consultation
-              </button>
-              {hasAbout ? (
+              {interactive ? (
                 <button
-                  className="w-full md:w-auto h-[48px] md:h-[52px] px-7 rounded-[14px] md:rounded-[16px] bg-white border border-[#CBD5E1] text-[14px] md:text-[15px] font-[700] cursor-pointer disabled"
-                  style={{ color: primaryColor }}
+                  onClick={() => window.location.href = '/book'}
+                  className="w-full md:w-auto h-[48px] md:h-[52px] px-7 rounded-[14px] md:rounded-[16px] border-none text-white text-[14px] md:text-[15px] font-[700] shadow-[0_10px_26px_rgba(0,0,0,0.12)] cursor-pointer"
+                  style={{ backgroundColor: primaryColor }}
+                >
+                  Book Consultation
+                </button>
+              ) : (
+                <button
+                  className="w-full md:w-auto h-[48px] md:h-[52px] px-7 rounded-[14px] md:rounded-[16px] border-none text-white text-[14px] md:text-[15px] font-[700] shadow-[0_10px_26px_rgba(0,0,0,0.12)] cursor-pointer disabled"
+                  style={{ backgroundColor: primaryColor }}
                   disabled
                 >
-                  Learn More
+                  Book Consultation
                 </button>
+              )}
+              {hasAbout ? (
+                interactive ? (
+                  <button
+                    onClick={() => document.getElementById('about')?.scrollIntoView?.({ behavior: 'smooth', block: 'start' })}
+                    className="w-full md:w-auto h-[48px] md:h-[52px] px-7 rounded-[14px] md:rounded-[16px] bg-white border border-[#CBD5E1] text-[14px] md:text-[15px] font-[700] cursor-pointer"
+                    style={{ color: primaryColor }}
+                  >
+                    Learn More
+                  </button>
+                ) : (
+                  <button
+                    className="w-full md:w-auto h-[48px] md:h-[52px] px-7 rounded-[14px] md:rounded-[16px] bg-white border border-[#CBD5E1] text-[14px] md:text-[15px] font-[700] cursor-pointer disabled"
+                    style={{ color: primaryColor }}
+                    disabled
+                  >
+                    Learn More
+                  </button>
+                )
               ) : null}
             </div>
           </div>
@@ -310,13 +333,23 @@ export function PublicProfilePreview({
                   </div>
                 ))}
               </div>
-              <button
-                className="mt-1 h-[44px] rounded-[14px] border-none text-white text-[13px] font-[700] cursor-pointer disabled"
-                style={{ backgroundColor: primaryColor }}
-                disabled
-              >
-                Book a session
-              </button>
+              {interactive ? (
+                <button
+                  onClick={() => window.location.href = '/book'}
+                  className="mt-1 h-[44px] rounded-[14px] border-none text-white text-[13px] font-[700] cursor-pointer"
+                  style={{ backgroundColor: primaryColor }}
+                >
+                  Book a session
+                </button>
+              ) : (
+                <button
+                  className="mt-1 h-[44px] rounded-[14px] border-none text-white text-[13px] font-[700] cursor-pointer disabled"
+                  style={{ backgroundColor: primaryColor }}
+                  disabled
+                >
+                  Book a session
+                </button>
+              )}
             </div>
           ) : null}
         </section>
@@ -329,13 +362,23 @@ export function PublicProfilePreview({
             <p className="hidden md:block m-0 text-[15px] text-[#64748B] text-pretty">
               Browse available sessions with {therapistName || practiceName} and pick a time that works for you.
             </p>
-            <button
-              className="h-[50px] md:h-[52px] w-full md:w-auto md:px-8 rounded-[14px] md:rounded-[16px] border-none text-white text-[14px] md:text-[15px] font-[700] shadow-[0_10px_26px_rgba(0,0,0,0.12)] cursor-pointer disabled"
-              style={{ backgroundColor: primaryColor }}
-              disabled
-            >
-              Book Now
-            </button>
+            {interactive ? (
+              <button
+                onClick={() => window.location.href = '/book'}
+                className="h-[50px] md:h-[52px] w-full md:w-auto md:px-8 rounded-[14px] md:rounded-[16px] border-none text-white text-[14px] md:text-[15px] font-[700] shadow-[0_10px_26px_rgba(0,0,0,0.12)] cursor-pointer"
+                style={{ backgroundColor: primaryColor }}
+              >
+                Book Now
+              </button>
+            ) : (
+              <button
+                className="h-[50px] md:h-[52px] w-full md:w-auto md:px-8 rounded-[14px] md:rounded-[16px] border-none text-white text-[14px] md:text-[15px] font-[700] shadow-[0_10px_26px_rgba(0,0,0,0.12)] cursor-pointer disabled"
+                style={{ backgroundColor: primaryColor }}
+                disabled
+              >
+                Book Now
+              </button>
+            )}
           </div>
         </section>
       </>

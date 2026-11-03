@@ -231,6 +231,18 @@ describe('the public profile tab', () => {
     expect(patch).not.toHaveBeenCalledWith('/v1/practitioner-profile/me', expect.objectContaining({ themeKey: expect.anything() }));
     expect(within(screen.getByRole('radiogroup', { name: 'Colour palette' })).getAllByRole('radio')).toHaveLength(5);
   });
+
+  it('changing the palette updates the preview', async () => {
+    serve();
+    renderWithApp(<ProfilePage />, { route: '/dashboard/profile' });
+    const palette = await screen.findByRole('radiogroup', { name: 'Colour palette' });
+    expect(within(palette).getByRole('radio', { name: /Calm/ }).getAttribute('aria-checked')).toBe('true');
+    fireEvent.click(within(palette).getByRole('radio', { name: /Warm/ }));
+    await waitFor(() => expect(patch).toHaveBeenCalledWith('/v1/practitioner-profile/me', { themeKey: 'warm' }));
+    expect(within(palette).getByRole('radio', { name: /Warm/ }).getAttribute('aria-checked')).toBe('true');
+    // Preview still renders (LayoutThumb + ProfilePreview inside ScaledPreview)
+    expect(screen.getByText('LIVE SCALED PREVIEW')).toBeTruthy();
+  });
 });
 
 describe('the practice tab', () => {

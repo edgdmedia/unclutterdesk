@@ -142,7 +142,10 @@ export function AvailabilitySettingsPage() {
 
   // Sync tab to URL
   React.useEffect(() => {
-    setSearchParams({ tab }, { replace: true });
+    setSearchParams((prev) => {
+      prev.set('tab', tab);
+      return prev;
+    }, { replace: true });
   }, [tab, setSearchParams]);
 
   function apply(payload: Payload) {
