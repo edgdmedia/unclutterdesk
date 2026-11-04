@@ -8,7 +8,9 @@ export default {
   theme: {
     extend: {
       fontFamily: {
-        outfit: ['Outfit', 'sans-serif'],
+        // `font-outfit` is the interface face; it now resolves to Figtree (design system).
+        outfit: ['var(--font-primary)'],
+        head: ['var(--font-head)'],
       },
       colors: {
         brand: {
