@@ -1,14 +1,10 @@
 /* Unclutter Desk — webfonts.
-   Outfit is the sole typeface. JetBrains Mono is a utility for hex codes,
-   CNAME hosts and booking references only. Both bundled — no CDN. */
-
-@font-face {
-  font-family: 'Outfit';
-  src: url('/fonts/Outfit-VariableFont_wght.ttf') format('truetype');
-  font-weight: 100 900;
-  font-style: normal;
-  font-display: swap;
-}
+   The Therapysts design system's faces: Figtree for the interface,
+   Fraunces (weight 560, 'SOFT' 100) for page titles. JetBrains Mono is a
+   utility for hex codes, CNAME hosts and booking references only.
+   All bundled — no CDN. Figtree and Fraunces are declared once, in
+   packages/ui/src/brand/therapysts/fonts.css; each app imports that file
+   from its entry (Vite resolves its font files there). */
 
 @font-face {
   font-family: 'JetBrains Mono';
@@ -19,6 +15,7 @@
 }
 
 :root {
-  --font-primary: 'Outfit', system-ui, sans-serif;
+  --font-primary: 'Figtree', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font-head:    'Fraunces', Georgia, 'Times New Roman', serif;
   --font-mono:    'JetBrains Mono', ui-monospace, monospace;
 }

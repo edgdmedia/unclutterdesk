@@ -6,20 +6,20 @@
 
 :root {
 
-  /* ── BRAND — PINE ──
-     Derived from Unclutter's sage #4A7C6F: same hue neighbourhood (~164°),
-     pushed from 25% → 40% saturation and 39% → 24% lightness.
-     Deep pine/forest, not pastel sage. */
-  --desk-pine-900:      #0E2A22;   /* text on pale pine, DESK badge text */
-  --desk-pine-800:      #143A2F;   /* wordmark fill, dark pine surfaces */
-  --desk-pine-700:      #1C4E3F;   /* primary hover / pressed, mark tile */
-  --desk-pine-600:      #24614F;   /* ★ PRIMARY — 7.35:1 on white */
-  --desk-pine-500:      #2E7A63;   /* links on pale, rating glyph */
-  --desk-pine-400:      #4A9781;   /* active-nav marker, icon accent on slate */
-  --desk-pine-300:      #7DB8A5;   /* mark leaf fill, decorative linework */
-  --desk-pine-200:      #B6D8CC;   /* DESK badge fill, inactive chart bars */
-  --desk-pine-100:      #DDEDE6;   /* ★ PRIMARY SOFT — chips, icon tiles, hover */
-  --desk-pine-050:      #F0F7F4;   /* faintest pine surface */
+  /* ── BRAND — THERAPYSTS BLUE ──
+     The Therapysts design system (packages/ui/src/brand/therapysts/tokens.json).
+     The --desk-pine-* names are kept so components need no change; their
+     values are now the design system's blue scale. New code uses --ds-*. */
+  --desk-pine-900:      #0F1B33;   /* ink — text on pale blue */
+  --desk-pine-800:      #17305E;   /* between ink and navy — dark brand surfaces */
+  --desk-pine-700:      #1E3F7A;   /* primary-hover / navy — hover, pressed, mark tile */
+  --desk-pine-600:      #2A56A8;   /* ★ PRIMARY — 7.0:1 on white */
+  --desk-pine-500:      #3463B8;   /* links on pale */
+  --desk-pine-400:      #6189CC;   /* active-nav marker, icon accent on the sidebar (4.9:1 on ink-band) */
+  --desk-pine-300:      #8FB6EC;   /* sky — accents on dark grounds only */
+  --desk-pine-200:      #C9D6EA;   /* inactive chart bars, ghost borders */
+  --desk-pine-100:      #E9F0FB;   /* ★ PRIMARY SOFT — surface-tint: chips, icon tiles, selected rows */
+  --desk-pine-050:      #F7FAFE;   /* bg-alt — faintest brand surface */
 
   /* ── SECONDARY — CLAY ──
      Warm, low-chroma. Far enough from pine in hue and temperature that
@@ -33,51 +33,73 @@
      active-nav marker, never the star rating, never a status. */
   --desk-accent-brass:  #B08320;
 
-  /* ── SYSTEM NEUTRALS — SLATE ──
-     Product chrome. Never tenant-themed. */
-  --desk-sidebar:        #0F172A;   /* sidebar, dark hero cards */
-  --desk-sidebar-hover:  #1E293B;   /* sidebar item hover */
-  --desk-sidebar-active: #17293F;   /* sidebar item active base */
-  --desk-surface:        #F8FAFC;   /* app background, muted fills */
-  --desk-surface-alt:    #FCFDFE;   /* table headers, booking body */
-  --desk-surface-muted:  #F1F5F9;   /* segmented controls, search, read-only */
-  --desk-canvas:         #EEF2F6;   /* presentation backdrop — not app chrome */
-  --desk-card:           #FFFFFF;
-  --desk-border:         #E2E8F0;   /* standard border, dividers */
-  --desk-border-soft:    #F1F5F9;   /* table row dividers */
-  --desk-border-strong:  #CBD5E1;   /* secondary button border, uploader */
-  --desk-text:           #0F172A;   /* primary text */
-  --desk-text-body:      #475569;   /* body copy */
-  --desk-text-muted:     #64748B;   /* secondary text */
-  --desk-text-subtle:    #94A3B8;   /* eyebrows, placeholders, tertiary */
+  /* ── SYSTEM NEUTRALS — INK ──
+     The design system's blue-tinted ink and borders. Product chrome;
+     never tenant-themed. */
+  --desk-sidebar:        #0F1B33;   /* ink-band — sidebar, dark hero cards */
+  --desk-sidebar-hover:  #1A2A4D;   /* sidebar item hover */
+  --desk-sidebar-active: #1E3F7A;   /* navy — sidebar item active base */
+  --desk-surface:        #F7FAFE;   /* bg-alt — app background, muted fills */
+  --desk-surface-alt:    #FBFCFF;   /* table headers, booking body */
+  --desk-surface-muted:  #EEF3FA;   /* segmented controls, search, read-only */
+  --desk-canvas:         #E9EFF8;   /* presentation backdrop — not app chrome */
+  --desk-card:           #FFFFFF;   /* surface */
+  --desk-border:         #E3EAF5;   /* border — hairlines, dividers */
+  --desk-border-soft:    #EEF3FA;   /* table row dividers */
+  --desk-border-strong:  #7384A6;   /* border-control — inputs, secondary buttons (3:1) */
+  --desk-text:           #0F1B33;   /* ink — primary text */
+  --desk-text-body:      #4A5876;   /* ink-muted — body copy */
+  --desk-text-muted:     #56637D;   /* secondary text */
+  --desk-text-subtle:    #5F6D88;   /* eyebrows, placeholders — 4.6:1 or better on every surface */
   --desk-text-invert:    #FFFFFF;
 
   /* ── STATUS ──
-     Success moved off emerald #10B981 (too close to pine primary) to a
-     yellower, lighter green. Pending moved off amber to warm orange, so
-     no gold-family tone survives in routine UI.
-     Inactive, danger and info are unchanged. */
-  --desk-active:         #16A34A;
-  --desk-active-dot:     #22C55E;
-  --desk-active-bg:      #F0FDF4;
-  --desk-active-border:  #BBF7D0;
+     The design system's success, warning and danger; info uses primary.
+     Each text colour meets 4.5:1 on its own background. */
+  --desk-active:         #1F7A4D;
+  --desk-active-dot:     #2E9B63;
+  --desk-active-bg:      #EAF6EF;
+  --desk-active-border:  #B9E1CA;
 
-  --desk-pending:        #C2410C;
-  --desk-pending-dot:    #EA580C;
-  --desk-pending-bg:     #FFF7ED;
-  --desk-pending-border: #FED7AA;
+  --desk-pending:        #8A5A00;
+  --desk-pending-dot:    #C98A00;
+  --desk-pending-bg:     #FFF4D6;
+  --desk-pending-border: #F2D58A;
 
-  --desk-inactive:        #64748B;
-  --desk-inactive-bg:     #F1F5F9;
-  --desk-inactive-border: #E2E8F0;
+  --desk-inactive:        #56637D;
+  --desk-inactive-bg:     #EEF3FA;
+  --desk-inactive-border: #E3EAF5;
 
-  --desk-danger:         #E11D48;
-  --desk-danger-bg:      #FFF1F2;
-  --desk-danger-border:  #FECDD3;
+  --desk-danger:         #B42318;
+  --desk-danger-bg:      #FEF3F2;
+  --desk-danger-border:  #FECDCA;
 
-  --desk-info:           #0284C7;
-  --desk-info-bg:        #F0F9FF;
-  --desk-info-border:    #BAE6FD;
+  --desk-info:           #2A56A8;
+  --desk-info-bg:        #E9F0FB;
+  --desk-info-border:    #C9D6EA;
+
+  /* ── THERAPYSTS DESIGN SYSTEM (light) ──
+     One to one with tokens.json; pinned by tokens.test.ts. */
+  --ds-bg:             #FFFFFF;
+  --ds-bg-alt:         #F7FAFE;
+  --ds-surface:        #FFFFFF;
+  --ds-surface-tint:   #E9F0FB;
+  --ds-border:         #E3EAF5;
+  --ds-border-control: #7384A6;
+  --ds-ink:            #0F1B33;
+  --ds-ink-muted:      #4A5876;
+  --ds-primary:        #2A56A8;
+  --ds-primary-hover:  #1E3F7A;
+  --ds-on-primary:     #FFFFFF;
+  --ds-navy:           #1E3F7A;
+  --ds-ink-band:       #0F1B33;
+  --ds-on-band:        #F7FAFE;
+  --ds-sky:            #8FB6EC;
+  --ds-sand:           #E9DCC8;
+  --ds-success:        #1F7A4D;
+  --ds-warning:        #8A5A00;
+  --ds-warning-soft:   #FFF4D6;
+  --ds-danger:         #B42318;
 
   /* ── SEMANTIC ALIASES ── */
   --text-primary:    var(--desk-text);

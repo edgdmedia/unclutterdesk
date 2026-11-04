@@ -16,6 +16,14 @@
   a:hover { color: var(--desk-pine-700); text-decoration: underline; }
   
   button, input, select, textarea { font: inherit; color: inherit; }
+
+  /* Page titles in the design system's heading face. Dense UI stays in Figtree. */
+  h1 {
+    font-family: var(--font-head);
+    font-weight: 560;
+    font-variation-settings: 'SOFT' 100, 'WONK' 0;
+    letter-spacing: -0.02em;
+  }
 }
 
 /* Scroll where it helps, without the chrome: used by the sidebar nav. */
