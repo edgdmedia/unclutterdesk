@@ -110,12 +110,12 @@ function timeAgo(iso: string, now: number = Date.now()): string {
 }
 
 const selectCls =
-  'h-[46px] w-full px-[14px] rounded-[14px] bg-[#F8FAFC] border border-[#E2E8F0] text-sm font-semibold text-[#0F172A] outline-none focus:bg-white focus:border-[#94A3B8] cursor-pointer';
+  'h-[46px] w-full px-[14px] rounded-[14px] bg-[var(--desk-surface)] border border-[var(--desk-border)] text-sm font-semibold text-[var(--desk-text)] outline-none focus:bg-white focus:border-[var(--desk-border-strong)] cursor-pointer';
 
 const SESSIONS_SHOWN = 5;
 
 const inputCls =
-  'h-[46px] w-full px-[14px] rounded-[14px] bg-[#F8FAFC] border border-[#E2E8F0] text-sm font-medium text-[#0F172A] outline-none focus:bg-white focus:border-[#94A3B8]';
+  'h-[46px] w-full px-[14px] rounded-[14px] bg-[var(--desk-surface)] border border-[var(--desk-border)] text-sm font-medium text-[var(--desk-text)] outline-none focus:bg-white focus:border-[var(--desk-border-strong)]';
 
 function ChipGroup<T extends string>({
   value,
@@ -139,8 +139,8 @@ function ChipGroup<T extends string>({
           onClick={() => onSelect(o)}
           className={`h-[42px] px-4 rounded-[13px] text-[13px] font-bold transition-all cursor-pointer ${
             value === o
-              ? 'bg-[#0F3A53] text-white shadow-[0_6px_16px_rgba(15,58,83,0.22)]'
-              : 'bg-white text-[#334155] border border-[#E2E8F0] hover:bg-[#F1F5F9]'
+              ? 'bg-[var(--desk-pine-600)] text-white shadow-[0_6px_16px_rgba(15,58,83,0.22)]'
+              : 'bg-white text-[var(--desk-text-body)] border border-[var(--desk-border)] hover:bg-[var(--desk-surface-muted)]'
           }`}
         >
           {o}
@@ -390,12 +390,12 @@ export function AccountPreferencesPage() {
           actions={
             <>
               {saved ? (
-                <span role="status" className="text-[12px] font-bold text-[#15803D] flex items-center gap-1.5">
+                <span role="status" className="text-[12px] font-bold text-[var(--desk-active)] flex items-center gap-1.5">
                   <Check className="h-4 w-4" strokeWidth={2.6} />
                   Saved
                 </span>
               ) : (
-                <span className="text-[11.5px] text-[#94A3B8] font-medium">Changes apply to your account only</span>
+                <span className="text-[11.5px] text-[var(--desk-text-subtle)] font-medium">Changes apply to your account only</span>
               )}
               <button
                 type="button"
@@ -412,7 +412,7 @@ export function AccountPreferencesPage() {
         />
       }
     >
-      <p className="text-xs text-[#64748B] font-medium">Sign-in, and how dates and numbers are shown to you</p>
+      <p className="text-xs text-[var(--desk-text-muted)] font-medium">Sign-in, and how dates and numbers are shown to you</p>
 
       <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_352px] gap-[20px] items-start">
         <div className="flex flex-col gap-5">
@@ -431,29 +431,29 @@ export function AccountPreferencesPage() {
           ) : null}
 
           {/* Sign-in */}
-          <div className="bg-white rounded-[24px] border border-[#E2E8F0] p-[24px_26px]">
+          <div className="bg-white rounded-[24px] border border-[var(--desk-border)] p-[24px_26px]">
             <Eyebrow className="mb-1">SIGN-IN</Eyebrow>
-            <h3 className="text-[15px] font-bold tracking-[-0.01em] text-[#0F172A] mb-5">
+            <h3 className="text-[15px] font-bold tracking-[-0.01em] text-[var(--desk-text)] mb-5">
               How you access your account
             </h3>
             <div className="flex flex-col gap-[10px]">
-              <div className="flex items-center gap-4 px-4 py-[14px] rounded-[20px] bg-[#F8FAFC] border border-[#E2E8F0]">
+              <div className="flex items-center gap-4 px-4 py-[14px] rounded-[20px] bg-[var(--desk-surface)] border border-[var(--desk-border)]">
                 <div className="flex-1 min-w-0">
-                  <div className="text-[11px] font-bold text-[#94A3B8] uppercase tracking-wider">
+                  <div className="text-[11px] font-bold text-[var(--desk-text-subtle)] uppercase tracking-wider">
                     Email
                   </div>
                   <div className="flex items-center gap-2 mt-0.5">
-                    <span className="text-[13.5px] font-semibold text-[#0F172A]">
+                    <span className="text-[13.5px] font-semibold text-[var(--desk-text)]">
                       {prefs?.email ?? profile?.email ?? '—'}
                     </span>
                     {/* Was a green "Verified" chip regardless of the real state. */}
                     {prefs ? (
                       prefs.emailVerified ? (
-                        <span className="h-[18px] px-2 rounded-full bg-[#ECFDF5] text-[#059669] text-[9px] font-black tracking-[0.06em] uppercase flex items-center">
+                        <span className="h-[18px] px-2 rounded-full bg-[var(--desk-active-bg)] text-[var(--desk-active)] text-[9px] font-black tracking-[0.06em] uppercase flex items-center">
                           Verified
                         </span>
                       ) : (
-                        <span className="h-[18px] px-2 rounded-full bg-[#FFFBEB] text-[#B45309] text-[9px] font-black tracking-[0.06em] uppercase flex items-center">
+                        <span className="h-[18px] px-2 rounded-full bg-[var(--desk-pending-bg)] text-[var(--desk-pending)] text-[9px] font-black tracking-[0.06em] uppercase flex items-center">
                           Unverified
                         </span>
                       )
@@ -464,10 +464,10 @@ export function AccountPreferencesPage() {
 
               <form
                 onSubmit={changePassword}
-                className="px-4 py-[16px] rounded-[20px] bg-[#F8FAFC] border border-[#E2E8F0]"
+                className="px-4 py-[16px] rounded-[20px] bg-[var(--desk-surface)] border border-[var(--desk-border)]"
               >
                 <div className="flex items-baseline gap-2 flex-wrap">
-                  <div className="text-[11px] font-bold text-[#94A3B8] uppercase tracking-wider">
+                  <div className="text-[11px] font-bold text-[var(--desk-text-subtle)] uppercase tracking-wider">
                     Password
                   </div>
                   {/*
@@ -475,7 +475,7 @@ export function AccountPreferencesPage() {
                     account. It now says what the server recorded, and says
                     nothing was recorded when nothing was.
                   */}
-                  <span className="text-[11.5px] font-medium text-[#64748B]">
+                  <span className="text-[11.5px] font-medium text-[var(--desk-text-muted)]">
                     {prefs?.passwordChangedAt
                       ? `Last changed ${timeAgo(prefs.passwordChangedAt)}`
                       : 'Last change not recorded'}
@@ -513,21 +513,21 @@ export function AccountPreferencesPage() {
                 {pwError ? (
                   <div
                     role="alert"
-                    className="mt-2.5 flex items-start gap-2 text-[12px] font-medium text-[#B91C1C]"
+                    className="mt-2.5 flex items-start gap-2 text-[12px] font-medium text-[var(--desk-danger)]"
                   >
                     <AlertCircle className="h-4 w-4 flex-none mt-[1px]" />
                     <span>{pwError}</span>
                   </div>
                 ) : null}
                 {pwState === 'done' ? (
-                  <p role="status" className="mt-2.5 text-[12px] font-bold text-[#15803D]">
+                  <p role="status" className="mt-2.5 text-[12px] font-bold text-[var(--desk-active)]">
                     Your password has been changed. Your other devices have been signed out.
                   </p>
                 ) : null}
                 <button
                   type="submit"
                   disabled={!pw.current || !pw.next || pwState === 'saving'}
-                  className="mt-3 h-[38px] px-4 rounded-[12px] bg-white border border-[#E2E8F0] text-[12.5px] font-bold text-[#0F3A53] hover:bg-[#F1F5F9] cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="mt-3 h-[38px] px-4 rounded-[12px] bg-white border border-[var(--desk-border)] text-[12.5px] font-bold text-[var(--desk-pine-600)] hover:bg-[var(--desk-surface-muted)] cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {pwState === 'saving' ? 'Changing…' : 'Change password'}
                 </button>
@@ -536,16 +536,16 @@ export function AccountPreferencesPage() {
           </div>
 
           {/* Region & language */}
-          <div className="bg-white rounded-[24px] border border-[#E2E8F0] p-[24px_26px]">
+          <div className="bg-white rounded-[24px] border border-[var(--desk-border)] p-[24px_26px]">
             <Eyebrow className="mb-1">REGION &amp; LANGUAGE</Eyebrow>
-            <h3 className="text-[15px] font-bold tracking-[-0.01em] text-[#0F172A] mb-5">
+            <h3 className="text-[15px] font-bold tracking-[-0.01em] text-[var(--desk-text)] mb-5">
               Where you work
             </h3>
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label
                   htmlFor="pref-locale"
-                  className="block text-[11.5px] font-bold text-[#475569] mb-1.5"
+                  className="block text-[11.5px] font-bold text-[var(--desk-text-body)] mb-1.5"
                 >
                   Language
                 </label>
@@ -566,7 +566,7 @@ export function AccountPreferencesPage() {
               <div>
                 <label
                   htmlFor="pref-timezone"
-                  className="block text-[11.5px] font-bold text-[#475569] mb-1.5"
+                  className="block text-[11.5px] font-bold text-[var(--desk-text-body)] mb-1.5"
                 >
                   Time zone
                 </label>
@@ -585,9 +585,9 @@ export function AccountPreferencesPage() {
                 </select>
               </div>
             </div>
-            <div className="mt-4 rounded-[14px] bg-[#F1F5F9] p-[12px_14px] flex items-start gap-2.5">
-              <Info className="h-4 w-4 text-[#64748B] mt-0.5 shrink-0" />
-              <p className="text-[12px] text-[#64748B] font-medium leading-snug">
+            <div className="mt-4 rounded-[14px] bg-[var(--desk-surface-muted)] p-[12px_14px] flex items-start gap-2.5">
+              <Info className="h-4 w-4 text-[var(--desk-text-muted)] mt-0.5 shrink-0" />
+              <p className="text-[12px] text-[var(--desk-text-muted)] font-medium leading-snug">
                 Money is always shown in the practice&apos;s own currency, for both you and your
                 clients — there is no per-person conversion.
               </p>
@@ -595,15 +595,15 @@ export function AccountPreferencesPage() {
           </div>
 
           {/* Date, time & numbers */}
-          <div className="bg-white rounded-[24px] border border-[#E2E8F0] p-[24px_26px]">
+          <div className="bg-white rounded-[24px] border border-[var(--desk-border)] p-[24px_26px]">
             <Eyebrow className="mb-1">DATE, TIME &amp; NUMBERS</Eyebrow>
-            <h3 className="text-[15px] font-bold tracking-[-0.01em] text-[#0F172A] mb-5">
+            <h3 className="text-[15px] font-bold tracking-[-0.01em] text-[var(--desk-text)] mb-5">
               How things are written
             </h3>
 
             <div className="space-y-5">
               <div>
-                <span className="block text-[11.5px] font-bold text-[#475569] mb-2">Date format</span>
+                <span className="block text-[11.5px] font-bold text-[var(--desk-text-body)] mb-2">Date format</span>
                 <ChipGroup
                   label="Date format"
                   value={prefs?.dateFormat ?? 'DD/MM/YYYY'}
@@ -612,7 +612,7 @@ export function AccountPreferencesPage() {
                 />
               </div>
               <div>
-                <span className="block text-[11.5px] font-bold text-[#475569] mb-2">Time format</span>
+                <span className="block text-[11.5px] font-bold text-[var(--desk-text-body)] mb-2">Time format</span>
                 <ChipGroup
                   label="Time format"
                   value={prefs?.timeFormat ?? '24-hour'}
@@ -621,7 +621,7 @@ export function AccountPreferencesPage() {
                 />
               </div>
               <div>
-                <span className="block text-[11.5px] font-bold text-[#475569] mb-2">
+                <span className="block text-[11.5px] font-bold text-[var(--desk-text-body)] mb-2">
                   Week starts on
                 </span>
                 <ChipGroup
@@ -632,7 +632,7 @@ export function AccountPreferencesPage() {
                 />
               </div>
               <div>
-                <span className="block text-[11.5px] font-bold text-[#475569] mb-2">
+                <span className="block text-[11.5px] font-bold text-[var(--desk-text-body)] mb-2">
                   Number format
                 </span>
                 <ChipGroup
@@ -652,7 +652,7 @@ export function AccountPreferencesPage() {
             className="rounded-[24px] p-[24px_26px] shadow-[0_14px_40px_rgba(15,58,83,0.22)]"
             style={{ background: 'linear-gradient(135deg,#0F3A53,#1B5375)' }}
           >
-            <span className="text-[9px] font-black tracking-[0.22em] uppercase text-[#E3B341] block">
+            <span className="text-[9px] font-black tracking-[0.22em] uppercase text-[var(--ds-sky)] block">
               PREVIEW
             </span>
             <div className="mt-3 flex flex-col">
@@ -670,7 +670,7 @@ export function AccountPreferencesPage() {
                 <React.Fragment key={row.label}>
                   {i > 0 && <div className="h-px bg-white/10" />}
                   <div className="py-[13px]">
-                    <div className="text-[11px] font-bold text-[#94A3B8] tracking-[0.06em]">
+                    <div className="text-[11px] font-bold text-[var(--desk-text-subtle)] tracking-[0.06em]">
                       {row.label}
                     </div>
                     <div className="mt-0.5 text-[19px] font-bold text-white">{row.value}</div>
@@ -680,32 +680,32 @@ export function AccountPreferencesPage() {
             </div>
           </div>
 
-          <div className="bg-white rounded-[24px] border border-[#E2E8F0] p-[22px_24px] shadow-[0_8px_26px_rgba(15,23,42,0.05)]">
+          <div className="bg-white rounded-[24px] border border-[var(--desk-border)] p-[22px_24px] shadow-[0_8px_26px_rgba(15,23,42,0.05)]">
             <div className="flex items-center justify-between gap-3">
-              <span className="text-[15px] font-bold text-[#0F172A]">Active sessions</span>
+              <span className="text-[15px] font-bold text-[var(--desk-text)]">Active sessions</span>
               {sessions && sessions.length > 1 ? (
                 <button
                   type="button"
                   onClick={endOtherSessions}
                   disabled={endingSession !== null}
-                  className="text-[11.5px] font-bold text-[#0F3A53] hover:underline cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="text-[11.5px] font-bold text-[var(--desk-pine-600)] hover:underline cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {endingSession === 'others' ? 'Signing out…' : 'Sign out other devices'}
                 </button>
               ) : null}
             </div>
-            <p className="mt-1 text-[11.5px] text-[#94A3B8] font-medium leading-snug">
+            <p className="mt-1 text-[11.5px] text-[var(--desk-text-subtle)] font-medium leading-snug">
               Devices signed in to this account. Sign out anything you do not recognise.
             </p>
 
             {sessionError ? (
-              <p role="alert" className="mt-3 text-[11.5px] font-medium text-[#B91C1C]">
+              <p role="alert" className="mt-3 text-[11.5px] font-medium text-[var(--desk-danger)]">
                 {sessionError}
               </p>
             ) : null}
 
             {sessions === null && !sessionError ? (
-              <p className="mt-3 text-[11.5px] text-[#94A3B8] font-medium">Loading…</p>
+              <p className="mt-3 text-[11.5px] text-[var(--desk-text-subtle)] font-medium">Loading…</p>
             ) : null}
 
             {sessions ? (
@@ -713,21 +713,21 @@ export function AccountPreferencesPage() {
                 {(showAllSessions || sessions.length <= SESSIONS_SHOWN ? sessions : sessions.slice(0, SESSIONS_SHOWN)).map((session) => (
                   <li
                     key={session.id}
-                    className="flex items-start gap-3 px-3 py-2.5 rounded-[16px] bg-[#F8FAFC] border border-[#E2E8F0]"
+                    className="flex items-start gap-3 px-3 py-2.5 rounded-[16px] bg-[var(--desk-surface)] border border-[var(--desk-border)]"
                   >
-                    <Monitor className="h-4 w-4 text-[#64748B] mt-0.5 shrink-0" />
+                    <Monitor className="h-4 w-4 text-[var(--desk-text-muted)] mt-0.5 shrink-0" />
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-1.5 flex-wrap">
-                        <span className="text-[12.5px] font-bold text-[#0F172A]">
+                        <span className="text-[12.5px] font-bold text-[var(--desk-text)]">
                           {session.device}
                         </span>
                         {session.current ? (
-                          <span className="h-[16px] px-1.5 rounded-full bg-[#ECFDF5] text-[#059669] text-[9px] font-black tracking-[0.06em] uppercase flex items-center">
+                          <span className="h-[16px] px-1.5 rounded-full bg-[var(--desk-active-bg)] text-[var(--desk-active)] text-[9px] font-black tracking-[0.06em] uppercase flex items-center">
                             This device
                           </span>
                         ) : null}
                       </div>
-                      <div className="text-[11px] text-[#94A3B8] font-medium">
+                      <div className="text-[11px] text-[var(--desk-text-subtle)] font-medium">
                         {/*
                           An address the server saw, not a city name: the old
                           panel said "Lagos, Nigeria" for everyone, which is a
@@ -742,7 +742,7 @@ export function AccountPreferencesPage() {
                       onClick={() => endSession(session.id)}
                       disabled={endingSession !== null}
                       aria-label={`Sign out ${session.device}`}
-                      className="text-[11.5px] font-bold text-[#B91C1C] hover:underline cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed shrink-0"
+                      className="text-[11.5px] font-bold text-[var(--desk-danger)] hover:underline cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed shrink-0"
                     >
                       {endingSession === session.id ? '…' : 'Sign out'}
                     </button>
@@ -755,21 +755,21 @@ export function AccountPreferencesPage() {
               <button
                 type="button"
                 onClick={() => setShowAllSessions((v) => !v)}
-                className="mt-2.5 text-[11.5px] font-bold text-[#0F3A53] hover:underline cursor-pointer"
+                className="mt-2.5 text-[11.5px] font-bold text-[var(--desk-pine-600)] hover:underline cursor-pointer"
               >
                 {showAllSessions ? 'Show fewer' : `Show all ${sessions.length} sessions`}
               </button>
             ) : null}
           </div>
 
-          <div className="bg-white rounded-[24px] border border-[#E2E8F0] p-[22px_24px] shadow-[0_8px_26px_rgba(15,23,42,0.05)]">
-            <span className="text-[15px] font-bold text-[#0F172A]">Notification channels</span>
+          <div className="bg-white rounded-[24px] border border-[var(--desk-border)] p-[22px_24px] shadow-[0_8px_26px_rgba(15,23,42,0.05)]">
+            <span className="text-[15px] font-bold text-[var(--desk-text)]">Notification channels</span>
             <div className="mt-3 flex flex-col gap-3.5">
               {CHANNELS.map((c) => (
                 <div key={c.key} className="flex items-center gap-3">
                   <div className="flex-1">
-                    <div className="text-[13px] font-bold text-[#0F172A]">{c.name}</div>
-                    <div className="text-[11.5px] text-[#94A3B8] font-medium">{c.desc}</div>
+                    <div className="text-[13px] font-bold text-[var(--desk-text)]">{c.name}</div>
+                    <div className="text-[11.5px] text-[var(--desk-text-subtle)] font-medium">{c.desc}</div>
                   </div>
                   <Toggle
                     label={`${c.name} notifications`}
@@ -780,11 +780,11 @@ export function AccountPreferencesPage() {
               ))}
             </div>
             {channelError ? (
-              <p role="alert" className="mt-3 text-[11.5px] font-medium text-[#B91C1C]">
+              <p role="alert" className="mt-3 text-[11.5px] font-medium text-[var(--desk-danger)]">
                 {channelError}
               </p>
             ) : (
-              <p className="mt-3 pt-3 border-t border-[#F1F5F9] text-[11px] text-[#94A3B8] font-medium">
+              <p className="mt-3 pt-3 border-t border-[var(--desk-border-soft)] text-[11px] text-[var(--desk-text-subtle)] font-medium">
                 Saved as you switch them. Per-event controls live in Notifications settings.
               </p>
             )}

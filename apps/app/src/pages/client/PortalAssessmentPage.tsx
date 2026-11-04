@@ -32,13 +32,13 @@ export function PortalAssessmentPage() {
   const practice = opened?.practice ?? null;
   const color = practice?.primaryColor || '#0F3A53';
   const back = (
-    <Link to="/portal" className="text-xs font-bold text-[#475569] inline-flex items-center gap-1">
+    <Link to="/portal" className="text-xs font-bold text-[var(--desk-text-body)] inline-flex items-center gap-1">
       <ArrowLeft className="h-3.5 w-3.5" /> Portal
     </Link>
   );
 
   if (error) return <AssessmentShell back={back}><AssessmentMessage title="Not available" body={error} /></AssessmentShell>;
-  if (!opened) return <AssessmentShell back={back}><p className="text-sm text-[#64748B]">Loading…</p></AssessmentShell>;
+  if (!opened) return <AssessmentShell back={back}><p className="text-sm text-[var(--desk-text-muted)]">Loading…</p></AssessmentShell>;
 
   if (justDone || opened.status === 'COMPLETED') {
     const result = justDone ?? (opened.status === 'COMPLETED' ? opened.result : null);

@@ -18,9 +18,9 @@ export function HoldCountdown({ expiresAt }: { expiresAt: string }) {
     );
   }
   return (
-    <p className="rounded-[14px] border border-[#E2E8F0] bg-[#F8FAFC] px-4 py-3 text-[13.5px] text-[#475569]">
+    <p className="rounded-[14px] border border-[var(--desk-border)] bg-[var(--desk-surface)] px-4 py-3 text-[13.5px] text-[var(--desk-text-body)]">
       Your time is held for{' '}
-      <span role="timer" aria-live="off" className="font-bold text-[#0F172A]" style={{ fontVariantNumeric: 'tabular-nums' }}>
+      <span role="timer" aria-live="off" className="font-bold text-[var(--desk-text)]" style={{ fontVariantNumeric: 'tabular-nums' }}>
         {pad(Math.floor(left / 60))}:{pad(left % 60)}
       </span>
     </p>

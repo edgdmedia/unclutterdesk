@@ -1,7 +1,7 @@
 import React, { useId } from 'react';
 
 export const authInputCls =
-  'flex-1 min-w-0 bg-transparent border-none outline-none text-[14.5px] text-[#0F172A]';
+  'flex-1 min-w-0 bg-transparent border-none outline-none text-[14.5px] text-[var(--desk-text)]';
 
 interface AuthFieldProps {
   label: string;
@@ -30,10 +30,10 @@ export function AuthField({ label, icon, trailing, labelRow, children }: AuthFie
   return (
     <div>
       <div className="flex items-baseline mb-2">
-        <span id={labelId} className="text-[11.5px] font-bold text-[#475569]">{label}</span>
+        <span id={labelId} className="text-[11.5px] font-bold text-[var(--desk-text-body)]">{label}</span>
         {labelRow}
       </div>
-      <div className="flex items-center gap-[11px] h-[52px] px-[15px] border border-[#E2E8F0] rounded-[14px] bg-[#F8FAFC]">
+      <div className="flex items-center gap-[11px] h-[52px] px-[15px] border border-[var(--desk-border)] rounded-[14px] bg-[var(--desk-surface)]">
         {icon}
         {field}
         {trailing}

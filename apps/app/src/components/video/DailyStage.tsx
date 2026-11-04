@@ -57,7 +57,7 @@ function DailyCall({ waitingFor, renderBar }: { waitingFor: string; renderBar: R
 
   return (
     <div className="flex h-full min-h-0 flex-col gap-4">
-      <div className="relative flex-1 min-h-[320px] overflow-hidden rounded-[22px] border border-white/[0.06] bg-[#0B1220]">
+      <div className="relative flex-1 min-h-[320px] overflow-hidden rounded-[22px] border border-white/[0.06] bg-[var(--desk-sidebar)]">
         {shared ? (
           <DailyVideo sessionId={shared.session_id} type="screenVideo" fit="contain" className="h-full w-full" />
         ) : remote[0] ? (
@@ -66,7 +66,7 @@ function DailyCall({ waitingFor, renderBar }: { waitingFor: string; renderBar: R
           <WaitingPanel text={`Waiting for ${waitingFor} to join`} />
         )}
         {localId ? (
-          <div className="absolute bottom-4 right-4 h-[110px] w-[150px] sm:h-[140px] sm:w-[200px] overflow-hidden rounded-[16px] border border-white/15 bg-[#101A28] shadow-2xl">
+          <div className="absolute bottom-4 right-4 h-[110px] w-[150px] sm:h-[140px] sm:w-[200px] overflow-hidden rounded-[16px] border border-white/15 bg-[var(--desk-sidebar)] shadow-2xl">
             <DailyVideo sessionId={localId} automirror fit="cover" className="h-full w-full" />
           </div>
         ) : null}

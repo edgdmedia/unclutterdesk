@@ -41,8 +41,8 @@ export function AdminOverviewPage() {
     <div className="flex-1 min-w-0 px-[32px] py-[28px] max-w-[1200px] w-full">
       <Eyebrow>Platform console</Eyebrow>
       <div className="mt-1 flex items-end justify-between gap-4 flex-wrap">
-        <h1 className="text-[26px] font-bold tracking-[-0.03em] text-[#0F172A]">Overview</h1>
-        <p className="text-[13.5px] text-[#64748B]">
+        <h1 className="text-[26px] font-bold tracking-[-0.03em] text-[var(--desk-text)]">Overview</h1>
+        <p className="text-[13.5px] text-[var(--desk-text-muted)]">
           {tenantsLoading || !tenants
             ? 'Loading tenant activity…'
             : `${activeTenantCount} of ${tenants.length} tenants active`}
@@ -55,15 +55,15 @@ export function AdminOverviewPage() {
           return (
             <div
               key={t.label}
-              className="bg-white rounded-[18px] border border-[#E2E8F0] p-[16px_18px] shadow-[0_1px_3px_0_rgba(15,23,42,0.06)]"
+              className="bg-white rounded-[18px] border border-[var(--desk-border)] p-[16px_18px] shadow-[0_1px_3px_0_rgba(15,23,42,0.06)]"
             >
               <div className="flex items-center justify-between">
-                <span className="text-[22px] font-extrabold tracking-[-0.03em] text-[#0F172A] leading-none">
+                <span className="text-[22px] font-extrabold tracking-[-0.03em] text-[var(--desk-text)] leading-none">
                   {t.value}
                 </span>
-                <Icon className="h-[18px] w-[18px] text-[#0F3A53]" strokeWidth={2} />
+                <Icon className="h-[18px] w-[18px] text-[var(--desk-pine-600)]" strokeWidth={2} />
               </div>
-              <span className="text-[11px] text-[#64748B] font-medium block mt-2">{t.label}</span>
+              <span className="text-[11px] text-[var(--desk-text-muted)] font-medium block mt-2">{t.label}</span>
             </div>
           );
         })}
@@ -74,14 +74,14 @@ export function AdminOverviewPage() {
           <div className="flex items-center justify-between">
             <div>
               <Eyebrow>Gross revenue</Eyebrow>
-              <div className="text-[30px] font-extrabold tracking-[-0.04em] text-[#0F172A] mt-1">
+              <div className="text-[30px] font-extrabold tracking-[-0.04em] text-[var(--desk-text)] mt-1">
                 {stats ? formatNaira(stats.revenueKobo) : '—'}
               </div>
-              <p className="text-[12px] text-[#64748B] mt-1">
+              <p className="text-[12px] text-[var(--desk-text-muted)] mt-1">
                 Across {stats ? formatCount(stats.bookings) : '—'} bookings
               </p>
             </div>
-            <div className="h-12 w-12 rounded-[16px] bg-[#0F3A53] text-[#E3B341] flex items-center justify-center">
+            <div className="h-12 w-12 rounded-[16px] bg-[var(--desk-pine-600)] text-[var(--ds-sky)] flex items-center justify-center">
               <Wallet className="h-5 w-5" strokeWidth={2} />
             </div>
           </div>
@@ -94,11 +94,11 @@ export function AdminOverviewPage() {
               { label: 'Clients', value: stats ? formatCount(stats.clientCount) : '—' },
               { label: 'Forms', value: stats ? formatCount(stats.forms) : '—' },
             ].map((s) => (
-              <div key={s.label} className="p-[12px_14px] rounded-[16px] bg-[#F8FAFC] border border-[#E2E8F0]">
-                <span className="text-[22px] font-extrabold tracking-[-0.03em] text-[#0F172A] block leading-none mb-1">
+              <div key={s.label} className="p-[12px_14px] rounded-[16px] bg-[var(--desk-surface)] border border-[var(--desk-border)]">
+                <span className="text-[22px] font-extrabold tracking-[-0.03em] text-[var(--desk-text)] block leading-none mb-1">
                   {s.value}
                 </span>
-                <span className="text-[11px] text-[#64748B] font-medium block">{s.label}</span>
+                <span className="text-[11px] text-[var(--desk-text-muted)] font-medium block">{s.label}</span>
               </div>
             ))}
           </div>
@@ -118,60 +118,60 @@ export function AdminOverviewPage() {
           action={
             <Link
               to="/admin/tenants"
-              className="inline-flex items-center gap-1.5 text-[12.5px] font-bold text-[#0F3A53] hover:underline"
+              className="inline-flex items-center gap-1.5 text-[12.5px] font-bold text-[var(--desk-pine-600)] hover:underline"
             >
               View all <ArrowRight className="h-3.5 w-3.5" />
             </Link>
           }
         />
         {tenantsLoading || !tenants ? (
-          <div className="flex items-center justify-center py-12 text-[#94A3B8]">
+          <div className="flex items-center justify-center py-12 text-[var(--desk-text-subtle)]">
             <Loader2 className="h-5 w-5 animate-spin mr-2" /> Loading tenants…
           </div>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-left">
               <thead>
-                <tr className="border-b border-[#E2E8F0]">
-                  <th className="pb-3 text-[10px] font-black tracking-[0.16em] uppercase text-[#94A3B8]">Practice</th>
-                  <th className="pb-3 text-[10px] font-black tracking-[0.16em] uppercase text-[#94A3B8]">Plan</th>
-                  <th className="pb-3 text-[10px] font-black tracking-[0.16em] uppercase text-[#94A3B8]">Clients</th>
-                  <th className="pb-3 text-[10px] font-black tracking-[0.16em] uppercase text-[#94A3B8]">Bookings</th>
-                  <th className="pb-3 text-[10px] font-black tracking-[0.16em] uppercase text-[#94A3B8]">Revenue</th>
-                  <th className="pb-3 text-[10px] font-black tracking-[0.16em] uppercase text-[#94A3B8]">Status</th>
-                  <th className="pb-3 text-[10px] font-black tracking-[0.16em] uppercase text-[#94A3B8]">Joined</th>
+                <tr className="border-b border-[var(--desk-border)]">
+                  <th className="pb-3 text-[10px] font-black tracking-[0.16em] uppercase text-[var(--desk-text-subtle)]">Practice</th>
+                  <th className="pb-3 text-[10px] font-black tracking-[0.16em] uppercase text-[var(--desk-text-subtle)]">Plan</th>
+                  <th className="pb-3 text-[10px] font-black tracking-[0.16em] uppercase text-[var(--desk-text-subtle)]">Clients</th>
+                  <th className="pb-3 text-[10px] font-black tracking-[0.16em] uppercase text-[var(--desk-text-subtle)]">Bookings</th>
+                  <th className="pb-3 text-[10px] font-black tracking-[0.16em] uppercase text-[var(--desk-text-subtle)]">Revenue</th>
+                  <th className="pb-3 text-[10px] font-black tracking-[0.16em] uppercase text-[var(--desk-text-subtle)]">Status</th>
+                  <th className="pb-3 text-[10px] font-black tracking-[0.16em] uppercase text-[var(--desk-text-subtle)]">Joined</th>
                 </tr>
               </thead>
               <tbody>
                 {tenants.slice(0, 6).map((t) => (
-                  <tr key={t.id} className="border-b border-[#F1F5F9] last:border-0 hover:bg-[#F8FAFC]">
+                  <tr key={t.id} className="border-b border-[var(--desk-border-soft)] last:border-0 hover:bg-[var(--desk-surface)]">
                     <td className="py-3.5">
                       <Link to={`/admin/tenants/${t.id}`} className="flex items-center gap-3 group">
-                        <div className="h-9 w-9 rounded-[12px] bg-[#0F3A53] text-white flex items-center justify-center font-extrabold text-sm shrink-0">
+                        <div className="h-9 w-9 rounded-[12px] bg-[var(--desk-pine-600)] text-white flex items-center justify-center font-extrabold text-sm shrink-0">
                           {t.name.charAt(0).toUpperCase()}
                         </div>
                         <div>
-                          <div className="text-[13.5px] font-bold text-[#0F172A] group-hover:text-[#0F3A53]">
+                          <div className="text-[13.5px] font-bold text-[var(--desk-text)] group-hover:text-[var(--desk-pine-600)]">
                             {t.name}
                           </div>
-                          <div className="text-[11.5px] text-[#94A3B8]">
+                          <div className="text-[11.5px] text-[var(--desk-text-subtle)]">
                             {t.slug}.{TENANT_ROOT_DOMAIN}{t.customDomain ? ` · ${t.customDomain}` : ''}
                           </div>
                         </div>
                       </Link>
                     </td>
                     <td className="py-3.5">
-                      <span className="text-[12px] font-bold text-[#64748B]">{t.subscriptionTier}</span>
+                      <span className="text-[12px] font-bold text-[var(--desk-text-muted)]">{t.subscriptionTier}</span>
                     </td>
-                    <td className="py-3.5 text-[13px] font-semibold text-[#0F172A]">{t.clients}</td>
-                    <td className="py-3.5 text-[13px] font-semibold text-[#0F172A]">{t.bookings}</td>
-                    <td className="py-3.5 text-[13px] font-semibold text-[#0F172A]">
+                    <td className="py-3.5 text-[13px] font-semibold text-[var(--desk-text)]">{t.clients}</td>
+                    <td className="py-3.5 text-[13px] font-semibold text-[var(--desk-text)]">{t.bookings}</td>
+                    <td className="py-3.5 text-[13px] font-semibold text-[var(--desk-text)]">
                       {formatNaira(t.revenueKobo)}
                     </td>
                     <td className="py-3.5">
                       <StatusBadge status={t.isActive ? 'Active' : 'Inactive'} />
                     </td>
-                    <td className="py-3.5 text-[12.5px] text-[#64748B]">{formatDate(t.createdAt)}</td>
+                    <td className="py-3.5 text-[12.5px] text-[var(--desk-text-muted)]">{formatDate(t.createdAt)}</td>
                   </tr>
                 ))}
               </tbody>

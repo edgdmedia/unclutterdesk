@@ -159,7 +159,7 @@ export function SubscriptionSettingsPage() {
 
   return (
     <Page header={<PageHeader eyebrow="SETTINGS" title="Subscription" />}>
-      <p className="text-xs text-[#64748B] font-medium">
+      <p className="text-xs text-[var(--desk-text-muted)] font-medium">
         {!subscription
           ? 'Loading subscription...'
           : subscription.complimentaryUntil
@@ -183,9 +183,9 @@ export function SubscriptionSettingsPage() {
           </div>
         ) : null}
         {subscription && plans && !plans.some((p) => p.tier === subscription.subscriptionTier) && entitlements ? (
-          <div className="rounded-[18px] border border-[#E2E8F0] bg-white px-5 py-4">
-            <p className="text-sm font-bold text-[#0F172A]">You're on the free plan</p>
-            <p className="mt-1 text-xs font-medium text-[#475569]">
+          <div className="rounded-[18px] border border-[var(--desk-border)] bg-white px-5 py-4">
+            <p className="text-sm font-bold text-[var(--desk-text)]">You're on the free plan</p>
+            <p className="mt-1 text-xs font-medium text-[var(--desk-text-body)]">
               Your therapist profile, clinical notes, intake and booking are all included.
               {entitlements.entitlements.monthlyBookingLimit !== null
                 ? ` Up to ${entitlements.entitlements.monthlyBookingLimit} bookings a month`
@@ -198,13 +198,13 @@ export function SubscriptionSettingsPage() {
                 : ''}
             </p>
             {entitlements.usage.bookingLimitReached && entitlements.upgradeToName ? (
-              <p className="mt-2 text-xs font-bold text-[#B45309]">
+              <p className="mt-2 text-xs font-bold text-[var(--desk-pending)]">
                 You've reached this month's bookings. Clients see "Fully booked this month" until you upgrade to {entitlements.upgradeToName} or the month ends.
               </p>
             ) : null}
           </div>
         ) : null}
-        {loading || !subscription || !plans ? <div className="rounded-[24px] border border-[#E2E8F0] bg-white px-6 py-10 text-sm font-medium text-[#64748B]">Loading subscription...</div> : (
+        {loading || !subscription || !plans ? <div className="rounded-[24px] border border-[var(--desk-border)] bg-white px-6 py-10 text-sm font-medium text-[var(--desk-text-muted)]">Loading subscription...</div> : (
           <>
             <div className="grid grid-cols-3 gap-5">
               {plans.filter((p): p is Plan & { tier: PaidTier } => p.tier in PLAN_FEATURES).map((p) => {
@@ -219,14 +219,14 @@ export function SubscriptionSettingsPage() {
                 const isDisabled = saving || !!disabledReason;
 
                 return (
-                <button key={plan.key} onClick={() => void handleSelectPlan(plan.key)} disabled={isDisabled} className={`p-6 rounded-[24px] transition-all relative flex flex-col justify-between space-y-4 text-left ${plan.tone === 'dark' ? 'bg-[#0F172A] text-white' : 'bg-white'} ${subscription.subscriptionTier === plan.key ? `border-2 ${plan.tone === 'dark' ? 'border-[#E3B341]' : 'border-[#0F3A53]'}` : 'border border-[#E2E8F0]'} ${isDisabled ? 'cursor-not-allowed opacity-60' : 'cursor-pointer'} disabled:opacity-60`}>
+                <button key={plan.key} onClick={() => void handleSelectPlan(plan.key)} disabled={isDisabled} className={`p-6 rounded-[24px] transition-all relative flex flex-col justify-between space-y-4 text-left ${plan.tone === 'dark' ? 'bg-[var(--desk-sidebar)] text-white' : 'bg-white'} ${subscription.subscriptionTier === plan.key ? `border-2 ${plan.tone === 'dark' ? 'border-[var(--desk-pending-border)]' : 'border-[var(--desk-pine-600)]'}` : 'border border-[var(--desk-border)]'} ${isDisabled ? 'cursor-not-allowed opacity-60' : 'cursor-pointer'} disabled:opacity-60`}>
                   <div className="space-y-3">
                     <div className="flex items-center justify-between"><h3 className="text-[18px] font-extrabold">{plan.name}</h3>{subscription.subscriptionTier === plan.key ? <span className="text-[10px] font-black uppercase tracking-wider">Current</span> : entitlements?.upgradeTo === plan.key ? <span className="text-[10px] font-black uppercase tracking-wider">Next step up</span> : null}</div>
                     <div className="text-[28px] font-extrabold">{plan.price}</div>
-                    <ul className={`space-y-2 text-xs font-medium pt-2 border-t ${plan.tone === 'dark' ? 'text-slate-300 border-slate-800' : 'text-[#475569] border-[#F1F5F9]'}`}>
-                      {plan.features.map((feature) => <li key={feature} className="flex items-center gap-2"><Check className={`h-3.5 w-3.5 ${plan.tone === 'dark' ? 'text-[#E3B341]' : 'text-emerald-600'}`} /> {feature}</li>)}
+                    <ul className={`space-y-2 text-xs font-medium pt-2 border-t ${plan.tone === 'dark' ? 'text-slate-300 border-slate-800' : 'text-[var(--desk-text-body)] border-[var(--desk-border-soft)]'}`}>
+                      {plan.features.map((feature) => <li key={feature} className="flex items-center gap-2"><Check className={`h-3.5 w-3.5 ${plan.tone === 'dark' ? 'text-[var(--ds-sky)]' : 'text-emerald-600'}`} /> {feature}</li>)}
                       {subscription.subscriptionTier === plan.key && subscription.monthlyBookingLimit != null && subscription.currentMonthBookings !== undefined && (
-                        <li className="flex items-center gap-2 pt-2 text-[#0F3A53] font-bold">
+                        <li className="flex items-center gap-2 pt-2 text-[var(--desk-pine-600)] font-bold">
                           <TrendingUp className="h-3.5 w-3.5" />
                           {subscription.currentMonthBookings} of {subscription.monthlyBookingLimit} bookings used this month
                         </li>
@@ -242,15 +242,15 @@ export function SubscriptionSettingsPage() {
               )})}
             </div>
             {!subscription.complimentaryUntil && subscription.subscriptionStatus !== 'active' ? (
-              <form onSubmit={(e) => void handleRedeem(e)} className="rounded-[24px] border border-[#E2E8F0] bg-white px-6 py-5 flex flex-wrap items-end gap-3">
+              <form onSubmit={(e) => void handleRedeem(e)} className="rounded-[24px] border border-[var(--desk-border)] bg-white px-6 py-5 flex flex-wrap items-end gap-3">
                 <div className="space-y-1.5 flex-1 min-w-[220px]">
-                  <label htmlFor="invite-code" className="text-sm font-bold text-[#0F172A] block">Have an invite code?</label>
+                  <label htmlFor="invite-code" className="text-sm font-bold text-[var(--desk-text)] block">Have an invite code?</label>
                   <input
                     id="invite-code"
                     value={inviteCode}
                     onChange={(e) => setInviteCode(e.target.value.toUpperCase())}
                     placeholder="DESK-XXXX-XXXX"
-                    className="w-full h-[42px] px-3.5 rounded-[12px] bg-[#F8FAFC] border border-[#E2E8F0] text-[13px] font-mono font-bold text-[#0F172A] outline-none focus:border-[#94A3B8]"
+                    className="w-full h-[42px] px-3.5 rounded-[12px] bg-[var(--desk-surface)] border border-[var(--desk-border)] text-[13px] font-mono font-bold text-[var(--desk-text)] outline-none focus:border-[var(--desk-border-strong)]"
                   />
                 </div>
                 <button type="submit" disabled={redeeming || !inviteCode.trim()} className="h-[42px] px-5 rounded-[12px] text-white text-[13px] font-semibold cursor-pointer disabled:opacity-60" style={{ backgroundColor: primaryColor }}>
@@ -258,13 +258,13 @@ export function SubscriptionSettingsPage() {
                 </button>
               </form>
             ) : null}
-            <div className="rounded-[24px] border border-[#E2E8F0] bg-white px-6 py-6 space-y-3">
-              <div className="flex items-center gap-2 text-sm font-bold text-[#0F172A]"><TrendingUp className="h-4 w-4 text-[#0F3A53]" /> Billing history</div>
+            <div className="rounded-[24px] border border-[var(--desk-border)] bg-white px-6 py-6 space-y-3">
+              <div className="flex items-center gap-2 text-sm font-bold text-[var(--desk-text)]"><TrendingUp className="h-4 w-4 text-[var(--desk-pine-600)]" /> Billing history</div>
               {history.map((item) => (
-                <div key={`${item.type}_${item.date}`} className="rounded-[16px] bg-[#F8FAFC] border border-[#E2E8F0] px-4 py-3">
-                  <div className="text-[12px] font-bold text-[#0F172A]">{item.title}</div>
-                  <div className="text-[11px] text-[#94A3B8] font-medium">{new Intl.DateTimeFormat('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }).format(new Date(item.date))}</div>
-                  <div className="mt-1 text-[12px] text-[#475569] font-medium">{item.detail}</div>
+                <div key={`${item.type}_${item.date}`} className="rounded-[16px] bg-[var(--desk-surface)] border border-[var(--desk-border)] px-4 py-3">
+                  <div className="text-[12px] font-bold text-[var(--desk-text)]">{item.title}</div>
+                  <div className="text-[11px] text-[var(--desk-text-subtle)] font-medium">{new Intl.DateTimeFormat('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }).format(new Date(item.date))}</div>
+                  <div className="mt-1 text-[12px] text-[var(--desk-text-body)] font-medium">{item.detail}</div>
                 </div>
               ))}
             </div>

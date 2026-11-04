@@ -171,7 +171,7 @@ export function AnalyticsPage({ clients = [], sessions = [] }: AnalyticsPageProp
             <button
               type="button"
               onClick={downloadReport}
-              className="h-[40px] px-4 rounded-[14px] bg-white border border-[#CBD5E1] text-[#0F172A] text-xs font-bold hover:bg-[#F8FAFC] flex items-center gap-1.5 cursor-pointer"
+              className="h-[40px] px-4 rounded-[14px] bg-white border border-[var(--desk-pine-200)] text-[var(--desk-text)] text-xs font-bold hover:bg-[var(--desk-surface)] flex items-center gap-1.5 cursor-pointer"
             >
               <Download className="h-3.5 w-3.5" />
               <span>Download report</span>
@@ -201,15 +201,15 @@ export function AnalyticsPage({ clients = [], sessions = [] }: AnalyticsPageProp
           <div className="flex flex-wrap items-center justify-between gap-2 mb-6">
             <div>
               <Eyebrow>LIVE SESSION VOLUME</Eyebrow>
-              <h3 className="text-[17px] font-bold text-[#0F172A]">Sessions by month</h3>
+              <h3 className="text-[17px] font-bold text-[var(--desk-text)]">Sessions by month</h3>
             </div>
-            <span className="text-[12.5px] text-[#64748B] font-medium">Derived from real scheduled sessions currently loaded</span>
+            <span className="text-[12.5px] text-[var(--desk-text-muted)] font-medium">Derived from real scheduled sessions currently loaded</span>
           </div>
 
           <div className="h-[220px] flex items-end gap-1.5 md:gap-3.5 pt-4">
             {monthlyBars.map((bar) => (
               <div key={bar.month} className="flex-1 flex flex-col items-center gap-2 h-full justify-end">
-                <span className="text-[11px] font-bold text-[#64748B]">{bar.val}</span>
+                <span className="text-[11px] font-bold text-[var(--desk-text-muted)]">{bar.val}</span>
                 <div
                   className="w-full rounded-t-[10px] rounded-b-[4px] transition-all duration-300 min-h-[8px]"
                   style={{
@@ -217,7 +217,7 @@ export function AnalyticsPage({ clients = [], sessions = [] }: AnalyticsPageProp
                     backgroundColor: bar.current ? primaryColor : `${primaryColor}2E`,
                   }}
                 />
-                <span className="text-[10.5px] font-semibold text-[#94A3B8]">{bar.month}</span>
+                <span className="text-[10.5px] font-semibold text-[var(--desk-text-subtle)]">{bar.month}</span>
               </div>
             ))}
           </div>
@@ -226,17 +226,17 @@ export function AnalyticsPage({ clients = [], sessions = [] }: AnalyticsPageProp
         <Grid cols={{ base: 1, lg: 2 }} gap="lg">
           <Card padding="p-[22px_24px]">
             <Eyebrow className="mb-1">SERVICE DISTRIBUTION</Eyebrow>
-            <h3 className="text-[17px] font-bold text-[#0F172A] mb-4">Session mix</h3>
+            <h3 className="text-[17px] font-bold text-[var(--desk-text)] mb-4">Session mix</h3>
 
             <div className="space-y-4">
               {distribution.map((bucket) => (
                 <div key={bucket.label} className="space-y-1.5">
                   <div className="flex items-center justify-between text-xs">
-                    <span className="font-bold text-[#0F172A]">{bucket.label}</span>
-                    <span className="text-[#94A3B8]">{bucket.count} sessions</span>
-                    <strong className="font-extrabold text-[#0F172A]">{bucket.percent}%</strong>
+                    <span className="font-bold text-[var(--desk-text)]">{bucket.label}</span>
+                    <span className="text-[var(--desk-text-subtle)]">{bucket.count} sessions</span>
+                    <strong className="font-extrabold text-[var(--desk-text)]">{bucket.percent}%</strong>
                   </div>
-                  <div className="h-2.5 bg-[#F1F5F9] rounded-full overflow-hidden">
+                  <div className="h-2.5 bg-[var(--desk-surface-muted)] rounded-full overflow-hidden">
                     <div className="h-full rounded-full" style={{ width: `${bucket.percent}%`, backgroundColor: bucket.color }} />
                   </div>
                 </div>
@@ -246,16 +246,16 @@ export function AnalyticsPage({ clients = [], sessions = [] }: AnalyticsPageProp
 
           <Card padding="p-[22px_24px]">
             <Eyebrow className="mb-1">LIVE MIX</Eyebrow>
-            <h3 className="text-[17px] font-bold text-[#0F172A] mb-4">Roster and completion snapshot</h3>
+            <h3 className="text-[17px] font-bold text-[var(--desk-text)] mb-4">Roster and completion snapshot</h3>
 
-            <div className="divide-y divide-[#F1F5F9]">
+            <div className="divide-y divide-[var(--desk-border-soft)]">
               {clientMix.map((item) => (
                 <div key={item.source} className="py-3 flex items-center justify-between gap-4 first:pt-0 last:pb-0">
                   <div>
-                    <h4 className="text-[13.5px] font-semibold text-[#0F172A] leading-tight truncate">{item.source}</h4>
-                    <span className="text-[12px] text-[#94A3B8] font-medium">{item.views}</span>
+                    <h4 className="text-[13.5px] font-semibold text-[var(--desk-text)] leading-tight truncate">{item.source}</h4>
+                    <span className="text-[12px] text-[var(--desk-text-subtle)] font-medium">{item.views}</span>
                   </div>
-                  <span className="text-[13.5px] font-extrabold text-[#0F172A] text-right w-[40px] shrink-0">{item.share}</span>
+                  <span className="text-[13.5px] font-extrabold text-[var(--desk-text)] text-right w-[40px] shrink-0">{item.share}</span>
                 </div>
               ))}
             </div>

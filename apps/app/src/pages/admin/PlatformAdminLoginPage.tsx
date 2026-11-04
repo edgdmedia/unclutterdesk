@@ -26,37 +26,37 @@ export function PlatformAdminLoginPage() {
   };
 
   return (
-    <div className="min-h-screen bg-[#0B2C40] text-white flex flex-col items-center justify-center px-5 relative overflow-hidden">
+    <div className="min-h-screen bg-[var(--desk-pine-800)] text-white flex flex-col items-center justify-center px-5 relative overflow-hidden">
       <div className="absolute inset-0 pointer-events-none">
-        <div className="absolute -top-40 -right-40 h-[420px] w-[420px] rounded-full bg-[#E3B341]/10 blur-[90px]" />
-        <div className="absolute -bottom-48 -left-32 h-[420px] w-[420px] rounded-full bg-[#1B5375]/40 blur-[90px]" />
+        <div className="absolute -top-40 -right-40 h-[420px] w-[420px] rounded-full bg-[var(--ds-sky)]/10 blur-[90px]" />
+        <div className="absolute -bottom-48 -left-32 h-[420px] w-[420px] rounded-full bg-[var(--desk-pine-500)]/40 blur-[90px]" />
       </div>
 
       <div className="relative w-full max-w-[420px]">
         <div className="flex items-center gap-2.5 mb-8 justify-center">
           <UnclutterMark size={36} showBadge={false} className="rounded-[12px]" />
           <div className="flex items-center gap-1.5">
-            <span className="font-bold text-[19px] tracking-[-0.02em] text-[#F8FAFC]">Unclutter Desk</span>
-            <span className="h-[18px] px-2 rounded-full text-[9px] font-extrabold tracking-[0.08em] bg-[#E3B341] text-[#0F172A] flex items-center justify-center uppercase">
+            <span className="font-bold text-[19px] tracking-[-0.02em] text-[var(--ds-on-band)]">Unclutter Desk</span>
+            <span className="h-[18px] px-2 rounded-full text-[9px] font-extrabold tracking-[0.08em] bg-[var(--ds-sky)] text-[var(--desk-text)] flex items-center justify-center uppercase">
               Admin
             </span>
           </div>
         </div>
 
-        <div className="bg-white rounded-[24px] text-[#0F172A] p-[30px] shadow-[0_24px_60px_rgba(0,0,0,0.35)] border border-white/10">
+        <div className="bg-white rounded-[24px] text-[var(--desk-text)] p-[30px] shadow-[0_24px_60px_rgba(0,0,0,0.35)] border border-white/10">
           <div className="flex items-center gap-2 mb-1">
-            <ShieldCheck className="h-[18px] w-[18px] text-[#0F3A53]" strokeWidth={2.2} />
-            <div className="text-[10px] font-black tracking-[0.2em] uppercase text-[#94A3B8]">
+            <ShieldCheck className="h-[18px] w-[18px] text-[var(--desk-pine-600)]" strokeWidth={2.2} />
+            <div className="text-[10px] font-black tracking-[0.2em] uppercase text-[var(--desk-text-subtle)]">
               Platform console
             </div>
           </div>
           <div className="text-[26px] font-bold tracking-[-0.03em]">Admin sign in</div>
-          <p className="mt-[6px] text-[13.5px] text-[#64748B] leading-[1.6]">
+          <p className="mt-[6px] text-[13.5px] text-[var(--desk-text-muted)] leading-[1.6]">
             Restricted to Unclutter Desk staff managing practice tenants.
           </p>
 
           <form onSubmit={handleLogin} className="mt-[26px]">
-            <AuthField label="Email address" icon={<Mail className="h-[17px] w-[17px] text-[#94A3B8] flex-none" strokeWidth={2} />}>
+            <AuthField label="Email address" icon={<Mail className="h-[17px] w-[17px] text-[var(--desk-text-subtle)] flex-none" strokeWidth={2} />}>
               <input
                 type="email"
                 required
@@ -70,12 +70,12 @@ export function PlatformAdminLoginPage() {
             <div className="mt-[18px]">
               <AuthField
                 label="Password"
-                icon={<Lock className="h-[17px] w-[17px] text-[#94A3B8] flex-none" strokeWidth={2} />}
+                icon={<Lock className="h-[17px] w-[17px] text-[var(--desk-text-subtle)] flex-none" strokeWidth={2} />}
                 trailing={
                   <button
                     type="button"
                     onClick={() => setShowPassword((v) => !v)}
-                    className="flex-none text-[#94A3B8] hover:text-[#475569] cursor-pointer"
+                    className="flex-none text-[var(--desk-text-subtle)] hover:text-[var(--desk-text-body)] cursor-pointer"
                     aria-label="Toggle password visibility"
                   >
                     {showPassword ? (
@@ -106,7 +106,7 @@ export function PlatformAdminLoginPage() {
             <button
               type="submit"
               disabled={isLoading}
-              className="mt-[26px] w-full h-[54px] rounded-[14px] bg-[#0F3A53] text-white text-[15px] font-bold inline-flex items-center justify-center gap-[10px] cursor-pointer shadow-[0_10px_26px_rgba(15,58,83,0.3)] transition-[filter] hover:brightness-110 disabled:opacity-70 disabled:cursor-not-allowed"
+              className="mt-[26px] w-full h-[54px] rounded-[14px] bg-[var(--desk-pine-600)] text-white text-[15px] font-bold inline-flex items-center justify-center gap-[10px] cursor-pointer shadow-[0_10px_26px_rgba(15,58,83,0.3)] transition-[filter] hover:brightness-110 disabled:opacity-70 disabled:cursor-not-allowed"
             >
               {isLoading ? (
                 <>

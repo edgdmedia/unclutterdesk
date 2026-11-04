@@ -79,3 +79,39 @@ body {
 .os-brand-btn:active {
   transform: translateY(1px);
 }
+
+/* ── Text tokens on dark grounds ──
+   The muted text tokens are tuned for light surfaces. Inside a dark ground
+   (sidebar, ink and navy panels, primary-blue cards) they switch to light
+   values, and a light surface nested inside switches them back. Matching
+   whole class tokens ([class~=]) leaves hover: and /opacity variants out.
+   Every pair is 4.5:1 or better (dashboard-tokens plan, 3b). */
+[class~="bg-[var(--desk-sidebar)]"],
+[class~="bg-[var(--desk-sidebar)]/90"],
+[class~="bg-[var(--desk-sidebar-hover)]"],
+[class~="bg-[var(--desk-sidebar-hover)]/90"],
+[class~="bg-[var(--desk-sidebar-active)]"],
+[class~="bg-[var(--desk-pine-900)]"],
+[class~="bg-[var(--desk-pine-800)]"],
+[class~="bg-[var(--desk-pine-700)]"] {
+  --desk-text-body: #C9D6EA;
+  --desk-text-muted: #B3C2DB;
+  --desk-text-subtle: #A3B4D0;
+}
+[class~="bg-[var(--desk-pine-600)]"],
+[class~="bg-[var(--desk-pine-500)]"] {
+  --desk-text-body: #F7FAFE;
+  --desk-text-muted: #E9F0FB;
+  --desk-text-subtle: #E9F0FB;
+}
+.bg-white,
+[class~="bg-[var(--desk-card)]"],
+[class~="bg-[var(--desk-surface)]"],
+[class~="bg-[var(--desk-surface-alt)]"],
+[class~="bg-[var(--desk-surface-muted)]"],
+[class~="bg-[var(--desk-pine-050)]"],
+[class~="bg-[var(--desk-pine-100)]"] {
+  --desk-text-body: #4A5876;
+  --desk-text-muted: #56637D;
+  --desk-text-subtle: #5F6D88;
+}

@@ -49,18 +49,18 @@ export function AdminTenantsPage() {
       <Eyebrow>Platform console</Eyebrow>
       <div className="mt-1 flex items-end justify-between gap-4 flex-wrap">
         <div>
-          <h1 className="text-[26px] font-bold tracking-[-0.03em] text-[#0F172A]">Tenants</h1>
-          <p className="mt-1 text-[13.5px] text-[#64748B]">
+          <h1 className="text-[26px] font-bold tracking-[-0.03em] text-[var(--desk-text)]">Tenants</h1>
+          <p className="mt-1 text-[13.5px] text-[var(--desk-text-muted)]">
             Every practice on the Unclutter Desk platform.
           </p>
         </div>
-        <div className="flex items-center gap-3 rounded-[14px] border border-[#E2E8F0] bg-white px-4 h-[44px] w-full sm:w-[280px]">
-          <Search className="h-4 w-4 text-[#94A3B8]" strokeWidth={2} />
+        <div className="flex items-center gap-3 rounded-[14px] border border-[var(--desk-border)] bg-white px-4 h-[44px] w-full sm:w-[280px]">
+          <Search className="h-4 w-4 text-[var(--desk-text-subtle)]" strokeWidth={2} />
           <input
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder="Search practices…"
-            className="flex-1 min-w-0 bg-transparent border-none outline-none text-[14px] text-[#0F172A] placeholder:text-[#94A3B8]"
+            className="flex-1 min-w-0 bg-transparent border-none outline-none text-[14px] text-[var(--desk-text)] placeholder:text-[var(--desk-text-subtle)]"
           />
         </div>
       </div>
@@ -73,14 +73,14 @@ export function AdminTenantsPage() {
 
       <Card className="mt-6">
         {isLoading || !tenants ? (
-          <div className="flex items-center justify-center py-16 text-[#94A3B8]">
+          <div className="flex items-center justify-center py-16 text-[var(--desk-text-subtle)]">
             <Loader2 className="h-5 w-5 animate-spin mr-2" /> Loading tenants…
           </div>
         ) : filtered.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-16 text-center">
-            <Building2 className="h-8 w-8 text-[#CBD5E1] mb-3" strokeWidth={1.5} />
-            <p className="text-[14px] font-semibold text-[#64748B]">No practices found</p>
-            <p className="text-[12.5px] text-[#94A3B8] mt-1">
+            <Building2 className="h-8 w-8 text-[var(--desk-pine-200)] mb-3" strokeWidth={1.5} />
+            <p className="text-[14px] font-semibold text-[var(--desk-text-muted)]">No practices found</p>
+            <p className="text-[12.5px] text-[var(--desk-text-subtle)] mt-1">
               {query ? 'Try a different search term.' : 'Tenants will appear here once they onboard.'}
             </p>
           </div>
@@ -88,20 +88,20 @@ export function AdminTenantsPage() {
           <div className="overflow-x-auto">
             <table className="w-full text-left">
               <thead>
-                <tr className="border-b border-[#E2E8F0]">
-                  <th className="pb-3 text-[10px] font-black tracking-[0.16em] uppercase text-[#94A3B8]">Practice</th>
-                  <th className="pb-3 text-[10px] font-black tracking-[0.16em] uppercase text-[#94A3B8]">Plan</th>
-                  <th className="pb-3 text-[10px] font-black tracking-[0.16em] uppercase text-[#94A3B8]">Clients</th>
-                  <th className="pb-3 text-[10px] font-black tracking-[0.16em] uppercase text-[#94A3B8]">Bookings</th>
-                  <th className="pb-3 text-[10px] font-black tracking-[0.16em] uppercase text-[#94A3B8]">Revenue</th>
-                  <th className="pb-3 text-[10px] font-black tracking-[0.16em] uppercase text-[#94A3B8]">Status</th>
-                  <th className="pb-3 text-[10px] font-black tracking-[0.16em] uppercase text-[#94A3B8]">Joined</th>
-                  <th className="pb-3 text-right text-[10px] font-black tracking-[0.16em] uppercase text-[#94A3B8]">Manage</th>
+                <tr className="border-b border-[var(--desk-border)]">
+                  <th className="pb-3 text-[10px] font-black tracking-[0.16em] uppercase text-[var(--desk-text-subtle)]">Practice</th>
+                  <th className="pb-3 text-[10px] font-black tracking-[0.16em] uppercase text-[var(--desk-text-subtle)]">Plan</th>
+                  <th className="pb-3 text-[10px] font-black tracking-[0.16em] uppercase text-[var(--desk-text-subtle)]">Clients</th>
+                  <th className="pb-3 text-[10px] font-black tracking-[0.16em] uppercase text-[var(--desk-text-subtle)]">Bookings</th>
+                  <th className="pb-3 text-[10px] font-black tracking-[0.16em] uppercase text-[var(--desk-text-subtle)]">Revenue</th>
+                  <th className="pb-3 text-[10px] font-black tracking-[0.16em] uppercase text-[var(--desk-text-subtle)]">Status</th>
+                  <th className="pb-3 text-[10px] font-black tracking-[0.16em] uppercase text-[var(--desk-text-subtle)]">Joined</th>
+                  <th className="pb-3 text-right text-[10px] font-black tracking-[0.16em] uppercase text-[var(--desk-text-subtle)]">Manage</th>
                 </tr>
               </thead>
               <tbody>
                 {filtered.map((t) => (
-                  <tr key={t.id} className="border-b border-[#F1F5F9] last:border-0 hover:bg-[#F8FAFC]">
+                  <tr key={t.id} className="border-b border-[var(--desk-border-soft)] last:border-0 hover:bg-[var(--desk-surface)]">
                     <td className="py-3.5">
                       <Link to={`/admin/tenants/${t.id}`} className="flex items-center gap-3 group">
                         <div
@@ -111,27 +111,27 @@ export function AdminTenantsPage() {
                           {t.name.charAt(0).toUpperCase()}
                         </div>
                         <div>
-                          <div className="text-[13.5px] font-bold text-[#0F172A] group-hover:text-[#0F3A53]">
+                          <div className="text-[13.5px] font-bold text-[var(--desk-text)] group-hover:text-[var(--desk-pine-600)]">
                             {t.name}
                           </div>
-                          <div className="text-[11.5px] text-[#94A3B8]">
+                          <div className="text-[11.5px] text-[var(--desk-text-subtle)]">
                             {t.slug}.{TENANT_ROOT_DOMAIN}{t.customDomain ? ` · ${t.customDomain}` : ''}
                           </div>
                         </div>
                       </Link>
                     </td>
                     <td className="py-3.5">
-                      <span className="text-[12px] font-bold text-[#64748B]">{t.subscriptionTier}</span>
+                      <span className="text-[12px] font-bold text-[var(--desk-text-muted)]">{t.subscriptionTier}</span>
                     </td>
-                    <td className="py-3.5 text-[13px] font-semibold text-[#0F172A]">{t.clients}</td>
-                    <td className="py-3.5 text-[13px] font-semibold text-[#0F172A]">{t.bookings}</td>
-                    <td className="py-3.5 text-[13px] font-semibold text-[#0F172A]">
+                    <td className="py-3.5 text-[13px] font-semibold text-[var(--desk-text)]">{t.clients}</td>
+                    <td className="py-3.5 text-[13px] font-semibold text-[var(--desk-text)]">{t.bookings}</td>
+                    <td className="py-3.5 text-[13px] font-semibold text-[var(--desk-text)]">
                       {formatNaira(t.revenueKobo)}
                     </td>
                     <td className="py-3.5">
                       <StatusBadge status={t.isActive ? 'Active' : 'Inactive'} />
                     </td>
-                    <td className="py-3.5 text-[12.5px] text-[#64748B]">{formatDate(t.createdAt)}</td>
+                    <td className="py-3.5 text-[12.5px] text-[var(--desk-text-muted)]">{formatDate(t.createdAt)}</td>
                     <td className="py-3.5 text-right">
                       <button
                         type="button"
@@ -139,8 +139,8 @@ export function AdminTenantsPage() {
                         disabled={updatingId === t.id}
                         className={`inline-flex items-center gap-1.5 h-8 px-3 rounded-[10px] text-[12px] font-bold cursor-pointer transition-colors disabled:opacity-50 ${
                           t.isActive
-                            ? 'bg-[#FFF1F2] text-[#E11D48] hover:bg-[#FFE4E6]'
-                            : 'bg-[#ECFDF5] text-[#059669] hover:bg-[#D1FAE5]'
+                            ? 'bg-[var(--desk-danger-bg)] text-[var(--desk-danger)] hover:bg-[var(--desk-danger-bg)]'
+                            : 'bg-[var(--desk-active-bg)] text-[var(--desk-active)] hover:bg-[var(--desk-active-bg)]'
                         }`}
                       >
                         {updatingId === t.id && <Loader2 className="h-3.5 w-3.5 animate-spin" />}

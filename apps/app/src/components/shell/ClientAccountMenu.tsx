@@ -37,7 +37,7 @@ export function ClientAccountMenu({ mode }: { mode: SidebarMode }) {
 
   const name = profile ? `${profile.firstName || ''} ${profile.lastName || ''}`.trim() || profile.email : brand.name;
   const initials = initialsOf(name, 'CL');
-  const MENU_ITEM = 'w-full flex items-center gap-2.5 px-3 h-[38px] rounded-[10px] text-[13.5px] font-semibold text-[#CBD5E1] hover:text-white hover:bg-[#334155] cursor-pointer';
+  const MENU_ITEM = 'w-full flex items-center gap-2.5 px-3 h-[38px] rounded-[10px] text-[13.5px] font-semibold text-[var(--desk-pine-200)] hover:text-white hover:bg-[var(--desk-sidebar-hover)] cursor-pointer';
 
   return (
     <div ref={ref} className="relative w-full">
@@ -49,30 +49,30 @@ export function ClientAccountMenu({ mode }: { mode: SidebarMode }) {
         onClick={() => setOpen((v) => !v)}
         className={`flex items-center gap-2.5 rounded-[12px] cursor-pointer ${compact ? 'mx-auto' : 'w-full'}`}
       >
-        <div className="h-8 w-8 rounded-[10px] bg-[#1B5375] text-white flex items-center justify-center font-extrabold text-xs shrink-0 border border-white/10">
+        <div className="h-8 w-8 rounded-[10px] bg-[var(--desk-pine-500)] text-white flex items-center justify-center font-extrabold text-xs shrink-0 border border-white/10">
           {initials}
         </div>
         {compact ? null : (
           <>
             <div className="truncate text-left min-w-0">
-              <p className="text-[12.5px] font-semibold text-[#E2E8F0] truncate leading-snug">{name}</p>
-              <p className="text-[10px] text-[#64748B] font-medium leading-none">{profile?.email}</p>
+              <p className="text-[12.5px] font-semibold text-[var(--desk-pine-200)] truncate leading-snug">{name}</p>
+              <p className="text-[10px] text-[var(--desk-text-muted)] font-medium leading-none">{profile?.email}</p>
             </div>
-            <ChevronDown className={`ml-auto h-4 w-4 text-[#64748B] shrink-0 transition-transform duration-200 ${open ? 'rotate-180' : ''}`} />
+            <ChevronDown className={`ml-auto h-4 w-4 text-[var(--desk-text-muted)] shrink-0 transition-transform duration-200 ${open ? 'rotate-180' : ''}`} />
           </>
         )}
       </button>
       {open ? (
         <div
           role="menu"
-          className={`absolute bottom-full mb-2 rounded-[14px] bg-[#1E293B] border border-white/10 shadow-2xl p-1.5 space-y-0.5 z-50 ${compact ? 'left-0 w-[220px]' : 'left-0 right-0'}`}
+          className={`absolute bottom-full mb-2 rounded-[14px] bg-[var(--desk-sidebar-hover)] border border-white/10 shadow-2xl p-1.5 space-y-0.5 z-50 ${compact ? 'left-0 w-[220px]' : 'left-0 right-0'}`}
         >
           <Link to="/portal/details" role="menuitem" onClick={() => setOpen(false)} className={MENU_ITEM}>
             <IdCard className="h-4 w-4 shrink-0" />
             <span className="truncate">My details</span>
           </Link>
           <div className="h-px bg-white/10 my-1.5" />
-          <button type="button" role="menuitem" onClick={() => void handleSignOut()} disabled={loggingOut} className="w-full flex items-center gap-2.5 px-3 h-[38px] rounded-[10px] text-[13px] font-semibold text-[#E11D48] hover:bg-[#E11D48]/10 disabled:opacity-50 cursor-pointer">
+          <button type="button" role="menuitem" onClick={() => void handleSignOut()} disabled={loggingOut} className="w-full flex items-center gap-2.5 px-3 h-[38px] rounded-[10px] text-[13px] font-semibold text-[var(--desk-danger)] hover:bg-[var(--desk-danger)]/10 disabled:opacity-50 cursor-pointer">
             {loggingOut ? <Loader2 className="h-4 w-4 animate-spin shrink-0" /> : <LogOut className="h-4 w-4 shrink-0" />}
             Sign out
           </button>

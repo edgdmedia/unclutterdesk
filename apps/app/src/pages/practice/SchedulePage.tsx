@@ -273,13 +273,13 @@ export function SchedulePage({ sessions, setSessions, clients, tenantSlug, onRef
           actions={
             <>
               {/* Segmented Control */}
-              <div className="h-[40px] p-1 bg-[#F1F5F9] border border-[#E2E8F0] rounded-[14px] flex gap-1">
+              <div className="h-[40px] p-1 bg-[var(--desk-surface-muted)] border border-[var(--desk-border)] rounded-[14px] flex gap-1">
                 {(['week', 'day', 'month'] as const).map((m) => (
                   <button
                     key={m}
                     onClick={() => setViewMode(m)}
                     className={`px-4 rounded-[10px] text-xs font-bold capitalize transition-all cursor-pointer ${
-                      viewMode === m ? 'bg-white text-[#0F172A] shadow-xs' : 'text-[#64748B]'
+                      viewMode === m ? 'bg-white text-[var(--desk-text)] shadow-xs' : 'text-[var(--desk-text-muted)]'
                     }`}
                   >
                     {m}
@@ -289,7 +289,7 @@ export function SchedulePage({ sessions, setSessions, clients, tenantSlug, onRef
 
               <button
                 onClick={() => navigate('/dashboard/settings/availability')}
-                className="hidden sm:flex h-[40px] px-4 rounded-[14px] bg-white border border-[#CBD5E1] text-[#0F172A] text-xs font-bold hover:bg-[#F8FAFC] items-center gap-1.5 cursor-pointer"
+                className="hidden sm:flex h-[40px] px-4 rounded-[14px] bg-white border border-[var(--desk-pine-200)] text-[var(--desk-text)] text-xs font-bold hover:bg-[var(--desk-surface)] items-center gap-1.5 cursor-pointer"
               >
                 <Settings className="h-3.5 w-3.5" />
                 <span>Set availability</span>
@@ -314,7 +314,7 @@ export function SchedulePage({ sessions, setSessions, clients, tenantSlug, onRef
               <button
                 type="button"
                 onClick={() => setShowBooking(true)}
-                className="flex h-[40px] px-3 md:px-4 rounded-[14px] bg-[#0F3A53] text-white text-xs font-bold items-center gap-1.5 cursor-pointer"
+                className="flex h-[40px] px-3 md:px-4 rounded-[14px] bg-[var(--desk-pine-600)] text-white text-xs font-bold items-center gap-1.5 cursor-pointer"
               >
                 <CalendarPlus className="h-4 w-4" />
                 <span className="hidden sm:inline">New booking</span>
@@ -330,17 +330,17 @@ export function SchedulePage({ sessions, setSessions, clients, tenantSlug, onRef
         {/* Title Bar & Legend */}
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 shrink-0">
           <div className="flex items-center gap-3 justify-between md:justify-start">
-            <h2 className="text-[15px] font-bold text-[#0F172A]">{getHeaderTitle()}</h2>
+            <h2 className="text-[15px] font-bold text-[var(--desk-text)]">{getHeaderTitle()}</h2>
             <div className="flex items-center gap-1">
               <button
                 onClick={() => handleNavigate('back')}
-                className="h-8 w-8 rounded-[9px] bg-white border border-[#E2E8F0] flex items-center justify-center text-[#64748B] hover:bg-[#F8FAFC] cursor-pointer"
+                className="h-8 w-8 rounded-[9px] bg-white border border-[var(--desk-border)] flex items-center justify-center text-[var(--desk-text-muted)] hover:bg-[var(--desk-surface)] cursor-pointer"
               >
                 <ChevronLeft className="h-4 w-4" />
               </button>
               <button
                 onClick={() => handleNavigate('forward')}
-                className="h-8 w-8 rounded-[9px] bg-white border border-[#E2E8F0] flex items-center justify-center text-[#64748B] hover:bg-[#F8FAFC] cursor-pointer"
+                className="h-8 w-8 rounded-[9px] bg-white border border-[var(--desk-border)] flex items-center justify-center text-[var(--desk-text-muted)] hover:bg-[var(--desk-surface)] cursor-pointer"
               >
                 <ChevronRight className="h-4 w-4" />
               </button>
@@ -348,7 +348,7 @@ export function SchedulePage({ sessions, setSessions, clients, tenantSlug, onRef
           </div>
 
           {services.length ? (
-            <ul className="flex flex-wrap items-center gap-x-4 gap-y-1 text-[11.5px] text-[#64748B] font-semibold" aria-label="Services">
+            <ul className="flex flex-wrap items-center gap-x-4 gap-y-1 text-[11.5px] text-[var(--desk-text-muted)] font-semibold" aria-label="Services">
               {services.map((title) => (
                 <li key={title} className="flex items-center gap-1.5">
                   <span className="h-2.5 w-2.5 rounded-[4px]" style={{ backgroundColor: serviceColour(title, primaryColor) }} aria-hidden />
@@ -362,13 +362,13 @@ export function SchedulePage({ sessions, setSessions, clients, tenantSlug, onRef
         {/* View Mode Rendering */}
         {viewMode !== 'month' ? (
           /* Week & Day Grid View */
-          <div className="os-card overflow-x-auto flex-1 border border-[#E2E8F0] w-full bg-white">
+          <div className="os-card overflow-x-auto flex-1 border border-[var(--desk-border)] w-full bg-white">
           <div className="grid min-w-[600px] md:min-w-[800px]" style={{ gridTemplateColumns: `64px repeat(${activeDays.length}, 1fr)` }}>
             {/* Hour Gutter */}
-            <div className="bg-[#FCFDFE] border-r border-[#E2E8F0]">
-              <div className="h-[58px] border-b border-[#E2E8F0]" />
+            <div className="bg-[var(--desk-surface-alt)] border-r border-[var(--desk-border)]">
+              <div className="h-[58px] border-b border-[var(--desk-border)]" />
               {hourRows.map((h) => (
-                <div key={h} data-hour={h} className="h-[62px] pr-3 text-right text-[10.5px] font-semibold text-[#94A3B8] -translate-y-1.5">
+                <div key={h} data-hour={h} className="h-[62px] pr-3 text-right text-[10.5px] font-semibold text-[var(--desk-text-subtle)] -translate-y-1.5">
                   {hourLabel(h)}
                 </div>
               ))}
@@ -380,13 +380,13 @@ export function SchedulePage({ sessions, setSessions, clients, tenantSlug, onRef
               const away = awayOn(day);
 
               return (
-                <div key={dayIdx} className="border-r border-[#E2E8F0] last:border-r-0 relative flex flex-col">
+                <div key={dayIdx} className="border-r border-[var(--desk-border)] last:border-r-0 relative flex flex-col">
                   {/* Day Header */}
-                  <div className="h-[58px] border-b border-[#E2E8F0] p-3 text-center bg-white shrink-0">
-                    <span className="text-[9px] font-black text-[#94A3B8] tracking-[0.18em] block">
+                  <div className="h-[58px] border-b border-[var(--desk-border)] p-3 text-center bg-white shrink-0">
+                    <span className="text-[9px] font-black text-[var(--desk-text-subtle)] tracking-[0.18em] block">
                       {day.toLocaleDateString('en-US', { weekday: 'short' }).toUpperCase()}
                     </span>
-                    <span className="text-[15px] font-bold text-[#0F172A] leading-none">{day.getDate()}</span>
+                    <span className="text-[15px] font-bold text-[var(--desk-text)] leading-none">{day.getDate()}</span>
                     {away ? (
                       <span className="mt-0.5 inline-block rounded-full bg-slate-200 px-1.5 text-[8.5px] font-black uppercase tracking-[0.08em] text-slate-600">
                         Away
@@ -449,13 +449,13 @@ export function SchedulePage({ sessions, setSessions, clients, tenantSlug, onRef
                             borderLeftColor: borderColor,
                           }}
                         >
-                          <h4 className="text-[12px] font-bold text-[#0F172A] truncate leading-tight">{ev.title}</h4>
-                          <p className="text-[10px] font-medium text-[#64748B] truncate">
+                          <h4 className="text-[12px] font-bold text-[var(--desk-text)] truncate leading-tight">{ev.title}</h4>
+                          <p className="text-[10px] font-medium text-[var(--desk-text-muted)] truncate">
                             {ev.type} · {duration}m
                           </p>
                           <div className="mt-0.5">
                             {ev.bookingStatus ? <PaymentChip status={ev.bookingStatus} paymentMethod={ev.paymentMethod} holdExpiresAt={ev.holdExpiresAt} /> : null}
-                            {ev.bookedBy ? <span className="text-[10px] text-[#64748B] block truncate">Booked by {ev.bookedBy}</span> : null}
+                            {ev.bookedBy ? <span className="text-[10px] text-[var(--desk-text-muted)] block truncate">Booked by {ev.bookedBy}</span> : null}
                           </div>
                         </div>
                       );
@@ -468,11 +468,11 @@ export function SchedulePage({ sessions, setSessions, clients, tenantSlug, onRef
           </div>
         ) : (
           /* Month View Grid */
-          <div className="os-card overflow-hidden flex-1 border border-[#E2E8F0] flex flex-col bg-white">
+          <div className="os-card overflow-hidden flex-1 border border-[var(--desk-border)] flex flex-col bg-white">
             {/* Days of week header */}
-            <div className="grid grid-cols-7 border-b border-[#E2E8F0] bg-slate-50 shrink-0 text-center py-2">
+            <div className="grid grid-cols-7 border-b border-[var(--desk-border)] bg-slate-50 shrink-0 text-center py-2">
               {['MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT', 'SUN'].map((d) => (
-                <span key={d} className="text-[9px] font-black text-[#94A3B8] tracking-[0.12em]">
+                <span key={d} className="text-[9px] font-black text-[var(--desk-text-subtle)] tracking-[0.12em]">
                   {d}
                 </span>
               ))}
@@ -565,9 +565,9 @@ export function SchedulePage({ sessions, setSessions, clients, tenantSlug, onRef
             <div className="pb-1 border-b border-slate-100">
               <div className="flex items-center gap-2">
                 <Calendar className="h-5 w-5" style={{ color: primaryColor }} />
-                <h3 className="text-lg font-bold text-[#0F172A]">Add open time</h3>
+                <h3 className="text-lg font-bold text-[var(--desk-text)]">Add open time</h3>
               </div>
-              <p className="mt-1 text-[12px] text-[#64748B]">A time clients can book from your booking page. To book a client in yourself, use New booking.</p>
+              <p className="mt-1 text-[12px] text-[var(--desk-text-muted)]">A time clients can book from your booking page. To book a client in yourself, use New booking.</p>
             </div>
 
             {/* Date & Time fields */}
@@ -578,7 +578,7 @@ export function SchedulePage({ sessions, setSessions, clients, tenantSlug, onRef
                   type="date"
                   value={formDate}
                   onChange={(e) => setFormDate(e.target.value)}
-                  className="w-full h-11 px-3 rounded-[12px] bg-[#F8FAFC] border border-[#E2E8F0] text-xs font-semibold outline-none"
+                  className="w-full h-11 px-3 rounded-[12px] bg-[var(--desk-surface)] border border-[var(--desk-border)] text-xs font-semibold outline-none"
                 />
               </div>
               <div className="space-y-1">
@@ -587,7 +587,7 @@ export function SchedulePage({ sessions, setSessions, clients, tenantSlug, onRef
                   type="time"
                   value={formTime}
                   onChange={(e) => setFormTime(e.target.value)}
-                  className="w-full h-11 px-3 rounded-[12px] bg-[#F8FAFC] border border-[#E2E8F0] text-xs font-semibold outline-none"
+                  className="w-full h-11 px-3 rounded-[12px] bg-[var(--desk-surface)] border border-[var(--desk-border)] text-xs font-semibold outline-none"
                 />
               </div>
             </div>
@@ -598,7 +598,7 @@ export function SchedulePage({ sessions, setSessions, clients, tenantSlug, onRef
               <select
                 value={formDuration}
                 onChange={(e) => setFormDuration(Number(e.target.value))}
-                className="w-full h-11 px-3 rounded-[12px] bg-[#F8FAFC] border border-[#E2E8F0] text-xs font-semibold outline-none"
+                className="w-full h-11 px-3 rounded-[12px] bg-[var(--desk-surface)] border border-[var(--desk-border)] text-xs font-semibold outline-none"
               >
                 <option value={30}>30 minutes</option>
                 <option value={50}>50 minutes (Standard)</option>
@@ -612,7 +612,7 @@ export function SchedulePage({ sessions, setSessions, clients, tenantSlug, onRef
               <button
                 type="button"
                 onClick={() => setShowNewSessionModal(false)}
-                className="flex-1 h-11 rounded-[14px] bg-[#F1F5F9] text-[#475569] font-bold text-xs hover:bg-[#E2E8F0] cursor-pointer"
+                className="flex-1 h-11 rounded-[14px] bg-[var(--desk-surface-muted)] text-[var(--desk-text-body)] font-bold text-xs hover:bg-[var(--desk-border)] cursor-pointer"
               >
                 Cancel
               </button>
@@ -651,12 +651,12 @@ export function SchedulePage({ sessions, setSessions, clients, tenantSlug, onRef
               >
                 {selectedEvent.type}
               </span>
-              <h3 className="text-xl font-extrabold text-[#0F172A] pt-1">{selectedEvent.title}</h3>
+              <h3 className="text-xl font-extrabold text-[var(--desk-text)] pt-1">{selectedEvent.title}</h3>
             </div>
 
-            <div className="space-y-3.5 border-y border-slate-100 py-4 text-xs font-semibold text-[#475569]">
+            <div className="space-y-3.5 border-y border-slate-100 py-4 text-xs font-semibold text-[var(--desk-text-body)]">
               <div className="flex items-center gap-2.5">
-                <Calendar className="h-4 w-4 text-[#94A3B8]" />
+                <Calendar className="h-4 w-4 text-[var(--desk-text-subtle)]" />
                 <span>
                   {new Date(selectedEvent.startsAt).toLocaleDateString('en-US', {
                     weekday: 'long',
@@ -667,25 +667,25 @@ export function SchedulePage({ sessions, setSessions, clients, tenantSlug, onRef
                 </span>
               </div>
               <div className="flex items-center gap-2.5">
-                <Clock className="h-4 w-4 text-[#94A3B8]" />
+                <Clock className="h-4 w-4 text-[var(--desk-text-subtle)]" />
                 <span>
                   {formatClock(selectedEvent.startsAt)} — {formatClock(selectedEvent.endsAt)}
                 </span>
               </div>
               <div className="flex items-center gap-2.5">
-                <User className="h-4 w-4 text-[#94A3B8]" />
+                <User className="h-4 w-4 text-[var(--desk-text-subtle)]" />
                 <span>Status: {selectedEvent.status || 'CONFIRMED'}</span>
                 {selectedEvent.bookingStatus ? <PaymentChip status={selectedEvent.bookingStatus} paymentMethod={selectedEvent.paymentMethod} holdExpiresAt={selectedEvent.holdExpiresAt} /> : null}
               </div>
               {selectedEvent.bookedBy ? (
                 <div className="flex items-center gap-2.5">
-                  <span className="h-4 w-4 inline-flex items-center justify-center text-[#94A3B8] text-[13px] font-bold">·</span>
-                  <span className="text-[11px] text-[#64748B]">Booked by {selectedEvent.bookedBy}</span>
+                  <span className="h-4 w-4 inline-flex items-center justify-center text-[var(--desk-text-subtle)] text-[13px] font-bold">·</span>
+                  <span className="text-[11px] text-[var(--desk-text-muted)]">Booked by {selectedEvent.bookedBy}</span>
                 </div>
               ) : null}
             </div>
 
-            <div className="rounded-[16px] border border-[#E2E8F0] bg-[#F8FAFC] px-4 py-3 text-xs font-medium text-[#475569]">
+            <div className="rounded-[16px] border border-[var(--desk-border)] bg-[var(--desk-surface)] px-4 py-3 text-xs font-medium text-[var(--desk-text-body)]">
               {selectedEvent.status === 'COMPLETED'
                 ? 'This session is completed. You can now send the review request link to the client.'
                 : 'Once the session is completed, you can immediately copy the public review link for the client.'}
@@ -744,11 +744,11 @@ export function SchedulePage({ sessions, setSessions, clients, tenantSlug, onRef
               <div className="w-12 h-12 bg-emerald-100 rounded-full flex items-center justify-center mb-2">
                 <CheckCircle2 className="h-6 w-6 text-emerald-600" />
               </div>
-              <h3 className="text-[20px] font-bold text-[#0F172A] leading-tight">
+              <h3 className="text-[20px] font-bold text-[var(--desk-text)] leading-tight">
                 Session marked complete
               </h3>
               <p className="text-[14px] font-medium text-slate-500 max-w-[280px]">
-                No clinical note recorded yet for this session. Write a SOAP note for <strong className="text-[#0F172A]">{sessionCompleteEvent.title}</strong>?
+                No clinical note recorded yet for this session. Write a SOAP note for <strong className="text-[var(--desk-text)]">{sessionCompleteEvent.title}</strong>?
               </p>
             </div>
 

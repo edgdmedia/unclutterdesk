@@ -68,34 +68,34 @@ export function ResetPasswordPage() {
       variant="reset"
       accent="gold"
       footer={
-        <Link to="/auth/login" className="text-[13.5px] font-semibold text-[#64748B] hover:text-[#0F3A53]">
+        <Link to="/auth/login" className="text-[13.5px] font-semibold text-[var(--desk-text-muted)] hover:text-[var(--desk-pine-600)]">
           ← Back to log in
         </Link>
       }
     >
       {done ? (
-        <div className="mt-[26px] p-[30px_26px] rounded-[20px] bg-[#F0FDF4] border border-[#BBF7D0] text-center">
-          <div className="w-[60px] h-[60px] mx-auto rounded-[19px] bg-[#15803D] text-white flex items-center justify-center shadow-[0_10px_26px_rgba(21,128,61,0.3)]">
+        <div className="mt-[26px] p-[30px_26px] rounded-[20px] bg-[var(--desk-active-bg)] border border-[var(--desk-active-border)] text-center">
+          <div className="w-[60px] h-[60px] mx-auto rounded-[19px] bg-[var(--desk-active)] text-white flex items-center justify-center shadow-[0_10px_26px_rgba(21,128,61,0.3)]">
             <Check className="h-7 w-7" strokeWidth={2.8} />
           </div>
-          <div className="mt-[18px] text-[20px] font-bold tracking-[-0.02em] text-[#0F172A]">
+          <div className="mt-[18px] text-[20px] font-bold tracking-[-0.02em] text-[var(--desk-text)]">
             Password updated
           </div>
-          <p className="mt-2 text-sm text-[#166534] leading-[1.6]">Redirecting you to log in…</p>
+          <p className="mt-2 text-sm text-[var(--desk-active)] leading-[1.6]">Redirecting you to log in…</p>
         </div>
       ) : (
         <form onSubmit={handleSubmit}>
-          <div className="mt-[26px] text-[25px] font-bold tracking-[-0.03em] text-[#0F172A]">
+          <div className="mt-[26px] text-[25px] font-bold tracking-[-0.03em] text-[var(--desk-text)]">
             Set new password
           </div>
-          <p className="mt-2 text-sm text-[#64748B] leading-[1.6]">
+          <p className="mt-2 text-sm text-[var(--desk-text-muted)] leading-[1.6]">
             Create a strong password for your practice account.
           </p>
 
           <div className="mt-6 flex flex-col gap-4">
             <AuthField
               label="New password"
-              icon={<Lock className="h-[17px] w-[17px] text-[#94A3B8] flex-none" strokeWidth={2} />}
+              icon={<Lock className="h-[17px] w-[17px] text-[var(--desk-text-subtle)] flex-none" strokeWidth={2} />}
             >
               <input
                 type="password"
@@ -109,7 +109,7 @@ export function ResetPasswordPage() {
 
             <AuthField
               label="Confirm new password"
-              icon={<Lock className="h-[17px] w-[17px] text-[#94A3B8] flex-none" strokeWidth={2} />}
+              icon={<Lock className="h-[17px] w-[17px] text-[var(--desk-text-subtle)] flex-none" strokeWidth={2} />}
             >
               <input
                 type="password"
@@ -123,7 +123,7 @@ export function ResetPasswordPage() {
           </div>
 
           <div className="mt-[14px] flex items-center gap-2">
-            <div className="flex-1 h-[5px] rounded-[99px] bg-[#E2E8F0] overflow-hidden">
+            <div className="flex-1 h-[5px] rounded-[99px] bg-[var(--desk-border)] overflow-hidden">
               <div
                 className="h-full rounded-[99px] transition-all"
                 style={{ width: `${strength.pct}%`, background: strength.color }}
@@ -137,7 +137,7 @@ export function ResetPasswordPage() {
           </div>
 
           {error && (
-            <div className="mt-[18px] p-4 rounded-[14px] bg-[#FEF2F2] border border-[#FECACA] text-[13.5px] font-semibold text-[#B91C1C] leading-[1.5]">
+            <div className="mt-[18px] p-4 rounded-[14px] bg-[var(--desk-danger-bg)] border border-[var(--desk-danger-border)] text-[13.5px] font-semibold text-[var(--desk-danger)] leading-[1.5]">
               {error}
             </div>
           )}
@@ -145,7 +145,7 @@ export function ResetPasswordPage() {
           <button
             type="submit"
             disabled={submitting}
-            className="mt-[22px] w-full h-[54px] rounded-[14px] bg-[#0F3A53] text-white text-[15px] font-bold cursor-pointer shadow-[0_10px_26px_rgba(15,58,83,0.26)] transition-[filter] hover:brightness-110 disabled:opacity-60 disabled:cursor-not-allowed inline-flex items-center justify-center gap-2"
+            className="mt-[22px] w-full h-[54px] rounded-[14px] bg-[var(--desk-pine-600)] text-white text-[15px] font-bold cursor-pointer shadow-[0_10px_26px_rgba(15,58,83,0.26)] transition-[filter] hover:brightness-110 disabled:opacity-60 disabled:cursor-not-allowed inline-flex items-center justify-center gap-2"
           >
             {submitting ? (
               <>

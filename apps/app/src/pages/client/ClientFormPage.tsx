@@ -21,8 +21,8 @@ type Form = {
   schemaJson: Field[];
 };
 
-const INPUT = 'w-full h-11 px-3.5 rounded-[12px] border border-[#CBD5E1] bg-white text-[14px] outline-none focus:border-[#0F3A53]';
-const LABEL = 'block text-[13.5px] font-bold text-[#0F172A] mb-1.5';
+const INPUT = 'w-full h-11 px-3.5 rounded-[12px] border border-[var(--desk-pine-200)] bg-white text-[14px] outline-none focus:border-[var(--desk-pine-600)]';
+const LABEL = 'block text-[13.5px] font-bold text-[var(--desk-text)] mb-1.5';
 
 /** A form the practice asked the client to complete (BKG-06), on the practice host. */
 export function ClientFormPage() {
@@ -95,41 +95,41 @@ export function ClientFormPage() {
   }
 
   const back = (
-    <Link to="/portal" className="inline-flex items-center gap-1.5 text-xs font-bold text-[#475569]">
+    <Link to="/portal" className="inline-flex items-center gap-1.5 text-xs font-bold text-[var(--desk-text-body)]">
       <ArrowLeft className="h-3.5 w-3.5" /> My bookings
     </Link>
   );
 
   return (
-    <div className="min-h-screen bg-[#FCFDFE] text-[#0F172A] font-outfit flex justify-center px-4 py-8">
+    <div className="min-h-screen bg-[var(--desk-surface-alt)] text-[var(--desk-text)] font-outfit flex justify-center px-4 py-8">
       <div className="w-full max-w-[640px]">
         {back}
-        <div className="mt-4 bg-white border border-[#E2E8F0] rounded-[24px] p-6 space-y-5">
-          {!form && !error ? <p className="text-sm text-[#64748B]">Loading…</p> : null}
+        <div className="mt-4 bg-white border border-[var(--desk-border)] rounded-[24px] p-6 space-y-5">
+          {!form && !error ? <p className="text-sm text-[var(--desk-text-muted)]">Loading…</p> : null}
           {error ? <p role="alert" className="text-sm font-semibold text-red-600">{error}</p> : null}
           {done ? (
             <div className="text-center py-8 space-y-3">
-              <CheckCircle2 className="h-10 w-10 mx-auto text-[#16A34A]" />
+              <CheckCircle2 className="h-10 w-10 mx-auto text-[var(--desk-active)]" />
               <h1 className="text-xl font-bold">Thank you — that’s saved.</h1>
-              <p className="text-sm text-[#64748B]">The practice has been told it arrived.</p>
+              <p className="text-sm text-[var(--desk-text-muted)]">The practice has been told it arrived.</p>
             </div>
           ) : form ? (
             <>
               <div>
                 <h1 className="text-[20px] font-bold tracking-[-0.02em]">{form.title}</h1>
-                {form.description ? <p className="mt-1 text-[13.5px] text-[#64748B]">{form.description}</p> : null}
+                {form.description ? <p className="mt-1 text-[13.5px] text-[var(--desk-text-muted)]">{form.description}</p> : null}
               </div>
               {profile ? null : (
-                <p className="text-[13px] text-[#B45309] bg-[#FFFBEB] border border-[#FDE68A] rounded-[12px] px-3.5 py-2.5">
+                <p className="text-[13px] text-[var(--desk-pending)] bg-[var(--desk-pending-bg)] border border-[var(--desk-pending-border)] rounded-[12px] px-3.5 py-2.5">
                   <a href="/login" className="font-bold underline">Sign in</a> first, so the practice knows whose answers these are.
                 </p>
               )}
               {form.schemaJson.map((field) => {
                 if (field.type === 'text_block') {
                   return (
-                    <div key={field.id} className="rounded-[16px] bg-[#F8FAFC] border border-[#E2E8F0] px-4 py-3.5">
+                    <div key={field.id} className="rounded-[16px] bg-[var(--desk-surface)] border border-[var(--desk-border)] px-4 py-3.5">
                       <p className="text-[13px] font-bold">{field.label}</p>
-                      <p className="mt-1 text-[13.5px] leading-[1.55] text-[#475569]">{field.text}</p>
+                      <p className="mt-1 text-[13.5px] leading-[1.55] text-[var(--desk-text-body)]">{field.text}</p>
                     </div>
                   );
                 }

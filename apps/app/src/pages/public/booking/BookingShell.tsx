@@ -49,7 +49,7 @@ function LogoTile({ name, logoUrl }: { name: string; logoUrl?: string | null }) 
     );
   }
   return (
-    <span aria-hidden="true" className="inline-flex items-center justify-center shrink-0 h-11 w-11 rounded-[14px] bg-white border border-[#E2E8F0] text-[15px] font-extrabold tracking-[.02em]" style={{ color: 'var(--brand-ink, var(--brand-primary))' }}>
+    <span aria-hidden="true" className="inline-flex items-center justify-center shrink-0 h-11 w-11 rounded-[14px] bg-white border border-[var(--desk-border)] text-[15px] font-extrabold tracking-[.02em]" style={{ color: 'var(--brand-ink, var(--brand-primary))' }}>
       {initialsOf(name, 'UD')}
     </span>
   );
@@ -70,22 +70,22 @@ export function BookingHeader({
 }) {
   return (
     <header
-      className="shrink-0 border-b border-[#E2E8F0] px-4 py-3 min-[601px]:px-8 min-[601px]:py-4"
+      className="shrink-0 border-b border-[var(--desk-border)] px-4 py-3 min-[601px]:px-8 min-[601px]:py-4"
       style={{ background: 'linear-gradient(120deg, var(--brand-tint), var(--brand-secondary-tint)), #FFFFFF' }}
     >
       <div className="max-w-[640px] min-[1024px]:max-w-[960px] mx-auto flex items-center gap-3">
         <LogoTile name={name} logoUrl={logoUrl} />
         <div className="min-w-0 flex-1">
-          <div className="text-[16px] font-bold tracking-[-0.01em] text-[#0F172A] truncate">{name}</div>
+          <div className="text-[16px] font-bold tracking-[-0.01em] text-[var(--desk-text)] truncate">{name}</div>
           {rating && rating.count > 0 ? (
-            <a href={profileHref} className="inline-flex items-center gap-1 text-[12.5px] text-[#64748B] hover:underline">
+            <a href={profileHref} className="inline-flex items-center gap-1 text-[12.5px] text-[var(--desk-text-muted)] hover:underline">
               <Star className="h-3 w-3" fill="#24614F" stroke="#24614F" aria-hidden="true" />
               {`${rating.average.toFixed(1)} · ${rating.count} reviews`}
             </a>
-          ) : subtitle ? <div className="text-[12.5px] text-[#64748B] truncate">{subtitle}</div> : null}
+          ) : subtitle ? <div className="text-[12.5px] text-[var(--desk-text-muted)] truncate">{subtitle}</div> : null}
         </div>
-        <span className="h-[30px] px-3 rounded-full bg-white border border-[#E2E8F0] text-[12px] font-semibold text-[#475569] inline-flex items-center gap-1.5 shrink-0">
-          <Lock className="h-[13px] w-[13px] text-[#16A34A]" aria-hidden="true" />
+        <span className="h-[30px] px-3 rounded-full bg-white border border-[var(--desk-border)] text-[12px] font-semibold text-[var(--desk-text-body)] inline-flex items-center gap-1.5 shrink-0">
+          <Lock className="h-[13px] w-[13px] text-[var(--desk-active)]" aria-hidden="true" />
           Secure booking
         </span>
       </div>
@@ -115,7 +115,7 @@ export function BookingProgress({ step, onGoTo, firstStep = 1 }: { step: Step; o
               className="block h-1 rounded-full transition-colors duration-200 ease-out"
               style={{ background: n <= step ? 'var(--brand-primary)' : '#E2E8F0' }}
             />
-            <span className={`block mt-1.5 text-[12px] ${current ? 'font-bold text-[#0F172A]' : done ? 'font-semibold text-[#475569]' : 'font-semibold text-[#94A3B8]'}`}>
+            <span className={`block mt-1.5 text-[12px] ${current ? 'font-bold text-[var(--desk-text)]' : done ? 'font-semibold text-[var(--desk-text-body)]' : 'font-semibold text-[var(--desk-text-subtle)]'}`}>
               {label}
             </span>
           </button>
@@ -143,21 +143,21 @@ export function StepCard({
   const layout = useBookingLayout();
   return (
     <section
-      className="bg-white border border-[#E2E8F0] rounded-[24px] flex flex-col gap-[22px] p-5 min-[601px]:p-7 min-[1024px]:p-8"
+      className="bg-white border border-[var(--desk-border)] rounded-[24px] flex flex-col gap-[22px] p-5 min-[601px]:p-7 min-[1024px]:p-8"
       style={{ boxShadow: 'var(--desk-shadow-sm)' }}
     >
       <div className="flex flex-col gap-2.5">
         {onBack && layout !== 'desktop' ? (
-          <button type="button" onClick={onBack} className="self-start h-11 -ml-1 inline-flex items-center gap-1 text-[13.5px] font-semibold text-[#64748B] cursor-pointer">
+          <button type="button" onClick={onBack} className="self-start h-11 -ml-1 inline-flex items-center gap-1 text-[13.5px] font-semibold text-[var(--desk-text-muted)] cursor-pointer">
             <ChevronLeft className="h-[18px] w-[18px]" aria-hidden="true" /> Back
           </button>
         ) : null}
         {step && step <= 4 ? <Eyebrow>{`Step ${step} of 4`}</Eyebrow> : null}
-        <h1 className="text-[23px] min-[1024px]:text-[28px] font-bold tracking-[-0.025em] leading-[1.15] text-[#0F172A]">{title}</h1>
-        {sub ? <p className="text-[14px] leading-[1.55] text-[#64748B]">{sub}</p> : null}
+        <h1 className="text-[23px] min-[1024px]:text-[28px] font-bold tracking-[-0.025em] leading-[1.15] text-[var(--desk-text)]">{title}</h1>
+        {sub ? <p className="text-[14px] leading-[1.55] text-[var(--desk-text-muted)]">{sub}</p> : null}
       </div>
       {children}
-      {footer && layout === 'desktop' ? <div className="pt-[18px] border-t border-[#F1F5F9] flex items-center justify-between gap-3">{footer}</div> : null}
+      {footer && layout === 'desktop' ? <div className="pt-[18px] border-t border-[var(--desk-border-soft)] flex items-center justify-between gap-3">{footer}</div> : null}
     </section>
   );
 }
@@ -177,13 +177,13 @@ export function StickyActionBar({
 }) {
   return (
     <div
-      className="shrink-0 flex items-center gap-3.5 border-t border-[#E2E8F0] px-4 pt-3 pb-5 min-[601px]:px-8 min-[601px]:pt-3.5 min-[601px]:pb-[22px]"
+      className="shrink-0 flex items-center gap-3.5 border-t border-[var(--desk-border)] px-4 pt-3 pb-5 min-[601px]:px-8 min-[601px]:pt-3.5 min-[601px]:pb-[22px]"
       style={{ background: 'rgba(255,255,255,.85)', backdropFilter: 'blur(18px) saturate(140%)', WebkitBackdropFilter: 'blur(18px) saturate(140%)' }}
     >
       {totalKobo ? (
         <div className="shrink-0">
           <Eyebrow>Total</Eyebrow>
-          <div className="text-[17px] font-bold text-[#0F172A]" style={TABULAR}>{naira(totalKobo)}</div>
+          <div className="text-[17px] font-bold text-[var(--desk-text)]" style={TABULAR}>{naira(totalKobo)}</div>
         </div>
       ) : null}
       <div className="flex-1">
@@ -197,9 +197,9 @@ export function StickyActionBar({
 
 function SummaryRow({ label, value, placeholder }: { label: string; value?: string | null; placeholder: string }) {
   return (
-    <div className="py-3 border-t border-[#F1F5F9]">
-      <div className="text-[12px] text-[#64748B]">{label}</div>
-      <div className={`text-[14px] ${value ? 'font-semibold text-[#0F172A]' : 'font-medium text-[#94A3B8]'}`}>{value || placeholder}</div>
+    <div className="py-3 border-t border-[var(--desk-border-soft)]">
+      <div className="text-[12px] text-[var(--desk-text-muted)]">{label}</div>
+      <div className={`text-[14px] ${value ? 'font-semibold text-[var(--desk-text)]' : 'font-medium text-[var(--desk-text-subtle)]'}`}>{value || placeholder}</div>
     </div>
   );
 }
@@ -225,7 +225,7 @@ export function SummaryCard({
 }) {
   const subtitle = [therapist?.title, practiceName].filter(Boolean).join(' · ');
   return (
-    <aside className="sticky top-6 bg-white border border-[#E2E8F0] rounded-[24px] p-6 flex flex-col gap-[18px]" style={{ boxShadow: 'var(--desk-shadow-sm)' }}>
+    <aside className="sticky top-6 bg-white border border-[var(--desk-border)] rounded-[24px] p-6 flex flex-col gap-[18px]" style={{ boxShadow: 'var(--desk-shadow-sm)' }}>
       <Eyebrow>Session summary</Eyebrow>
       {therapist ? (
         <div className="flex items-center gap-3">
@@ -233,8 +233,8 @@ export function SummaryCard({
             {initialsOf(therapist.name, 'UD')}
           </span>
           <div className="min-w-0">
-            <div className="text-[15px] font-bold text-[#0F172A]">{therapist.name}</div>
-            {subtitle ? <div className="text-[12.5px] text-[#64748B]">{subtitle}</div> : null}
+            <div className="text-[15px] font-bold text-[var(--desk-text)]">{therapist.name}</div>
+            {subtitle ? <div className="text-[12.5px] text-[var(--desk-text-muted)]">{subtitle}</div> : null}
           </div>
         </div>
       ) : null}
@@ -243,17 +243,17 @@ export function SummaryCard({
         <SummaryRow label="When" value={whenLabel} placeholder="Pick a time" />
         <SummaryRow label="Format" value={formatLabel} placeholder="—" />
         {discount ? (
-          <div className="py-3 border-t border-[#F1F5F9] flex items-baseline justify-between gap-3 text-[#16A34A]">
+          <div className="py-3 border-t border-[var(--desk-border-soft)] flex items-baseline justify-between gap-3 text-[var(--desk-active)]">
             <span className="text-[13px] font-semibold">Discount · {discount.code}</span>
             <span className="text-[14px] font-semibold" style={TABULAR}>−{naira(discount.savingKobo)}</span>
           </div>
         ) : null}
       </div>
-      <div className="pt-3.5 border-t border-[#E2E8F0] flex items-baseline justify-between">
-        <span className="text-[14px] font-semibold text-[#475569]">Total</span>
-        <span className="text-[24px] font-bold tracking-[-0.02em] text-[#0F172A]" style={TABULAR}>{totalKobo ? naira(totalKobo) : '—'}</span>
+      <div className="pt-3.5 border-t border-[var(--desk-border)] flex items-baseline justify-between">
+        <span className="text-[14px] font-semibold text-[var(--desk-text-body)]">Total</span>
+        <span className="text-[24px] font-bold tracking-[-0.02em] text-[var(--desk-text)]" style={TABULAR}>{totalKobo ? naira(totalKobo) : '—'}</span>
       </div>
-      <p className="text-[12.5px] text-[#64748B]">
+      <p className="text-[12.5px] text-[var(--desk-text-muted)]">
         {cancellationHours ? `Free cancellation up to ${cancellationHours} hours before. ` : ''}Times shown in West Africa Time.
       </p>
     </aside>
@@ -262,7 +262,7 @@ export function SummaryCard({
 
 export function PoweredBy() {
   return (
-    <p className="flex items-center justify-center gap-1.5 text-[11.5px] text-[#94A3B8]">
+    <p className="flex items-center justify-center gap-1.5 text-[11.5px] text-[var(--desk-text-subtle)]">
       <span style={{ opacity: 0.6 }}><UnclutterMark size={16} showBadge={false} /></span>
       Booking powered by Unclutter Desk
     </p>
@@ -272,9 +272,9 @@ export function PoweredBy() {
 /** The dashed empty-state box (README, States). */
 export function StateBox({ icon, title, children }: { icon?: React.ReactNode; title: string; children?: React.ReactNode }) {
   return (
-    <div className="rounded-[20px] border border-dashed border-[#CBD5E1] p-6 flex flex-col items-center text-center gap-2">
+    <div className="rounded-[20px] border border-dashed border-[var(--desk-pine-200)] p-6 flex flex-col items-center text-center gap-2">
       {icon ? <span className="h-11 w-11 rounded-[12px] inline-flex items-center justify-center" style={{ background: 'var(--brand-fill)', color: 'var(--brand-ink, var(--brand-primary))' }}>{icon}</span> : null}
-      <div className="text-[15px] font-bold text-[#0F172A]">{title}</div>
+      <div className="text-[15px] font-bold text-[var(--desk-text)]">{title}</div>
       {children}
     </div>
   );
@@ -283,11 +283,11 @@ export function StateBox({ icon, title, children }: { icon?: React.ReactNode; ti
 /** The rose banner for "just booked" and "payment didn't go through". */
 export function AlertBanner({ title, children }: { title: string; children?: React.ReactNode }) {
   return (
-    <div role="alert" className="rounded-[18px] bg-[#FFF1F2] px-4 py-3.5 flex gap-3">
-      <AlertCircle className="h-5 w-5 text-[#E11D48] shrink-0 mt-0.5" aria-hidden="true" />
+    <div role="alert" className="rounded-[18px] bg-[var(--desk-danger-bg)] px-4 py-3.5 flex gap-3">
+      <AlertCircle className="h-5 w-5 text-[var(--desk-danger)] shrink-0 mt-0.5" aria-hidden="true" />
       <div>
-        <div className="text-[14px] font-bold text-[#0F172A]">{title}</div>
-        {children ? <div className="text-[13px] text-[#475569]">{children}</div> : null}
+        <div className="text-[14px] font-bold text-[var(--desk-text)]">{title}</div>
+        {children ? <div className="text-[13px] text-[var(--desk-text-body)]">{children}</div> : null}
       </div>
     </div>
   );

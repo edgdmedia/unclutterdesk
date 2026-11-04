@@ -37,42 +37,42 @@ export function ForgotPasswordPage() {
       variant="forgot"
       accent="gold"
       footer={
-        <Link to="/auth/login" className="text-[13.5px] font-semibold text-[#64748B] hover:text-[#0F3A53]">
+        <Link to="/auth/login" className="text-[13.5px] font-semibold text-[var(--desk-text-muted)] hover:text-[var(--desk-pine-600)]">
           ← Back to log in
         </Link>
       }
     >
       {sent ? (
-        <div className="mt-[26px] p-[26px] rounded-[20px] bg-[#F0FDF4] border border-[#BBF7D0] text-center">
-          <div className="w-14 h-14 mx-auto rounded-[18px] bg-[#DCFCE7] text-[#15803D] flex items-center justify-center">
+        <div className="mt-[26px] p-[26px] rounded-[20px] bg-[var(--desk-active-bg)] border border-[var(--desk-active-border)] text-center">
+          <div className="w-14 h-14 mx-auto rounded-[18px] bg-[var(--desk-active-bg)] text-[var(--desk-active)] flex items-center justify-center">
             <Check className="h-[26px] w-[26px]" strokeWidth={2.6} />
           </div>
-          <div className="mt-4 text-[19px] font-bold tracking-[-0.02em] text-[#0F172A]">
+          <div className="mt-4 text-[19px] font-bold tracking-[-0.02em] text-[var(--desk-text)]">
             Reset email sent
           </div>
-          <p className="mt-2 text-sm text-[#166534] leading-[1.6]">
+          <p className="mt-2 text-sm text-[var(--desk-active)] leading-[1.6]">
             {info || 'Check your inbox for instructions. The link is good for one hour.'}
           </p>
           <button
             onClick={() => { setSent(false); setError(''); setInfo(''); }}
-            className="mt-[18px] h-11 px-[18px] border border-[#BBF7D0] rounded-[13px] bg-white text-[#15803D] text-[13.5px] font-bold cursor-pointer transition-colors hover:bg-[#F0FDF4]"
+            className="mt-[18px] h-11 px-[18px] border border-[var(--desk-active-border)] rounded-[13px] bg-white text-[var(--desk-active)] text-[13.5px] font-bold cursor-pointer transition-colors hover:bg-[var(--desk-active-bg)]"
           >
             Send it again
           </button>
         </div>
       ) : (
         <form onSubmit={handleSubmit}>
-          <div className="mt-[26px] text-[25px] font-bold tracking-[-0.03em] text-[#0F172A]">
+          <div className="mt-[26px] text-[25px] font-bold tracking-[-0.03em] text-[var(--desk-text)]">
             Reset your password
           </div>
-          <p className="mt-2 text-sm text-[#64748B] leading-[1.6]">
+          <p className="mt-2 text-sm text-[var(--desk-text-muted)] leading-[1.6]">
             Enter your email and we'll send you a password reset link.
           </p>
 
           <div className="mt-6">
             <AuthField
               label="Email address"
-              icon={<Mail className="h-[17px] w-[17px] text-[#94A3B8] flex-none" strokeWidth={2} />}
+              icon={<Mail className="h-[17px] w-[17px] text-[var(--desk-text-subtle)] flex-none" strokeWidth={2} />}
             >
               <input
                 type="email"
@@ -86,7 +86,7 @@ export function ForgotPasswordPage() {
           </div>
 
           {error && (
-            <div className="mt-[18px] p-4 rounded-[14px] bg-[#FEF2F2] border border-[#FECACA] text-[13.5px] font-semibold text-[#B91C1C] leading-[1.5]">
+            <div className="mt-[18px] p-4 rounded-[14px] bg-[var(--desk-danger-bg)] border border-[var(--desk-danger-border)] text-[13.5px] font-semibold text-[var(--desk-danger)] leading-[1.5]">
               {error}
             </div>
           )}
@@ -94,7 +94,7 @@ export function ForgotPasswordPage() {
           <button
             type="submit"
             disabled={sending}
-            className="mt-[22px] w-full h-[54px] rounded-[14px] bg-[#0F3A53] text-white text-[15px] font-bold cursor-pointer shadow-[0_10px_26px_rgba(15,58,83,0.26)] transition-[filter] hover:brightness-110 disabled:opacity-60 disabled:cursor-not-allowed inline-flex items-center justify-center gap-2"
+            className="mt-[22px] w-full h-[54px] rounded-[14px] bg-[var(--desk-pine-600)] text-white text-[15px] font-bold cursor-pointer shadow-[0_10px_26px_rgba(15,58,83,0.26)] transition-[filter] hover:brightness-110 disabled:opacity-60 disabled:cursor-not-allowed inline-flex items-center justify-center gap-2"
           >
             {sending ? (
               <>

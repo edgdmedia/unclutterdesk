@@ -163,7 +163,7 @@ export function DiscountSettingsPage() {
       sort: byText((d) => d.code),
       cell: (d) => (
         <>
-          <div className="text-[13px] font-bold text-[#0F172A] tracking-wide">{d.code}</div>
+          <div className="text-[13px] font-bold text-[var(--desk-text)] tracking-wide">{d.code}</div>
           {d.label && <div className="text-[11px] text-slate-500 mt-0.5">{d.label}</div>}
         </>
       ),
@@ -180,7 +180,7 @@ export function DiscountSettingsPage() {
         </span>
       ),
     },
-    { key: 'value', header: 'Value', priority: 'md', cell: (d) => <span className="text-[13px] font-bold text-[#0F3A53]">{valueOf(d)}</span> },
+    { key: 'value', header: 'Value', priority: 'md', cell: (d) => <span className="text-[13px] font-bold text-[var(--desk-pine-600)]">{valueOf(d)}</span> },
     {
       key: 'usage',
       header: 'Usage',
@@ -216,17 +216,17 @@ export function DiscountSettingsPage() {
         />
       }
     >
-      <p className="text-xs text-[#64748B] font-medium -mt-1">Manage promotional codes and discounts for your practice.</p>
+      <p className="text-xs text-[var(--desk-text-muted)] font-medium -mt-1">Manage promotional codes and discounts for your practice.</p>
         {error && !showModal ? <div className="rounded-[18px] border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-medium text-rose-700">{error}</div> : null}
         
         {loading ? (
-          <div className="rounded-[24px] border border-[#E2E8F0] bg-white px-6 py-10 text-sm font-medium text-[#64748B]">Loading discounts...</div>
+          <div className="rounded-[24px] border border-[var(--desk-border)] bg-white px-6 py-10 text-sm font-medium text-[var(--desk-text-muted)]">Loading discounts...</div>
         ) : discounts.length === 0 ? (
-          <div className="rounded-[24px] border border-[#E2E8F0] bg-white px-6 py-16 flex flex-col items-center justify-center text-center">
+          <div className="rounded-[24px] border border-[var(--desk-border)] bg-white px-6 py-16 flex flex-col items-center justify-center text-center">
             <div className="w-16 h-16 bg-slate-50 rounded-full flex items-center justify-center mb-4">
               <Tag className="h-8 w-8 text-slate-300" />
             </div>
-            <h3 className="text-[16px] font-bold text-[#0F172A] mb-1">No discount codes</h3>
+            <h3 className="text-[16px] font-bold text-[var(--desk-text)] mb-1">No discount codes</h3>
             <p className="text-[13px] text-slate-500 max-w-sm mb-6">Create promotional codes to offer discounts to new or returning clients when booking sessions.</p>
             <button
               onClick={() => setShowModal(true)}
@@ -236,7 +236,7 @@ export function DiscountSettingsPage() {
             </button>
           </div>
         ) : (
-          <div className="rounded-[24px] border border-[#E2E8F0] bg-white overflow-hidden">
+          <div className="rounded-[24px] border border-[var(--desk-border)] bg-white overflow-hidden">
             <ResponsiveTable<DiscountCode>
               caption="Discount codes"
               rows={discounts}
@@ -257,7 +257,7 @@ export function DiscountSettingsPage() {
                   </button>
                   <button
                     onClick={() => openEdit(d)}
-                    className="text-slate-400 hover:text-[#0F3A53] transition-colors cursor-pointer inline-flex p-1.5"
+                    className="text-slate-400 hover:text-[var(--desk-pine-600)] transition-colors cursor-pointer inline-flex p-1.5"
                     title="Edit code"
                     aria-label={`Edit ${d.code}`}
                   >
@@ -297,7 +297,7 @@ export function DiscountSettingsPage() {
                 <Tag className="h-5 w-5" style={{ color: primaryColor }} />
               </div>
               <div>
-                <h3 className="text-[18px] font-bold text-[#0F172A] leading-tight">{editing ? 'Edit Discount Code' : 'Create Discount Code'}</h3>
+                <h3 className="text-[18px] font-bold text-[var(--desk-text)] leading-tight">{editing ? 'Edit Discount Code' : 'Create Discount Code'}</h3>
                 <p className="text-[12px] text-slate-500 font-medium">{editing ? 'Update this code without touching its past uses.' : 'Configure a new promotional code.'}</p>
               </div>
             </div>
@@ -314,7 +314,7 @@ export function DiscountSettingsPage() {
                   disabled={!!editing}
                   value={formCode}
                   onChange={(e) => setFormCode(e.target.value.toUpperCase())}
-                  className="w-full h-11 px-3.5 rounded-[12px] bg-[#F8FAFC] border border-[#E2E8F0] text-[13px] font-bold tracking-wide outline-none focus:border-slate-300 transition-colors uppercase"
+                  className="w-full h-11 px-3.5 rounded-[12px] bg-[var(--desk-surface)] border border-[var(--desk-border)] text-[13px] font-bold tracking-wide outline-none focus:border-slate-300 transition-colors uppercase"
                 />
               </div>
 
@@ -325,7 +325,7 @@ export function DiscountSettingsPage() {
                   placeholder="e.g. Holiday Promo 2026"
                   value={formLabel}
                   onChange={(e) => setFormLabel(e.target.value)}
-                  className="w-full h-11 px-3.5 rounded-[12px] bg-[#F8FAFC] border border-[#E2E8F0] text-[13px] font-medium outline-none focus:border-slate-300 transition-colors"
+                  className="w-full h-11 px-3.5 rounded-[12px] bg-[var(--desk-surface)] border border-[var(--desk-border)] text-[13px] font-medium outline-none focus:border-slate-300 transition-colors"
                 />
               </div>
 
@@ -334,7 +334,7 @@ export function DiscountSettingsPage() {
                 <select
                   value={formType}
                   onChange={(e) => setFormType(e.target.value as 'PERCENT' | 'FIXED')}
-                  className="w-full h-11 px-3 rounded-[12px] bg-[#F8FAFC] border border-[#E2E8F0] text-xs font-bold outline-none cursor-pointer focus:border-slate-300"
+                  className="w-full h-11 px-3 rounded-[12px] bg-[var(--desk-surface)] border border-[var(--desk-border)] text-xs font-bold outline-none cursor-pointer focus:border-slate-300"
                 >
                   <option value="PERCENT">Percentage (%)</option>
                   <option value="FIXED">Fixed Amount (₦)</option>
@@ -352,7 +352,7 @@ export function DiscountSettingsPage() {
                     placeholder="20"
                     value={formPercent}
                     onChange={(e) => setFormPercent(e.target.value)}
-                    className="w-full h-11 px-3.5 rounded-[12px] bg-[#F8FAFC] border border-[#E2E8F0] text-[13px] font-bold outline-none focus:border-slate-300 transition-colors"
+                    className="w-full h-11 px-3.5 rounded-[12px] bg-[var(--desk-surface)] border border-[var(--desk-border)] text-[13px] font-bold outline-none focus:border-slate-300 transition-colors"
                   />
                 ) : (
                   <input
@@ -362,7 +362,7 @@ export function DiscountSettingsPage() {
                     placeholder="5000"
                     value={formAmount}
                     onChange={(e) => setFormAmount(e.target.value)}
-                    className="w-full h-11 px-3.5 rounded-[12px] bg-[#F8FAFC] border border-[#E2E8F0] text-[13px] font-bold outline-none focus:border-slate-300 transition-colors"
+                    className="w-full h-11 px-3.5 rounded-[12px] bg-[var(--desk-surface)] border border-[var(--desk-border)] text-[13px] font-bold outline-none focus:border-slate-300 transition-colors"
                   />
                 )}
               </div>
@@ -375,7 +375,7 @@ export function DiscountSettingsPage() {
                   placeholder="Unlimited"
                   value={formMaxUses}
                   onChange={(e) => setFormMaxUses(e.target.value)}
-                  className="w-full h-11 px-3.5 rounded-[12px] bg-[#F8FAFC] border border-[#E2E8F0] text-[13px] font-medium outline-none focus:border-slate-300 transition-colors"
+                  className="w-full h-11 px-3.5 rounded-[12px] bg-[var(--desk-surface)] border border-[var(--desk-border)] text-[13px] font-medium outline-none focus:border-slate-300 transition-colors"
                 />
               </div>
 
@@ -385,7 +385,7 @@ export function DiscountSettingsPage() {
                   type="date"
                   value={formExpiresAt}
                   onChange={(e) => setFormExpiresAt(e.target.value)}
-                  className="w-full h-11 px-3.5 rounded-[12px] bg-[#F8FAFC] border border-[#E2E8F0] text-[13px] font-medium outline-none focus:border-slate-300 transition-colors cursor-pointer"
+                  className="w-full h-11 px-3.5 rounded-[12px] bg-[var(--desk-surface)] border border-[var(--desk-border)] text-[13px] font-medium outline-none focus:border-slate-300 transition-colors cursor-pointer"
                 />
               </div>
             </Grid>

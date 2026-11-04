@@ -116,15 +116,15 @@ export function PublicProfilePreview({
   const aboutHeadline = tenant?.welcomeTitle || null;
 
   return (
-    <div className="min-h-screen bg-[#F8FAFC] flex flex-col font-sans">
-      <header className="sticky top-0 z-50 h-[56px] md:h-[64px] px-4 md:px-10 flex items-center justify-between bg-white/95 backdrop-blur-[18px] border-b border-[#E2E8F0]">
+    <div className="min-h-screen bg-[var(--desk-surface)] flex flex-col font-sans">
+      <header className="sticky top-0 z-50 h-[56px] md:h-[64px] px-4 md:px-10 flex items-center justify-between bg-white/95 backdrop-blur-[18px] border-b border-[var(--desk-border)]">
         <div className="flex items-center gap-2.5 min-w-0">
           <PracticeLogo name={practiceName || 'Unclutter Desk'} logoUrl={tenant?.logoUrl} size={34} color={primaryColor} />
-          <span className="text-[15px] font-bold tracking-[-0.01em] text-[#0F172A] truncate">{practiceName || 'Unclutter Desk'}</span>
+          <span className="text-[15px] font-bold tracking-[-0.01em] text-[var(--desk-text)] truncate">{practiceName || 'Unclutter Desk'}</span>
         </div>
         <a
           href="/login"
-          className="h-[36px] md:h-[40px] px-3 md:px-4 rounded-[10px] md:rounded-[12px] bg-white border border-[#CBD5E1] text-[12px] md:text-[13px] font-bold flex items-center"
+          className="h-[36px] md:h-[40px] px-3 md:px-4 rounded-[10px] md:rounded-[12px] bg-white border border-[var(--desk-pine-200)] text-[12px] md:text-[13px] font-bold flex items-center"
           style={{ color: primaryColor }}
         >
           Log in
@@ -152,25 +152,25 @@ export function PublicProfilePreview({
 
           <div className="flex flex-col gap-2.5 md:gap-[24px]">
             <div className="flex flex-col gap-2.5 md:gap-[12px]">
-              <div className="hidden md:block text-[13px] font-black tracking-[0.22em] text-[#94A3B8] uppercase">
+              <div className="hidden md:block text-[13px] font-black tracking-[0.22em] text-[var(--desk-text-subtle)] uppercase">
                 {therapist?.specialty || tenant?.category || 'Therapist Profile'}
               </div>
-              <h1 className="m-0 text-[26px] md:text-[46px] leading-[1.08] font-[800] tracking-[-0.03em] md:tracking-[-0.035em] text-[#0F172A]">
+              <h1 className="m-0 text-[26px] md:text-[46px] leading-[1.08] font-[800] tracking-[-0.03em] md:tracking-[-0.035em] text-[var(--desk-text)]">
                 {practiceName}
               </h1>
               {therapistName ? (
-                <p className="m-0 text-[15px] md:text-[17px] text-[#475569] font-[700]">
+                <p className="m-0 text-[15px] md:text-[17px] text-[var(--desk-text-body)] font-[700]">
                   {therapistName}{therapist?.specialty ? ` · ${therapist.specialty}` : ''}
                 </p>
               ) : null}
               {reviews.count > 0 && reviews.averageRating !== null ? (
-                <div className="flex items-center justify-center md:justify-start gap-1.5 text-[13px] font-bold text-[#0F172A]">
-                  <Star className="h-4 w-4 fill-[#E3B341] stroke-[#E3B341]" />
+                <div className="flex items-center justify-center md:justify-start gap-1.5 text-[13px] font-bold text-[var(--desk-text)]">
+                  <Star className="h-4 w-4 fill-[var(--desk-pending-dot)] stroke-[var(--desk-pending-dot)]" />
                   {reviews.averageRating.toFixed(1)} ({reviews.count} client review{reviews.count === 1 ? '' : 's'})
                 </div>
               ) : null}
               {tagline ? (
-                <p className="m-0 text-[13px] md:text-[14px] text-[#64748B] max-w-[520px] leading-[1.65] mx-auto md:mx-0 text-pretty">
+                <p className="m-0 text-[13px] md:text-[14px] text-[var(--desk-text-muted)] max-w-[520px] leading-[1.65] mx-auto md:mx-0 text-pretty">
                   {tagline}
                 </p>
               ) : null}
@@ -197,14 +197,14 @@ export function PublicProfilePreview({
                 interactive ? (
                   <button
                     onClick={() => document.getElementById('about')?.scrollIntoView?.({ behavior: 'smooth', block: 'start' })}
-                    className="w-full md:w-auto h-[48px] md:h-[52px] px-7 rounded-[14px] md:rounded-[16px] bg-white border border-[#CBD5E1] text-[14px] md:text-[15px] font-[700] cursor-pointer"
+                    className="w-full md:w-auto h-[48px] md:h-[52px] px-7 rounded-[14px] md:rounded-[16px] bg-white border border-[var(--desk-pine-200)] text-[14px] md:text-[15px] font-[700] cursor-pointer"
                     style={{ color: primaryColor }}
                   >
                     Learn More
                   </button>
                 ) : (
                   <button
-                    className="w-full md:w-auto h-[48px] md:h-[52px] px-7 rounded-[14px] md:rounded-[16px] bg-white border border-[#CBD5E1] text-[14px] md:text-[15px] font-[700] cursor-pointer disabled"
+                    className="w-full md:w-auto h-[48px] md:h-[52px] px-7 rounded-[14px] md:rounded-[16px] bg-white border border-[var(--desk-pine-200)] text-[14px] md:text-[15px] font-[700] cursor-pointer disabled"
                     style={{ color: primaryColor }}
                     disabled
                   >
@@ -234,36 +234,36 @@ export function PublicProfilePreview({
         </section>
 
         {hasAbout ? (
-          <section id="about" className="px-4 py-8 md:py-[80px] md:px-10 bg-white border-t border-[#E2E8F0]">
+          <section id="about" className="px-4 py-8 md:py-[80px] md:px-10 bg-white border-t border-[var(--desk-border)]">
             <div className="max-w-[960px] mx-auto grid grid-cols-1 md:grid-cols-2 gap-5 md:gap-[60px] items-start">
               <div className="flex flex-col gap-2 md:gap-5">
-                <div className="text-[11px] md:text-[13px] font-black tracking-[0.12em] md:tracking-[0.22em] text-[#94A3B8] uppercase">
+                <div className="text-[11px] md:text-[13px] font-black tracking-[0.12em] md:tracking-[0.22em] text-[var(--desk-text-subtle)] uppercase">
                   About the Practice
                 </div>
                 {aboutHeadline ? (
-                  <h2 className="m-0 text-[22px] md:text-[34px] font-[800] tracking-[-0.035em] text-[#0F172A]">
+                  <h2 className="m-0 text-[22px] md:text-[34px] font-[800] tracking-[-0.035em] text-[var(--desk-text)]">
                     {aboutHeadline}
                   </h2>
                 ) : null}
                 {bio ? (
-                  <p className="m-0 text-[13px] md:text-[15px] leading-[1.6] md:leading-[1.7] text-[#475569]">
+                  <p className="m-0 text-[13px] md:text-[15px] leading-[1.6] md:leading-[1.7] text-[var(--desk-text-body)]">
                     {bio}
                   </p>
                 ) : null}
                 {credentials ? (
                   <div className="flex flex-col gap-3 mt-2">
-                    <div className="text-[11px] md:text-[12px] font-black tracking-[0.12em] text-[#0F172A] uppercase">
+                    <div className="text-[11px] md:text-[12px] font-black tracking-[0.12em] text-[var(--desk-text)] uppercase">
                       Credentials
                     </div>
-                    <p className="m-0 text-[13px] md:text-[14px] leading-[1.6] text-[#475569]">{credentials}</p>
+                    <p className="m-0 text-[13px] md:text-[14px] leading-[1.6] text-[var(--desk-text-body)]">{credentials}</p>
                   </div>
                 ) : null}
                 {experience ? (
                   <div className="flex flex-col gap-3 mt-2">
-                    <div className="text-[11px] md:text-[12px] font-black tracking-[0.12em] text-[#0F172A] uppercase">
+                    <div className="text-[11px] md:text-[12px] font-black tracking-[0.12em] text-[var(--desk-text)] uppercase">
                       Experience
                     </div>
-                    <p className="m-0 text-[13px] md:text-[14px] leading-[1.6] text-[#475569]">{experience}</p>
+                    <p className="m-0 text-[13px] md:text-[14px] leading-[1.6] text-[var(--desk-text-body)]">{experience}</p>
                   </div>
                 ) : null}
               </div>
@@ -271,14 +271,14 @@ export function PublicProfilePreview({
               {specialties.length > 0 ? (
                 <div className="flex flex-col gap-[10px] md:gap-5">
                   <div className="flex flex-col gap-2 md:gap-3">
-                    <div className="text-[11px] md:text-[12px] font-black tracking-[0.12em] text-[#0F172A] uppercase">
+                    <div className="text-[11px] md:text-[12px] font-black tracking-[0.12em] text-[var(--desk-text)] uppercase">
                       Specialties
                     </div>
                     <div className="flex flex-wrap gap-2 md:gap-[10px]">
                       {specialties.map((spec) => (
                         <div
                           key={spec}
-                          className="h-8 md:h-[36px] px-3 md:px-4 rounded-[999px] bg-[#F1F5F9] text-[12px] md:text-[13px] font-[700] flex items-center"
+                          className="h-8 md:h-[36px] px-3 md:px-4 rounded-[999px] bg-[var(--desk-surface-muted)] text-[12px] md:text-[13px] font-[700] flex items-center"
                           style={{ color: primaryColor }}
                         >
                           {spec}
@@ -292,14 +292,14 @@ export function PublicProfilePreview({
           </section>
         ) : null}
 
-        <section className="px-4 py-6 md:py-[80px] md:px-10 bg-[#F8FAFC] flex flex-col md:grid md:grid-cols-3 gap-[14px] md:gap-5 max-w-[960px] mx-auto w-full flex-1">
-          <div className="bg-white border border-[#E2E8F0] rounded-[18px] md:rounded-[24px] p-4 md:p-[32px] flex flex-col gap-2.5 md:gap-4">
-            <div className="text-[11px] md:text-[12px] font-black tracking-[0.12em] text-[#94A3B8] uppercase">
+        <section className="px-4 py-6 md:py-[80px] md:px-10 bg-[var(--desk-surface)] flex flex-col md:grid md:grid-cols-3 gap-[14px] md:gap-5 max-w-[960px] mx-auto w-full flex-1">
+          <div className="bg-white border border-[var(--desk-border)] rounded-[18px] md:rounded-[24px] p-4 md:p-[32px] flex flex-col gap-2.5 md:gap-4">
+            <div className="text-[11px] md:text-[12px] font-black tracking-[0.12em] text-[var(--desk-text-subtle)] uppercase">
               Location & Format
             </div>
             <div className="flex flex-col gap-2 md:gap-3">
               {locations.map((loc) => (
-                <div key={loc} className="flex items-start gap-2 md:gap-2.5 text-[13px] md:text-[14px] text-[#475569]">
+                <div key={loc} className="flex items-start gap-2 md:gap-2.5 text-[13px] md:text-[14px] text-[var(--desk-text-body)]">
                   <MapPin className="w-4 h-4 mt-0.5 shrink-0" style={{ color: primaryColor }} />
                   {loc}
                 </div>
@@ -308,13 +308,13 @@ export function PublicProfilePreview({
           </div>
 
           {languages.length > 0 ? (
-            <div className="bg-white border border-[#E2E8F0] rounded-[18px] md:rounded-[24px] p-4 md:p-[32px] flex flex-col gap-2.5 md:gap-4">
-              <div className="text-[11px] md:text-[12px] font-black tracking-[0.12em] text-[#94A3B8] uppercase">
+            <div className="bg-white border border-[var(--desk-border)] rounded-[18px] md:rounded-[24px] p-4 md:p-[32px] flex flex-col gap-2.5 md:gap-4">
+              <div className="text-[11px] md:text-[12px] font-black tracking-[0.12em] text-[var(--desk-text-subtle)] uppercase">
                 Languages
               </div>
               <div className="flex flex-wrap gap-2 md:gap-[10px]">
                 {languages.map((language) => (
-                  <div key={language} className="h-7 md:h-[32px] px-2.5 md:px-[12px] rounded-[999px] bg-[#F1F5F9] text-[#475569] text-[11px] md:text-[12px] font-[700] flex items-center">
+                  <div key={language} className="h-7 md:h-[32px] px-2.5 md:px-[12px] rounded-[999px] bg-[var(--desk-surface-muted)] text-[var(--desk-text-body)] text-[11px] md:text-[12px] font-[700] flex items-center">
                     {language}
                   </div>
                 ))}
@@ -323,15 +323,15 @@ export function PublicProfilePreview({
           ) : null}
 
           {slots.length > 0 ? (
-            <div className="hidden md:flex bg-white border border-[#E2E8F0] rounded-[24px] p-[32px] flex-col gap-4">
-              <div className="text-[12px] font-black tracking-[0.12em] text-[#94A3B8] uppercase">
+            <div className="hidden md:flex bg-white border border-[var(--desk-border)] rounded-[24px] p-[32px] flex-col gap-4">
+              <div className="text-[12px] font-black tracking-[0.12em] text-[var(--desk-text-subtle)] uppercase">
                 Next Available
               </div>
               <div className="flex flex-col gap-[10px]">
                 {slots.map((slot) => (
                   <div key={slot.id} className="flex justify-between items-center text-[13px]">
-                    <span className="text-[#475569]">{formatSlotDate(slot.startsAt)}</span>
-                    <span className="font-[700] text-[#0F172A]">{formatSlotTime(slot.startsAt)} WAT</span>
+                    <span className="text-[var(--desk-text-body)]">{formatSlotDate(slot.startsAt)}</span>
+                    <span className="font-[700] text-[var(--desk-text)]">{formatSlotTime(slot.startsAt)} WAT</span>
                   </div>
                 ))}
               </div>
@@ -356,12 +356,12 @@ export function PublicProfilePreview({
           ) : null}
         </section>
 
-        <section className="px-4 py-5 md:py-[80px] md:px-10 bg-white text-center border-t border-[#E2E8F0]">
+        <section className="px-4 py-5 md:py-[80px] md:px-10 bg-white text-center border-t border-[var(--desk-border)]">
           <div className="max-w-[760px] mx-auto flex flex-col gap-5 items-center">
-            <h2 className="hidden md:block m-0 text-[34px] font-[800] tracking-[-0.035em] text-[#0F172A]">
+            <h2 className="hidden md:block m-0 text-[34px] font-[800] tracking-[-0.035em] text-[var(--desk-text)]">
               Ready to start your journey?
             </h2>
-            <p className="hidden md:block m-0 text-[15px] text-[#64748B] text-pretty">
+            <p className="hidden md:block m-0 text-[15px] text-[var(--desk-text-muted)] text-pretty">
               Browse available sessions with {therapistName || practiceName} and pick a time that works for you.
             </p>
             {interactive ? (
@@ -385,8 +385,8 @@ export function PublicProfilePreview({
         </section>
       </>
 
-      <footer className="bg-[#0F172A] p-5 md:p-[40px] text-center text-[11px] md:text-[12px] text-[#94A3B8] border-t border-white/10">
-        © 2026 {practiceName}. Powered by <span className="text-[#7DB8A5]">unclutter desk</span>.
+      <footer className="bg-[var(--desk-sidebar)] p-5 md:p-[40px] text-center text-[11px] md:text-[12px] text-[var(--desk-text-subtle)] border-t border-white/10">
+        © 2026 {practiceName}. Powered by <span className="text-[var(--desk-pine-300)]">unclutter desk</span>.
       </footer>
     </div>
   );

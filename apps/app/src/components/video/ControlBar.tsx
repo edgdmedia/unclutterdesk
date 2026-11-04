@@ -33,7 +33,7 @@ export function ControlBar({
 
   return (
     <div className="flex justify-center">
-      <div className="bg-[#172130]/90 backdrop-blur-xl border border-white/10 rounded-[22px] p-[12px_14px] flex flex-wrap items-center justify-center gap-x-5 gap-y-3 shadow-[0_24px_60px_rgba(0,0,0,.5)] max-w-full">
+      <div className="bg-[var(--desk-sidebar-hover)]/90 backdrop-blur-xl border border-white/10 rounded-[22px] p-[12px_14px] flex flex-wrap items-center justify-center gap-x-5 gap-y-3 shadow-[0_24px_60px_rgba(0,0,0,.5)] max-w-full">
         {buttons.length > 0 ? (
           <div className="flex items-center gap-3">
             {buttons.map((btn) => {
@@ -45,7 +45,7 @@ export function ControlBar({
                     aria-label={btn.name}
                     aria-pressed={btn.active ?? false}
                     onClick={btn.onClick}
-                    className={`h-[52px] w-[52px] rounded-[16px] flex items-center justify-center transition-all cursor-pointer ${btn.active ? 'bg-[#E3B341] text-[#0F172A] shadow-lg' : 'bg-white/10 text-white hover:bg-white/20'}`}
+                    className={`h-[52px] w-[52px] rounded-[16px] flex items-center justify-center transition-all cursor-pointer ${btn.active ? 'bg-[var(--ds-sky)] text-[var(--desk-text)] shadow-lg' : 'bg-white/10 text-white hover:bg-white/20'}`}
                   >
                     <Icon className="h-5 w-5" />
                   </button>
@@ -59,7 +59,7 @@ export function ControlBar({
         <button
           type="button"
           onClick={onEnd}
-          className="h-[52px] px-6 rounded-[16px] bg-[#E11D48] hover:bg-[#BE123C] text-white font-bold text-[14.5px] flex items-center gap-2 shadow-[0_10px_26px_rgba(225,29,72,.4)] cursor-pointer whitespace-nowrap"
+          className="h-[52px] px-6 rounded-[16px] bg-[var(--desk-danger)] hover:bg-[var(--desk-danger)] text-white font-bold text-[14.5px] flex items-center gap-2 shadow-[0_10px_26px_rgba(225,29,72,.4)] cursor-pointer whitespace-nowrap"
         >
           <PhoneOff className="h-4 w-4" />
           <span>{endLabel}</span>

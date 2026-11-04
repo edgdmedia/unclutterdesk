@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Card, Eyebrow, useToast } from '@unclutterdesk/ui';
 import { api, getBookingUrl } from '../../utils/apiClient';
 
-const inputCls = 'w-full h-[44px] px-3.5 rounded-[14px] bg-[#F8FAFC] border border-[#E2E8F0] text-[13px] font-mono font-bold text-[#0F172A] outline-none';
+const inputCls = 'w-full h-[44px] px-3.5 rounded-[14px] bg-[var(--desk-surface)] border border-[var(--desk-border)] text-[13px] font-mono font-bold text-[var(--desk-text)] outline-none';
 
 /** The same rule the API applies: lowercase letters, numbers and dashes. */
 function toSlug(value: string) {
@@ -68,13 +68,13 @@ export function BookingLinkCard({ slug: saved, onSaved }: { slug: string; onSave
     <Card padding="p-[22px]" className="space-y-3">
       <div>
         <Eyebrow>BOOKING LINK</Eyebrow>
-        <p className="mt-1 text-xs text-[#64748B]">Where clients find and book your practice.</p>
+        <p className="mt-1 text-xs text-[var(--desk-text-muted)]">Where clients find and book your practice.</p>
       </div>
       <div className="space-y-1.5">
-        <label htmlFor="booking-link" className="text-[11.5px] font-bold text-[#475569]">Booking link</label>
+        <label htmlFor="booking-link" className="text-[11.5px] font-bold text-[var(--desk-text-body)]">Booking link</label>
         <input id="booking-link" value={slug} onChange={(e) => setSlug(toSlug(e.target.value))} className={inputCls} />
       </div>
-      {cleaned ? <p className="text-xs font-semibold text-[#0F3A53] break-all">{getBookingUrl(cleaned)}</p> : null}
+      {cleaned ? <p className="text-xs font-semibold text-[var(--desk-pine-600)] break-all">{getBookingUrl(cleaned)}</p> : null}
       {taken ? (
         <p className="text-xs font-semibold text-red-600">
           {check?.reason && check.reason !== 'Slug is already taken' ? check.reason : 'That link is already taken.'}
@@ -88,7 +88,7 @@ export function BookingLinkCard({ slug: saved, onSaved }: { slug: string; onSave
         type="button"
         onClick={() => void save()}
         disabled={!changed || saving || taken || check === null}
-        className="h-10 px-4 rounded-[12px] bg-[#0F3A53] text-white text-xs font-bold cursor-pointer disabled:opacity-50"
+        className="h-10 px-4 rounded-[12px] bg-[var(--desk-pine-600)] text-white text-xs font-bold cursor-pointer disabled:opacity-50"
       >
         {saving ? 'Saving…' : 'Save booking link'}
       </button>

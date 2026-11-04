@@ -154,21 +154,21 @@ export function ImageField({ value, onChange, label, alt, shape = 'square', onSa
           type="button"
           onClick={() => input.current?.click()}
           aria-label={`Choose ${label}`}
-          className={`h-[52px] w-[52px] ${circle ? 'rounded-full' : 'rounded-[16px]'} bg-[#F8FAFC] border border-[#E2E8F0] flex items-center justify-center overflow-hidden shrink-0 cursor-pointer hover:border-[#0F3A53] transition-all`}
+          className={`h-[52px] w-[52px] ${circle ? 'rounded-full' : 'rounded-[16px]'} bg-[var(--desk-surface)] border border-[var(--desk-border)] flex items-center justify-center overflow-hidden shrink-0 cursor-pointer hover:border-[var(--desk-pine-600)] transition-all`}
         >
           {value ? (
             <img src={value} alt={alt ?? label} className={`w-full h-full ${circle ? 'rounded-full' : ''} object-contain`} />
           ) : (
-            <ImageIcon className="h-6 w-6 text-[#94A3B8]" />
+            <ImageIcon className="h-6 w-6 text-[var(--desk-text-subtle)]" />
           )}
         </button>
         <button
           type="button"
           onClick={() => input.current?.click()}
           disabled={busy}
-          className="h-[44px] px-4 rounded-[12px] bg-[#F1F5F9] border border-[#E2E8F0] text-xs font-bold text-[#0F172A] hover:bg-slate-200 transition-colors flex items-center gap-2 cursor-pointer disabled:opacity-60"
+          className="h-[44px] px-4 rounded-[12px] bg-[var(--desk-surface-muted)] border border-[var(--desk-border)] text-xs font-bold text-[var(--desk-text)] hover:bg-slate-200 transition-colors flex items-center gap-2 cursor-pointer disabled:opacity-60"
         >
-          <Upload className="h-4 w-4 text-[#64748B]" />
+          <Upload className="h-4 w-4 text-[var(--desk-text-muted)]" />
           {working ? 'Preparing…' : saving ? 'Saving…' : value ? `Change ${label}` : `Choose ${label} image`}
         </button>
         <input ref={input} type="file" accept="image/*" aria-label={`Upload ${label}`} onChange={(e) => void choose(e)} className="hidden" disabled={busy} />
@@ -186,7 +186,7 @@ export function ImageField({ value, onChange, label, alt, shape = 'square', onSa
       </div>
       {error ? <p role="alert" className="text-xs font-semibold text-red-600">{error}</p> : null}
       {!error && (working || saving || saved) ? (
-        <p role="status" className="text-xs font-semibold text-[#64748B]">
+        <p role="status" className="text-xs font-semibold text-[var(--desk-text-muted)]">
           {working ? 'Preparing…' : saving ? 'Saving…' : 'Saved'}
         </p>
       ) : null}

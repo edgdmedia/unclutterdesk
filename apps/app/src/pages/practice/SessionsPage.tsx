@@ -52,8 +52,8 @@ export function SessionsPage({ can }: { can: { viewAll: boolean } }) {
       cell: (r) => (
         <span className="flex items-center gap-2 min-w-0">
           <span className="min-w-0">
-            <span className="block text-[13px] font-bold text-[#0F172A] truncate">{r.client.name}</span>
-            <span className="block text-[11.5px] text-[#94A3B8] truncate">{r.serviceTitle}</span>
+            <span className="block text-[13px] font-bold text-[var(--desk-text)] truncate">{r.client.name}</span>
+            <span className="block text-[11.5px] text-[var(--desk-text-subtle)] truncate">{r.serviceTitle}</span>
           </span>
         </span>
       ),
@@ -72,14 +72,14 @@ export function SessionsPage({ can }: { can: { viewAll: boolean } }) {
           eyebrow="THE REGISTER"
           title="Sessions"
           actions={
-            <div role="tablist" className="h-[40px] p-1 bg-[#EEF2F7] rounded-[14px] inline-flex gap-1 border border-[#E2E8F0]">
+            <div role="tablist" className="h-[40px] p-1 bg-[var(--desk-surface-muted)] rounded-[14px] inline-flex gap-1 border border-[var(--desk-border)]">
               {TABS.map((t) => (
                 <button
                   key={t}
                   role="tab"
                   aria-selected={tab === t}
                   onClick={() => setTab(t)}
-                  className={`px-4 shrink-0 whitespace-nowrap rounded-[10px] text-xs font-bold cursor-pointer ${tab === t ? 'bg-white text-[#0F172A] shadow-xs' : 'text-[#64748B]'}`}
+                  className={`px-4 shrink-0 whitespace-nowrap rounded-[10px] text-xs font-bold cursor-pointer ${tab === t ? 'bg-white text-[var(--desk-text)] shadow-xs' : 'text-[var(--desk-text-muted)]'}`}
                 >
                   {t}
                 </button>
@@ -92,7 +92,7 @@ export function SessionsPage({ can }: { can: { viewAll: boolean } }) {
       {error ? (
         <div role="alert" className="rounded-[14px] border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-medium text-rose-700">{error}</div>
       ) : null}
-      <div className="rounded-[20px] border border-[#E2E8F0] bg-white overflow-hidden">
+      <div className="rounded-[20px] border border-[var(--desk-border)] bg-white overflow-hidden">
         <ResponsiveTable<SessionRow>
           caption="Sessions"
           rows={rows}

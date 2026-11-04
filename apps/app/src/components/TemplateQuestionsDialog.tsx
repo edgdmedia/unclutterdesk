@@ -21,25 +21,25 @@ export function TemplateQuestionsDialog({ load, onClose }: { load: () => Promise
   }, []);
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-[#0F172A]/60 p-4" role="dialog" aria-modal="true" aria-labelledby="template-questions-title">
+    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-[var(--desk-sidebar)]/60 p-4" role="dialog" aria-modal="true" aria-labelledby="template-questions-title">
       <div ref={ref} className="w-full max-w-[520px] max-h-[85vh] overflow-y-auto rounded-[20px] bg-white p-6 shadow-2xl space-y-4">
         <div className="flex items-start justify-between gap-3">
           <div>
-            <h2 id="template-questions-title" className="text-[16px] font-bold text-[#0F172A]">{template?.title ?? 'Template'}</h2>
-            {template?.practiceName ? <p className="text-[12px] text-[#64748B]">Shared by {template.practiceName}</p> : null}
+            <h2 id="template-questions-title" className="text-[16px] font-bold text-[var(--desk-text)]">{template?.title ?? 'Template'}</h2>
+            {template?.practiceName ? <p className="text-[12px] text-[var(--desk-text-muted)]">Shared by {template.practiceName}</p> : null}
           </div>
-          <button type="button" onClick={onClose} aria-label="Close" className="h-7 w-7 inline-flex items-center justify-center rounded-[8px] text-[#64748B] hover:bg-[#F1F5F9] cursor-pointer">
+          <button type="button" onClick={onClose} aria-label="Close" className="h-7 w-7 inline-flex items-center justify-center rounded-[8px] text-[var(--desk-text-muted)] hover:bg-[var(--desk-surface-muted)] cursor-pointer">
             <X className="h-4 w-4" />
           </button>
         </div>
         {error ? <p className="text-[13px] font-medium text-rose-700">{error}</p> : null}
-        {!template && !error ? <Loader2 className="h-5 w-5 animate-spin text-[#64748B]" /> : null}
-        {template?.description ? <p className="text-[13px] text-[#475569]">{template.description}</p> : null}
+        {!template && !error ? <Loader2 className="h-5 w-5 animate-spin text-[var(--desk-text-muted)]" /> : null}
+        {template?.description ? <p className="text-[13px] text-[var(--desk-text-body)]">{template.description}</p> : null}
         <ol className="space-y-2">
           {(template?.schemaJson ?? []).map((q, i) => (
-            <li key={q.id ?? i} className="rounded-[12px] border border-[#E2E8F0] px-3.5 py-2.5">
-              <p className="text-[13.5px] font-semibold text-[#0F172A]">{i + 1}. {q.label}</p>
-              <p className="text-[11.5px] text-[#64748B]">{(q.type ?? 'text').replace(/_/g, ' ')}{q.required ? ' · required' : ''}</p>
+            <li key={q.id ?? i} className="rounded-[12px] border border-[var(--desk-border)] px-3.5 py-2.5">
+              <p className="text-[13.5px] font-semibold text-[var(--desk-text)]">{i + 1}. {q.label}</p>
+              <p className="text-[11.5px] text-[var(--desk-text-muted)]">{(q.type ?? 'text').replace(/_/g, ' ')}{q.required ? ' · required' : ''}</p>
             </li>
           ))}
         </ol>

@@ -50,15 +50,15 @@ export function ClientsPage({ clients, setClients, onRefresh }: ClientsPageProps
         <span className="flex items-center gap-3 min-w-0">
           <AvatarChip initials={c.initials} size="sm" />
           <span className="min-w-0">
-            <span className="block text-[14px] font-bold text-[#0F172A] leading-tight truncate">{c.name}</span>
-            <span className="block text-[11.5px] text-[#94A3B8] font-medium truncate">{c.email}</span>
+            <span className="block text-[14px] font-bold text-[var(--desk-text)] leading-tight truncate">{c.name}</span>
+            <span className="block text-[11.5px] text-[var(--desk-text-subtle)] font-medium truncate">{c.email}</span>
           </span>
         </span>
       ),
     },
-    { key: 'next', header: 'Next session', cell: (c) => <span className="text-[13px] font-medium text-[#475569]">{c.next}</span> },
-    { key: 'care', header: 'Care type', priority: 'md', cell: (c) => <span className="text-[13px] font-medium text-[#475569]">{c.care}</span>, sort: byText((c) => c.care) },
-    { key: 'sessions', header: 'Sessions', priority: 'md', align: 'end', cell: (c) => <span className="text-[13px] font-bold text-[#0F172A]">{c.sessions}</span>, sort: byNumber((c) => Number(c.sessions)) },
+    { key: 'next', header: 'Next session', cell: (c) => <span className="text-[13px] font-medium text-[var(--desk-text-body)]">{c.next}</span> },
+    { key: 'care', header: 'Care type', priority: 'md', cell: (c) => <span className="text-[13px] font-medium text-[var(--desk-text-body)]">{c.care}</span>, sort: byText((c) => c.care) },
+    { key: 'sessions', header: 'Sessions', priority: 'md', align: 'end', cell: (c) => <span className="text-[13px] font-bold text-[var(--desk-text)]">{c.sessions}</span>, sort: byNumber((c) => Number(c.sessions)) },
     { key: 'status', header: 'Status', priority: 'lg', cell: (c) => <StatusBadge status={c.status} />, sort: byText((c) => c.status) },
   ];
 
@@ -186,7 +186,7 @@ export function ClientsPage({ clients, setClients, onRefresh }: ClientsPageProps
               type="button"
               onClick={exportClients}
               disabled={filteredClients.length === 0}
-              className="flex h-[40px] px-4 rounded-[14px] bg-white border border-[#CBD5E1] text-[#0F172A] text-xs font-bold hover:bg-[#F8FAFC] items-center gap-1.5 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+              className="flex h-[40px] px-4 rounded-[14px] bg-white border border-[var(--desk-pine-200)] text-[var(--desk-text)] text-xs font-bold hover:bg-[var(--desk-surface)] items-center gap-1.5 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <Download className="h-3.5 w-3.5" />
               <span>Export</span>
@@ -199,12 +199,12 @@ export function ClientsPage({ clients, setClients, onRefresh }: ClientsPageProps
         {kpis.map((kpi, idx) => (
           <Card key={idx} padding="p-[16px_18px]">
             <Eyebrow>{kpi.label}</Eyebrow>
-            <span className="text-[26px] font-extrabold tracking-[-0.03em] text-[#0F172A] block mt-1 leading-none">{kpi.value}</span>
+            <span className="text-[26px] font-extrabold tracking-[-0.03em] text-[var(--desk-text)] block mt-1 leading-none">{kpi.value}</span>
           </Card>
         ))}
       </Grid>
 
-      <Card padding="p-0" className="overflow-hidden border border-[#E2E8F0] bg-white">
+      <Card padding="p-0" className="overflow-hidden border border-[var(--desk-border)] bg-white">
         <ResponsiveTable<Client>
           caption="Clients"
           rows={pageClients}
@@ -218,8 +218,8 @@ export function ClientsPage({ clients, setClients, onRefresh }: ClientsPageProps
           filter={{ placeholder: 'Search clients', query: searchQuery, onQueryChange: onSearch }}
           empty="No clients yet."
           footer={
-            <div className="p-[14px_22px] bg-[#F8FAFC] border-t border-[#E2E8F0] flex flex-wrap items-center justify-between gap-2">
-              <span className="text-[12px] text-[#94A3B8] font-medium">
+            <div className="p-[14px_22px] bg-[var(--desk-surface)] border-t border-[var(--desk-border)] flex flex-wrap items-center justify-between gap-2">
+              <span className="text-[12px] text-[var(--desk-text-subtle)] font-medium">
                 {sortedClients.length === 0
                   ? `No clients${q ? ' match that search' : ' yet'}`
                   : `Showing ${pageStart + 1}–${pageStart + pageClients.length} of ${sortedClients.length}${
@@ -231,7 +231,7 @@ export function ClientsPage({ clients, setClients, onRefresh }: ClientsPageProps
                   type="button"
                   onClick={() => setPage(Math.max(0, currentPage - 1))}
                   disabled={currentPage === 0}
-                  className="h-[30px] px-3 rounded-[9px] bg-white border border-[#E2E8F0] text-xs font-bold text-[#475569] flex items-center gap-1 hover:bg-[#F8FAFC] cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
+                  className="h-[30px] px-3 rounded-[9px] bg-white border border-[var(--desk-border)] text-xs font-bold text-[var(--desk-text-body)] flex items-center gap-1 hover:bg-[var(--desk-surface)] cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
                 >
                   <ChevronLeft className="h-3.5 w-3.5" />
                   <span>Previous</span>
@@ -240,7 +240,7 @@ export function ClientsPage({ clients, setClients, onRefresh }: ClientsPageProps
                   type="button"
                   onClick={() => setPage(Math.min(lastPage, currentPage + 1))}
                   disabled={currentPage >= lastPage}
-                  className="h-[30px] px-3 rounded-[9px] bg-white border border-[#E2E8F0] text-xs font-bold text-[#475569] flex items-center gap-1 hover:bg-[#F8FAFC] cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
+                  className="h-[30px] px-3 rounded-[9px] bg-white border border-[var(--desk-border)] text-xs font-bold text-[var(--desk-text-body)] flex items-center gap-1 hover:bg-[var(--desk-surface)] cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
                 >
                   <span>Next</span>
                   <ChevronRight className="h-3.5 w-3.5" />
@@ -268,7 +268,7 @@ export function ClientsPage({ clients, setClients, onRefresh }: ClientsPageProps
 
             <div className="flex items-center gap-2 pb-1 border-b border-slate-100">
               <User className="h-5 w-5" style={{ color: primaryColor }} />
-              <h3 className="text-lg font-bold text-[#0F172A]">Add New Client</h3>
+              <h3 className="text-lg font-bold text-[var(--desk-text)]">Add New Client</h3>
             </div>
 
             {/* Name */}
@@ -280,7 +280,7 @@ export function ClientsPage({ clients, setClients, onRefresh }: ClientsPageProps
                 value={formName}
                 onChange={(e) => setFormName(e.target.value)}
                 placeholder="e.g. Amara Okoye"
-                className="w-full h-11 px-3 rounded-[12px] bg-[#F8FAFC] border border-[#E2E8F0] text-xs font-semibold outline-none"
+                className="w-full h-11 px-3 rounded-[12px] bg-[var(--desk-surface)] border border-[var(--desk-border)] text-xs font-semibold outline-none"
               />
             </div>
 
@@ -294,7 +294,7 @@ export function ClientsPage({ clients, setClients, onRefresh }: ClientsPageProps
                   value={formEmail}
                   onChange={(e) => setFormEmail(e.target.value)}
                   placeholder="name@email.com"
-                  className="w-full h-11 px-3 rounded-[12px] bg-[#F8FAFC] border border-[#E2E8F0] text-xs font-semibold outline-none"
+                  className="w-full h-11 px-3 rounded-[12px] bg-[var(--desk-surface)] border border-[var(--desk-border)] text-xs font-semibold outline-none"
                 />
               </div>
               <div className="space-y-1">
@@ -304,7 +304,7 @@ export function ClientsPage({ clients, setClients, onRefresh }: ClientsPageProps
                   value={formPhone}
                   onChange={(e) => setFormPhone(e.target.value)}
                   placeholder="e.g. 0802 345 6789"
-                  className="w-full h-11 px-3 rounded-[12px] bg-[#F8FAFC] border border-[#E2E8F0] text-xs font-semibold outline-none"
+                  className="w-full h-11 px-3 rounded-[12px] bg-[var(--desk-surface)] border border-[var(--desk-border)] text-xs font-semibold outline-none"
                 />
               </div>
             </Grid>
@@ -316,7 +316,7 @@ export function ClientsPage({ clients, setClients, onRefresh }: ClientsPageProps
                 <select
                   value={formCare}
                   onChange={(e) => setFormCare(e.target.value)}
-                  className="w-full h-11 px-3 rounded-[12px] bg-[#F8FAFC] border border-[#E2E8F0] text-xs font-semibold outline-none"
+                  className="w-full h-11 px-3 rounded-[12px] bg-[var(--desk-surface)] border border-[var(--desk-border)] text-xs font-semibold outline-none"
                 >
                   <option value="Individual Therapy">Individual Therapy</option>
                   <option value="Couples Therapy">Couples Therapy</option>
@@ -327,7 +327,7 @@ export function ClientsPage({ clients, setClients, onRefresh }: ClientsPageProps
                 <select
                   value={formStatus}
                   onChange={(e) => setFormStatus(e.target.value)}
-                  className="w-full h-11 px-3 rounded-[12px] bg-[#F8FAFC] border border-[#E2E8F0] text-xs font-semibold outline-none"
+                  className="w-full h-11 px-3 rounded-[12px] bg-[var(--desk-surface)] border border-[var(--desk-border)] text-xs font-semibold outline-none"
                 >
                   <option value="Active">Active</option>
                   <option value="Pending Intake">Pending Intake</option>
@@ -344,7 +344,7 @@ export function ClientsPage({ clients, setClients, onRefresh }: ClientsPageProps
                 value={formEcName}
                 onChange={(e) => setFormEcName(e.target.value)}
                 placeholder="e.g. Chidi Okoye"
-                className="w-full h-11 px-3 rounded-[12px] bg-[#F8FAFC] border border-[#E2E8F0] text-xs font-semibold outline-none"
+                className="w-full h-11 px-3 rounded-[12px] bg-[var(--desk-surface)] border border-[var(--desk-border)] text-xs font-semibold outline-none"
               />
             </div>
             <div className="space-y-1">
@@ -354,7 +354,7 @@ export function ClientsPage({ clients, setClients, onRefresh }: ClientsPageProps
                 value={formEcRelationship}
                 onChange={(e) => setFormEcRelationship(e.target.value)}
                 placeholder="e.g. Brother"
-                className="w-full h-11 px-3 rounded-[12px] bg-[#F8FAFC] border border-[#E2E8F0] text-xs font-semibold outline-none"
+                className="w-full h-11 px-3 rounded-[12px] bg-[var(--desk-surface)] border border-[var(--desk-border)] text-xs font-semibold outline-none"
               />
             </div>
             <div className="space-y-1">
@@ -364,7 +364,7 @@ export function ClientsPage({ clients, setClients, onRefresh }: ClientsPageProps
                 value={formEcPhone}
                 onChange={(e) => setFormEcPhone(e.target.value)}
                 placeholder="e.g. 0803 552 8814"
-                className="w-full h-11 px-3 rounded-[12px] bg-[#F8FAFC] border border-[#E2E8F0] text-xs font-semibold outline-none"
+                className="w-full h-11 px-3 rounded-[12px] bg-[var(--desk-surface)] border border-[var(--desk-border)] text-xs font-semibold outline-none"
               />
             </div>
 
@@ -378,7 +378,7 @@ export function ClientsPage({ clients, setClients, onRefresh }: ClientsPageProps
               <button
                 type="button"
                 onClick={() => setShowAddModal(false)}
-                className="flex-1 h-11 rounded-[14px] bg-[#F1F5F9] text-[#475569] font-bold text-xs hover:bg-[#E2E8F0] cursor-pointer"
+                className="flex-1 h-11 rounded-[14px] bg-[var(--desk-surface-muted)] text-[var(--desk-text-body)] font-bold text-xs hover:bg-[var(--desk-border)] cursor-pointer"
               >
                 Cancel
               </button>

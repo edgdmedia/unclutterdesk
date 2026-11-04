@@ -45,12 +45,12 @@ export function ShareKit() {
   );
 
   if (profile === undefined) {
-    return <p className="text-[13px] text-[#64748B]">Loading your share kit…</p>;
+    return <p className="text-[13px] text-[var(--desk-text-muted)]">Loading your share kit…</p>;
   }
   if (profile === null) {
     return (
       <Card padding="lg">
-        <p className="text-[14px] text-[#334155]">
+        <p className="text-[14px] text-[var(--desk-text-body)]">
           Start your public profile first — the share kit builds every link from it.
         </p>
       </Card>
@@ -89,9 +89,9 @@ export function ShareKit() {
   return (
     <div className="grid grid-cols-1 gap-5 xl:grid-cols-2">
       <Card padding="lg" className="xl:col-span-2">
-        <h2 className="text-[15px] font-bold text-[#0F172A]">Your profile link</h2>
+        <h2 className="text-[15px] font-bold text-[var(--desk-text)]">Your profile link</h2>
         {!published && (
-          <p className="mt-1 text-[13px] text-[#9A3412]">The link works once your profile is published.</p>
+          <p className="mt-1 text-[13px] text-[var(--desk-pending)]">The link works once your profile is published.</p>
         )}
         <div className="mt-3 flex flex-col gap-3 sm:flex-row sm:items-end">
           <div className="flex-1">
@@ -111,15 +111,15 @@ export function ShareKit() {
             </a>
           </div>
         </div>
-        <p className="mt-3 text-[12.5px] text-[#64748B]">
-          <span className="font-semibold text-[#334155]">Instagram bio tip:</span> paste this link into your
+        <p className="mt-3 text-[12.5px] text-[var(--desk-text-muted)]">
+          <span className="font-semibold text-[var(--desk-text-body)]">Instagram bio tip:</span> paste this link into your
           Instagram bio so people can find your profile from your posts.
         </p>
       </Card>
 
       <Card padding="lg">
-        <h2 className="text-[15px] font-bold text-[#0F172A]">QR code</h2>
-        <p className="mt-1 text-[13px] text-[#475569]">
+        <h2 className="text-[15px] font-bold text-[var(--desk-text)]">QR code</h2>
+        <p className="mt-1 text-[13px] text-[var(--desk-text-body)]">
           Put it on a business card, a flyer or a slide. It points at your profile.
         </p>
         <div className="mt-4 flex flex-wrap gap-2">
@@ -145,10 +145,10 @@ export function ShareKit() {
       </Card>
 
       <Card padding="lg">
-        <h2 className="text-[15px] font-bold text-[#0F172A]">Profile PDF</h2>
+        <h2 className="text-[15px] font-bold text-[var(--desk-text)]">Profile PDF</h2>
         {entitlements?.downloadablePdf ? (
           <>
-            <p className="mt-1 text-[13px] text-[#475569]">
+            <p className="mt-1 text-[13px] text-[var(--desk-text-body)]">
               A one-page sheet with your photo, qualifications, specialties and QR code.
             </p>
             <div className="mt-4">
@@ -174,12 +174,12 @@ export function ShareKit() {
       </Card>
 
       <Card padding="lg" className="xl:col-span-2">
-        <h2 className="text-[15px] font-bold text-[#0F172A]">Email signature</h2>
-        <p className="mt-1 text-[13px] text-[#475569]">
+        <h2 className="text-[15px] font-bold text-[var(--desk-text)]">Email signature</h2>
+        <p className="mt-1 text-[13px] text-[var(--desk-text-body)]">
           Paste this under your emails in Gmail, Outlook or Apple Mail. Every line is styled inline, so it
           looks the same everywhere.
         </p>
-        <div className="mt-4 rounded-[12px] border border-[#E2E8F0] bg-white p-4" aria-label="Email signature preview">
+        <div className="mt-4 rounded-[12px] border border-[var(--desk-border)] bg-white p-4" aria-label="Email signature preview">
           <div dangerouslySetInnerHTML={{ __html: signature }} />
         </div>
         <div className="mt-3">
@@ -220,11 +220,11 @@ function LockedFeature({
 
   return (
     <>
-      <div className="mt-4 rounded-[14px] border border-dashed border-[#CBD5E1] bg-[#F8FAFC] p-6 text-center">
-        <div className="mx-auto h-16 w-12 rounded-[4px] border border-[#CBD5E1] bg-white shadow-sm" aria-hidden="true" />
-        <p className="mt-3 text-[13px] font-semibold text-[#334155]">{title}</p>
-        <p className="mt-1 text-[12.5px] text-[#64748B]">{body}</p>
-        <p className="mt-2 text-[12px] font-bold text-[#0F3A53]">Part of the {plan} plan</p>
+      <div className="mt-4 rounded-[14px] border border-dashed border-[var(--desk-pine-200)] bg-[var(--desk-surface)] p-6 text-center">
+        <div className="mx-auto h-16 w-12 rounded-[4px] border border-[var(--desk-pine-200)] bg-white shadow-sm" aria-hidden="true" />
+        <p className="mt-3 text-[13px] font-semibold text-[var(--desk-text-body)]">{title}</p>
+        <p className="mt-1 text-[12.5px] text-[var(--desk-text-muted)]">{body}</p>
+        <p className="mt-2 text-[12px] font-bold text-[var(--desk-pine-600)]">Part of the {plan} plan</p>
       </div>
       <div className="mt-3">
         <Button variant="secondary" onClick={openPrompt}>
