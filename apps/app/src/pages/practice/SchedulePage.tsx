@@ -368,7 +368,7 @@ export function SchedulePage({ sessions, setSessions, clients, tenantSlug, onRef
             <div className="bg-[#FCFDFE] border-r border-[#E2E8F0]">
               <div className="h-[58px] border-b border-[#E2E8F0]" />
               {hourRows.map((h) => (
-                <div key={h} className="h-[62px] pr-3 text-right text-[10.5px] font-semibold text-[#94A3B8] -translate-y-1.5">
+                <div key={h} data-hour={h} className="h-[62px] pr-3 text-right text-[10.5px] font-semibold text-[#94A3B8] -translate-y-1.5">
                   {hourLabel(h)}
                 </div>
               ))}

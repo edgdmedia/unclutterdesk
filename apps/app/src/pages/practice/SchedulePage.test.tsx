@@ -86,10 +86,11 @@ describe('SchedulePage', () => {
 
   it('hours follow the weekly availability', async () => {
     // Monday starts at 07:30, so the grid opens at 7 AM rather than the 8 AM default.
-    renderSchedule();
-    expect(await screen.findByText(/7\s*AM/i)).toBeTruthy();
+    const { container } = renderSchedule();
+    await waitFor(() => expect(container.querySelector('[data-hour="7"]')).toBeTruthy());
     // The last label is 5 PM because the default close of 6 PM bounds the rows.
-    expect(screen.getByText(/5\s*PM/i)).toBeTruthy();
+    expect(container.querySelector('[data-hour="17"]')).toBeTruthy();
+    expect(container.querySelector('[data-hour="18"]')).toBeNull();
   });
 
   it('shows service names from sessions in the legend', async () => {
