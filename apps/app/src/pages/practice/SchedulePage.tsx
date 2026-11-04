@@ -108,11 +108,6 @@ export function SchedulePage({ sessions, setSessions, clients, tenantSlug, onRef
     setCurrentDate(newDate);
   };
 
-  // Helper: Format Date strings
-  const getLocalDateKey = (date: Date) => {
-    return date.toISOString().split('T')[0];
-  };
-
   const isSameDay = (date1: Date, date2: Date) => {
     return (
       date1.getFullYear() === date2.getFullYear() &&
