@@ -84,6 +84,17 @@ function setup(over: Record<string, any> = {}) {
     tenant: { findUnique: vi.fn().mockResolvedValue({ id: TENANT, subscriptionTier: over.tier ?? 'PRO', subscriptionStatus: 'active', name: 'Smith Therapy', slug: 'dr-smith' }) },
     $transaction: vi.fn(async (fn: any) => fn(tx)),
   };
+  // The emails read every booked session at once, after the calendar push.
+  // Each is the findFirst row (tests reshape that one) under its own id.
+  prisma.consultBooking.findMany = vi.fn(async (args: any) => {
+    const row: any = await prisma.consultBooking.findFirst(args);
+    if (!row) return [];
+    return (args?.where?.id?.in ?? [row.id]).map((id: bigint) => ({
+      ...row,
+      id,
+      availability: { ...(row.availability ?? {}), therapist: { profile: { id: OWNER, email: 'jane@example.com', timezone: 'Africa/Lagos' } } },
+    }));
+  });
   const consult: any = {
     startOnlinePayment: vi.fn(),
     assertNotAway: vi.fn().mockResolvedValue(undefined),
@@ -95,6 +106,9 @@ function setup(over: Record<string, any> = {}) {
 }
 
 const base = { clientProfileId: String(CLIENT), serviceId: '20', availabilityId: '300' };
+/** Emails to the client, apart from the practitioner's copy. */
+const toClient = (n: any) => n.sendEmail.mock.calls.map((c: any[]) => c[0]).filter((e: any) => e.to === 'ada@example.com');
+const toPractitioner = (n: any) => n.sendEmail.mock.calls.map((c: any[]) => c[0]).filter((e: any) => e.type === 'bookings.staff_booked_copy');
 
 describe('payment choices', () => {
   it('a payment link waits for payment and holds the slot', async () => {
@@ -299,7 +313,9 @@ describe('after the booking', () => {
   it('sends nothing to the client when staff untick "email the client"', async () => {
     const { service, notifications, calendar } = setup();
     await service.createForClient(TENANT, OWNER, { ...base, payment: 'NONE', notifyClient: false });
-    expect(notifications.sendEmail).not.toHaveBeenCalled();
+    expect(toClient(notifications)).toHaveLength(0);
+    // The practitioner's copy still goes.
+    expect(toPractitioner(notifications)).toHaveLength(1);
     expect(calendar.pushBookingToGoogle).toHaveBeenCalledWith(900n);
   });
 
@@ -343,7 +359,7 @@ describe('after the booking — join links', () => {
     await service.createForClient(TENANT, OWNER, { ...base, payment: 'NONE' });
     const email = notifications.sendEmail.mock.calls[0][0];
     expect(email.message).toMatch(/\/portal\/sessions\/\d+\/room/);
-    expect(email.message).toMatch(/Join link/i);
+    expect(email.message).toMatch(/Join: /);
   });
 });
 
@@ -401,8 +417,15 @@ describe('several sessions at once', () => {
       expect(call[0].data).toMatchObject({ status: 'CONFIRMED', paymentMethod: 'MANUAL', clientProfileId: CLIENT });
     }
     expect(res.bookings.map((b) => b.bookingId)).toEqual(['900', '901']);
-    expect(s.notifications.sendEmail).toHaveBeenCalledTimes(1);
-    expect(s.notifications.sendEmail.mock.calls[0][0].title).toBe('Your 2 sessions are booked');
+    const mail = toClient(s.notifications);
+    expect(mail).toHaveLength(1);
+    expect(mail[0].title).toBe('Your 2 sessions are booked');
+    // Each session's own join link, not "see your portal".
+    expect(mail[0].message.match(/Join: /g)).toHaveLength(2);
+    const copy = toPractitioner(s.notifications);
+    expect(copy).toHaveLength(1);
+    expect(copy[0]).toMatchObject({ to: 'jane@example.com', title: '2 sessions booked with Ada Ola' });
+    expect(copy[0].message).toContain('marked as paid');
     expect(s.calendar.pushBookingToGoogle).toHaveBeenCalledTimes(2);
   });
 
@@ -438,8 +461,10 @@ describe('several sessions at once', () => {
     const s = setup();
     numbered(s);
     await s.service.createSeveralForClient(TENANT, OWNER, several([{ startsAt: at(3) }, { startsAt: at(4) }], 'LINK'));
-    expect(s.notifications.sendEmail).toHaveBeenCalledTimes(2);
-    expect(s.notifications.sendEmail.mock.calls[0][0].type).toBe('bookings.staff_payment_link');
+    const mail = toClient(s.notifications);
+    expect(mail).toHaveLength(2);
+    expect(mail[0].type).toBe('bookings.staff_payment_link');
+    expect(toPractitioner(s.notifications)[0].message).toContain('waiting for payment');
   });
 
   it('a therapist still cannot mark sessions as paid', async () => {
