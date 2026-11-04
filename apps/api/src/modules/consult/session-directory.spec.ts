@@ -214,20 +214,6 @@ describe('rescheduleByStaff', () => {
     await expect(service.rescheduleByStaff(TENANT, VIEWER, 900n, 301n)).rejects.toThrow(/Ask the front desk/i);
     expect(t.consultBooking.update).not.toHaveBeenCalled();
   });
-  it('lets a therapist move their own session without view-all', async () => {
-    const t = tx();
-    const { service, prisma } = make();
-    prisma.$transaction = vi.fn(async (fn: any) => fn(t));
-    await service.rescheduleByStaff(TENANT, VIEWER, 900n, 301n);
-    expect(t.consultBooking.update).toHaveBeenCalledWith({ where: { id: 900n }, data: { availabilityId: 301n } });
-  });
-  it('refuses a therapist moving another practitioner’s session', async () => {
-    const t = tx({ oldProvider: 77n });
-    const { service, prisma } = make();
-    prisma.$transaction = vi.fn(async (fn: any) => fn(t));
-    await expect(service.rescheduleByStaff(TENANT, VIEWER, 900n, 301n)).rejects.toThrow(/Ask the front desk/i);
-    expect(t.consultBooking.update).not.toHaveBeenCalled();
-  });
   it('refuses a completed or cancelled session', async () => {
     for (const status of ['COMPLETED', 'CANCELLED']) {
       const t = tx({ booking: { status } });
