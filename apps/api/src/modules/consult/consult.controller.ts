@@ -411,6 +411,29 @@ export class ConsultController {
     return this.sessions.rescheduleByStaff(authenticatedTenantId(req), this.actor(req), BigInt(bookingId), BigInt(dto.availabilityId));
   }
 
+  @Permissions('sessions.edit', 'clinical.record')
+  @Patch('practice/sessions/:bookingId/service')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @ApiBearerAuth('access-token')
+  @ApiOperation({ summary: 'Change what was booked: the time stretches if free; any extra price becomes a balance' })
+  changeSessionService(@Req() req: any, @Param('bookingId') bookingId: string, @Body() dto: { serviceId?: string }) {
+    if (!/^\d+$/.test(bookingId)) throw new NotFoundException('Session not found');
+    if (!/^\d+$/.test(String(dto?.serviceId ?? ''))) throw new BadRequestException('Choose a service.');
+    return this.sessions.changeService(authenticatedTenantId(req), this.actor(req), BigInt(bookingId), BigInt(String(dto.serviceId)));
+  }
+
+  @Permissions('payments.desk')
+  @Post('practice/sessions/:bookingId/balance')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @ApiBearerAuth('access-token')
+  @ApiOperation({ summary: 'Record a balance as paid at the practice, or waive it' })
+  settleSessionBalance(@Req() req: any, @Param('bookingId') bookingId: string, @Body() dto: { action?: string }) {
+    if (!/^\d+$/.test(bookingId)) throw new NotFoundException('Session not found');
+    const action = String(dto?.action ?? '');
+    if (action !== 'PAID' && action !== 'WAIVED') throw new BadRequestException('Choose paid or waived.');
+    return this.sessions.settleBalance(authenticatedTenantId(req), authenticatedProfileId(req), BigInt(bookingId), action);
+  }
+
   @Permissions('practice.admin')
   @Post('practice/sessions/:bookingId/reassign-to-me')
   @UseGuards(JwtAuthGuard, RolesGuard)

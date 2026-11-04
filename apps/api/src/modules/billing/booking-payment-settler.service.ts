@@ -6,7 +6,8 @@ import { CalendarService } from '../calendar/calendar.service';
 
 export type SettleOutcome = 'confirmed' | 'already' | 'reconfirmed' | 'refunded' | 'ignored';
 
-type PaidCharge = { status?: string; paid_at?: string | null } | null | undefined;
+/** `amount` is in kobo, as Paystack reports it; absent from older callers. */
+type PaidCharge = { status?: string; paid_at?: string | null; amount?: number | null } | null | undefined;
 
 /**
  * BKG-09: the one place that decides what a successful Paystack charge for a
@@ -37,7 +38,10 @@ export class BookingPaymentSettler {
       where: { paymentRef: reference, status: 'PENDING_PAYMENT' },
       data: { status: 'CONFIRMED', paidAt },
     });
-    if (flipped.count === 1) return this.confirmed(bookingId, 'confirmed');
+    if (flipped.count === 1) {
+      await this.recordShortfall(bookingId, charge);
+      return this.confirmed(bookingId, 'confirmed');
+    }
 
     const b = await this.prisma.consultBooking.findUnique({
       where: { id: bookingId },
@@ -56,7 +60,10 @@ export class BookingPaymentSettler {
         where: { id: b.id, status: 'PENDING_PAYMENT' },
         data: { status: 'CONFIRMED', paymentRef: reference, paidAt },
       });
-      if (done.count === 1) return this.confirmed(b.id, 'confirmed');
+      if (done.count === 1) {
+        await this.recordShortfall(b.id, charge);
+        return this.confirmed(b.id, 'confirmed');
+      }
     }
 
     if (b.status === 'CANCELLED' && b.holdReleasedAt) {
@@ -90,6 +97,23 @@ export class BookingPaymentSettler {
       ?.latePaymentRefunded(b.id, reason)
       .catch((err) => this.logger.warn(`Could not send the refund notices for booking ${b.id}: ${(err as Error).message}`));
     return 'refunded';
+  }
+
+  /**
+   * A checkout opened before staff changed the session to a dearer service can
+   * still complete at the old price. The session is confirmed all the same;
+   * `amountKobo` takes what was really paid and the rest is owed, for the desk
+   * to collect or waive, never silently written off.
+   */
+  private async recordShortfall(bookingId: bigint, charge: PaidCharge): Promise<void> {
+    if (typeof charge?.amount !== 'number' || !Number.isFinite(charge.amount)) return;
+    const paid = BigInt(Math.round(charge.amount));
+    const b = await this.prisma.consultBooking.findUnique({ where: { id: bookingId }, select: { amountKobo: true } });
+    if (b?.amountKobo === null || b?.amountKobo === undefined || paid >= b.amountKobo) return;
+    await this.prisma.consultBooking.update({
+      where: { id: bookingId },
+      data: { amountKobo: paid, balanceKobo: b.amountKobo - paid, balanceStatus: 'DUE' },
+    });
   }
 
   /** The booking is paid: its calendar event and the one confirmation email follow. */
