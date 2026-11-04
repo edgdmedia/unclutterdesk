@@ -1,0 +1,86 @@
+{
+  "#2A56A8": {
+    "accent": "#2A56A8",
+    "accentText": "#FFFFFF",
+    "soft": "#DEE6F4",
+    "adjusted": false
+  },
+  "#24614F": {
+    "accent": "#24614F",
+    "accentText": "#FFFFFF",
+    "soft": "#DEE8E9",
+    "adjusted": false
+  },
+  "#E3B341": {
+    "accent": "#8F6B15",
+    "accentText": "#FFFFFF",
+    "soft": "#EBE9E2",
+    "adjusted": true
+  },
+  "#FFEB3B": {
+    "accent": "#7D7100",
+    "accentText": "#FFFFFF",
+    "soft": "#E8EAE0",
+    "adjusted": true
+  },
+  "#FF6B6B": {
+    "accent": "#E50000",
+    "accentText": "#FFFFFF",
+    "soft": "#F5DCE0",
+    "adjusted": true
+  },
+  "#00BCD4": {
+    "accent": "#007D8D",
+    "accentText": "#FFFFFF",
+    "soft": "#D9EBF0",
+    "adjusted": true
+  },
+  "#8E44AD": {
+    "accent": "#8E44AD",
+    "accentText": "#FFFFFF",
+    "soft": "#EAE4F4",
+    "adjusted": false
+  },
+  "#000000": {
+    "accent": "#000000",
+    "accentText": "#FFFFFF",
+    "soft": "#D9DCE0",
+    "adjusted": false
+  },
+  "#FFFFFF": {
+    "accent": "#737373",
+    "accentText": "#FFFFFF",
+    "soft": "#E7EAED",
+    "adjusted": true
+  },
+  "#7DB8A5": {
+    "accent": "#447C6A",
+    "accentText": "#FFFFFF",
+    "soft": "#E2EBEC",
+    "adjusted": true
+  },
+  "#0F3A53": {
+    "accent": "#0F3A53",
+    "accentText": "#FFFFFF",
+    "soft": "#DBE3E9",
+    "adjusted": false
+  },
+  "#F4A261": {
+    "accent": "#B5570D",
+    "accentText": "#FFFFFF",
+    "soft": "#EFE6E1",
+    "adjusted": true
+  },
+  "e76f51": {
+    "accent": "#CF401D",
+    "accentText": "#FFFFFF",
+    "soft": "#F2E4E3",
+    "adjusted": true
+  },
+  "#C0FFEE": {
+    "accent": "#008360",
+    "accentText": "#FFFFFF",
+    "soft": "#D9ECEB",
+    "adjusted": true
+  }
+}

@@ -25,6 +25,8 @@ export interface PreviewInput {
   address: string;
   layoutKey: string;
   themeKey: string;
+  /** Custom colour (themeKey 'custom'). */
+  brandColor?: string | null;
   /** JPEG, PNG or WebP bytes; null draws initials instead. */
   photo: Buffer | null;
   initials: string;
@@ -101,7 +103,7 @@ function footer(input: PreviewInput, c: ThemePalette): Node {
 }
 
 function card(input: PreviewInput): Node {
-  const c = themePalette(input.themeKey);
+  const c = themePalette(input.themeKey, input.brandColor);
   const base = { width: PREVIEW_WIDTH, height: PREVIEW_HEIGHT, display: 'flex', background: c.background, color: c.text, fontFamily: 'Figtree' };
   const column = (children: Node[], padding = '72px 72px 56px') =>
     el('div', { flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'space-between', padding }, children);

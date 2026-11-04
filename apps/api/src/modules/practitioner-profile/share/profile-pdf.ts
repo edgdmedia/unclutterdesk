@@ -39,6 +39,8 @@ export interface ProfilePdfInput {
   qrPng: Buffer;
   photo?: Buffer | null;
   themeKey: string;
+  /** Custom colour (themeKey 'custom'). */
+  brandColor?: string | null;
 }
 
 const MM = 72 / 25.4;
@@ -66,7 +68,7 @@ function fitText(doc: PDFKit.PDFDocument, text: string, width: number, maxHeight
  * profile's address. The Therapysts faces (embedded from the font packages, no downloads) and plain text only.
  */
 export function renderProfilePdf(input: ProfilePdfInput): Promise<Buffer> {
-  const theme = themePalette(input.themeKey);
+  const theme = themePalette(input.themeKey, input.brandColor);
   const doc = new PDFDocument({ size: 'A4', margin: 48, info: { Title: `${input.name} — profile` } });
   const f = fonts();
   doc.registerFont('Name', f.name);

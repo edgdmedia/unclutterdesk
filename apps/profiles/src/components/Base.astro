@@ -11,11 +11,14 @@ interface Props {
   description?: string;
   canonical?: string;
   theme?: string;
+  /** With theme 'custom': the brand colour, '#RRGGBB'. */
+  brandColor?: string | null;
   image?: string | null;
   noindex?: boolean;
   jsonLd?: unknown;
 }
-const { title, description, canonical, theme = 'calm', image, noindex = false, jsonLd } = Astro.props;
+const { title, description, canonical, theme = 'calm', brandColor, image, noindex = false, jsonLd } = Astro.props;
+const customSheet = theme === 'custom' && brandColor ? `/theme/${brandColor.replace('#', '').toUpperCase()}.css` : null;
 ---
 <!doctype html>
 <html lang="en">
@@ -34,6 +37,7 @@ const { title, description, canonical, theme = 'calm', image, noindex = false, j
     <meta name="twitter:card" content={image ? 'summary_large_image' : 'summary'} />
     <link rel="icon" type="image/svg+xml" href={appIcon} />
     <link rel="stylesheet" href="/themes.css" />
+    {customSheet && <link rel="stylesheet" href={customSheet} />}
     {jsonLd && <script type="application/ld+json" set:html={safeJsonLd(jsonLd)} />}
   </head>
   <body class={`theme-${theme}`}>

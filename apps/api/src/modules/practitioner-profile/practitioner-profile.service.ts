@@ -16,7 +16,8 @@ import {
   type ProfileSnapshot,
   type SectionKey,
 } from './completeness';
-import { isLayoutKey, isThemeKey, normaliseThemeKey } from './themes';
+import { CUSTOM_THEME, isLayoutKey, isThemeChoice, normaliseThemeKey } from './themes';
+import { normaliseHex } from './custom-colour';
 import { PRACTITIONER_KINDS, PRACTITIONER_KIND_LABELS } from './kinds';
 import { PROFILE_PUBLIC_ORIGIN, tenantWebOrigin } from '../../common/origins';
 import { normaliseSocialLinks, readSocialLinks } from './social-links';
@@ -74,7 +75,8 @@ export type ProfileUpdateInput = Partial<Record<TextField, string | null>> &
   };
 
 /** Fields that also choose appearance or starting content. */
-export type ProfileAppearanceInput = { themeKey?: string; layoutKey?: string; templateKey?: string | null };
+/** brandColor: '#RRGGBB', used when themeKey is 'custom' (Starter and up). Kept when another palette is chosen. */
+export type ProfileAppearanceInput = { themeKey?: string; layoutKey?: string; templateKey?: string | null; brandColor?: string | null };
 
 export interface TimelineInput {
   type: string;
@@ -366,9 +368,22 @@ export class PractitionerProfileService {
   async updateOwn(userId: bigint, input: ProfileUpdateInput & ProfileAppearanceInput) {
     const data: Prisma.PractitionerProfileUpdateInput = {};
 
+    if ('brandColor' in input) {
+      if (input.brandColor === null) data.brandColor = null;
+      else {
+        const hex = normaliseHex(input.brandColor);
+        if (!hex) throw new BadRequestException('Brand colour must be a 6-digit hex colour, like #2A56A8');
+        data.brandColor = hex;
+      }
+    }
     if ('themeKey' in input) {
       const themeKey = normaliseThemeKey(input.themeKey);
-      if (!isThemeKey(themeKey)) throw new BadRequestException('Unknown theme');
+      if (!isThemeChoice(themeKey)) throw new BadRequestException('Unknown theme');
+      if (themeKey === CUSTOM_THEME) {
+        await this.entitlements.assertProfile(userId, 'customBrandColor');
+        const current = await this.prisma.practitionerProfile.findUnique({ where: { userId }, select: { brandColor: true } });
+        if (!(data.brandColor ?? current?.brandColor)) throw new BadRequestException('Choose your brand colour');
+      }
       data.themeKey = themeKey;
     }
     if ('layoutKey' in input) {
@@ -702,6 +717,7 @@ export class PractitionerProfileService {
       qrPng,
       photo,
       themeKey: profile.themeKey,
+      brandColor: profile.brandColor,
     });
     return { pdf, filename: `${profile.handle}-profile.pdf` };
   }

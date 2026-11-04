@@ -38,6 +38,8 @@ export interface PracticeEntitlements {
 export interface ProfileEntitlements {
   downloadablePdf: boolean;
   introVideo: boolean;
+  /** A custom brand colour instead of a palette (design system; spec §6.5). Starter and up. */
+  customBrandColor: boolean;
 }
 
 /** Practice features a plan either includes or doesn't. Limits and fees are read directly, not asked about. */
@@ -84,10 +86,10 @@ export const PRACTICE_ENTITLEMENTS: Record<Tier, PracticeEntitlements> = {
 };
 
 export const PROFILE_ENTITLEMENTS: Record<Tier, ProfileEntitlements> = {
-  FREE: { downloadablePdf: false, introVideo: false },
-  STARTER: { downloadablePdf: true, introVideo: true },
-  PRO: { downloadablePdf: true, introVideo: true },
-  CLINIC: { downloadablePdf: true, introVideo: true },
+  FREE: { downloadablePdf: false, introVideo: false, customBrandColor: false },
+  STARTER: { downloadablePdf: true, introVideo: true, customBrandColor: true },
+  PRO: { downloadablePdf: true, introVideo: true, customBrandColor: true },
+  CLINIC: { downloadablePdf: true, introVideo: true, customBrandColor: true },
 };
 
 export const TIER_NAMES: Record<Tier, string> = {
