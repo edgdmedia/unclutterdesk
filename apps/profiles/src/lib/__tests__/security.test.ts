@@ -16,6 +16,7 @@ describe('security headers (§4.3)', () => {
       "style-src 'self'",
       "img-src 'self' data: https://media.example.test",
       "font-src 'self'",
+      "manifest-src 'self'",
       'connect-src https://api.example.test',
       "frame-ancestors 'none'",
       "base-uri 'none'",
@@ -66,21 +67,13 @@ describe('the renderer never trusts the visitor (§4.3 #1, #4)', () => {
       expect(text, f).not.toMatch(/dangerouslySetInnerHTML|\.innerHTML\b|set:text=|from ['"](marked|markdown-it|remark|micromark)/);
     }
   });
-  it('ships no client scripts and no inline styles', () => {
+  it('ships no client scripts and no inline styles (the home page included)', () => {
     for (const { f, text } of sources.filter((s) => s.f.endsWith('.astro'))) {
       for (const m of text.matchAll(/<script\b([^>]*)>/g)) {
-        // One exception: the home page's carousel enhancement. That page shows
-        // no therapist-written content, and the file is a static script from
-        // this site (CSP script-src 'self'). Profile pages stay script-free.
-        if (f.endsWith('pages/index.astro') && m[1].trim() === 'src="/slider.js" defer') continue;
         expect(m[1], f).toContain('application/ld+json');
       }
       expect(text, f).not.toMatch(/<style\b|\sstyle=/);
     }
   });
 
-  it('keeps the home carousel script inert: no network, no HTML writes, no storage', () => {
-    const script = readFileSync(resolve(__dirname, '../../../public/slider.js'), 'utf8');
-    expect(script).not.toMatch(/fetch\(|XMLHttpRequest|sendBeacon|WebSocket|innerHTML|outerHTML|insertAdjacentHTML|document\.write|eval\(|new Function|localStorage|sessionStorage|document\.cookie|import\(/);
-  });
 });

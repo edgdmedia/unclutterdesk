@@ -2,7 +2,6 @@
 // The Therapysts design system's faces, self-hosted (spec §6.5; CSP font-src
 // 'self'): Fraunces for headings and names, Figtree for everything else.
 import '@unclutterdesk/ui/src/brand/therapysts/fonts.css';
-import appIcon from '@unclutterdesk/ui/src/brand/therapysts/logos/therapysts-app-icon.svg?url';
 import '../styles/profile.css';
 import { safeJsonLd } from '../lib/security';
 
@@ -35,7 +34,12 @@ const customSheet = theme === 'custom' && brandColor ? `/theme/${brandColor.repl
     <meta property="og:type" content="profile" />
     {image && <meta property="og:image" content={image} />}
     <meta name="twitter:card" content={image ? 'summary_large_image' : 'summary'} />
-    <link rel="icon" type="image/svg+xml" href={appIcon} />
+    <!-- Favicon set, built from the design system's app icon (packages/ui/scripts/make-favicons.mjs). -->
+    <link rel="icon" href="/favicon.ico" sizes="48x48" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <link rel="manifest" href="/site.webmanifest" />
+    <meta name="theme-color" content="#2A56A8" />
     <link rel="stylesheet" href="/themes.css" />
     {customSheet && <link rel="stylesheet" href={customSheet} />}
     {jsonLd && <script type="application/ld+json" set:html={safeJsonLd(jsonLd)} />}

@@ -12,6 +12,7 @@ export function securityHeaders(config: ProfilesConfig): Record<string, string> 
     "style-src 'self'",
     `img-src ${img}`,
     "font-src 'self'",
+    "manifest-src 'self'",
     `connect-src ${config.apiOrigin}`,
     "frame-ancestors 'none'",
     "base-uri 'none'",

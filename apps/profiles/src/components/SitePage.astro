@@ -29,18 +29,18 @@ const config = loadConfig();
         </a>
         {fullNav && (
           <nav class="site-nav" aria-label="Main">
-            <a class="nav-wide" href="/#profile">Profiles</a>
-            <a class="nav-wide" href="/#dashboard">Therapy dashboard</a>
+            <a class="nav-wide" href="/#features">Features</a>
+            <a class="nav-wide" href="/#profile">Free profile</a>
             <a class="nav-wide" href="/pricing">Pricing</a>
             <a class="nav-wide" href={`${config.appOrigin}/auth/login`}>Sign in</a>
-            <a class="btn small-btn" href="/join">Create{" "}<span class="nav-wide-text">your{" "}</span>profile</a>
+            <a class="btn small-btn" href="/join">Start free</a>
             <details class="site-menu">
               <summary aria-label="Menu">
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16"/></svg>
               </summary>
               <div class="site-menu-panel">
-                <a href="/#profile">Profiles</a>
-                <a href="/#dashboard">Therapy dashboard</a>
+                <a href="/#features">Features</a>
+                <a href="/#profile">Free profile</a>
                 <a href="/pricing">Pricing</a>
                 <a href={`${config.appOrigin}/auth/login`}>Sign in</a>
               </div>
@@ -51,9 +51,10 @@ const config = loadConfig();
     </header>
     <slot />
     <footer class="site-footer">
-      <span class="muted">© Therapysts</span>
+      <span class="muted">© Therapysts · Run by EDGD Media Digital Solutions Ltd</span>
       <a href={`${config.marketingOrigin}/terms`}>Terms</a>
       <a href={`${config.marketingOrigin}/privacy`}>Privacy</a>
+      <a href={`mailto:${config.contactEmail}`}>Contact</a>
     </footer>
   </div>
 </Base>
