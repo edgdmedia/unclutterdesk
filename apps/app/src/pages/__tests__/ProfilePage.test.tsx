@@ -229,7 +229,7 @@ describe('the public profile tab', () => {
     fireEvent.click(within(layouts).getByRole('radio', { name: /Editorial/ }));
     await waitFor(() => expect(patch).toHaveBeenCalledWith('/v1/practitioner-profile/me', { layoutKey: 'editorial' }));
     expect(patch).not.toHaveBeenCalledWith('/v1/practitioner-profile/me', expect.objectContaining({ themeKey: expect.anything() }));
-    expect(within(screen.getByRole('radiogroup', { name: 'Colour palette' })).getAllByRole('radio')).toHaveLength(5);
+    expect(within(screen.getByRole('radiogroup', { name: 'Colour palette' })).getAllByRole('radio')).toHaveLength(6);
   });
 
   it('changing the palette updates the preview', async () => {

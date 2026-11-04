@@ -32,25 +32,25 @@ export function UpgradePrompt() {
   if (!needed) return null;
   const plan = TIER_NAMES[needed.requiredTier as Tier] ?? 'a paid';
   return (
-    <div className="fixed inset-0 z-[110] flex items-center justify-center bg-[#0F172A]/60 p-4" role="dialog" aria-modal="true" aria-labelledby="upgrade-title">
+    <div className="fixed inset-0 z-[110] flex items-center justify-center bg-[var(--desk-sidebar)]/60 p-4" role="dialog" aria-modal="true" aria-labelledby="upgrade-title">
       <div ref={ref} className="w-full max-w-[440px] rounded-[20px] bg-white p-6 shadow-2xl space-y-3">
         <div className="flex items-start justify-between gap-3">
-          <h2 id="upgrade-title" className="text-[16px] font-bold text-[#0F172A]">
+          <h2 id="upgrade-title" className="text-[16px] font-bold text-[var(--desk-text)]">
             This is part of the {plan} plan
           </h2>
-          <button type="button" onClick={() => setNeeded(null)} aria-label="Close" className="h-7 w-7 inline-flex items-center justify-center rounded-[8px] text-[#64748B] hover:bg-[#F1F5F9] cursor-pointer">
+          <button type="button" onClick={() => setNeeded(null)} aria-label="Close" className="h-7 w-7 inline-flex items-center justify-center rounded-[8px] text-[var(--desk-text-muted)] hover:bg-[var(--desk-surface-muted)] cursor-pointer">
             <X className="h-4 w-4" />
           </button>
         </div>
-        <p className="text-[13.5px] text-[#475569]">{needed.message}</p>
+        <p className="text-[13.5px] text-[var(--desk-text-body)]">{needed.message}</p>
         <div className="flex justify-end gap-2 pt-1">
-          <button type="button" onClick={() => setNeeded(null)} className="h-[40px] px-4 rounded-[12px] border border-[#E2E8F0] text-[13px] font-semibold text-[#0F172A] cursor-pointer">
+          <button type="button" onClick={() => setNeeded(null)} className="h-[40px] px-4 rounded-[12px] border border-[var(--desk-border)] text-[13px] font-semibold text-[var(--desk-text)] cursor-pointer">
             Not now
           </button>
           <Link
             to="/dashboard/settings/subscription"
             onClick={() => setNeeded(null)}
-            className="h-[40px] px-4 rounded-[12px] bg-[#0F3A53] text-white text-[13px] font-bold inline-flex items-center"
+            className="h-[40px] px-4 rounded-[12px] bg-[var(--desk-pine-600)] text-white text-[13px] font-bold inline-flex items-center"
           >
             See the {plan} plan
           </Link>

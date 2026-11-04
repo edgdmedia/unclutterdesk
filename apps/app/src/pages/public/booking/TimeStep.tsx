@@ -88,10 +88,10 @@ export function TimeStep({
         </AlertBanner>
       ) : null}
 
-      <div className={`rounded-[18px] bg-[#F8FAFC] border border-[#E2E8F0] px-3.5 py-3 flex items-center justify-between gap-3 ${singleService ? '' : 'min-[1024px]:hidden'}`}>
+      <div className={`rounded-[18px] bg-[var(--desk-surface)] border border-[var(--desk-border)] px-3.5 py-3 flex items-center justify-between gap-3 ${singleService ? '' : 'min-[1024px]:hidden'}`}>
         <div className="min-w-0">
-          <div className="text-[14px] font-bold text-[#0F172A] truncate">{service.title}</div>
-          <div className="text-[12.5px] text-[#64748B]">{service.durationMinutes} min · {naira(service.priceKobo)}</div>
+          <div className="text-[14px] font-bold text-[var(--desk-text)] truncate">{service.title}</div>
+          <div className="text-[12.5px] text-[var(--desk-text-muted)]">{service.durationMinutes} min · {naira(service.priceKobo)}</div>
         </div>
         {!singleService ? (
           <button type="button" onClick={onChangeService} className="h-11 px-2 text-[13px] font-bold cursor-pointer" style={{ color: BRAND_INK }}>
@@ -102,7 +102,7 @@ export function TimeStep({
 
       {serviceSlots.length === 0 ? (
         <StateBox icon={<CalendarX className="h-5 w-5" />} title="No free times in the next 4 weeks">
-          <p className="text-[13.5px] text-[#64748B]">The practice hasn't opened any times yet. Get in touch and they'll find one for you.</p>
+          <p className="text-[13.5px] text-[var(--desk-text-muted)]">The practice hasn't opened any times yet. Get in touch and they'll find one for you.</p>
           {practiceContact?.email ? (
             <a href={`mailto:${practiceContact.email}`} className="text-[13.5px] font-bold" style={{ color: BRAND_INK }}>{practiceContact.email}</a>
           ) : null}
@@ -113,7 +113,7 @@ export function TimeStep({
       ) : (
         <>
           <div className="flex items-center justify-between gap-3">
-            <span className="text-[14px] font-bold text-[#0F172A]">{weekLabel(days)}</span>
+            <span className="text-[14px] font-bold text-[var(--desk-text)]">{weekLabel(days)}</span>
             <div className="flex gap-2">
               {(['Previous week', 'Next week'] as const).map((label, i) => {
                 const target = state.weekIndex + (i === 0 ? -1 : 1);
@@ -125,7 +125,7 @@ export function TimeStep({
                     aria-label={label}
                     disabled={disabled}
                     onClick={() => dispatch({ type: 'setWeek', weekIndex: target as 0 | 1 | 2 | 3 })}
-                    className="h-11 w-11 rounded-[14px] border border-[#E2E8F0] bg-white inline-flex items-center justify-center cursor-pointer disabled:opacity-35 disabled:cursor-not-allowed"
+                    className="h-11 w-11 rounded-[14px] border border-[var(--desk-border)] bg-white inline-flex items-center justify-center cursor-pointer disabled:opacity-35 disabled:cursor-not-allowed"
                   >
                     {i === 0 ? <ChevronLeft className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
                   </button>
@@ -166,7 +166,7 @@ export function TimeStep({
             <StateBox title="No times this week">
               {nextDay ? (
                 <>
-                  <p className="text-[13.5px] text-[#64748B]">The next free time is on {dayLabel(nextDay)}.</p>
+                  <p className="text-[13.5px] text-[var(--desk-text-muted)]">The next free time is on {dayLabel(nextDay)}.</p>
                   <Button variant="secondary" size="lg" onClick={() => goTo(nextDay)}>{`Go to ${dayLabel(nextDay)} →`}</Button>
                 </>
               ) : null}
@@ -184,7 +184,7 @@ export function TimeStep({
 
           {state.date && times.length ? (
             <div className="flex flex-col gap-2">
-              <span className="text-[12.5px] text-[#64748B]">{dayLabel(state.date)} · West Africa Time</span>
+              <span className="text-[12.5px] text-[var(--desk-text-muted)]">{dayLabel(state.date)} · West Africa Time</span>
               <div className="grid gap-2 grid-cols-[repeat(auto-fill,minmax(104px,1fr))] min-[601px]:grid-cols-[repeat(auto-fill,minmax(132px,1fr))]">
                 {times.map((slot) => {
                   const selected = slot.id === state.slotId;
@@ -214,8 +214,8 @@ export function TimeStep({
             <div className="rounded-[18px] px-4 py-3.5 flex gap-3" style={{ background: 'var(--brand-fill)' }}>
               <MapPin className="h-[18px] w-[18px] shrink-0 mt-0.5" style={{ color: BRAND_INK }} aria-hidden="true" />
               <div>
-                <div className="text-[14px] font-bold text-[#0F172A]">{chosen.location ? `In person at ${chosen.location.name}` : 'In person at the practice'}</div>
-                <div className="text-[13px] text-[#475569]">{chosen.location ? `${chosen.location.name}, ${chosen.location.city}` : practiceAddress}</div>
+                <div className="text-[14px] font-bold text-[var(--desk-text)]">{chosen.location ? `In person at ${chosen.location.name}` : 'In person at the practice'}</div>
+                <div className="text-[13px] text-[var(--desk-text-body)]">{chosen.location ? `${chosen.location.name}, ${chosen.location.city}` : practiceAddress}</div>
               </div>
             </div>
           ) : null}

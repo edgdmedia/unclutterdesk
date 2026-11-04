@@ -17,8 +17,8 @@ export function SocialLinksField({ value, onChange }: { value: string[]; onChang
 
   return (
     <fieldset className="flex flex-col gap-3 min-w-0">
-      <legend className="text-[14px] font-bold text-[#0F172A] mb-1">Links</legend>
-      <p className="text-[13px] text-[#64748B] -mt-1">Your website, Instagram, LinkedIn, WhatsApp or any other https:// link. Up to {MAX_SOCIAL_LINKS}.</p>
+      <legend className="text-[14px] font-bold text-[var(--desk-text)] mb-1">Links</legend>
+      <p className="text-[13px] text-[var(--desk-text-muted)] -mt-1">Your website, Instagram, LinkedIn, WhatsApp or any other https:// link. Up to {MAX_SOCIAL_LINKS}.</p>
       {rows.map((row, i) => {
         const label = row.trim() ? linkLabel(row) : null;
         const inputId = `${id}-${i}`;
@@ -34,9 +34,9 @@ export function SocialLinksField({ value, onChange }: { value: string[]; onChang
                 value={row}
                 onChange={(e) => setRow(i, e.target.value)}
                 aria-describedby={`${inputId}-hint`}
-                className="w-full h-11 rounded-[12px] border border-[var(--desk-border,#E2E8F0)] bg-white px-3 text-[14px] text-[#0F172A] focus:outline-none focus:ring-2 focus:ring-[#24614F]/30"
+                className="w-full h-11 rounded-[12px] border border-[var(--desk-border,#E2E8F0)] bg-white px-3 text-[14px] text-[var(--desk-text)] focus:outline-none focus:ring-2 focus:ring-[var(--desk-pine-600)]/30"
               />
-              <p id={`${inputId}-hint`} className={`mt-1 text-[12px] ${row.trim() && !label ? 'text-[#B42318]' : 'text-[#64748B]'}`}>
+              <p id={`${inputId}-hint`} className={`mt-1 text-[12px] ${row.trim() && !label ? 'text-[var(--desk-danger)]' : 'text-[var(--desk-text-muted)]'}`}>
                 {!row.trim() ? ' ' : label ?? 'Use a full link starting with https://'}
               </p>
             </div>
@@ -44,7 +44,7 @@ export function SocialLinksField({ value, onChange }: { value: string[]; onChang
               type="button"
               onClick={() => removeRow(i)}
               aria-label={`Remove link ${i + 1}`}
-              className="h-11 w-11 shrink-0 inline-flex items-center justify-center rounded-[12px] border border-[#E2E8F0] text-[#475569] hover:bg-[#F8FAFC]"
+              className="h-11 w-11 shrink-0 inline-flex items-center justify-center rounded-[12px] border border-[var(--desk-border)] text-[var(--desk-text-body)] hover:bg-[var(--desk-surface)]"
             >
               <X size={16} aria-hidden />
             </button>

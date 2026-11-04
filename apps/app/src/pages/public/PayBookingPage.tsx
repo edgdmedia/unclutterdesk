@@ -50,25 +50,25 @@ export function PayBookingPage() {
   }
 
   return (
-    <main className="min-h-screen bg-[#F8FAFC] flex items-center justify-center p-4">
-      <div className="w-full max-w-[420px] rounded-[20px] bg-white p-6 shadow-sm border border-[#E2E8F0] space-y-4">
-        {!summary && !error && <Loader2 className="h-5 w-5 animate-spin text-[#64748B] mx-auto" />}
+    <main className="min-h-screen bg-[var(--desk-surface)] flex items-center justify-center p-4">
+      <div className="w-full max-w-[420px] rounded-[20px] bg-white p-6 shadow-sm border border-[var(--desk-border)] space-y-4">
+        {!summary && !error && <Loader2 className="h-5 w-5 animate-spin text-[var(--desk-text-muted)] mx-auto" />}
         {summary && (
           <>
-            <p className="text-[12px] font-semibold text-[#64748B]">{summary.practiceName}</p>
-            <h1 className="text-[18px] font-bold text-[#0F172A]">{summary.serviceTitle}</h1>
-            <p className="text-[13px] text-[#334155]">
+            <p className="text-[12px] font-semibold text-[var(--desk-text-muted)]">{summary.practiceName}</p>
+            <h1 className="text-[18px] font-bold text-[var(--desk-text)]">{summary.serviceTitle}</h1>
+            <p className="text-[13px] text-[var(--desk-text-body)]">
               With {summary.practitionerName} on{' '}
               {new Intl.DateTimeFormat('en-GB', { weekday: 'long', day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit', timeZone: 'Africa/Lagos' }).format(new Date(summary.startsAt))}
             </p>
             {summary.state === 'PAYABLE' && summary.holdExpiresAt ? (
-              <p className="text-[13px] font-semibold text-[#475569]">Held until {clock(summary.holdExpiresAt)}</p>
+              <p className="text-[13px] font-semibold text-[var(--desk-text-body)]">Held until {clock(summary.holdExpiresAt)}</p>
             ) : null}
             {summary.state === 'LAPSED' && summary.canRetry ? (
               <p className="text-[13px] font-semibold text-amber-700">Your hold ended, but the time may still be free.</p>
             ) : null}
             {summary.state === 'PAYABLE' || (summary.state === 'LAPSED' && summary.canRetry) ? (
-              <button type="button" onClick={pay} disabled={busy} className="w-full h-[44px] rounded-[12px] bg-[#0F3A53] text-white text-[14px] font-bold inline-flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50">
+              <button type="button" onClick={pay} disabled={busy} className="w-full h-[44px] rounded-[12px] bg-[var(--desk-pine-600)] text-white text-[14px] font-bold inline-flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50">
                 {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
                 {summary.state === 'LAPSED' ? `Try again (${naira(summary.amountKobo)})` : `Pay ${naira(summary.amountKobo)}`}
               </button>

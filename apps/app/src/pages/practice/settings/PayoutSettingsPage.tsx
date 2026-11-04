@@ -109,13 +109,13 @@ export function PayoutSettingsPage() {
           title="Payouts"
           actions={
             account?.isVerified ? (
-              <span className="h-7 px-3 rounded-full bg-[#ECFDF5] text-[#059669] text-xs font-bold border border-[#A7F3D0] flex items-center gap-1.5"><ShieldCheck className="h-4 w-4" /><span>Payouts active</span></span>
+              <span className="h-7 px-3 rounded-full bg-[var(--desk-active-bg)] text-[var(--desk-active)] text-xs font-bold border border-[var(--desk-active-border)] flex items-center gap-1.5"><ShieldCheck className="h-4 w-4" /><span>Payouts active</span></span>
             ) : undefined
           }
         />
       }
     >
-      <p className="text-xs text-[#64748B] font-medium">Manage the verified bank account where practice payouts land</p>
+      <p className="text-xs text-[var(--desk-text-muted)] font-medium">Manage the verified bank account where practice payouts land</p>
 
       <div className="space-y-6">
         {error ? <div className="rounded-[18px] border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-medium text-rose-700">{error}</div> : null}
@@ -128,15 +128,15 @@ export function PayoutSettingsPage() {
             </span>
           </div>
         ) : null}
-        {loading ? <div className="rounded-[24px] border border-[#E2E8F0] bg-white px-6 py-10 text-sm font-medium text-[#64748B]">Loading payout account...</div> : (
+        {loading ? <div className="rounded-[24px] border border-[var(--desk-border)] bg-white px-6 py-10 text-sm font-medium text-[var(--desk-text-muted)]">Loading payout account...</div> : (
           <Card padding="p-[24px_26px]" className="max-w-[560px] space-y-4 bg-white border border-slate-100">
-            <div className="flex items-center justify-between border-b border-[#E2E8F0] pb-3">
-              <div><Eyebrow>PAYOUT ACCOUNT</Eyebrow><h3 className="text-[16px] font-bold text-[#0F172A]">Paystack Bank Subaccount</h3></div>
-              <span className={`h-6 px-3 rounded-full font-bold text-xs border flex items-center ${account?.isVerified ? 'bg-[#ECFDF5] text-[#059669] border-[#A7F3D0]' : account ? 'bg-rose-50 text-rose-700 border-rose-200' : 'bg-[#F1F5F9] text-[#64748B] border-[#E2E8F0]'}`}>{account?.isVerified ? 'VERIFIED' : account ? 'NEEDS ATTENTION' : 'NOT SET'}</span>
+            <div className="flex items-center justify-between border-b border-[var(--desk-border)] pb-3">
+              <div><Eyebrow>PAYOUT ACCOUNT</Eyebrow><h3 className="text-[16px] font-bold text-[var(--desk-text)]">Paystack Bank Subaccount</h3></div>
+              <span className={`h-6 px-3 rounded-full font-bold text-xs border flex items-center ${account?.isVerified ? 'bg-[var(--desk-active-bg)] text-[var(--desk-active)] border-[var(--desk-active-border)]' : account ? 'bg-rose-50 text-rose-700 border-rose-200' : 'bg-[var(--desk-surface-muted)] text-[var(--desk-text-muted)] border-[var(--desk-border)]'}`}>{account?.isVerified ? 'VERIFIED' : account ? 'NEEDS ATTENTION' : 'NOT SET'}</span>
             </div>
 
-            <div className="p-5 rounded-[20px] bg-[#0F3A53] text-white space-y-3 shadow-md">
-              <span className="text-[10px] font-black tracking-widest text-[#E3B341] uppercase">{account?.bankName || 'No bank connected yet'}</span>
+            <div className="p-5 rounded-[20px] bg-[var(--desk-pine-600)] text-white space-y-3 shadow-md">
+              <span className="text-[10px] font-black tracking-widest text-[var(--ds-sky)] uppercase">{account?.bankName || 'No bank connected yet'}</span>
               <div className="text-[22px] font-extrabold font-mono tracking-widest leading-none">{account ? `•••• •••• ${account.accountNumber.slice(-4)}` : '•••• •••• ----'}</div>
               <p className="text-xs text-slate-300 font-medium">{account?.accountName || 'Add a payout account to receive settlements.'}</p>
             </div>
@@ -147,7 +147,7 @@ export function PayoutSettingsPage() {
               Paystack is where settlements actually are.
             */}
             <div className="pt-2">
-              <button onClick={() => setShowBankModal(true)} className="h-[40px] w-full rounded-[14px] bg-[#F1F5F9] text-[#0F172A] font-bold text-xs hover:bg-[#E2E8F0] cursor-pointer">{account ? 'Change account' : 'Add account'}</button>
+              <button onClick={() => setShowBankModal(true)} className="h-[40px] w-full rounded-[14px] bg-[var(--desk-surface-muted)] text-[var(--desk-text)] font-bold text-xs hover:bg-[var(--desk-border)] cursor-pointer">{account ? 'Change account' : 'Add account'}</button>
             </div>
           </Card>
         )}
@@ -155,12 +155,12 @@ export function PayoutSettingsPage() {
         <ManualPaymentSettingsCard color={primaryColor} />
 
         <Card padding="p-[24px_26px]" className="max-w-[560px] space-y-3 bg-white border border-slate-100">
-          <div className="text-sm font-bold text-[#0F172A]">Payout history</div>
+          <div className="text-sm font-bold text-[var(--desk-text)]">Payout history</div>
           {history.map((item) => (
-            <div key={`${item.type}_${item.date}`} className="rounded-[16px] bg-[#F8FAFC] border border-[#E2E8F0] px-4 py-3">
-              <div className="text-[12px] font-bold text-[#0F172A]">{item.title}</div>
-              <div className="text-[11px] text-[#94A3B8] font-medium">{new Intl.DateTimeFormat('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }).format(new Date(item.date))}</div>
-              <div className="mt-1 text-[12px] text-[#475569] font-medium">{item.detail}</div>
+            <div key={`${item.type}_${item.date}`} className="rounded-[16px] bg-[var(--desk-surface)] border border-[var(--desk-border)] px-4 py-3">
+              <div className="text-[12px] font-bold text-[var(--desk-text)]">{item.title}</div>
+              <div className="text-[11px] text-[var(--desk-text-subtle)] font-medium">{new Intl.DateTimeFormat('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }).format(new Date(item.date))}</div>
+              <div className="mt-1 text-[12px] text-[var(--desk-text-body)] font-medium">{item.detail}</div>
             </div>
           ))}
         </Card>
@@ -170,13 +170,13 @@ export function PayoutSettingsPage() {
         <div className="fixed inset-0 bg-black/50 backdrop-blur-xs flex items-center justify-center p-6 z-50">
           <form onSubmit={handleSaveBankDetails} className="w-full max-w-[480px] bg-white rounded-[24px] p-6 shadow-2xl space-y-4 border border-slate-200 relative">
             <button type="button" onClick={() => setShowBankModal(false)} className="absolute top-5 right-5 text-slate-400 hover:text-slate-600 cursor-pointer"><X className="h-5 w-5" /></button>
-            <h3 className="text-lg font-bold text-[#0F172A]">Update Payout Bank Account</h3>
+            <h3 className="text-lg font-bold text-[var(--desk-text)]">Update Payout Bank Account</h3>
             <div className="space-y-3">
-              <div className="space-y-1"><label className="text-xs font-bold text-[#475569]">Bank Name</label><select value={tempBankCode} onChange={(e) => { const bank = banks.find((b) => b.code === e.target.value); setTempBankCode(e.target.value); setTempBankName(bank?.name ?? ''); setTempAccountName(''); }} className="w-full h-11 px-3.5 rounded-[12px] bg-[#F8FAFC] border border-[#E2E8F0] text-xs font-bold text-[#0F172A] outline-none">{banks.length === 0 ? <option value={tempBankCode}>{tempBankName || 'Loading banks…'}</option> : null}{banks.map((b) => <option key={b.code} value={b.code}>{b.name}</option>)}</select></div>
-              <div className="space-y-1"><label className="text-xs font-bold text-[#475569]">10-Digit NUBAN Account Number</label><input type="text" maxLength={10} required inputMode="numeric" value={tempAccountNumber} onChange={(e) => setTempAccountNumber(e.target.value.replace(/\D/g, '').slice(0, 10))} className="w-full h-11 px-3.5 rounded-[12px] bg-[#F8FAFC] border border-[#E2E8F0] text-xs font-mono font-bold text-[#0F172A] outline-none" /></div>
-              <div className="space-y-1"><label className="text-xs font-bold text-[#475569]">Account Holder Name {resolving ? <span className="font-medium text-[#94A3B8]">checking with the bank…</span> : null}</label><input type="text" required readOnly placeholder="Filled in from the bank" value={tempAccountName} className="w-full h-11 px-3.5 rounded-[12px] bg-[#F8FAFC] border border-[#E2E8F0] text-xs font-bold text-[#0F172A] outline-none" /></div>
+              <div className="space-y-1"><label className="text-xs font-bold text-[var(--desk-text-body)]">Bank Name</label><select value={tempBankCode} onChange={(e) => { const bank = banks.find((b) => b.code === e.target.value); setTempBankCode(e.target.value); setTempBankName(bank?.name ?? ''); setTempAccountName(''); }} className="w-full h-11 px-3.5 rounded-[12px] bg-[var(--desk-surface)] border border-[var(--desk-border)] text-xs font-bold text-[var(--desk-text)] outline-none">{banks.length === 0 ? <option value={tempBankCode}>{tempBankName || 'Loading banks…'}</option> : null}{banks.map((b) => <option key={b.code} value={b.code}>{b.name}</option>)}</select></div>
+              <div className="space-y-1"><label className="text-xs font-bold text-[var(--desk-text-body)]">10-Digit NUBAN Account Number</label><input type="text" maxLength={10} required inputMode="numeric" value={tempAccountNumber} onChange={(e) => setTempAccountNumber(e.target.value.replace(/\D/g, '').slice(0, 10))} className="w-full h-11 px-3.5 rounded-[12px] bg-[var(--desk-surface)] border border-[var(--desk-border)] text-xs font-mono font-bold text-[var(--desk-text)] outline-none" /></div>
+              <div className="space-y-1"><label className="text-xs font-bold text-[var(--desk-text-body)]">Account Holder Name {resolving ? <span className="font-medium text-[var(--desk-text-subtle)]">checking with the bank…</span> : null}</label><input type="text" required readOnly placeholder="Filled in from the bank" value={tempAccountName} className="w-full h-11 px-3.5 rounded-[12px] bg-[var(--desk-surface)] border border-[var(--desk-border)] text-xs font-bold text-[var(--desk-text)] outline-none" /></div>
             </div>
-            <div className="flex items-center gap-3 pt-2"><button type="button" onClick={() => setShowBankModal(false)} className="flex-1 h-11 rounded-[14px] bg-[#F1F5F9] text-[#475569] font-bold text-xs cursor-pointer">Cancel</button><button type="submit" disabled={saving} className="flex-1 h-11 rounded-[14px] font-bold text-xs cursor-pointer text-white disabled:opacity-60" style={{ backgroundColor: primaryColor }}>{saving ? 'Saving...' : 'Save Account'}</button></div>
+            <div className="flex items-center gap-3 pt-2"><button type="button" onClick={() => setShowBankModal(false)} className="flex-1 h-11 rounded-[14px] bg-[var(--desk-surface-muted)] text-[var(--desk-text-body)] font-bold text-xs cursor-pointer">Cancel</button><button type="submit" disabled={saving} className="flex-1 h-11 rounded-[14px] font-bold text-xs cursor-pointer text-white disabled:opacity-60" style={{ backgroundColor: primaryColor }}>{saving ? 'Saving...' : 'Save Account'}</button></div>
           </form>
         </div>
       )}

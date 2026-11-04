@@ -19,7 +19,7 @@ export function BookSessionButton({ variant = 'primary', label = 'Book a session
   const href = bookingHref(getAppType(), brand.slug);
   const cls = variant === 'primary'
     ? 'h-11 px-5 rounded-[14px] text-white text-[14px] font-semibold inline-flex items-center gap-2'
-    : 'h-11 px-5 rounded-[14px] border border-[#CBD5E1] bg-white text-[14px] font-semibold text-[#0F172A] inline-flex items-center gap-2';
+    : 'h-11 px-5 rounded-[14px] border border-[var(--desk-pine-200)] bg-white text-[14px] font-semibold text-[var(--desk-text)] inline-flex items-center gap-2';
   const style = variant === 'primary' ? { background: brand.primaryColor || '#0F3A53' } : undefined;
   const icon = <CalendarPlus className="h-4 w-4" aria-hidden="true" />;
   return href.startsWith('/') ? (

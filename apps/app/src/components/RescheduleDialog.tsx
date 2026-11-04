@@ -120,13 +120,13 @@ export function RescheduleDialog({
       }}
     >
       <div className="w-full max-w-[460px] max-h-[86vh] flex flex-col bg-white rounded-[22px] shadow-[0_24px_70px_rgba(15,23,42,0.28)]">
-        <div className="flex items-start gap-3 p-[22px_24px_16px] border-b border-[#F1F5F9]">
+        <div className="flex items-start gap-3 p-[22px_24px_16px] border-b border-[var(--desk-border-soft)]">
           <div className="flex-1 min-w-0">
-            <h2 className="text-[17px] font-bold tracking-[-0.02em] text-[#0F172A]">
+            <h2 className="text-[17px] font-bold tracking-[-0.02em] text-[var(--desk-text)]">
               Move this session
             </h2>
             {options ? (
-              <p className="mt-1 text-[12.5px] text-[#64748B] leading-[1.55]">
+              <p className="mt-1 text-[12.5px] text-[var(--desk-text-muted)] leading-[1.55]">
                 {options.serviceTitle} · currently {formatMoment(options.currentStartsAt)}
               </p>
             ) : null}
@@ -135,7 +135,7 @@ export function RescheduleDialog({
             type="button"
             onClick={onClose}
             aria-label="Close"
-            className="h-8 w-8 flex-none rounded-[10px] text-[#94A3B8] hover:bg-[#F1F5F9] flex items-center justify-center cursor-pointer"
+            className="h-8 w-8 flex-none rounded-[10px] text-[var(--desk-text-subtle)] hover:bg-[var(--desk-surface-muted)] flex items-center justify-center cursor-pointer"
           >
             <X className="h-4 w-4" />
           </button>
@@ -143,16 +143,16 @@ export function RescheduleDialog({
 
         <div className="flex-1 overflow-auto p-[16px_24px]">
           {loadError ? (
-            <div className="flex items-start gap-2 rounded-[14px] bg-[#FEF2F2] p-3 text-[12.5px] leading-[1.55] text-[#B91C1C]">
+            <div className="flex items-start gap-2 rounded-[14px] bg-[var(--desk-danger-bg)] p-3 text-[12.5px] leading-[1.55] text-[var(--desk-danger)]">
               <AlertCircle className="h-4 w-4 flex-none mt-[1px]" />
               <span>{loadError}</span>
             </div>
           ) : !options ? (
             <div className="py-10 flex justify-center">
-              <Loader2 className="h-6 w-6 animate-spin text-[#94A3B8]" aria-label="Loading times" />
+              <Loader2 className="h-6 w-6 animate-spin text-[var(--desk-text-subtle)]" aria-label="Loading times" />
             </div>
           ) : options.slots.length === 0 ? (
-            <p className="py-8 text-center text-[13px] text-[#64748B] leading-[1.6]">
+            <p className="py-8 text-center text-[13px] text-[var(--desk-text-muted)] leading-[1.6]">
               Your therapist has no other open times at the moment. Please contact the practice and
               they will find one for you.
             </p>
@@ -163,8 +163,8 @@ export function RescheduleDialog({
                   key={slot.id}
                   className={`flex items-center gap-3 px-4 h-[52px] rounded-[14px] border cursor-pointer transition-colors ${
                     selected === slot.id
-                      ? 'border-transparent bg-[#F1F5F9]'
-                      : 'border-[#E2E8F0] hover:bg-[#F8FAFC]'
+                      ? 'border-transparent bg-[var(--desk-surface-muted)]'
+                      : 'border-[var(--desk-border)] hover:bg-[var(--desk-surface)]'
                   }`}
                   style={selected === slot.id ? { boxShadow: `inset 0 0 0 2px ${primaryColor}` } : undefined}
                 >
@@ -174,9 +174,9 @@ export function RescheduleDialog({
                     value={slot.id}
                     checked={selected === slot.id}
                     onChange={() => setSelected(slot.id)}
-                    className="accent-[#0F3A53]"
+                    className="accent-[var(--desk-pine-600)]"
                   />
-                  <span className="text-[13.5px] font-semibold text-[#0F172A]">
+                  <span className="text-[13.5px] font-semibold text-[var(--desk-text)]">
                     {formatSlot(slot.startsAt, slot.endsAt)}
                   </span>
                 </label>
@@ -187,7 +187,7 @@ export function RescheduleDialog({
           {submitError ? (
             <div
               role="alert"
-              className="mt-3 flex items-start gap-2 rounded-[14px] bg-[#FEF2F2] p-3 text-[12.5px] leading-[1.55] text-[#B91C1C]"
+              className="mt-3 flex items-start gap-2 rounded-[14px] bg-[var(--desk-danger-bg)] p-3 text-[12.5px] leading-[1.55] text-[var(--desk-danger)]"
             >
               <AlertCircle className="h-4 w-4 flex-none mt-[1px]" />
               <span>{submitError}</span>
@@ -195,11 +195,11 @@ export function RescheduleDialog({
           ) : null}
         </div>
 
-        <div className="flex gap-3 p-[16px_24px_22px] border-t border-[#F1F5F9]">
+        <div className="flex gap-3 p-[16px_24px_22px] border-t border-[var(--desk-border-soft)]">
           <button
             type="button"
             onClick={onClose}
-            className="h-[46px] flex-1 rounded-[14px] border border-[#E2E8F0] text-[13.5px] font-bold text-[#475569] cursor-pointer hover:bg-[#F8FAFC]"
+            className="h-[46px] flex-1 rounded-[14px] border border-[var(--desk-border)] text-[13.5px] font-bold text-[var(--desk-text-body)] cursor-pointer hover:bg-[var(--desk-surface)]"
           >
             Keep current time
           </button>

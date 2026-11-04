@@ -44,23 +44,23 @@ export function PendingTransfersCard({ color }: { color: string }) {
   return (
     <Card padding="p-[20px_22px]" className="bg-white border border-amber-200">
       <div className="flex items-center gap-2">
-        <Landmark className="h-4 w-4 text-[#B45309]" />
-        <h2 className="text-[14px] font-bold text-[#0F172A]">Awaiting bank transfer</h2>
-        <span className="text-[11px] font-bold rounded-full px-2 py-0.5 bg-[#FFFBEB] text-[#B45309]">{rows.length}</span>
+        <Landmark className="h-4 w-4 text-[var(--desk-pending)]" />
+        <h2 className="text-[14px] font-bold text-[var(--desk-text)]">Awaiting bank transfer</h2>
+        <span className="text-[11px] font-bold rounded-full px-2 py-0.5 bg-[var(--desk-pending-bg)] text-[var(--desk-pending)]">{rows.length}</span>
       </div>
-      <p className="mt-1 text-xs text-[#64748B]">Check your account for the reference, then mark it paid. Unpaid holds are released automatically.</p>
-      <ul className="mt-3 divide-y divide-[#F1F5F9]">
+      <p className="mt-1 text-xs text-[var(--desk-text-muted)]">Check your account for the reference, then mark it paid. Unpaid holds are released automatically.</p>
+      <ul className="mt-3 divide-y divide-[var(--desk-border-soft)]">
         {rows.map((row) => (
           <li key={row.id} className="py-2.5 flex flex-wrap items-center gap-3">
             <div className="flex-1 min-w-[220px]">
-              <p className="text-[13.5px] font-bold text-[#0F172A]">
-                {row.client.name} · {naira(row.amountKobo)} <span className="font-mono text-[12px] text-[#475569]">{row.reference}</span>
+              <p className="text-[13.5px] font-bold text-[var(--desk-text)]">
+                {row.client.name} · {naira(row.amountKobo)} <span className="font-mono text-[12px] text-[var(--desk-text-body)]">{row.reference}</span>
               </p>
-              <p className="text-[11.5px] text-[#64748B]">
+              <p className="text-[11.5px] text-[var(--desk-text-muted)]">
                 {row.serviceTitle} on {when(row.startsAt)}
                 {row.holdExpiresAt ? ` · held until ${when(row.holdExpiresAt)}` : ''}
               </p>
-              {row.clientReportedPaidAt ? <p className="text-[11.5px] font-semibold text-[#047857]">Client says they paid, {when(row.clientReportedPaidAt)}</p> : null}
+              {row.clientReportedPaidAt ? <p className="text-[11.5px] font-semibold text-[var(--desk-active)]">Client says they paid, {when(row.clientReportedPaidAt)}</p> : null}
             </div>
             <button
               type="button"

@@ -45,7 +45,7 @@ function ClientFrame({ children }: { children: ReactNode }) {
         brand: (mode) => (
           <div className="flex items-center gap-2.5 min-w-0">
             <PracticeLogo name={brand.name || 'Unclutter Desk'} logoUrl={brand.logoUrl} size={mode === 'rail' ? 32 : 36} color={brand.primaryColor || '#0F3A53'} />
-            {mode !== 'rail' ? <span className="truncate text-[14.5px] font-bold text-[#0F172A]">{brand.name}</span> : null}
+            {mode !== 'rail' ? <span className="truncate text-[14.5px] font-bold text-[var(--desk-text)]">{brand.name}</span> : null}
           </div>
         ),
         account: (mode) => <ClientAccountMenu mode={mode} />,

@@ -10,7 +10,7 @@ const TABS = [
 export function ProfileContentTabs() {
   const location = useLocation();
   return (
-    <nav aria-label="Profile content" className="mt-5 flex flex-wrap gap-1.5 border-b border-[#E2E8F0] pb-2">
+    <nav aria-label="Profile content" className="mt-5 flex flex-wrap gap-1.5 border-b border-[var(--desk-border)] pb-2">
       {TABS.map((tab) => {
         const active = location.pathname === tab.href;
         return (
@@ -19,7 +19,7 @@ export function ProfileContentTabs() {
             to={tab.href}
             aria-current={active ? 'page' : undefined}
             className={`h-9 inline-flex items-center rounded-[10px] px-3 text-[13px] font-bold no-underline ${
-              active ? 'bg-[#0F172A] text-white' : 'text-[#475569] hover:bg-[#F1F5F9]'
+              active ? 'bg-[var(--desk-sidebar)] text-white' : 'text-[var(--desk-text-body)] hover:bg-[var(--desk-surface-muted)]'
             }`}
           >
             {tab.label}

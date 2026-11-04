@@ -18,10 +18,10 @@ const EMPTY = { name: '', address: '', city: '', directions: '' };
 
 function Field({ label, value, onChange, placeholder }: { label: string; value: string; onChange: (v: string) => void; placeholder?: string }) {
   return (
-    <label className="block text-[11.5px] font-bold text-[#475569] space-y-1">
+    <label className="block text-[11.5px] font-bold text-[var(--desk-text-body)] space-y-1">
       <span>{label}</span>
       <input
-        className="w-full h-11 px-3.5 rounded-[12px] border border-[#E2E8F0] bg-white text-[13.5px] font-medium text-[#0F172A] outline-none focus:border-[#0F3A53]"
+        className="w-full h-11 px-3.5 rounded-[12px] border border-[var(--desk-border)] bg-white text-[13.5px] font-medium text-[var(--desk-text)] outline-none focus:border-[var(--desk-pine-600)]"
         value={value}
         placeholder={placeholder}
         onChange={(e) => onChange(e.target.value)}
@@ -103,7 +103,7 @@ export function LocationsSettingsPage() {
     <Page header={<PageHeader eyebrow="PRACTICE" title="Locations" />}>
       {error ? <div role="alert" className="rounded-[14px] border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-medium text-rose-700">{error}</div> : null}
 
-      <p className="text-[13px] text-[#64748B] -mt-2">Clients get the address, directions and a map link after they book.</p>
+      <p className="text-[13px] text-[var(--desk-text-muted)] -mt-2">Clients get the address, directions and a map link after they book.</p>
 
       <Card padding="p-5" className="space-y-4">
         <Eyebrow>ADD A LOCATION</Eyebrow>
@@ -121,9 +121,9 @@ export function LocationsSettingsPage() {
       </Card>
 
       {loading ? (
-        <p className="text-sm text-[#64748B]">Loading…</p>
+        <p className="text-sm text-[var(--desk-text-muted)]">Loading…</p>
       ) : locations.length === 0 ? (
-        <p className="text-sm text-[#64748B]">Add the places you see clients in person. Clients get the address and directions after they book.</p>
+        <p className="text-sm text-[var(--desk-text-muted)]">Add the places you see clients in person. Clients get the address and directions after they book.</p>
       ) : (
         <div className="space-y-3">
           {locations.map((l) =>
@@ -144,21 +144,21 @@ export function LocationsSettingsPage() {
             ) : (
               <Card key={l.id} padding="p-5">
                 <div className="flex items-start gap-3">
-                  <MapPin className="h-5 w-5 text-[#0F3A53] shrink-0 mt-0.5" aria-hidden="true" />
+                  <MapPin className="h-5 w-5 text-[var(--desk-pine-600)] shrink-0 mt-0.5" aria-hidden="true" />
                   <div className="min-w-0 flex-1">
-                    <p className="text-[14.5px] font-bold text-[#0F172A]">
+                    <p className="text-[14.5px] font-bold text-[var(--desk-text)]">
                       {l.name}
-                      {!l.isActive ? <span className="ml-2 text-[11px] font-bold uppercase text-[#94A3B8]">Inactive</span> : null}
+                      {!l.isActive ? <span className="ml-2 text-[11px] font-bold uppercase text-[var(--desk-text-subtle)]">Inactive</span> : null}
                     </p>
-                    <p className="text-[13px] text-[#64748B]">{l.address}, {l.city}</p>
-                    {l.directions ? <p className="text-[12.5px] text-[#64748B] italic mt-0.5">{l.directions}</p> : null}
-                    {l.upcomingInPerson > 0 ? <p className="text-[12px] font-semibold text-[#475569] mt-1">{l.upcomingInPerson} upcoming in-person {l.upcomingInPerson === 1 ? 'session' : 'sessions'}</p> : null}
+                    <p className="text-[13px] text-[var(--desk-text-muted)]">{l.address}, {l.city}</p>
+                    {l.directions ? <p className="text-[12.5px] text-[var(--desk-text-muted)] italic mt-0.5">{l.directions}</p> : null}
+                    {l.upcomingInPerson > 0 ? <p className="text-[12px] font-semibold text-[var(--desk-text-body)] mt-1">{l.upcomingInPerson} upcoming in-person {l.upcomingInPerson === 1 ? 'session' : 'sessions'}</p> : null}
                   </div>
                   <div className="flex gap-1 shrink-0">
                     <button
                       onClick={() => { setEditingId(l.id); setEditDraft({ name: l.name, address: l.address, city: l.city, directions: l.directions ?? '' }); }}
                       aria-label={`Edit ${l.name}`}
-                      className="text-slate-400 hover:text-[#0F3A53] transition-colors cursor-pointer inline-flex p-1.5"
+                      className="text-slate-400 hover:text-[var(--desk-pine-600)] transition-colors cursor-pointer inline-flex p-1.5"
                     >
                       <Pencil className="h-4 w-4" />
                     </button>

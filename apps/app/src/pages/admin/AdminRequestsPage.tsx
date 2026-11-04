@@ -51,13 +51,13 @@ export function AdminRequestsPage() {
     }
   }
 
-  const button = 'h-9 px-3 rounded-[10px] border border-[#E2E8F0] bg-white text-xs font-bold text-[#0F172A] hover:bg-[#F8FAFC] cursor-pointer';
-  const select = 'h-9 px-3 rounded-[10px] bg-white border border-[#E2E8F0] text-[13px] font-semibold text-[#0F172A]';
+  const button = 'h-9 px-3 rounded-[10px] border border-[var(--desk-border)] bg-white text-xs font-bold text-[var(--desk-text)] hover:bg-[var(--desk-surface)] cursor-pointer';
+  const select = 'h-9 px-3 rounded-[10px] bg-white border border-[var(--desk-border)] text-[13px] font-semibold text-[var(--desk-text)]';
   return (
     <div className="flex-1 min-w-0 px-4 md:px-[32px] py-[28px] max-w-[1200px] w-full">
       <Eyebrow>Platform console</Eyebrow>
-      <h1 className="mt-1 text-[26px] font-bold tracking-[-0.03em] text-[#0F172A]">Requests</h1>
-      <p className="mt-1 text-[13.5px] text-[#64748B]">
+      <h1 className="mt-1 text-[26px] font-bold tracking-[-0.03em] text-[var(--desk-text)]">Requests</h1>
+      <p className="mt-1 text-[13.5px] text-[var(--desk-text-muted)]">
         Assessments, features, services, feedback and shared form templates from practices. They see the status and your note.
       </p>
 
@@ -74,30 +74,30 @@ export function AdminRequestsPage() {
 
       <div className="mt-4 space-y-3">
         {isLoading ? (
-          <Card padding="p-[22px]"><p className="text-sm text-[#64748B]">Loading…</p></Card>
+          <Card padding="p-[22px]"><p className="text-sm text-[var(--desk-text-muted)]">Loading…</p></Card>
         ) : !requests?.length ? (
-          <Card padding="p-[22px]"><p className="text-sm text-[#64748B]">Nothing here.</p></Card>
+          <Card padding="p-[22px]"><p className="text-sm text-[var(--desk-text-muted)]">Nothing here.</p></Card>
         ) : (
           requests.map((row) => (
             <Card key={row.id} padding="p-[18px]" data-request={row.id}>
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div className="min-w-0">
-                  <p className="text-[15px] font-bold text-[#0F172A]">{row.subject}</p>
-                  <p className="text-xs text-[#64748B]">
+                  <p className="text-[15px] font-bold text-[var(--desk-text)]">{row.subject}</p>
+                  <p className="text-xs text-[var(--desk-text-muted)]">
                     {REQUEST_KIND_LABEL[row.type]} ·{' '}
                     {row.practice ? <Link to={`/admin/tenants/${row.practice.id}`} className="font-semibold underline">{row.practice.name}</Link> : null}{' '}
                     · {formatDate(row.createdAt)}
                   </p>
-                  {row.details ? <p className="mt-2 text-sm text-[#334155] whitespace-pre-line">{row.details}</p> : null}
+                  {row.details ? <p className="mt-2 text-sm text-[var(--desk-text-body)] whitespace-pre-line">{row.details}</p> : null}
                 </div>
-                <span className="text-xs font-bold text-[#475569] bg-[#F1F5F9] rounded-full px-2.5 py-1">{REQUEST_STATUS_LABEL[row.status]}</span>
+                <span className="text-xs font-bold text-[var(--desk-text-body)] bg-[var(--desk-surface-muted)] rounded-full px-2.5 py-1">{REQUEST_STATUS_LABEL[row.status]}</span>
               </div>
               <div className="mt-3 flex flex-wrap items-center gap-2">
                 <input
                   value={notes[row.id] ?? row.adminNote ?? ''}
                   onChange={(e) => setNotes((current) => ({ ...current, [row.id]: e.target.value }))}
                   placeholder="Note for the practice (optional)"
-                  className="flex-1 min-w-[220px] h-9 px-3 rounded-[10px] bg-[#F8FAFC] border border-[#E2E8F0] text-[13px]"
+                  className="flex-1 min-w-[220px] h-9 px-3 rounded-[10px] bg-[var(--desk-surface)] border border-[var(--desk-border)] text-[13px]"
                 />
                 {row.type === 'TEMPLATE' && row.formTemplateId ? (
                   <>

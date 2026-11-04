@@ -16,7 +16,7 @@ import {
 } from './profileContentTypes';
 import { SECTION_TITLES } from '../practice/profile/profileApi';
 
-const fieldShell = 'h-10 w-full rounded-[12px] border border-[#E2E8F0] bg-white px-3 text-[13.5px] text-[#0F172A]';
+const fieldShell = 'h-10 w-full rounded-[12px] border border-[var(--desk-border)] bg-white px-3 text-[13.5px] text-[var(--desk-text)]';
 
 function sectionError(section: keyof typeof SECTION_TITLES): string {
   return `${SECTION_TITLES[section]} needs a prompt before it can have an example.`;
@@ -120,23 +120,23 @@ export function AdminProfileTemplatesPage() {
   return (
     <div className="flex-1 min-w-0 px-4 md:px-[32px] py-[28px] max-w-[1240px] w-full">
       <Eyebrow>Platform console</Eyebrow>
-      <h1 className="mt-1 text-[26px] font-bold tracking-[-0.03em] text-[#0F172A]">Profile templates</h1>
-      <p className="mt-1 max-w-[760px] text-[13.5px] text-[#64748B]">
+      <h1 className="mt-1 text-[26px] font-bold tracking-[-0.03em] text-[var(--desk-text)]">Profile templates</h1>
+      <p className="mt-1 max-w-[760px] text-[13.5px] text-[var(--desk-text-muted)]">
         Starting content for different kinds of practitioner. Prompts sit beside each section in the editor; examples can be inserted and rewritten.
         Every save is recorded in the admin audit log.
       </p>
       <ProfileContentTabs />
 
       {isLoading ? (
-        <Card className="mt-5 p-[22px]"><p className="text-sm text-[#64748B]">Loading templates…</p></Card>
+        <Card className="mt-5 p-[22px]"><p className="text-sm text-[var(--desk-text-muted)]">Loading templates…</p></Card>
       ) : loadError ? (
-        <Card className="mt-5 p-[22px]"><p className="text-sm text-[#B91C1C]">Could not load templates. Please refresh.</p></Card>
+        <Card className="mt-5 p-[22px]"><p className="text-sm text-[var(--desk-danger)]">Could not load templates. Please refresh.</p></Card>
       ) : !templates?.length ? (
-        <Card className="mt-5 p-[22px]"><p className="text-sm text-[#64748B]">No templates exist yet.</p></Card>
+        <Card className="mt-5 p-[22px]"><p className="text-sm text-[var(--desk-text-muted)]">No templates exist yet.</p></Card>
       ) : (
         <div className="mt-5 grid grid-cols-1 lg:grid-cols-[300px_minmax(0,1fr)] gap-5 items-start">
           <Card className="p-[14px]">
-            <p className="px-2 pb-2 text-[11px] font-bold uppercase tracking-[0.07em] text-[#64748B]">Templates</p>
+            <p className="px-2 pb-2 text-[11px] font-bold uppercase tracking-[0.07em] text-[var(--desk-text-muted)]">Templates</p>
             <div className="space-y-1">
               {templates.map((template) => {
                 const active = template.key === selected?.key;
@@ -146,20 +146,20 @@ export function AdminProfileTemplatesPage() {
                     type="button"
                     onClick={() => setSelectedKey(template.key)}
                     className={`w-full rounded-[12px] px-3 py-2.5 text-left cursor-pointer border ${
-                      active ? 'border-[#CBD5E1] bg-[#F8FAFC]' : 'border-transparent hover:bg-[#F8FAFC]'
+                      active ? 'border-[var(--desk-pine-200)] bg-[var(--desk-surface)]' : 'border-transparent hover:bg-[var(--desk-surface)]'
                     }`}
                   >
                     <span className="flex items-center justify-between gap-2">
-                      <span className="text-[13.5px] font-bold text-[#0F172A]">{template.title}</span>
+                      <span className="text-[13.5px] font-bold text-[var(--desk-text)]">{template.title}</span>
                       <span
                         className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-bold ${
-                          template.isActive ? 'bg-emerald-50 text-emerald-700' : 'bg-[#F1F5F9] text-[#64748B]'
+                          template.isActive ? 'bg-emerald-50 text-emerald-700' : 'bg-[var(--desk-surface-muted)] text-[var(--desk-text-muted)]'
                         }`}
                       >
                         {template.isActive ? 'Active' : 'Inactive'}
                       </span>
                     </span>
-                    <span className="mt-1 block text-[12px] text-[#64748B]">
+                    <span className="mt-1 block text-[12px] text-[var(--desk-text-muted)]">
                       {template.kind ? KIND_OPTIONS.find((option) => option.value === template.kind)?.label : 'All practitioners'}
                     </span>
                   </button>
@@ -173,10 +173,10 @@ export function AdminProfileTemplatesPage() {
               <Card className="p-[22px] space-y-4">
                 <div className="flex flex-wrap items-center justify-between gap-3">
                   <div>
-                    <p className="text-[11px] font-bold uppercase tracking-[0.07em] text-[#64748B]">Editing</p>
-                    <p className="text-[16px] font-bold text-[#0F172A]">{selected.title}</p>
+                    <p className="text-[11px] font-bold uppercase tracking-[0.07em] text-[var(--desk-text-muted)]">Editing</p>
+                    <p className="text-[16px] font-bold text-[var(--desk-text)]">{selected.title}</p>
                   </div>
-                  <p className="text-[12px] text-[#64748B]">Last saved {formatDate(selected.updatedAt)}</p>
+                  <p className="text-[12px] text-[var(--desk-text-muted)]">Last saved {formatDate(selected.updatedAt)}</p>
                 </div>
 
                 <Input label="Title" value={title} maxLength={120} onChange={(e: any) => setTitle(e.target.value)} />
@@ -189,7 +189,7 @@ export function AdminProfileTemplatesPage() {
                 />
 
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                  <label className="flex flex-col gap-1.5 text-[11.5px] font-bold text-[#475569]">
+                  <label className="flex flex-col gap-1.5 text-[11.5px] font-bold text-[var(--desk-text-body)]">
                     Practitioner kind
                     <select className={fieldShell} value={kind} onChange={(e) => setKind(e.target.value as PractitionerKind | '')}>
                       <option value="">All practitioners</option>
@@ -205,10 +205,10 @@ export function AdminProfileTemplatesPage() {
                     onChange={(e: any) => setSortOrder(Number(e.target.value))}
                   />
                   <div className="flex flex-col gap-1.5">
-                    <span className="text-[11.5px] font-bold text-[#475569]">Visible to practitioners</span>
+                    <span className="text-[11.5px] font-bold text-[var(--desk-text-body)]">Visible to practitioners</span>
                     <div className="h-10 flex items-center gap-2">
                       <Toggle width={48} checked={isActive} onChange={setIsActive} aria-label="Visible to practitioners" />
-                      <span className="text-[12.5px] text-[#64748B]">{isActive ? 'Active' : 'Inactive'}</span>
+                      <span className="text-[12.5px] text-[var(--desk-text-muted)]">{isActive ? 'Active' : 'Inactive'}</span>
                     </div>
                   </div>
                 </div>
@@ -216,8 +216,8 @@ export function AdminProfileTemplatesPage() {
 
               <Card className="p-[22px] space-y-4">
                 <div>
-                  <p className="text-[16px] font-bold text-[#0F172A]">Section prompts and examples</p>
-                  <p className="mt-1 text-[12.5px] text-[#64748B]">
+                  <p className="text-[16px] font-bold text-[var(--desk-text)]">Section prompts and examples</p>
+                  <p className="mt-1 text-[12.5px] text-[var(--desk-text-muted)]">
                     Leave a section blank to remove it from this template. A section with an example needs a prompt.
                   </p>
                 </div>
@@ -226,11 +226,11 @@ export function AdminProfileTemplatesPage() {
                   {SECTION_ORDER.map((section) => {
                     const draft = sections[section];
                     return (
-                      <div key={section} className="rounded-[16px] border border-[#E2E8F0] p-4 space-y-3">
+                      <div key={section} className="rounded-[16px] border border-[var(--desk-border)] p-4 space-y-3">
                         <div className="flex items-center justify-between gap-2">
-                          <p className="text-[12.5px] font-bold text-[#0F172A]">{SECTION_TITLES[section]}</p>
+                          <p className="text-[12.5px] font-bold text-[var(--desk-text)]">{SECTION_TITLES[section]}</p>
                           {!draft.prompt.trim() && !draft.example.trim() ? (
-                            <span className="text-[10.5px] font-semibold text-[#94A3B8]">Blank</span>
+                            <span className="text-[10.5px] font-semibold text-[var(--desk-text-subtle)]">Blank</span>
                           ) : null}
                         </div>
                         <Input
@@ -253,11 +253,11 @@ export function AdminProfileTemplatesPage() {
                 </div>
               </Card>
 
-              {error ? <p role="alert" className="text-[13px] font-semibold text-[#B91C1C]">{error}</p> : null}
+              {error ? <p role="alert" className="text-[13px] font-semibold text-[var(--desk-danger)]">{error}</p> : null}
 
               <Card className="p-[22px]">
-                <p className="text-[12.5px] font-bold text-[#0F172A]">Reason for change</p>
-                <p className="mt-0.5 text-[12px] text-[#64748B]">Optional, unless deactivating this template.</p>
+                <p className="text-[12.5px] font-bold text-[var(--desk-text)]">Reason for change</p>
+                <p className="mt-0.5 text-[12px] text-[var(--desk-text-muted)]">Optional, unless deactivating this template.</p>
                 <Textarea
                   value={reason}
                   rows={2}

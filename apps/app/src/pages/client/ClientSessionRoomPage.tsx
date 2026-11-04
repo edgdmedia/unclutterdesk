@@ -43,7 +43,7 @@ export function ClientSessionRoomPage() {
   }, [isAuthenticated, id]);
 
   return (
-    <div className="min-h-screen bg-[#0B1220] text-white font-outfit flex flex-col p-4 sm:p-6 gap-4">
+    <div className="min-h-screen bg-[var(--desk-sidebar)] text-white font-outfit flex flex-col p-4 sm:p-6 gap-4">
       <header className="min-h-[66px] border border-white/10 rounded-[20px] px-4 sm:px-6 py-3 flex flex-wrap items-center justify-between gap-3 shrink-0" style={{ backgroundColor: primary }}>
         <div className="flex items-center gap-3 min-w-0">
           <PracticeLogo name={brand.name || 'Unclutter Desk'} logoUrl={brand.logoUrl} size={32} color="#E3B341" />
@@ -62,9 +62,9 @@ export function ClientSessionRoomPage() {
 
       <main className="flex-1 min-h-[520px]">
         {isLoading ? null : !isAuthenticated ? (
-          <div className="mx-auto mt-10 max-w-[440px] rounded-[22px] bg-white text-[#0F172A] p-6 space-y-3">
+          <div className="mx-auto mt-10 max-w-[440px] rounded-[22px] bg-white text-[var(--desk-text)] p-6 space-y-3">
             <h2 className="text-[16px] font-bold">Sign in to join your session</h2>
-            <p className="text-[13px] text-[#64748B]">Use the email address you booked with. Your room is private to you and your therapist.</p>
+            <p className="text-[13px] text-[var(--desk-text-muted)]">Use the email address you booked with. Your room is private to you and your therapist.</p>
             <Link to="/login" className="inline-flex h-[44px] px-5 rounded-[14px] text-white text-[13px] font-bold items-center" style={{ backgroundColor: primary }}>
               Sign in
             </Link>

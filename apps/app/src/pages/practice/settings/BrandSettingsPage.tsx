@@ -19,7 +19,7 @@ type BrandRecord = {
   secondaryColor?: string;
 };
 
-const fieldCls = 'w-full h-[44px] px-3.5 rounded-[14px] bg-[#F8FAFC] border border-[#E2E8F0] text-[13px] font-medium text-[#0F172A] outline-none';
+const fieldCls = 'w-full h-[44px] px-3.5 rounded-[14px] bg-[var(--desk-surface)] border border-[var(--desk-border)] text-[13px] font-medium text-[var(--desk-text)] outline-none';
 
 /**
  * Everything setup asks about the practice's look, editable again: logo,
@@ -105,31 +105,31 @@ export function BrandSettingsPage() {
           {error ? <div role="alert" className="rounded-[18px] border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-medium text-rose-700">{error}</div> : null}
 
           {loading ? (
-            <Card padding="p-[22px]"><div className="text-sm font-medium text-[#64748B]">Loading brand settings…</div></Card>
+            <Card padding="p-[22px]"><div className="text-sm font-medium text-[var(--desk-text-muted)]">Loading brand settings…</div></Card>
           ) : (
             <>
               <Card padding="p-[22px]" className="space-y-4">
-                <div className="flex items-center gap-2 border-b border-[#E2E8F0] pb-3">
-                  <Palette className="h-4 w-4 text-[#E3B341]" />
+                <div className="flex items-center gap-2 border-b border-[var(--desk-border)] pb-3">
+                  <Palette className="h-4 w-4 text-[var(--ds-sky)]" />
                   <Eyebrow>BRAND</Eyebrow>
                 </div>
                 <div className="space-y-1.5">
-                  <span className="text-[11.5px] font-bold text-[#475569] block">Logo</span>
+                  <span className="text-[11.5px] font-bold text-[var(--desk-text-body)] block">Logo</span>
                   <LogoField value={logoUrl} onChange={setLogoUrl} />
                 </div>
                 <div className="grid grid-cols-2 gap-3">
-                  <label className="p-[10px_12px] bg-[#F8FAFC] border border-[#E2E8F0] rounded-[16px] flex items-center gap-2 cursor-pointer">
+                  <label className="p-[10px_12px] bg-[var(--desk-surface)] border border-[var(--desk-border)] rounded-[16px] flex items-center gap-2 cursor-pointer">
                     <input type="color" aria-label="Primary colour" value={primaryColor} onChange={(e) => setPrimaryColor(e.target.value)} className="h-9 w-9 rounded-[10px] border-none cursor-pointer p-0 shrink-0" />
-                    <span><span className="text-[11px] font-bold text-[#64748B] block">Primary</span><span className="text-[12px] font-mono font-bold text-[#0F172A] uppercase">{primaryColor}</span></span>
+                    <span><span className="text-[11px] font-bold text-[var(--desk-text-muted)] block">Primary</span><span className="text-[12px] font-mono font-bold text-[var(--desk-text)] uppercase">{primaryColor}</span></span>
                   </label>
-                  <label className="p-[10px_12px] bg-[#F8FAFC] border border-[#E2E8F0] rounded-[16px] flex items-center gap-2 cursor-pointer">
+                  <label className="p-[10px_12px] bg-[var(--desk-surface)] border border-[var(--desk-border)] rounded-[16px] flex items-center gap-2 cursor-pointer">
                     <input type="color" aria-label="Accent colour" value={secondaryColor} onChange={(e) => setSecondaryColor(e.target.value)} className="h-9 w-9 rounded-[10px] border-none cursor-pointer p-0 shrink-0" />
-                    <span><span className="text-[11px] font-bold text-[#64748B] block">Accent</span><span className="text-[12px] font-mono font-bold text-[#0F172A] uppercase">{secondaryColor}</span></span>
+                    <span><span className="text-[11px] font-bold text-[var(--desk-text-muted)] block">Accent</span><span className="text-[12px] font-mono font-bold text-[var(--desk-text)] uppercase">{secondaryColor}</span></span>
                   </label>
                 </div>
-                <div className="space-y-1.5"><label htmlFor="brand-name" className="text-[11.5px] font-bold text-[#475569]">Practice name</label><input id="brand-name" type="text" value={practiceName} onChange={(e) => setPracticeName(e.target.value)} className={fieldCls} /></div>
-                <div className="space-y-1.5"><label htmlFor="brand-email" className="text-[11.5px] font-bold text-[#475569]">Practice contact email</label><input id="brand-email" type="email" value={publicEmail} onChange={(e) => setPublicEmail(e.target.value)} className={fieldCls} /></div>
-                <button onClick={() => void handleSave()} disabled={saving} className="h-[42px] px-[15px] rounded-[13px] bg-[#0F3A53] text-white text-[13px] font-semibold cursor-pointer disabled:opacity-60">{saving ? 'Saving…' : 'Save brand'}</button>
+                <div className="space-y-1.5"><label htmlFor="brand-name" className="text-[11.5px] font-bold text-[var(--desk-text-body)]">Practice name</label><input id="brand-name" type="text" value={practiceName} onChange={(e) => setPracticeName(e.target.value)} className={fieldCls} /></div>
+                <div className="space-y-1.5"><label htmlFor="brand-email" className="text-[11.5px] font-bold text-[var(--desk-text-body)]">Practice contact email</label><input id="brand-email" type="email" value={publicEmail} onChange={(e) => setPublicEmail(e.target.value)} className={fieldCls} /></div>
+                <button onClick={() => void handleSave()} disabled={saving} className="h-[42px] px-[15px] rounded-[13px] bg-[var(--desk-pine-600)] text-white text-[13px] font-semibold cursor-pointer disabled:opacity-60">{saving ? 'Saving…' : 'Save brand'}</button>
               </Card>
 
             </>

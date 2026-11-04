@@ -7,7 +7,7 @@ export function PracticeBrand({ mode }: { mode: SidebarMode }) {
     return (
       <div className="flex items-center gap-2.5 min-w-0">
         <img src={brand.logoUrl} alt={brand.name} className="h-7 w-7 rounded-[9px] object-cover border border-white/10" />
-        <span className="font-semibold text-[16px] tracking-[-0.02em] text-[#F8FAFC] truncate">{brand.name}</span>
+        <span className="font-semibold text-[16px] tracking-[-0.02em] text-[var(--ds-on-band)] truncate">{brand.name}</span>
       </div>
     );
   }
