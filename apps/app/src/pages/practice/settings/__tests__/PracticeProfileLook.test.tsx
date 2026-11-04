@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import React from 'react';
 import { cleanup, fireEvent, renderWithApp, screen, waitFor } from '../../../../test/renderWithApp';
 
@@ -6,21 +6,23 @@ import { cleanup, fireEvent, renderWithApp, screen, waitFor } from '../../../../
 
 let brand: Record<string, unknown> = {};
 let own: Record<string, unknown> | null = null;
-const get = vi.fn(async (path: string) => {
-  if (path === '/v1/practitioner-profile/me') return own;
-  return brand;
-});
-const patch = vi.fn(async (..._a: unknown[]) => ({}));
+// `vi.fn()` keeps a rest-arg signature, so spreading into it inside the mock
+// module below typechecks; a narrowly typed implementation would not.
+const get = vi.fn();
+const patch = vi.fn();
 vi.mock('../../../../utils/apiClient', async (importOriginal) => {
-  const real = await importOriginal<typeof import('../../../../utils/apiClient')>();
-  return { ...real, api: { get: (...a: unknown[]) => get(...a), patch: (...a: unknown[]) => patch(...a) } };
+  await importOriginal();
+  return { api: { get: (...a: unknown[]) => get(...a), patch: (...a: unknown[]) => patch(...a) } };
 });
 const { PracticeProfilePage } = await import('../PracticeProfilePage');
 
-afterEach(() => {
-  cleanup();
-  patch.mockClear();
+beforeEach(() => {
+  get.mockImplementation((path: string) => Promise.resolve(path === '/v1/practitioner-profile/me' ? own : brand));
+  patch.mockReset();
+  patch.mockResolvedValue({});
 });
+
+afterEach(cleanup);
 
 describe('the practice look', () => {
   it('a solo practice shows the profile’s palette read-only, with a way to change it there', async () => {
@@ -28,6 +30,8 @@ describe('the practice look', () => {
     own = { themeKey: 'warm', brandColor: null };
     renderWithApp(<PracticeProfilePage />);
 
+    // The load decides read-only; wait for it rather than for a radio that is
+    // also there while the page is still editable.
     expect(await screen.findByRole('link', { name: 'Change in your profile' })).toBeTruthy();
     const warm = screen.getByRole('radio', { name: /Warm/ });
     expect(warm.getAttribute('aria-checked')).toBe('true');
@@ -46,8 +50,10 @@ describe('the practice look', () => {
     brand = { name: 'Ada Practice', solo: true, useProfileForPractice: true };
     own = { themeKey: 'custom', brandColor: '#123456' };
     renderWithApp(<PracticeProfilePage />);
-    expect(await screen.findByRole('radio', { name: 'Custom' })).toBeTruthy();
+
+    expect(await screen.findByRole('link', { name: 'Change in your profile' })).toBeTruthy();
     expect(screen.getByRole('radio', { name: 'Custom' }).getAttribute('aria-checked')).toBe('true');
+    expect(screen.getByRole('radio', { name: 'Custom' }).getAttribute('aria-disabled')).toBe('true');
     expect(screen.queryByLabelText('Brand colour hex')).toBeNull();
   });
 
@@ -56,9 +62,11 @@ describe('the practice look', () => {
     own = null;
     renderWithApp(<PracticeProfilePage />);
 
-    const warm = await screen.findByRole('radio', { name: /Warm/ });
-    // #2A56A8 is Calm's accent, so Calm is the starting choice.
-    expect(screen.getByRole('radio', { name: /Calm/ }).getAttribute('aria-checked')).toBe('true');
+    // #2A56A8 is Calm's accent, so Calm is the starting choice once loaded.
+    await waitFor(() =>
+      expect(screen.getByRole('radio', { name: /Calm/ }).getAttribute('aria-checked')).toBe('true'),
+    );
+    const warm = screen.getByRole('radio', { name: /Warm/ });
     fireEvent.click(warm);
     expect(warm.getAttribute('aria-checked')).toBe('true');
     fireEvent.click(screen.getByRole('button', { name: /Save changes/ }));
@@ -72,7 +80,10 @@ describe('the practice look', () => {
     own = null;
     renderWithApp(<PracticeProfilePage />);
 
-    fireEvent.click(await screen.findByRole('radio', { name: 'Custom' }));
+    await waitFor(() =>
+      expect(screen.getByRole('radio', { name: /Calm/ }).getAttribute('aria-checked')).toBe('true'),
+    );
+    fireEvent.click(screen.getByRole('radio', { name: 'Custom' }));
     fireEvent.change(screen.getByLabelText('Brand colour hex'), { target: { value: '#123456' } });
     fireEvent.click(screen.getByRole('button', { name: 'Save colour' }));
     fireEvent.click(screen.getByRole('button', { name: /Save changes/ }));
@@ -86,7 +97,9 @@ describe('the practice look', () => {
     own = { themeKey: 'warm', brandColor: null };
     renderWithApp(<PracticeProfilePage />);
 
-    expect(await screen.findByRole('radio', { name: /Warm/ })).toBeTruthy();
+    await waitFor(() =>
+      expect(screen.getByRole('radio', { name: /Calm/ }).getAttribute('aria-checked')).toBe('true'),
+    );
     expect(screen.getByRole('radio', { name: /Warm/ }).getAttribute('aria-disabled')).toBeNull();
     expect(screen.queryByRole('link', { name: 'Change in your profile' })).toBeNull();
   });

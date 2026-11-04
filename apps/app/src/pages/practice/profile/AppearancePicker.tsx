@@ -166,7 +166,7 @@ export function PaletteSwatches({
               <span
                 aria-hidden
                 className="h-[30px] w-[30px] rounded-[9px] border flex items-center justify-center"
-                style={{ background: tokens?.soft ?? '#E9F0FB', borderColor: 'var(--desk-border)' }}
+                style={{ background: tokens?.soft ?? 'var(--desk-pine-100)', borderColor: 'var(--desk-border)' }}
               >
                 <span className="h-[14px] w-[14px] rounded-full" style={{ background: tokens?.accent ?? DEFAULT_CUSTOM }} />
               </span>
