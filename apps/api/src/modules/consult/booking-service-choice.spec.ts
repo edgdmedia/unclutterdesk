@@ -54,6 +54,7 @@ function makeService({
       findFirst: vi.fn().mockResolvedValue({ id: 5n, email: 'ada@example.com', firstName: 'Ada', lastName: 'Obi', phone: '080' }),
       findUnique: vi.fn().mockResolvedValue({ firstName: 'Jane', lastName: 'Smith' }),
     },
+    timeOff: { findMany: vi.fn().mockResolvedValue([]) },
     $transaction: vi.fn(async (cb: any) => cb(tx)),
   };
   const notifications = { notify: vi.fn(), sendEmail: vi.fn().mockResolvedValue({ success: true }) };

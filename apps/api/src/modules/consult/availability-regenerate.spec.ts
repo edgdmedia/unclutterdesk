@@ -49,6 +49,7 @@ function makeService(kept: Array<{ startsAt: Date; endsAt: Date }> = []) {
     },
     practiceLocation: { findMany: vi.fn().mockResolvedValue([]) },
     tenant: { findUnique: vi.fn().mockResolvedValue({ cancellationHours: 24 }), update: vi.fn() },
+    timeOff: { findMany: vi.fn().mockResolvedValue([]) },
   };
   const stored: any[] = [];
   const service = new ConsultService(prisma, {} as any, {} as any, {} as any, {} as any, {} as any, {} as any);

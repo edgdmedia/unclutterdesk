@@ -45,6 +45,7 @@ function makeService({ claimCount = 1 }: { claimCount?: number } = {}) {
     },
     consultBooking: { count: vi.fn().mockResolvedValue(0) },
     profile: { findFirst: vi.fn().mockResolvedValue({ id: 5n, email: 'ada@example.com', firstName: 'Ada', lastName: 'Obi', phone: '080' }) },
+    timeOff: { findMany: vi.fn().mockResolvedValue([]) },
     $transaction: vi.fn(async (cb: any) => cb(tx)),
   };
 
