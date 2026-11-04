@@ -455,6 +455,38 @@ describe('PractitionerProfileService', () => {
     });
   });
 
+  describe('custom brand colour (§6.5, Starter and up)', () => {
+    it('saves a hex colour and turns Custom on, only with the plan', async () => {
+      const { service, prisma, entitlements } = setup();
+      ownProfile(prisma);
+      await service.updateOwn(ME, { brandColor: ' e76f51 ', themeKey: 'custom' });
+      expect(entitlements.assertProfile).toHaveBeenCalledWith(ME, 'customBrandColor');
+      expect(prisma.practitionerProfile.update.mock.calls[0][0].data).toMatchObject({ brandColor: '#E76F51', themeKey: 'custom' });
+    });
+
+    it('refuses Custom below Starter, and saves nothing', async () => {
+      const { service, prisma, entitlements } = setup();
+      ownProfile(prisma);
+      entitlements.assertProfile.mockRejectedValue(Object.assign(new Error('This needs the Starter plan.'), { status: 402 }));
+      await expect(service.updateOwn(ME, { brandColor: '#E76F51', themeKey: 'custom' })).rejects.toThrow(/Starter/);
+      expect(prisma.practitionerProfile.update).not.toHaveBeenCalled();
+    });
+
+    it('refuses a colour that is not a 6-digit hex, and Custom with no colour', async () => {
+      const { service, prisma } = setup();
+      ownProfile(prisma, { brandColor: null });
+      for (const bad of ['red', '#FFF', '#GGGGGG', 42]) await expect(service.updateOwn(ME, { brandColor: bad as any })).rejects.toBeInstanceOf(BadRequestException);
+      await expect(service.updateOwn(ME, { themeKey: 'custom' })).rejects.toThrow('Choose your brand colour');
+    });
+
+    it('keeps the colour when another palette is chosen, so switching back restores it', async () => {
+      const { service, prisma } = setup();
+      ownProfile(prisma, { brandColor: '#E76F51', themeKey: 'custom' });
+      await service.updateOwn(ME, { themeKey: 'warm' });
+      expect(prisma.practitionerProfile.update.mock.calls[0][0].data).toEqual({ themeKey: 'warm' });
+    });
+  });
+
   describe('one home per fact (§6.17)', () => {
     it('keeps facts about the therapist on the profile only: saving never writes copies to practice records', async () => {
       const { service, prisma } = setup();

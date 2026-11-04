@@ -1,3 +1,4 @@
+import { brandTokens } from './custom-colour';
 /**
  * Profile appearance (spec §6.5): a palette (`themeKey`) and a layout
  * (`layoutKey`), chosen separately; appearance only, never content or order.
@@ -12,6 +13,14 @@ export const DEFAULT_THEME: ThemeKey = 'calm';
 
 export function isThemeKey(value: unknown): value is ThemeKey {
   return typeof value === 'string' && (THEME_KEYS as readonly string[]).includes(value);
+}
+
+/** A custom brand colour instead of a palette (Starter and up); the colour is PractitionerProfile.brandColor. */
+export const CUSTOM_THEME = 'custom';
+
+/** A palette key or 'custom': what a profile may store in themeKey. */
+export function isThemeChoice(value: unknown): value is ThemeKey | typeof CUSTOM_THEME {
+  return value === CUSTOM_THEME || isThemeKey(value);
 }
 
 /** `clinical` became `crisp` (Therapysts design system, 4 Nov 2026); the old key is accepted for one release. */
@@ -53,7 +62,12 @@ export const THEME_PALETTES: Record<ThemeKey, ThemePalette> = {
 };
 
 /** The palette for a stored theme key, falling back to the default. */
-export function themePalette(key: string | null | undefined): ThemePalette {
+export function themePalette(key: string | null | undefined, brandColor?: string | null): ThemePalette {
+  if (key === CUSTOM_THEME) {
+    const accent = brandTokens(brandColor);
+    const calm = THEME_PALETTES.calm;
+    return accent ? { ...calm, accent: accent.accent, accentText: accent.accentText, soft: accent.soft } : calm;
+  }
   const k = normaliseThemeKey(key);
   return THEME_PALETTES[isThemeKey(k) ? k : DEFAULT_THEME];
 }

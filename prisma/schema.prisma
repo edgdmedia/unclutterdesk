@@ -1007,6 +1007,7 @@ model PractitionerProfile {
   templateKey               String? // template used to start (§6.6)
   themeKey                  String                    @default("calm") // §6.5 palette
   layoutKey                 String                    @default("classic") // §6.5 layout
+  brandColor                String?                   @db.VarChar(7) // §6.5 custom colour '#RRGGBB'; used when themeKey = 'custom' (Starter and up)
   displayName               String
   pronouns                  String?
   photoKey                  String? // R2 object key (§4.4)

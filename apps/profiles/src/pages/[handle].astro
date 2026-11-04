@@ -7,6 +7,7 @@ import { KIND_TITLES, lookupProfile, personJsonLd } from '../lib/profiles';
 import { MISS_CACHE, PAGE_CACHE } from '../lib/security';
 import { profileTag } from '../lib/purge';
 import { profileTheme } from '@unclutterdesk/ui/src/brand/profileThemes';
+import { normaliseHex } from '@unclutterdesk/ui/src/brand/brandTokens';
 
 const config = loadConfig();
 const requested = Astro.params.handle ?? '';
@@ -35,7 +36,8 @@ const canonical = profile ? `${config.publicOrigin}/${profile.handle}` : undefin
     title={`${profile.displayName} · ${KIND_TITLES[profile.kind] ?? 'Therapist'}`}
     description={profile.headline ?? undefined}
     canonical={canonical}
-    theme={profileTheme(profile.themeKey).key}
+    theme={profile.themeKey === 'custom' && normaliseHex(profile.brandColor) ? 'custom' : profileTheme(profile.themeKey).key}
+    brandColor={profile.themeKey === 'custom' ? normaliseHex(profile.brandColor) : null}
     image={profile.previewImageUrl ?? profile.photoUrl}
     jsonLd={personJsonLd(profile, canonical!)}
   >

@@ -33,6 +33,8 @@ export interface PublicProfile {
   /** List form from the API; the older keyed form is still accepted (see socialItems). */
   socialLinks: SocialLink[] | Record<string, string>;
   themeKey: string;
+  /** The custom colour when themeKey is 'custom' (Starter and up). */
+  brandColor?: string | null;
   layoutKey: string;
   specialties: (PublicTerm & { primary: boolean })[];
   modalities: PublicTerm[];

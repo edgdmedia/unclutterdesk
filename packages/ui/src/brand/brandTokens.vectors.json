@@ -1,0 +1,4 @@
+{
+  "note": "Inputs and the exact outputs both brandTokens() copies must give (packages/ui and apps/api). Regenerate only when the rule changes, in both places at once.",
+  "inputs": ["#2A56A8", "#24614F", "#E3B341", "#FFEB3B", "#FF6B6B", "#00BCD4", "#8E44AD", "#000000", "#FFFFFF", "#7DB8A5", "#0F3A53", "#F4A261", "e76f51", "#C0FFEE"]
+}

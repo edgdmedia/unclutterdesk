@@ -16,6 +16,8 @@
  * Every palette passes WCAG 2.1 AA (profileThemes.test.ts).
  */
 
+import { brandTokens } from './brandTokens';
+
 export type ProfileThemeKey = 'calm' | 'warm' | 'crisp' | 'earth' | 'night';
 export type ProfileLayoutKey = 'classic' | 'editorial' | 'compact' | 'split';
 
@@ -72,7 +74,14 @@ export const PROFILE_THEMES: readonly ProfileTheme[] = [
 
 export const DEFAULT_PROFILE_THEME: ProfileThemeKey = 'calm';
 
-export function profileTheme(key: string | null | undefined): ProfileTheme {
+export function profileTheme(key: string | null | undefined, brandColor?: string | null): ProfileTheme {
+  // A custom colour (Starter and up): Calm, with the accent made readable from the brand colour.
+  if (key === 'custom') {
+    const accent = brandTokens(brandColor);
+    const calm = PROFILE_THEMES[0];
+    if (accent) return { ...calm, label: 'Custom', description: 'Your brand colour.', colors: { ...calm.colors, accent: accent.accent, accentText: accent.accentText, soft: accent.soft } };
+    return calm;
+  }
   const k = key === 'clinical' ? 'crisp' : key;
   return PROFILE_THEMES.find((t) => t.key === k) ?? PROFILE_THEMES[0];
 }

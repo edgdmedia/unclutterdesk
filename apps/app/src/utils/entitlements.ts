@@ -69,12 +69,13 @@ export function useEntitlements(enabled = true): EntitlementSummary | null {
 }
 
 /** What a person's profile can do (API: GET /v1/me/profile-entitlements). Mirrors the API's ProfileEntitlements. */
-export type ProfileEntitlements = { downloadablePdf: boolean; introVideo: boolean };
+export type ProfileEntitlements = { downloadablePdf: boolean; introVideo: boolean; customBrandColor: boolean };
 
 /** The cheapest plan that includes each profile feature. Mirrors PROFILE_ENTITLEMENTS in the API. */
 export const PROFILE_FEATURE_TIERS: Record<keyof ProfileEntitlements, Tier> = {
   downloadablePdf: 'STARTER',
   introVideo: 'STARTER',
+  customBrandColor: 'STARTER',
 };
 
 /**
