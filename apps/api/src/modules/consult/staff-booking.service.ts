@@ -49,6 +49,10 @@ export interface StaffTimeInput {
   locationId?: string | null;
 }
 
+/** Several times for one client, with everything else as one booking. */
+export type StaffSeveralInput = StaffBookingInput & { times?: StaffTimeInput[] };
+export type StaffSeveralResult = { bookings: StaffBookingResult[] };
+
 /** A client who paid for a block books part of it now; more than this is a plan (§11.2). */
 export const MAX_TIMES_AT_ONCE = 8;
 
@@ -136,8 +140,8 @@ export class StaffBookingService {
   async createSeveralForClient(
     tenantId: bigint,
     actorProfileId: bigint,
-    dto: StaffBookingInput & { times?: StaffTimeInput[] },
-  ): Promise<{ bookings: StaffBookingResult[] }> {
+    dto: StaffSeveralInput,
+  ): Promise<StaffSeveralResult> {
     const times = Array.isArray(dto?.times) ? dto.times : [];
     if (times.length === 0) throw new BadRequestException('Choose at least one time.');
     if (times.length > MAX_TIMES_AT_ONCE) throw new BadRequestException(`Book up to ${MAX_TIMES_AT_ONCE} sessions at once.`);

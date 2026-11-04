@@ -2,7 +2,7 @@ import { Controller, Get, Post, Patch, Delete, Body, Param, Query, Req, UseGuard
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { ConsultService } from './consult.service';
 import { ManualPaymentService } from './manual-payment.service';
-import { StaffBookingService, StaffBookingInput, StaffTimeInput } from './staff-booking.service';
+import { StaffBookingService, StaffBookingInput, StaffSeveralInput } from './staff-booking.service';
 import { SessionDirectoryService } from './session-directory.service';
 import { BadRequestException } from '@nestjs/common';
 import { effectivePermissions } from '../../common/permissions';
@@ -364,7 +364,7 @@ export class ConsultController {
   @UseGuards(JwtAuthGuard, RolesGuard)
   @ApiBearerAuth('access-token')
   @ApiOperation({ summary: 'Staff book several sessions for one client at once: all are booked or none' })
-  createSeveralStaffBookings(@Req() req: any, @Body() dto: StaffBookingInput & { times?: StaffTimeInput[] }) {
+  createSeveralStaffBookings(@Req() req: any, @Body() dto: StaffSeveralInput) {
     return this.staffBookings.createSeveralForClient(authenticatedTenantId(req), authenticatedProfileId(req), dto);
   }
 
