@@ -195,7 +195,7 @@ A running log of what shows up in testing, what we decide about it, and when it'
   - Unpaid booking or transfer: while the hold runs.
   - After a no-show: same day, with a rebook link.
   - After a completed session: review/feedback request; "book your next session" after a set number of days.
-- **Fix:** 
+- **Fix:** Upcoming-session reminders, 24 hours and 1 hour before with the join link (the Google Meet link once made) or the address: `SessionReminderService` (4 Nov 2026). Always emailed and in-app, as decided. Still to do: the practice's own timings and switches, and the other reminders listed above.
 - **Verified:** 
 
 ### NOT-08 · Booking emails failed on the live site
