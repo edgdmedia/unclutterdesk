@@ -35,11 +35,11 @@ function baseKobo(service: PublicService, state: WizardState, slot?: Slot | null
 function Row({ label, value, tone }: { label: string; value: React.ReactNode; tone?: 'discount' | 'total' }) {
   return (
     <div
-      className={`flex items-center gap-3 px-4 py-[13px] border-t border-[#F1F5F9] first:border-t-0 ${tone === 'total' ? 'bg-[#F8FAFC]' : ''}`}
+      className={`flex items-center gap-3 px-4 py-[13px] border-t border-[var(--desk-border-soft)] first:border-t-0 ${tone === 'total' ? 'bg-[var(--desk-surface)]' : ''}`}
       style={tone === 'discount' ? { color: '#16A34A' } : undefined}
     >
-      <span className={`w-[84px] shrink-0 text-[13.5px] ${tone ? '' : 'text-[#64748B]'} ${tone === 'total' ? 'text-[15px] font-bold text-[#0F172A]' : ''}`}>{label}</span>
-      <span className={`flex-1 text-right font-semibold ${tone === 'total' ? 'text-[15px] font-bold text-[#0F172A]' : 'text-[14px] text-[#0F172A]'}`} style={{ ...(tone === 'discount' ? { color: '#16A34A' } : {}), ...TABULAR }}>
+      <span className={`w-[84px] shrink-0 text-[13.5px] ${tone ? '' : 'text-[var(--desk-text-muted)]'} ${tone === 'total' ? 'text-[15px] font-bold text-[var(--desk-text)]' : ''}`}>{label}</span>
+      <span className={`flex-1 text-right font-semibold ${tone === 'total' ? 'text-[15px] font-bold text-[var(--desk-text)]' : 'text-[14px] text-[var(--desk-text)]'}`} style={{ ...(tone === 'discount' ? { color: '#16A34A' } : {}), ...TABULAR }}>
         {value}
       </span>
     </div>
@@ -57,8 +57,8 @@ function PayOption({ checked, onChoose, title, children }: { checked: boolean; o
         {checked ? <span className="h-2.5 w-2.5 rounded-full" style={{ background: 'var(--brand-primary)' }} /> : null}
       </span>
       <span>
-        <span className="block text-[14.5px] font-bold text-[#0F172A]">{title}</span>
-        <span className="block text-[13px] leading-[1.5] text-[#64748B]">{children}</span>
+        <span className="block text-[14.5px] font-bold text-[var(--desk-text)]">{title}</span>
+        <span className="block text-[13px] leading-[1.5] text-[var(--desk-text-muted)]">{children}</span>
       </span>
     </label>
   );
@@ -138,7 +138,7 @@ export function ReviewPayStep({
       ) : null}
 
       {showSummary ? (
-      <div className="rounded-[20px] border border-[#E2E8F0] overflow-hidden">
+      <div className="rounded-[20px] border border-[var(--desk-border)] overflow-hidden">
         <Row label="Session" value={`${service.title} · ${service.durationMinutes} min`} />
         <Row label="When" value={whenLabel(slot.startsAt)} />
         <Row label="Format" value={state.format ? (state.format === 'IN_PERSON' ? 'In person' : 'Online') : slotFs.join(' or ')} />
@@ -157,7 +157,7 @@ export function ReviewPayStep({
               value={applied ? state.discount.code : code}
               disabled={applied}
               onChange={(e) => setCode(e.target.value.toUpperCase())}
-              className="flex-1 min-w-0 h-12 px-3.5 rounded-[14px] bg-[#F8FAFC] border text-[14.5px] uppercase tracking-[.04em] outline-none focus:bg-white"
+              className="flex-1 min-w-0 h-12 px-3.5 rounded-[14px] bg-[var(--desk-surface)] border text-[14.5px] uppercase tracking-[.04em] outline-none focus:bg-white"
               style={{ fontFamily: '"JetBrains Mono", ui-monospace, monospace', borderColor: invalid ? '#E11D48' : '#E2E8F0' }}
             />
             <Button variant="secondary" size="xl" disabled={checking} onClick={() => void applyOrRemove()}>
@@ -165,9 +165,9 @@ export function ReviewPayStep({
             </Button>
           </div>
           {applied ? (
-            <p className="text-[12.5px] text-[#16A34A]">You save {naira(state.discount.savingKobo)}. New total {naira(total)}.</p>
+            <p className="text-[12.5px] text-[var(--desk-active)]">You save {naira(state.discount.savingKobo)}. New total {naira(total)}.</p>
           ) : invalid ? (
-            <p className="text-[12.5px] text-[#E11D48]">That code isn't valid for this session. Check the spelling or try another.</p>
+            <p className="text-[12.5px] text-[var(--desk-danger)]">That code isn't valid for this session. Check the spelling or try another.</p>
           ) : null}
         </div>
       ) : (
@@ -192,13 +192,13 @@ export function ReviewPayStep({
       </div>
 
       {bankTransfer && state.payMethod === 'transfer' ? (
-        <div className="rounded-[20px] bg-[#F8FAFC] p-4 text-[13.5px] leading-[1.55] text-[#475569]">
+        <div className="rounded-[20px] bg-[var(--desk-surface)] p-4 text-[13.5px] leading-[1.55] text-[var(--desk-text-body)]">
           We'll hold your time for 48 hours. Transfer {naira(total)} using the reference we give you on the next screen, and the practice will confirm once it arrives.
         </div>
       ) : null}
 
       {showSummary && cancellationHours ? (
-        <p className="flex items-center gap-2 text-[13px] text-[#475569]">
+        <p className="flex items-center gap-2 text-[13px] text-[var(--desk-text-body)]">
           <Clock className="h-[15px] w-[15px]" aria-hidden="true" /> Free cancellation up to {cancellationHours} hours before.
         </p>
       ) : null}

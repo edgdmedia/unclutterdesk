@@ -58,7 +58,7 @@ export function BookingWizardPage({ previewSlug }: { previewSlug?: string } = {}
   );
 
   return (
-    <div className="desk-tenant min-h-screen h-screen flex flex-col bg-[#F8FAFC] font-outfit text-[#0F172A]" style={style}>
+    <div className="desk-tenant min-h-screen h-screen flex flex-col bg-[var(--desk-surface)] font-outfit text-[var(--desk-text)]" style={style}>
       <BookingHeader
         name={practice?.name || 'Booking'}
         logoUrl={practice?.logoUrl}
@@ -90,9 +90,9 @@ export function BookingWizardPage({ previewSlug }: { previewSlug?: string } = {}
 /** Not an error: the practice has taken all the online bookings its plan allows this month. */
 function FullyBooked({ name }: { name?: string }) {
   return (
-    <div role="status" className="rounded-[20px] bg-white border border-[#E2E8F0] px-5 py-6 text-center">
-      <h2 className="text-[18px] font-bold text-[#0F172A]">Fully booked this month</h2>
-      <p className="mt-1.5 text-[14px] text-[#475569]">
+    <div role="status" className="rounded-[20px] bg-white border border-[var(--desk-border)] px-5 py-6 text-center">
+      <h2 className="text-[18px] font-bold text-[var(--desk-text)]">Fully booked this month</h2>
+      <p className="mt-1.5 text-[14px] text-[var(--desk-text-body)]">
         {name || 'This practice'} isn't taking new online bookings until next month. Please check back then, or contact the practice directly.
       </p>
     </div>

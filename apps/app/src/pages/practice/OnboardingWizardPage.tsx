@@ -78,8 +78,8 @@ export function OnboardingWizardPage() {
   if (!profile) {
     if (isLoading) {
       return (
-        <div className="min-h-screen flex items-center justify-center bg-[#F8FAFC]">
-          <Loader2 className="h-6 w-6 animate-spin text-[#94A3B8]" />
+        <div className="min-h-screen flex items-center justify-center bg-[var(--desk-surface)]">
+          <Loader2 className="h-6 w-6 animate-spin text-[var(--desk-text-subtle)]" />
         </div>
       );
     }
@@ -88,12 +88,12 @@ export function OnboardingWizardPage() {
 
   if (!isPracticeAccount(profile)) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-[#F8FAFC] px-5 font-outfit">
-        <div className="w-full max-w-[440px] bg-white rounded-[24px] border border-[#E2E8F0] p-[30px] space-y-4">
+      <div className="min-h-screen flex items-center justify-center bg-[var(--desk-surface)] px-5 font-outfit">
+        <div className="w-full max-w-[440px] bg-white rounded-[24px] border border-[var(--desk-border)] p-[30px] space-y-4">
           <UnclutterLockup markSize={28} variant="light" />
-          <h1 className="text-[22px] font-bold tracking-[-0.02em] text-[#0F172A]">Sign in as the practice to continue</h1>
-          <p className="text-[14px] text-[#64748B] leading-[1.6]">
-            You're signed in as <span className="font-semibold text-[#0F172A]">{profile.email}</span>, which isn't a practice account.
+          <h1 className="text-[22px] font-bold tracking-[-0.02em] text-[var(--desk-text)]">Sign in as the practice to continue</h1>
+          <p className="text-[14px] text-[var(--desk-text-muted)] leading-[1.6]">
+            You're signed in as <span className="font-semibold text-[var(--desk-text)]">{profile.email}</span>, which isn't a practice account.
             Practice setup is saved as you go, so you'll pick up where you left off.
           </p>
           <button
@@ -102,7 +102,7 @@ export function OnboardingWizardPage() {
               await logout();
               navigate('/login', { replace: true, state: { returnTo: '/onboarding' } });
             }}
-            className="w-full h-[50px] rounded-[14px] bg-[#0F3A53] text-white text-[14px] font-bold cursor-pointer"
+            className="w-full h-[50px] rounded-[14px] bg-[var(--desk-pine-600)] text-white text-[14px] font-bold cursor-pointer"
           >
             Sign in as the practice
           </button>
@@ -605,21 +605,21 @@ function OnboardingWizard({ tenantId }: { tenantId: string }) {
   // holds the product's own mark rather than someone else's practice.
   const initials = initialsOf(practiceName, 'UD');
 
-  const inputCls = "w-full h-[48px] px-4 rounded-[14px] bg-[#F8FAFC] border border-[#E2E8F0] text-[14px] font-semibold text-[#0F172A] outline-none focus:bg-white focus:border-[#0F3A53] transition-all placeholder:text-[#CBD5E1]";
-  const labelCls = "text-[12px] font-bold text-[#475569] block mb-1.5";
-  const sectionHeaderCls = "text-[11px] font-extrabold tracking-widest text-[#0F3A53] uppercase border-b border-slate-200 pb-1.5 mb-3 flex items-center gap-1.5";
+  const inputCls = "w-full h-[48px] px-4 rounded-[14px] bg-[var(--desk-surface)] border border-[var(--desk-border)] text-[14px] font-semibold text-[var(--desk-text)] outline-none focus:bg-white focus:border-[var(--desk-pine-600)] transition-all placeholder:text-[var(--desk-pine-200)]";
+  const labelCls = "text-[12px] font-bold text-[var(--desk-text-body)] block mb-1.5";
+  const sectionHeaderCls = "text-[11px] font-extrabold tracking-widest text-[var(--desk-pine-600)] uppercase border-b border-slate-200 pb-1.5 mb-3 flex items-center gap-1.5";
 
   return (
-    <div className="min-h-screen bg-[#F8FAFC] text-[#0F172A] font-outfit flex flex-col">
+    <div className="min-h-screen bg-[var(--desk-surface)] text-[var(--desk-text)] font-outfit flex flex-col">
       {/* Top Navigation Header */}
-      <header className="w-full h-[76px] bg-white border-b border-[#E2E8F0] px-8 flex items-center justify-between shrink-0 sticky top-0 z-30">
+      <header className="w-full h-[76px] bg-white border-b border-[var(--desk-border)] px-8 flex items-center justify-between shrink-0 sticky top-0 z-30">
         <div className="flex items-center gap-3">
           <UnclutterLockup markSize={28} variant="light" />
         </div>
 
         <div className="flex items-center gap-4">
           <div className="flex flex-col items-end">
-            <span className="text-[10px] font-black tracking-widest uppercase text-[#94A3B8]">
+            <span className="text-[10px] font-black tracking-widest uppercase text-[var(--desk-text-subtle)]">
               {savedIndicator ? (
                 <span className="text-emerald-600 flex items-center gap-1"><Check className="h-3 w-3" /> DRAFT SAVED</span>
               ) : 'AUTO-SAVING DRAFT'}
@@ -630,7 +630,7 @@ function OnboardingWizard({ tenantId }: { tenantId: string }) {
               sessionStorage.setItem('unclutter_skip_onboarding', 'true');
               navigate('/dashboard');
             }}
-            className="text-xs font-bold text-[#64748B] hover:text-[#0F172A] transition-colors cursor-pointer px-3 py-1.5 bg-[#F1F5F9] rounded-full border border-[#E2E8F0]"
+            className="text-xs font-bold text-[var(--desk-text-muted)] hover:text-[var(--desk-text)] transition-colors cursor-pointer px-3 py-1.5 bg-[var(--desk-surface-muted)] rounded-full border border-[var(--desk-border)]"
           >
             Finish later
           </button>
@@ -639,12 +639,12 @@ function OnboardingWizard({ tenantId }: { tenantId: string }) {
 
       {/* Main Centered Content Canvas */}
       <div className="flex-1 flex flex-col items-center justify-center p-6 md:p-10">
-        <div className="w-full max-w-[1040px] bg-white rounded-[28px] border border-[#E2E8F0] shadow-[0_24px_64px_rgba(15,23,42,.07)] overflow-hidden flex flex-col min-h-[620px]">
+        <div className="w-full max-w-[1040px] bg-white rounded-[28px] border border-[var(--desk-border)] shadow-[0_24px_64px_rgba(15,23,42,.07)] overflow-hidden flex flex-col min-h-[620px]">
           
           {/* Step Stepper Navigation Bar */}
-          <div className="bg-[#F8FAFC] border-b border-[#E2E8F0] px-8 py-5">
+          <div className="bg-[var(--desk-surface)] border-b border-[var(--desk-border)] px-8 py-5">
             <div className="flex items-center justify-between relative max-w-[780px] mx-auto">
-              <div className="absolute top-5 left-6 right-6 h-[2.5px] bg-[#E2E8F0] -z-0">
+              <div className="absolute top-5 left-6 right-6 h-[2.5px] bg-[var(--desk-border)] -z-0">
                 <div
                   className="h-full transition-all duration-300 rounded-full"
                   style={{
@@ -661,8 +661,8 @@ function OnboardingWizard({ tenantId }: { tenantId: string }) {
                       stepIndex === idx
                         ? 'text-white border-transparent shadow-md scale-105'
                         : stepIndex > idx
-                        ? 'text-[#0F172A] border-transparent'
-                        : 'bg-white text-[#94A3B8] border-[#E2E8F0]'
+                        ? 'text-[var(--desk-text)] border-transparent'
+                        : 'bg-white text-[var(--desk-text-subtle)] border-[var(--desk-border)]'
                     }`}
                     style={{
                       backgroundColor: stepIndex === idx ? primaryColor : stepIndex > idx ? secondaryColor : '#FFFFFF',
@@ -671,10 +671,10 @@ function OnboardingWizard({ tenantId }: { tenantId: string }) {
                     {stepIndex > idx ? <Check className="h-5 w-5 stroke-[2.5]" /> : idx + 1}
                   </div>
                   <div className="text-center">
-                    <span className={`text-[12px] font-bold block ${stepIndex >= idx ? 'text-[#0F172A]' : 'text-[#94A3B8]'}`}>
+                    <span className={`text-[12px] font-bold block ${stepIndex >= idx ? 'text-[var(--desk-text)]' : 'text-[var(--desk-text-subtle)]'}`}>
                       {s.label}
                     </span>
-                    <span className="text-[10px] text-[#64748B] font-medium hidden sm:block">
+                    <span className="text-[10px] text-[var(--desk-text-muted)] font-medium hidden sm:block">
                       {s.desc}
                     </span>
                   </div>
@@ -689,8 +689,8 @@ function OnboardingWizard({ tenantId }: { tenantId: string }) {
               <div className="flex-1 flex flex-col max-w-[560px] mx-auto w-full space-y-6">
                 <div className="text-center space-y-1 mb-2">
                   <span className="os-eyebrow block">STEP 01 OF {steps.length}</span>
-                  <h2 className="text-[28px] font-bold tracking-tight text-[#0F172A]">Practice Details</h2>
-                  <p className="text-xs sm:text-sm text-[#64748B] font-medium leading-relaxed">
+                  <h2 className="text-[28px] font-bold tracking-tight text-[var(--desk-text)]">Practice Details</h2>
+                  <p className="text-xs sm:text-sm text-[var(--desk-text-muted)] font-medium leading-relaxed">
                     Let's start with the basics. What is your practice called and where are you located?
                   </p>
                 </div>
@@ -709,7 +709,7 @@ function OnboardingWizard({ tenantId }: { tenantId: string }) {
 
                   <div>
                     <label className={labelCls}>
-                      Welcome Bio <span className="text-[#94A3B8] font-normal">(optional)</span>
+                      Welcome Bio <span className="text-[var(--desk-text-subtle)] font-normal">(optional)</span>
                     </label>
                     <textarea
                       rows={3}
@@ -731,7 +731,7 @@ function OnboardingWizard({ tenantId }: { tenantId: string }) {
                     </div>
                   </div>
 
-                  <p className="text-[12px] text-[#64748B] font-medium">Addresses now live in <strong className="text-[#0F172A]">Locations</strong> — you will add your first one on the Services step.</p>
+                  <p className="text-[12px] text-[var(--desk-text-muted)] font-medium">Addresses now live in <strong className="text-[var(--desk-text)]">Locations</strong> — you will add your first one on the Services step.</p>
                 </div>
 
                 {error && <p className="text-xs font-semibold text-red-600 bg-red-50 border border-red-200 rounded-[14px] px-4 py-3">{error}</p>}
@@ -743,10 +743,10 @@ function OnboardingWizard({ tenantId }: { tenantId: string }) {
                 <div className="col-span-12 md:col-span-7 space-y-6">
                   <div>
                     <span className="os-eyebrow block mb-1">STEP 02 OF {steps.length}</span>
-                    <h2 className="text-[28px] font-bold tracking-tight text-[#0F172A] leading-tight">
+                    <h2 className="text-[28px] font-bold tracking-tight text-[var(--desk-text)] leading-tight">
                       Brand &amp; Link
                     </h2>
-                    <p className="text-xs sm:text-sm text-[#64748B] font-medium leading-relaxed mt-1">
+                    <p className="text-xs sm:text-sm text-[var(--desk-text-muted)] font-medium leading-relaxed mt-1">
                       Customize how your practice looks and feels on the web.
                     </p>
                   </div>
@@ -761,17 +761,17 @@ function OnboardingWizard({ tenantId }: { tenantId: string }) {
                       <div className="space-y-4">
                         <div>
                           <label htmlFor="setup-booking-link" className={labelCls}>Booking link</label>
-                          <div className="h-[48px] bg-[#F8FAFC] border border-[#E2E8F0] rounded-[14px] px-3.5 flex items-center gap-1.5 focus-within:bg-white focus-within:border-[#0F3A53] transition-all">
-                            <span className="text-xs font-semibold text-[#64748B] shrink-0">https://</span>
+                          <div className="h-[48px] bg-[var(--desk-surface)] border border-[var(--desk-border)] rounded-[14px] px-3.5 flex items-center gap-1.5 focus-within:bg-white focus-within:border-[var(--desk-pine-600)] transition-all">
+                            <span className="text-xs font-semibold text-[var(--desk-text-muted)] shrink-0">https://</span>
                             <input
                               id="setup-booking-link"
                               type="text"
                               value={slug}
                               onChange={(e) => handleSlugChange(e.target.value)}
                               placeholder="practice"
-                              className="flex-1 bg-transparent text-xs font-bold text-[#0F172A] outline-none placeholder:text-[#CBD5E1]"
+                              className="flex-1 bg-transparent text-xs font-bold text-[var(--desk-text)] outline-none placeholder:text-[var(--desk-pine-200)]"
                             />
-                            <span className="text-xs font-semibold text-[#64748B] shrink-0">.{TENANT_ROOT_DOMAIN}</span>
+                            <span className="text-xs font-semibold text-[var(--desk-text-muted)] shrink-0">.{TENANT_ROOT_DOMAIN}</span>
                             {slugChecking ? (
                               <span className="text-[10px] font-bold text-slate-600 bg-slate-100 px-2 py-0.5 rounded-full border border-slate-200 shrink-0 inline-flex items-center gap-1">
                                 <Loader2 className="h-2.5 w-2.5 animate-spin" /> CHECKING
@@ -806,9 +806,9 @@ function OnboardingWizard({ tenantId }: { tenantId: string }) {
                         </div>
 
                         <div>
-                          <label className="text-[12px] font-bold text-[#475569] flex items-center justify-between mb-1.5">
+                          <label className="text-[12px] font-bold text-[var(--desk-text-body)] flex items-center justify-between mb-1.5">
                             <span>Brand Color Palette</span>
-                            <span className="text-[10.5px] text-[#64748B] font-normal">Select a preset or custom hex</span>
+                            <span className="text-[10.5px] text-[var(--desk-text-muted)] font-normal">Select a preset or custom hex</span>
                           </label>
                           <div className="flex flex-wrap gap-2">
                             {BRAND_PALETTES.map((p) => (
@@ -818,28 +818,28 @@ function OnboardingWizard({ tenantId }: { tenantId: string }) {
                                 onClick={() => { setPrimaryColor(p.primary); setSecondaryColor(p.secondary); }}
                                 className={`h-9 px-3 rounded-[12px] text-xs font-bold flex items-center gap-2 border cursor-pointer transition-all ${
                                   primaryColor === p.primary && secondaryColor === p.secondary
-                                    ? 'bg-white border-[#0F172A] shadow-xs ring-2 ring-[#0F172A]/20'
-                                    : 'bg-[#F8FAFC] border-[#E2E8F0] hover:bg-slate-100'
+                                    ? 'bg-white border-[var(--desk-text)] shadow-xs ring-2 ring-[var(--desk-text)]/20'
+                                    : 'bg-[var(--desk-surface)] border-[var(--desk-border)] hover:bg-slate-100'
                                 }`}
                               >
                                 <span className="h-3.5 w-3.5 rounded-full flex overflow-hidden border border-black/10 shrink-0">
                                   <span className="w-1/2 h-full" style={{ backgroundColor: p.primary }} />
                                   <span className="w-1/2 h-full" style={{ backgroundColor: p.secondary }} />
                                 </span>
-                                <span className="text-[#0F172A]">{p.name}</span>
+                                <span className="text-[var(--desk-text)]">{p.name}</span>
                               </button>
                             ))}
                           </div>
                           <div className="flex items-center gap-3 pt-2">
-                            <div className="flex items-center gap-2 bg-[#F8FAFC] border border-[#E2E8F0] rounded-[12px] px-3 py-1.5">
-                              <span className="text-[11px] font-bold text-[#475569]">Primary:</span>
+                            <div className="flex items-center gap-2 bg-[var(--desk-surface)] border border-[var(--desk-border)] rounded-[12px] px-3 py-1.5">
+                              <span className="text-[11px] font-bold text-[var(--desk-text-body)]">Primary:</span>
                               <input type="color" value={primaryColor} onChange={(e) => setPrimaryColor(e.target.value)} className="h-5 w-5 rounded cursor-pointer border-0 bg-transparent" />
-                              <span className="text-xs font-mono font-bold text-[#0F172A]">{primaryColor}</span>
+                              <span className="text-xs font-mono font-bold text-[var(--desk-text)]">{primaryColor}</span>
                             </div>
-                            <div className="flex items-center gap-2 bg-[#F8FAFC] border border-[#E2E8F0] rounded-[12px] px-3 py-1.5">
-                              <span className="text-[11px] font-bold text-[#475569]">Accent:</span>
+                            <div className="flex items-center gap-2 bg-[var(--desk-surface)] border border-[var(--desk-border)] rounded-[12px] px-3 py-1.5">
+                              <span className="text-[11px] font-bold text-[var(--desk-text-body)]">Accent:</span>
                               <input type="color" value={secondaryColor} onChange={(e) => setSecondaryColor(e.target.value)} className="h-5 w-5 rounded cursor-pointer border-0 bg-transparent" />
-                              <span className="text-xs font-mono font-bold text-[#0F172A]">{secondaryColor}</span>
+                              <span className="text-xs font-mono font-bold text-[var(--desk-text)]">{secondaryColor}</span>
                             </div>
                           </div>
                         </div>
@@ -851,8 +851,8 @@ function OnboardingWizard({ tenantId }: { tenantId: string }) {
                 </div>
 
                 {/* Right Live Interactive Client Booking Header Mockup */}
-                <div className="col-span-12 md:col-span-5 p-6 rounded-[24px] bg-[#F8FAFC] border border-[#E2E8F0] space-y-4 sticky top-4">
-                  <div className="text-[10px] font-black tracking-widest text-[#94A3B8] uppercase flex items-center justify-between">
+                <div className="col-span-12 md:col-span-5 p-6 rounded-[24px] bg-[var(--desk-surface)] border border-[var(--desk-border)] space-y-4 sticky top-4">
+                  <div className="text-[10px] font-black tracking-widest text-[var(--desk-text-subtle)] uppercase flex items-center justify-between">
                     <span>LIVE PREVIEW</span>
                     <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
                   </div>
@@ -872,7 +872,7 @@ function OnboardingWizard({ tenantId }: { tenantId: string }) {
                           <span className="text-[9.5px] font-black tracking-widest uppercase block" style={{ color: primaryColor }}>
                             {practiceName || 'Your Practice'}
                           </span>
-                          <h4 className="text-base font-extrabold tracking-tight text-[#0F172A] truncate">
+                          <h4 className="text-base font-extrabold tracking-tight text-[var(--desk-text)] truncate">
                             Book a session
                           </h4>
                           <span className="h-[18px] px-2 rounded-full text-[9px] font-bold uppercase inline-flex items-center" style={{ backgroundColor: `${secondaryColor}2A`, color: '#8A6512' }}>
@@ -882,15 +882,15 @@ function OnboardingWizard({ tenantId }: { tenantId: string }) {
                       </div>
 
                       {welcomeMessage && (
-                        <p className="text-[11px] text-[#475569] font-medium leading-normal line-clamp-2 border-t border-black/5 pt-2">
+                        <p className="text-[11px] text-[var(--desk-text-body)] font-medium leading-normal line-clamp-2 border-t border-black/5 pt-2">
                           {welcomeMessage}
                         </p>
                       )}
                     </div>
 
                     {/* Booking Card Content Mock */}
-                    <div className="p-4 bg-[#FAF9F5] space-y-2.5">
-                      <div className="h-10 bg-white rounded-[12px] border border-slate-200/80 px-3.5 flex items-center justify-between text-xs font-semibold text-[#0F172A]">
+                    <div className="p-4 bg-[var(--desk-surface)] space-y-2.5">
+                      <div className="h-10 bg-white rounded-[12px] border border-slate-200/80 px-3.5 flex items-center justify-between text-xs font-semibold text-[var(--desk-text)]">
                         <span>Individual Therapy</span>
                         <span className="font-bold" style={{ color: primaryColor }}>₦{Number(rate.replace(/[^0-9]/g, '') || 0).toLocaleString('en-NG')}</span>
                       </div>
@@ -900,8 +900,8 @@ function OnboardingWizard({ tenantId }: { tenantId: string }) {
                     </div>
                   </div>
 
-                  <div className="text-[11px] text-[#64748B] font-medium flex items-center gap-1.5 px-1">
-                    <Globe className="h-3.5 w-3.5 text-[#94A3B8]" />
+                  <div className="text-[11px] text-[var(--desk-text-muted)] font-medium flex items-center gap-1.5 px-1">
+                    <Globe className="h-3.5 w-3.5 text-[var(--desk-text-subtle)]" />
                     <span className="truncate">{bookingUrl}</span>
                   </div>
                 </div>
@@ -912,14 +912,14 @@ function OnboardingWizard({ tenantId }: { tenantId: string }) {
               <div className="flex-1 flex flex-col max-w-[700px] mx-auto w-full space-y-8 py-4">
                 <div className="text-center space-y-1">
                   <span className="os-eyebrow block">STEP 03 OF {steps.length}</span>
-                  <h2 className="text-[28px] font-bold tracking-tight text-[#0F172A]">Services &amp; Availability</h2>
-                  <p className="text-xs sm:text-sm text-[#64748B] font-medium leading-relaxed">
+                  <h2 className="text-[28px] font-bold tracking-tight text-[var(--desk-text)]">Services &amp; Availability</h2>
+                  <p className="text-xs sm:text-sm text-[var(--desk-text-muted)] font-medium leading-relaxed">
                     Set up your base weekly schedule and default rate. <br/>
-                    <strong className="text-[#0F172A]">Note:</strong> You can configure complex hours, multiple services (couples, packages, physical vs virtual), and block off time later in your dashboard.
+                    <strong className="text-[var(--desk-text)]">Note:</strong> You can configure complex hours, multiple services (couples, packages, physical vs virtual), and block off time later in your dashboard.
                   </p>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-start bg-white p-8 rounded-[24px] border border-[#E2E8F0]">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-start bg-white p-8 rounded-[24px] border border-[var(--desk-border)]">
                   <div className="space-y-6">
                     <div>
                       <label className={labelCls}>Working Days (Base Schedule)</label>
@@ -932,7 +932,7 @@ function OnboardingWizard({ tenantId }: { tenantId: string }) {
                             className={`h-[48px] rounded-[14px] font-bold text-xs flex flex-col items-center justify-center transition-all cursor-pointer border ${
                               daysOn[i]
                                 ? 'text-white border-transparent shadow-xs'
-                                : 'bg-[#F8FAFC] text-[#94A3B8] border-[#E2E8F0] hover:bg-slate-100'
+                                : 'bg-[var(--desk-surface)] text-[var(--desk-text-subtle)] border-[var(--desk-border)] hover:bg-slate-100'
                             }`}
                             style={{ backgroundColor: daysOn[i] ? primaryColor : undefined }}
                           >
@@ -940,14 +940,14 @@ function OnboardingWizard({ tenantId }: { tenantId: string }) {
                           </button>
                         ))}
                       </div>
-                      <p className="text-[11px] text-[#94A3B8] mt-2">Defaults to 09:00 - 17:00. Fully customizable later.</p>
+                      <p className="text-[11px] text-[var(--desk-text-subtle)] mt-2">Defaults to 09:00 - 17:00. Fully customizable later.</p>
                     </div>
 
                     <div>
                       <label className={labelCls}>How do you see clients?</label>
                       <div className="grid grid-cols-3 gap-2 mt-2">
                         {([['ONLINE', 'Online'], ['IN_PERSON', 'In person'], ['BOTH', 'Both']] as const).map(([v, nm]) => (
-                          <label key={v} className={`h-[48px] rounded-[14px] border flex items-center justify-center gap-2 text-xs font-bold cursor-pointer ${seesClients === v ? 'text-white border-transparent' : 'bg-[#F8FAFC] text-[#64748B] border-[#E2E8F0]'}`} style={{ backgroundColor: seesClients === v ? primaryColor : undefined }}>
+                          <label key={v} className={`h-[48px] rounded-[14px] border flex items-center justify-center gap-2 text-xs font-bold cursor-pointer ${seesClients === v ? 'text-white border-transparent' : 'bg-[var(--desk-surface)] text-[var(--desk-text-muted)] border-[var(--desk-border)]'}`} style={{ backgroundColor: seesClients === v ? primaryColor : undefined }}>
                             <input type="radio" name="sees-clients" value={v} aria-label={nm} checked={seesClients === v} onChange={() => setSeesClients(v)} className="sr-only" />
                             {nm}
                           </label>
@@ -955,12 +955,12 @@ function OnboardingWizard({ tenantId }: { tenantId: string }) {
                       </div>
                       {/* ONB-08: video needs no decision during setup. */}
                       {seesClients !== 'IN_PERSON' ? (
-                        <p className="text-[11px] text-[#64748B] mt-2">Online sessions run in Unclutter Desk's own video room. You can switch to Google Meet later in My profile.</p>
+                        <p className="text-[11px] text-[var(--desk-text-muted)] mt-2">Online sessions run in Unclutter Desk's own video room. You can switch to Google Meet later in My profile.</p>
                       ) : null}
                     </div>
                     {seesClients !== 'ONLINE' && (
-                      <div className="space-y-3 p-4 rounded-[16px] bg-[#F8FAFC] border border-[#E2E8F0]">
-                        <p className="text-[11px] font-black tracking-widest uppercase text-[#0F3A53]">Where do you see clients?</p>
+                      <div className="space-y-3 p-4 rounded-[16px] bg-[var(--desk-surface)] border border-[var(--desk-border)]">
+                        <p className="text-[11px] font-black tracking-widest uppercase text-[var(--desk-pine-600)]">Where do you see clients?</p>
                         <div>
                           <label className={labelCls}>Name</label>
                           <input type="text" value={locName} onChange={(e) => setLocName(e.target.value)} placeholder={practiceName || 'Lekki clinic'} className={inputCls} />
@@ -974,29 +974,29 @@ function OnboardingWizard({ tenantId }: { tenantId: string }) {
                           <input type="text" value={locCity} onChange={(e) => setLocCity(e.target.value)} placeholder="e.g. Lagos" className={inputCls} />
                         </div>
                         <div>
-                          <label className={labelCls}>Directions for clients <span className="text-[#94A3B8] font-normal">(optional)</span></label>
+                          <label className={labelCls}>Directions for clients <span className="text-[var(--desk-text-subtle)] font-normal">(optional)</span></label>
                           <input type="text" value={locDirections} onChange={(e) => setLocDirections(e.target.value)} placeholder="e.g. Gate 2, second floor" className={inputCls} />
                         </div>
                       </div>
                     )}
                     <div>
                       <label className={labelCls}>Default Rate per 50-min session</label>
-                      <div className="h-[50px] bg-[#F8FAFC] border border-[#E2E8F0] rounded-[14px] px-4 flex items-center gap-2 focus-within:bg-white focus-within:border-[#0F3A53] transition-all mt-1.5">
-                        <span className="text-sm font-bold text-[#0F172A]">₦</span>
+                      <div className="h-[50px] bg-[var(--desk-surface)] border border-[var(--desk-border)] rounded-[14px] px-4 flex items-center gap-2 focus-within:bg-white focus-within:border-[var(--desk-pine-600)] transition-all mt-1.5">
+                        <span className="text-sm font-bold text-[var(--desk-text)]">₦</span>
                         <input
                           type="text"
                           inputMode="numeric"
                           value={rate}
                           onChange={(e) => setRate(e.target.value)}
                           placeholder="35,000"
-                          className="w-full bg-transparent text-[15px] font-bold text-[#0F172A] outline-none placeholder:text-[#CBD5E1]"
+                          className="w-full bg-transparent text-[15px] font-bold text-[var(--desk-text)] outline-none placeholder:text-[var(--desk-pine-200)]"
                         />
                       </div>
-                      <p className="text-[11px] text-[#94A3B8] mt-2">This creates your first "Individual Therapy" service automatically.</p>
+                      <p className="text-[11px] text-[var(--desk-text-subtle)] mt-2">This creates your first "Individual Therapy" service automatically.</p>
                     </div>
                     {seesClients === 'BOTH' && (
                       <div className="space-y-3">
-                        <label className="flex items-center gap-2 text-[13px] font-bold text-[#0F172A] cursor-pointer">
+                        <label className="flex items-center gap-2 text-[13px] font-bold text-[var(--desk-text)] cursor-pointer">
                           <input type="checkbox" aria-label="Same price for both" checked={samePrice} onChange={(e) => setSamePrice(e.target.checked)} />
                           Same price for both
                         </label>
@@ -1018,21 +1018,21 @@ function OnboardingWizard({ tenantId }: { tenantId: string }) {
                           <option key={h} value={h}>{h} hours before session</option>
                         ))}
                       </select>
-                      <p className="text-[11px] text-[#94A3B8] mt-2">Clients can reschedule or cancel free of charge until this limit.</p>
+                      <p className="text-[11px] text-[var(--desk-text-subtle)] mt-2">Clients can reschedule or cancel free of charge until this limit.</p>
                     </div>
 
-                    <div className="p-5 rounded-[20px] bg-[#F0F7FC] border border-[#0F3A53]/15 space-y-3 mt-4">
-                      <div className="flex items-center gap-2 text-[#0F3A53]">
+                    <div className="p-5 rounded-[20px] bg-[var(--desk-surface-alt)] border border-[var(--desk-pine-600)]/15 space-y-3 mt-4">
+                      <div className="flex items-center gap-2 text-[var(--desk-pine-600)]">
                         <Sparkles className="h-4 w-4" style={{ color: secondaryColor }} />
                         <span className="text-[10px] font-black tracking-widest uppercase">ESTIMATED CAPACITY</span>
                       </div>
                       <div>
-                        <div className="text-[28px] font-extrabold text-[#0F3A53] leading-none">
-                          {weeklySlots} slots<span className="text-sm font-semibold text-[#475569] ml-1">/week</span>
+                        <div className="text-[28px] font-extrabold text-[var(--desk-pine-600)] leading-none">
+                          {weeklySlots} slots<span className="text-sm font-semibold text-[var(--desk-text-body)] ml-1">/week</span>
                         </div>
-                        <p className="text-xs text-[#334155] font-medium leading-relaxed mt-1.5">
+                        <p className="text-xs text-[var(--desk-text-body)] font-medium leading-relaxed mt-1.5">
                           At ₦{rateValue.toLocaleString('en-NG')} per session, a half-full schedule generates approx.{' '}
-                          <strong className="text-[#0F3A53] font-bold">₦{monthlyEstimate.toLocaleString('en-NG')}</strong> monthly.
+                          <strong className="text-[var(--desk-pine-600)] font-bold">₦{monthlyEstimate.toLocaleString('en-NG')}</strong> monthly.
                         </p>
                       </div>
                     </div>
@@ -1047,18 +1047,18 @@ function OnboardingWizard({ tenantId }: { tenantId: string }) {
               <div className="flex-1 flex flex-col max-w-[560px] mx-auto w-full space-y-8 py-4">
                 <div className="text-center space-y-1">
                   <span className="os-eyebrow block">STEP {steps.findIndex((s) => s.key === 'subscription') + 1} OF {steps.length}</span>
-                  <h2 className="text-[28px] font-bold tracking-tight text-[#0F172A]">You're starting on the free plan</h2>
-                  <p className="text-xs sm:text-sm text-[#64748B] font-medium leading-relaxed">
+                  <h2 className="text-[28px] font-bold tracking-tight text-[var(--desk-text)]">You're starting on the free plan</h2>
+                  <p className="text-xs sm:text-sm text-[var(--desk-text-muted)] font-medium leading-relaxed">
                     No card required. Booking, clinical notes and intake are included; upgrade when you need more.
                   </p>
                 </div>
 
-                <div className="bg-white p-8 rounded-[24px] border border-[#E2E8F0]">
-                   <div className="p-5 rounded-[16px] bg-[#F8FAFC] border border-[#E2E8F0] space-y-3 text-center">
-                     <p className="text-sm font-semibold text-[#0F172A]">
+                <div className="bg-white p-8 rounded-[24px] border border-[var(--desk-border)]">
+                   <div className="p-5 rounded-[16px] bg-[var(--desk-surface)] border border-[var(--desk-border)] space-y-3 text-center">
+                     <p className="text-sm font-semibold text-[var(--desk-text)]">
                        No payment details needed to start
                      </p>
-                     <p className="text-[12px] text-[#64748B] max-w-[420px] mx-auto leading-relaxed">
+                     <p className="text-[12px] text-[var(--desk-text-muted)] max-w-[420px] mx-auto leading-relaxed">
                        The free plan takes up to 10 bookings a month, with a 5% platform fee on
                        online payments. Starter (30 bookings, no fee) and Pro (unlimited) are in
                        Settings → Subscription, paid securely with Paystack — card, bank transfer or USSD.
@@ -1074,22 +1074,22 @@ function OnboardingWizard({ tenantId }: { tenantId: string }) {
               <div className="flex-1 flex flex-col max-w-[700px] mx-auto w-full space-y-6 py-4">
                 <div className="text-center space-y-1">
                   <span className="os-eyebrow block">STEP {steps.findIndex((s) => s.key === 'payout') + 1} OF {steps.length}</span>
-                  <h2 className="text-[28px] font-bold tracking-tight text-[#0F172A]">How clients pay</h2>
-                  <p className="text-xs sm:text-sm text-[#64748B] font-medium leading-relaxed">
+                  <h2 className="text-[28px] font-bold tracking-tight text-[var(--desk-text)]">How clients pay</h2>
+                  <p className="text-xs sm:text-sm text-[var(--desk-text-muted)] font-medium leading-relaxed">
                     Turn on one or both. You can skip this and set it up later in Settings → Payouts.
                   </p>
                 </div>
 
-                <section className="bg-white p-5 sm:p-8 rounded-[24px] border border-[#E2E8F0] space-y-6">
+                <section className="bg-white p-5 sm:p-8 rounded-[24px] border border-[var(--desk-border)] space-y-6">
                   <div className="flex items-start gap-3">
-                    <CreditCard className="h-5 w-5 text-[#0F3A53] shrink-0 mt-0.5" />
+                    <CreditCard className="h-5 w-5 text-[var(--desk-pine-600)] shrink-0 mt-0.5" />
                     <div className="space-y-1">
-                      <h3 className="text-[16px] font-bold text-[#0F172A]">Online with Paystack</h3>
-                      <p className="text-xs text-[#64748B] leading-relaxed">
+                      <h3 className="text-[16px] font-bold text-[var(--desk-text)]">Online with Paystack</h3>
+                      <p className="text-xs text-[var(--desk-text-muted)] leading-relaxed">
                         Clients pay when they book. Paystack pays each payment into this account on its settlement schedule.
                       </p>
                       {plan && (
-                        <p className="text-xs font-semibold text-[#475569] leading-relaxed">
+                        <p className="text-xs font-semibold text-[var(--desk-text-body)] leading-relaxed">
                           {plan.entitlements.platformFeeBps === 0
                             ? "No platform fee on your plan. Paystack's own processing fee applies to each payment."
                             : `On the ${plan.tierName} plan, a ${formatFee(plan.entitlements.platformFeeBps)} platform fee is taken from each online payment. Paystack's own processing fee also applies.`}
@@ -1148,40 +1148,40 @@ function OnboardingWizard({ tenantId }: { tenantId: string }) {
                         className={`${inputCls} h-[50px] ${accountResolved ? 'bg-emerald-50/50 border-emerald-200 text-emerald-900 focus:bg-emerald-50/50' : ''}`}
                         readOnly={accountResolved}
                       />
-                      <p className="text-[11px] text-[#94A3B8] mt-2">
+                      <p className="text-[11px] text-[var(--desk-text-subtle)] mt-2">
                         {accountResolved ? "We automatically retrieved this from your bank." : "Name registered on your bank account for verification."}
                       </p>
                     </div>
                   </div>
 
-                  <p className="flex items-center gap-2 text-[11px] font-semibold text-[#64748B]">
+                  <p className="flex items-center gap-2 text-[11px] font-semibold text-[var(--desk-text-muted)]">
                     <ShieldCheck className="h-4 w-4 text-emerald-600 shrink-0" />
                     Payments processed securely by Paystack.
                   </p>
                 </section>
 
-                <section className="bg-white p-5 sm:p-8 rounded-[24px] border border-[#E2E8F0] space-y-5">
+                <section className="bg-white p-5 sm:p-8 rounded-[24px] border border-[var(--desk-border)] space-y-5">
                   <div className="flex items-start gap-3">
-                    <Landmark className="h-5 w-5 text-[#0F3A53] shrink-0 mt-0.5" />
+                    <Landmark className="h-5 w-5 text-[var(--desk-pine-600)] shrink-0 mt-0.5" />
                     <div className="space-y-1 flex-1">
-                      <h3 className="text-[16px] font-bold text-[#0F172A]">Bank transfer</h3>
+                      <h3 className="text-[16px] font-bold text-[var(--desk-text)]">Bank transfer</h3>
                       {transfer?.onPlan ? (
                         <>
-                          <label className="flex items-center gap-2 text-sm font-semibold text-[#0F172A] cursor-pointer">
+                          <label className="flex items-center gap-2 text-sm font-semibold text-[var(--desk-text)] cursor-pointer">
                             <input
                               type="checkbox"
                               checked={transferOn}
                               onChange={(e) => toggleTransfer(e.target.checked)}
-                              className="h-4 w-4 accent-[#0F3A53]"
+                              className="h-4 w-4 accent-[var(--desk-pine-600)]"
                             />
                             Let clients pay by bank transfer
                           </label>
-                          <p className="text-xs text-[#64748B] leading-relaxed">
+                          <p className="text-xs text-[var(--desk-text-muted)] leading-relaxed">
                             Their time is held for up to {transfer.holdHours} hours until you mark the transfer as paid.
                           </p>
                         </>
                       ) : (
-                        <p className="text-xs text-[#64748B] leading-relaxed">
+                        <p className="text-xs text-[var(--desk-text-muted)] leading-relaxed">
                           Bank transfer is part of the Starter plan and above. You can turn it on later in Settings → Payouts.
                         </p>
                       )}
@@ -1196,27 +1196,27 @@ function OnboardingWizard({ tenantId }: { tenantId: string }) {
 
             {stepKey === 'link' && (
               <div className="space-y-6 text-center max-w-[560px] mx-auto py-4 flex-1 flex flex-col justify-center items-center">
-                <div className="w-16 h-16 rounded-[22px] bg-[#FEF3C7] text-[#92400E] flex items-center justify-center border border-[#E3B341]/30 shadow-md">
-                  <Sparkles className="h-8 w-8 text-[#8A6512]" />
+                <div className="w-16 h-16 rounded-[22px] bg-[var(--desk-pending-bg)] text-[var(--desk-pending)] flex items-center justify-center border border-[var(--desk-pending-border)]/30 shadow-md">
+                  <Sparkles className="h-8 w-8 text-[var(--desk-pending)]" />
                 </div>
 
                 <div>
                   <span className="os-eyebrow block mb-1">ACTIVATION COMPLETE</span>
-                  <h2 className="text-[30px] font-extrabold tracking-tight text-[#0F172A]">Your practice is live.</h2>
-                  <p className="text-xs sm:text-sm text-[#64748B] font-medium leading-relaxed mt-1.5">
+                  <h2 className="text-[30px] font-extrabold tracking-tight text-[var(--desk-text)]">Your practice is live.</h2>
+                  <p className="text-xs sm:text-sm text-[var(--desk-text-muted)] font-medium leading-relaxed mt-1.5">
                     Share your official booking link directly with clients or add it to your website &amp; Instagram bio.
                   </p>
                 </div>
 
-                <div className="p-6 rounded-[24px] bg-[#0F172A] text-white w-full space-y-4 shadow-xl border border-slate-800 mt-2">
-                  <span className="text-[10px] font-black tracking-widest text-[#E3B341] uppercase block">YOUR OFFICIAL BOOKING URL</span>
+                <div className="p-6 rounded-[24px] bg-[var(--desk-sidebar)] text-white w-full space-y-4 shadow-xl border border-slate-800 mt-2">
+                  <span className="text-[10px] font-black tracking-widest text-[var(--ds-sky)] uppercase block">YOUR OFFICIAL BOOKING URL</span>
                   <div className="text-[17px] font-semibold font-mono text-amber-100/90 break-all px-2">
                     {bookingUrl}
                   </div>
                   <div className="pt-2 flex items-center justify-center gap-3">
                     <button
                       onClick={handleCopyLink}
-                      className="h-[46px] px-6 rounded-[14px] bg-[#E3B341] text-[#0F172A] font-bold text-xs hover:brightness-105 transition-all inline-flex items-center gap-2 cursor-pointer shadow-sm"
+                      className="h-[46px] px-6 rounded-[14px] bg-[var(--ds-sky)] text-[var(--desk-text)] font-bold text-xs hover:brightness-105 transition-all inline-flex items-center gap-2 cursor-pointer shadow-sm"
                     >
                       {copied ? <Check className="h-4 w-4 text-emerald-950 stroke-[3]" /> : <Copy className="h-4 w-4" />}
                       <span>{copied ? 'Copied to clipboard!' : 'Copy booking link'}</span>
@@ -1235,11 +1235,11 @@ function OnboardingWizard({ tenantId }: { tenantId: string }) {
             )}
 
             {/* Bottom Sticky Action Footer Bar */}
-            <div className="pt-6 mt-6 flex items-center justify-between border-t border-[#E2E8F0]">
+            <div className="pt-6 mt-6 flex items-center justify-between border-t border-[var(--desk-border)]">
               {stepIndex > 0 && stepKey !== 'link' ? (
                 <button
                   onClick={goBack}
-                  className="h-[46px] px-5 rounded-[14px] bg-[#F1F5F9] text-[#475569] hover:bg-[#E2E8F0] font-bold text-xs flex items-center gap-2 transition-colors cursor-pointer"
+                  className="h-[46px] px-5 rounded-[14px] bg-[var(--desk-surface-muted)] text-[var(--desk-text-body)] hover:bg-[var(--desk-border)] font-bold text-xs flex items-center gap-2 transition-colors cursor-pointer"
                 >
                   <ArrowLeft className="h-4 w-4" />
                   <span>Back</span>

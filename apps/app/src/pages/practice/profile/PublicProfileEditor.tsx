@@ -112,11 +112,11 @@ function Section({
 }) {
   return (
     <Card padding="lg" id={`section-${id}`} aria-labelledby={`section-${id}-title`}>
-      <h2 id={`section-${id}-title`} className="text-[15px] font-bold text-[#0F172A]">
+      <h2 id={`section-${id}-title`} className="text-[15px] font-bold text-[var(--desk-text)]">
         {SECTION_TITLES[id]}
       </h2>
-      {prompt && <p className="mt-1 text-[13px] font-semibold text-[#334155]">{prompt}</p>}
-      {guidance && <p className="mt-1 text-[12.5px] text-[#64748B]">{guidance}</p>}
+      {prompt && <p className="mt-1 text-[13px] font-semibold text-[var(--desk-text-body)]">{prompt}</p>}
+      {guidance && <p className="mt-1 text-[12.5px] text-[var(--desk-text-muted)]">{guidance}</p>}
       <div className="mt-4 flex flex-col gap-4">{children}</div>
     </Card>
   );
@@ -124,7 +124,7 @@ function Section({
 
 function Counter({ value, max }: { value: string | null | undefined; max: number }) {
   const n = value?.length ?? 0;
-  return <span className={`text-[11.5px] font-semibold ${n > max ? 'text-[#B42318]' : 'text-[#94A3B8]'}`}>{`${n} / ${max}`}</span>;
+  return <span className={`text-[11.5px] font-semibold ${n > max ? 'text-[var(--desk-danger)]' : 'text-[var(--desk-text-subtle)]'}`}>{`${n} / ${max}`}</span>;
 }
 
 /** Selectable chips for one taxonomy kind. Specialties can be starred as primary (up to three). */
@@ -156,7 +156,7 @@ function TermPicker({
               aria-pressed={on}
               onClick={() => onToggle(t.id)}
               className={`h-[34px] px-3 rounded-full border text-[13px] font-semibold cursor-pointer ${
-                on ? 'bg-[#0F3A53] border-[#0F3A53] text-white' : 'bg-white border-[#E2E8F0] text-[#334155]'
+                on ? 'bg-[var(--desk-pine-600)] border-[var(--desk-pine-600)] text-white' : 'bg-white border-[var(--desk-border)] text-[var(--desk-text-body)]'
               }`}
             >
               {t.label}
@@ -168,7 +168,7 @@ function TermPicker({
                 aria-label={`${star ? 'Unmark' : 'Mark'} ${t.label} as a primary specialty`}
                 onClick={() => onTogglePrimary(t.id)}
                 className={`ml-1 h-[34px] w-[34px] rounded-full border text-[15px] cursor-pointer ${
-                  star ? 'bg-[#FFF7E6] border-[#E3B341] text-[#8A5A00]' : 'bg-white border-[#E2E8F0] text-[#94A3B8]'
+                  star ? 'bg-[var(--desk-pending-bg)] border-[var(--desk-pending-border)] text-[var(--desk-pending)]' : 'bg-white border-[var(--desk-border)] text-[var(--desk-text-subtle)]'
                 }`}
               >
                 ★
@@ -224,8 +224,8 @@ function StartProfile({ templates, onCreated }: { templates: ProfileTemplate[]; 
 
   return (
     <Card padding="lg">
-      <h2 className="text-[17px] font-bold text-[#0F172A]">Create your therapist profile</h2>
-      <p className="mt-1 text-[13px] text-[#64748B]">
+      <h2 className="text-[17px] font-bold text-[var(--desk-text)]">Create your therapist profile</h2>
+      <p className="mt-1 text-[13px] text-[var(--desk-text-muted)]">
         A public page clients can find and share. We start it from the details your practice already holds. Nothing is
         public until you publish.
       </p>
@@ -238,17 +238,17 @@ function StartProfile({ templates, onCreated }: { templates: ProfileTemplate[]; 
             onChange={(e: React.ChangeEvent<HTMLInputElement>) => setHandle(e.target.value)}
             placeholder="adaeze-okonkwo"
           />
-          <span className="text-[12px] text-[#64748B]">{profilePath(handle.trim() || 'your-name')}</span>
+          <span className="text-[12px] text-[var(--desk-text-muted)]">{profilePath(handle.trim() || 'your-name')}</span>
           {check && (
-            <span role="status" className={`text-[12px] font-semibold ${check.available ? 'text-[#067647]' : 'text-[#B42318]'}`}>
+            <span role="status" className={`text-[12px] font-semibold ${check.available ? 'text-[var(--desk-active)]' : 'text-[var(--desk-danger)]'}`}>
               {check.available ? 'Available' : check.message}
             </span>
           )}
         </div>
         <label className="flex flex-col gap-1.5">
-          <span className="text-[11.5px] font-bold text-[#475569]">I am a</span>
+          <span className="text-[11.5px] font-bold text-[var(--desk-text-body)]">I am a</span>
           <select
-            className="h-[46px] px-3 rounded-[14px] border border-[#E2E8F0] bg-white text-sm font-medium"
+            className="h-[46px] px-3 rounded-[14px] border border-[var(--desk-border)] bg-white text-sm font-medium"
             value={kind}
             onChange={(e) => setKind(e.target.value as PractitionerKind)}
           >
@@ -260,9 +260,9 @@ function StartProfile({ templates, onCreated }: { templates: ProfileTemplate[]; 
           </select>
         </label>
         <label className="flex flex-col gap-1.5 md:col-span-2">
-          <span className="text-[11.5px] font-bold text-[#475569]">Start from a template (optional)</span>
+          <span className="text-[11.5px] font-bold text-[var(--desk-text-body)]">Start from a template (optional)</span>
           <select
-            className="h-[46px] px-3 rounded-[14px] border border-[#E2E8F0] bg-white text-sm font-medium"
+            className="h-[46px] px-3 rounded-[14px] border border-[var(--desk-border)] bg-white text-sm font-medium"
             value={templateKey}
             onChange={(e) => setTemplateKey(e.target.value)}
           >
@@ -353,7 +353,7 @@ export function PublicProfileEditor({ onProfileChange, practiceBrand }: { onProf
   const prompt = (s: SectionKey) => template?.sections.sections?.[s]?.prompt;
   const example = (s: SectionKey) => template?.sections.sections?.[s]?.example;
 
-  if (loading) return <p className="text-sm text-[#64748B]">Loading your profile…</p>;
+  if (loading) return <p className="text-sm text-[var(--desk-text-muted)]">Loading your profile…</p>;
   if (!profile || !draft) {
     return (
       <StartProfile
@@ -484,12 +484,12 @@ export function PublicProfileEditor({ onProfileChange, practiceBrand }: { onProf
         <Section id="identity" guidance={guidance('identity')} prompt={prompt('identity')}>
           <div className="flex items-center gap-4">
             <div
-              className="h-[72px] w-[72px] rounded-full bg-[#EEF2F7] flex items-center justify-center text-[12px] font-semibold text-[#64748B]"
+              className="h-[72px] w-[72px] rounded-full bg-[var(--desk-surface-muted)] flex items-center justify-center text-[12px] font-semibold text-[var(--desk-text-muted)]"
               aria-label={profile.photoKey ? 'Photo set' : 'No photo yet'}
             >
               {profile.photoKey ? 'Photo set' : 'No photo'}
             </div>
-            <label className="text-[13px] font-semibold text-[#0F3A53] cursor-pointer">
+            <label className="text-[13px] font-semibold text-[var(--desk-pine-600)] cursor-pointer">
               {profile.photoKey ? 'Change photo' : 'Add a photo'}
               <input
                 type="file"
@@ -508,10 +508,10 @@ export function PublicProfileEditor({ onProfileChange, practiceBrand }: { onProf
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <Input label="Name" value={draft.displayName ?? ''} onChange={text('displayName')} />
             <label className="flex flex-col gap-1.5">
-              <span className="text-[11.5px] font-bold text-[#475569]">I am a</span>
+              <span className="text-[11.5px] font-bold text-[var(--desk-text-body)]">I am a</span>
               <select
                 aria-label="Practitioner type"
-                className="h-[46px] px-3 rounded-[14px] border border-[#E2E8F0] bg-white text-sm font-medium"
+                className="h-[46px] px-3 rounded-[14px] border border-[var(--desk-border)] bg-white text-sm font-medium"
                 value={draft.kind}
                 onChange={(e) => set('kind', e.target.value as PractitionerKind)}
               >
@@ -524,10 +524,10 @@ export function PublicProfileEditor({ onProfileChange, practiceBrand }: { onProf
             </label>
             <Input label="City" optionalLabel="(optional)" value={draft.city ?? ''} onChange={text('city')} />
             <label className="flex flex-col gap-1.5">
-              <span className="text-[11.5px] font-bold text-[#475569]">Country</span>
+              <span className="text-[11.5px] font-bold text-[var(--desk-text-body)]">Country</span>
               <select
                 aria-label="Country"
-                className="h-[46px] px-3 rounded-[14px] border border-[#E2E8F0] bg-white text-sm font-medium"
+                className="h-[46px] px-3 rounded-[14px] border border-[var(--desk-border)] bg-white text-sm font-medium"
                 value={draft.countryCode}
                 onChange={(e) => set('countryCode', e.target.value)}
               >
@@ -589,12 +589,12 @@ export function PublicProfileEditor({ onProfileChange, practiceBrand }: { onProf
             </div>
           )}
           <div className="flex flex-col gap-3" aria-label="Training & journey">
-            <span className="text-[11.5px] font-bold text-[#475569]">Training & journey</span>
+            <span className="text-[11.5px] font-bold text-[var(--desk-text-body)]">Training & journey</span>
             {timeline.map((e, i) => (
               <div key={i} className="grid grid-cols-1 md:grid-cols-[140px_minmax(0,1fr)_minmax(0,1fr)_90px_90px_auto] gap-2 items-end">
                 <select
                   aria-label={`Entry ${i + 1} type`}
-                  className="h-[44px] px-2 rounded-[14px] border border-[#E2E8F0] bg-white text-sm"
+                  className="h-[44px] px-2 rounded-[14px] border border-[var(--desk-border)] bg-white text-sm"
                   value={e.type}
                   onChange={(ev) => {
                     const next = [...timeline];
@@ -669,7 +669,7 @@ export function PublicProfileEditor({ onProfileChange, practiceBrand }: { onProf
         </Section>
 
         <Section id="specialties" guidance={guidance('specialties')} prompt={prompt('specialties')}>
-          <p className="text-[12.5px] text-[#64748B]">{`Star up to ${MAX_PRIMARY} as your primary specialties.`}</p>
+          <p className="text-[12.5px] text-[var(--desk-text-muted)]">{`Star up to ${MAX_PRIMARY} as your primary specialties.`}</p>
           <TermPicker
             kind="SPECIALTY"
             terms={terms}
@@ -749,14 +749,14 @@ export function PublicProfileEditor({ onProfileChange, practiceBrand }: { onProf
         <Card padding="lg">
           <ProgressRow label="Profile strength" percent={checklist?.score ?? profile.completenessScore} />
           {checklist?.next && (
-            <p className="mt-3 text-[13px] text-[#334155]">
-              Next: <a href={`#section-${checklist.next}`} className="font-semibold text-[#0F3A53] underline">{SECTION_TITLES[checklist.next]}</a>
+            <p className="mt-3 text-[13px] text-[var(--desk-text-body)]">
+              Next: <a href={`#section-${checklist.next}`} className="font-semibold text-[var(--desk-pine-600)] underline">{SECTION_TITLES[checklist.next]}</a>
             </p>
           )}
           {checklist && checklist.blockers.length > 0 && (
             <div className="mt-4">
-              <span className="text-[12px] font-bold text-[#475569]">Before you can publish</span>
-              <ul className="mt-1.5 list-disc pl-5 text-[13px] text-[#334155]" aria-label="Before you can publish">
+              <span className="text-[12px] font-bold text-[var(--desk-text-body)]">Before you can publish</span>
+              <ul className="mt-1.5 list-disc pl-5 text-[13px] text-[var(--desk-text-body)]" aria-label="Before you can publish">
                 {checklist.blockers.map((b) => (
                   <li key={b.key}>{b.message}</li>
                 ))}
@@ -764,7 +764,7 @@ export function PublicProfileEditor({ onProfileChange, practiceBrand }: { onProf
             </div>
           )}
           <div className="mt-4 flex items-center gap-3">
-            <span className="text-[12px] font-bold text-[#475569]">
+            <span className="text-[12px] font-bold text-[var(--desk-text-body)]">
               {profile.status === 'PUBLISHED' ? 'Live' : profile.status === 'SUSPENDED' ? 'Suspended' : profile.status === 'HIDDEN' ? 'Hidden' : 'Draft'}
             </span>
             {profile.status === 'PUBLISHED' ? (
@@ -777,16 +777,16 @@ export function PublicProfileEditor({ onProfileChange, practiceBrand }: { onProf
               </Button>
             )}
           </div>
-          {anyDirty && <p className="mt-2 text-[12px] text-[#64748B]">Save your changes before publishing.</p>}
-          <p className="mt-3 text-[12px] text-[#64748B] break-all">{profilePath(profile.handle)}</p>
+          {anyDirty && <p className="mt-2 text-[12px] text-[var(--desk-text-muted)]">Save your changes before publishing.</p>}
+          <p className="mt-3 text-[12px] text-[var(--desk-text-muted)] break-all">{profilePath(profile.handle)}</p>
         </Card>
 
         {checklist && checklist.tips.length > 0 && (
           <Card padding="lg">
-            <span className="text-[15px] font-bold text-[#0F172A]">Writing tips</span>
+            <span className="text-[15px] font-bold text-[var(--desk-text)]">Writing tips</span>
             <ul className="mt-2 flex flex-col gap-2" aria-label="Writing tips">
               {checklist.tips.map((t, i) => (
-                <li key={i} className={`text-[13px] ${t.severity === 'strong' ? 'text-[#B42318] font-semibold' : 'text-[#334155]'}`}>
+                <li key={i} className={`text-[13px] ${t.severity === 'strong' ? 'text-[var(--desk-danger)] font-semibold' : 'text-[var(--desk-text-body)]'}`}>
                   <span className="font-semibold">“{t.match}”</span> — {t.message}
                 </li>
               ))}

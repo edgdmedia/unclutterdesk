@@ -31,9 +31,9 @@ export function VideoRoomOpensSetting() {
   }
 
   return (
-    <label className="block text-[11.5px] font-bold text-[#475569]">Video room opens
+    <label className="block text-[11.5px] font-bold text-[var(--desk-text-body)]">Video room opens
       <select
-        className="mt-1 h-[42px] w-full rounded-[13px] border border-[#E2E8F0] bg-[#F8FAFC] px-3 text-[13.5px] font-semibold"
+        className="mt-1 h-[42px] w-full rounded-[13px] border border-[var(--desk-border)] bg-[var(--desk-surface)] px-3 text-[13.5px] font-semibold"
         value={value}
         disabled={saving}
         onChange={(e) => void change(Number(e.target.value))}
@@ -42,7 +42,7 @@ export function VideoRoomOpensSetting() {
           <option key={m} value={m}>{m === 0 ? 'At the start time' : `${m} min before`}</option>
         ))}
       </select>
-      <span className="block mt-1 font-medium text-[#64748B]">For you and your clients. Rooms close an hour after the session ends.</span>
+      <span className="block mt-1 font-medium text-[var(--desk-text-muted)]">For you and your clients. Rooms close an hour after the session ends.</span>
     </label>
   );
 }

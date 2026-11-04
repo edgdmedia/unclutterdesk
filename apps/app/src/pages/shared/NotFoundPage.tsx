@@ -34,20 +34,20 @@ export function NotFoundPage({ homeHref = '/' }: { homeHref?: string }) {
   }, []);
 
   return (
-    <div className="min-h-screen bg-[#EFF3F7] text-[#0F172A] font-outfit flex items-center justify-center p-6 relative overflow-hidden">
-      <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[600px] h-[300px] bg-[#0F3A53]/10 rounded-full blur-3xl pointer-events-none" />
+    <div className="min-h-screen bg-[var(--desk-surface-muted)] text-[var(--desk-text)] font-outfit flex items-center justify-center p-6 relative overflow-hidden">
+      <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[600px] h-[300px] bg-[var(--desk-pine-600)]/10 rounded-full blur-3xl pointer-events-none" />
 
-      <div className="w-full max-w-[520px] bg-white rounded-[24px] p-[38px_40px_32px] shadow-[0_24px_80px_rgba(15,23,42,.14)] text-center space-y-6 relative z-10 border border-[#E2E8F0]">
-        <div className="h-[64px] w-[64px] rounded-[20px] bg-[#F1F5F9] text-[#0F3A53] flex items-center justify-center mx-auto border border-[#E2E8F0]">
+      <div className="w-full max-w-[520px] bg-white rounded-[24px] p-[38px_40px_32px] shadow-[0_24px_80px_rgba(15,23,42,.14)] text-center space-y-6 relative z-10 border border-[var(--desk-border)]">
+        <div className="h-[64px] w-[64px] rounded-[20px] bg-[var(--desk-surface-muted)] text-[var(--desk-pine-600)] flex items-center justify-center mx-auto border border-[var(--desk-border)]">
           <Compass className="h-8 w-8" />
         </div>
 
         <div className="space-y-2">
-          <p className="text-[11px] font-extrabold tracking-[0.14em] text-[#64748B] uppercase m-0">Error 404</p>
-          <h1 className="text-[22px] font-bold text-[#0F172A] leading-tight m-0">
+          <p className="text-[11px] font-extrabold tracking-[0.14em] text-[var(--desk-text-muted)] uppercase m-0">Error 404</p>
+          <h1 className="text-[22px] font-bold text-[var(--desk-text)] leading-tight m-0">
             We couldn't find that page
           </h1>
-          <p className="text-sm text-[#64748B] leading-relaxed m-0">
+          <p className="text-sm text-[var(--desk-text-muted)] leading-relaxed m-0">
             The link may be out of date, or the address may have a typo in it.
           </p>
         </div>
@@ -55,7 +55,7 @@ export function NotFoundPage({ homeHref = '/' }: { homeHref?: string }) {
         <div className="pt-2">
           <Link
             to={homeHref}
-            className="inline-flex items-center justify-center gap-2 h-[48px] px-6 rounded-[14px] bg-[#0F3A53] text-white text-[15px] font-bold hover:opacity-90 transition-opacity no-underline"
+            className="inline-flex items-center justify-center gap-2 h-[48px] px-6 rounded-[14px] bg-[var(--desk-pine-600)] text-white text-[15px] font-bold hover:opacity-90 transition-opacity no-underline"
           >
             <ArrowLeft className="h-4 w-4" />
             Back to safety

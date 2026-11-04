@@ -117,7 +117,7 @@ export function ProfileSignupPage() {
     }
   }
 
-  const select = 'flex-1 min-w-0 bg-transparent border-none outline-none text-[14.5px] text-[#0F172A] h-full cursor-pointer';
+  const select = 'flex-1 min-w-0 bg-transparent border-none outline-none text-[14.5px] text-[var(--desk-text)] h-full cursor-pointer';
   return (
     <AuthSplitShell
       variant="signup"
@@ -128,14 +128,14 @@ export function ProfileSignupPage() {
     >
       <form onSubmit={submit} noValidate className="flex flex-col gap-4" aria-labelledby="signup-title">
         <div>
-          <h1 id="signup-title" className="text-[26px] font-extrabold tracking-[-0.03em] text-[#0F172A]">Create your free therapist profile</h1>
-          <p className="mt-1 text-[13.5px] text-[#64748B]">
-            Already have an account? <Link to="/login" className="font-bold text-[#0F172A] hover:underline">Log in</Link>
+          <h1 id="signup-title" className="text-[26px] font-extrabold tracking-[-0.03em] text-[var(--desk-text)]">Create your free therapist profile</h1>
+          <p className="mt-1 text-[13.5px] text-[var(--desk-text-muted)]">
+            Already have an account? <Link to="/login" className="font-bold text-[var(--desk-text)] hover:underline">Log in</Link>
           </p>
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          <AuthField label="First name" icon={<User size={16} className="text-[#94A3B8]" aria-hidden />}>
+          <AuthField label="First name" icon={<User size={16} className="text-[var(--desk-text-subtle)]" aria-hidden />}>
             <input aria-label="First name" autoComplete="given-name" className={authInputCls} value={firstName} onChange={(e) => setFirstName(e.target.value)} required />
           </AuthField>
           <AuthField label="Last name">
@@ -143,20 +143,20 @@ export function ProfileSignupPage() {
           </AuthField>
         </div>
 
-        <AuthField label="Email" icon={<Mail size={16} className="text-[#94A3B8]" aria-hidden />}>
+        <AuthField label="Email" icon={<Mail size={16} className="text-[var(--desk-text-subtle)]" aria-hidden />}>
           <input aria-label="Email" type="email" autoComplete="email" className={authInputCls} value={email} onChange={(e) => setEmail(e.target.value)} required />
         </AuthField>
 
         <div>
-          <AuthField label="Password" icon={<Lock size={16} className="text-[#94A3B8]" aria-hidden />}>
+          <AuthField label="Password" icon={<Lock size={16} className="text-[var(--desk-text-subtle)]" aria-hidden />}>
             <input aria-label="Password" type="password" autoComplete="new-password" className={authInputCls} value={password} onChange={(e) => setPassword(e.target.value)} required />
           </AuthField>
           <ul className="mt-2 grid grid-cols-2 gap-x-3 gap-y-1" aria-label="Password rules">
             {PASSWORD_RULES.map((r) => {
               const ok = r.test(password);
               return (
-                <li key={r.label} className={`flex items-center gap-1.5 text-[12px] ${ok ? 'text-[#15803D]' : 'text-[#64748B]'}`}>
-                  {ok ? <Check size={13} aria-hidden /> : <span aria-hidden className="inline-block h-[5px] w-[5px] rounded-full bg-[#CBD5E1]" />}
+                <li key={r.label} className={`flex items-center gap-1.5 text-[12px] ${ok ? 'text-[var(--desk-active)]' : 'text-[var(--desk-text-muted)]'}`}>
+                  {ok ? <Check size={13} aria-hidden /> : <span aria-hidden className="inline-block h-[5px] w-[5px] rounded-full bg-[var(--desk-pine-200)]" />}
                   {r.label}
                   <span className="sr-only">{ok ? ' (done)' : ' (not yet)'}</span>
                 </li>
@@ -166,8 +166,8 @@ export function ProfileSignupPage() {
         </div>
 
         <div>
-          <AuthField label="Your profile address" icon={<AtSign size={16} className="text-[#94A3B8]" aria-hidden />}>
-            <span className="text-[14.5px] text-[#64748B] shrink-0">{host}/</span>
+          <AuthField label="Your profile address" icon={<AtSign size={16} className="text-[var(--desk-text-subtle)]" aria-hidden />}>
+            <span className="text-[14.5px] text-[var(--desk-text-muted)] shrink-0">{host}/</span>
             <input
               aria-label="Your profile address"
               aria-describedby="handle-status"
@@ -183,10 +183,10 @@ export function ProfileSignupPage() {
             />
           </AuthField>
           <p id="handle-status" aria-live="polite" className="mt-1.5 text-[12.5px] min-h-[18px]">
-            {check.status === 'checking' && <span className="text-[#64748B]">Checking…</span>}
-            {check.status === 'free' && <span className="inline-flex items-center gap-1 text-[#15803D]"><Check size={13} aria-hidden /> {host}/{handle} is yours to take</span>}
-            {check.status === 'taken' && <span className="inline-flex items-center gap-1 text-[#B42318]"><X size={13} aria-hidden /> {check.message ?? 'That address is taken'}</span>}
-            {check.status === 'idle' && <span className="text-[#64748B]">3 to 30 letters, numbers or hyphens.</span>}
+            {check.status === 'checking' && <span className="text-[var(--desk-text-muted)]">Checking…</span>}
+            {check.status === 'free' && <span className="inline-flex items-center gap-1 text-[var(--desk-active)]"><Check size={13} aria-hidden /> {host}/{handle} is yours to take</span>}
+            {check.status === 'taken' && <span className="inline-flex items-center gap-1 text-[var(--desk-danger)]"><X size={13} aria-hidden /> {check.message ?? 'That address is taken'}</span>}
+            {check.status === 'idle' && <span className="text-[var(--desk-text-muted)]">3 to 30 letters, numbers or hyphens.</span>}
           </p>
         </div>
 
@@ -206,24 +206,24 @@ export function ProfileSignupPage() {
           </AuthField>
         )}
 
-        <label className="flex items-start gap-2.5 text-[13px] text-[#475569] cursor-pointer">
-          <input type="checkbox" className="mt-[3px] h-4 w-4 accent-[#24614F]" checked={agreed} onChange={(e) => setAgreed(e.target.checked)} />
+        <label className="flex items-start gap-2.5 text-[13px] text-[var(--desk-text-body)] cursor-pointer">
+          <input type="checkbox" className="mt-[3px] h-4 w-4 accent-[var(--desk-pine-600)]" checked={agreed} onChange={(e) => setAgreed(e.target.checked)} />
           <span>
             I agree to the <a href={LEGAL_URLS.terms} target="_blank" rel="noopener noreferrer" className="font-semibold underline">terms</a> and{' '}
             <a href={LEGAL_URLS.privacy} target="_blank" rel="noopener noreferrer" className="font-semibold underline">privacy policy</a>, and that what I publish is accurate.
           </span>
         </label>
 
-        {error && <p role="alert" className="text-[13px] font-semibold text-[#B42318] bg-[#FFF1F2] border border-[#FECDD3] rounded-[12px] px-3 py-2.5">{error}</p>}
+        {error && <p role="alert" className="text-[13px] font-semibold text-[var(--desk-danger)] bg-[var(--desk-danger-bg)] border border-[var(--desk-danger-border)] rounded-[12px] px-3 py-2.5">{error}</p>}
 
         <button
           type="submit"
           disabled={!ready || submitting}
-          className="h-[52px] rounded-[14px] bg-[#24614F] text-white text-[15px] font-bold disabled:opacity-60 disabled:cursor-not-allowed cursor-pointer hover:brightness-110"
+          className="h-[52px] rounded-[14px] bg-[var(--desk-pine-600)] text-white text-[15px] font-bold disabled:opacity-60 disabled:cursor-not-allowed cursor-pointer hover:brightness-110"
         >
           {submitting ? 'Creating your account…' : 'Create my free profile'}
         </button>
-        <p className="text-[12px] text-[#64748B]">
+        <p className="text-[12px] text-[var(--desk-text-muted)]">
           Running a practice with a team? <Link to="/auth/signup" className="font-semibold underline">Set up a practice instead</Link>
         </p>
       </form>

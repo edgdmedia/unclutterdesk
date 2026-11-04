@@ -98,13 +98,13 @@ export function AdminProfileReportsPage() {
     }
   }
 
-  const button = 'h-9 px-3 rounded-[10px] border border-[#E2E8F0] bg-white text-xs font-bold text-[#0F172A] hover:bg-[#F8FAFC] cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed';
+  const button = 'h-9 px-3 rounded-[10px] border border-[var(--desk-border)] bg-white text-xs font-bold text-[var(--desk-text)] hover:bg-[var(--desk-surface)] cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed';
   const reports = data?.reports ?? [];
   return (
     <div className="flex-1 min-w-0 px-4 md:px-[32px] py-[28px] max-w-[1200px] w-full">
       <Eyebrow>Platform console</Eyebrow>
-      <h1 className="mt-1 text-[26px] font-bold tracking-[-0.03em] text-[#0F172A]">Profile reports</h1>
-      <p className="mt-1 text-[13.5px] text-[#64748B]">
+      <h1 className="mt-1 text-[26px] font-bold tracking-[-0.03em] text-[var(--desk-text)]">Profile reports</h1>
+      <p className="mt-1 text-[13.5px] text-[var(--desk-text-muted)]">
         Reports from the public profile pages. The therapist never sees who reported them. A reason is required to act on a profile; the therapist is emailed it.
       </p>
 
@@ -115,7 +115,7 @@ export function AdminProfileReportsPage() {
             type="button"
             aria-pressed={status === s}
             onClick={() => setStatus(s)}
-            className={`${button} ${status === s ? '!bg-[#0F172A] !text-white !border-[#0F172A]' : ''}`}
+            className={`${button} ${status === s ? '!bg-[var(--desk-sidebar)] !text-white !border-[var(--desk-text)]' : ''}`}
           >
             {STATUS_LABEL[s]}
           </button>
@@ -124,9 +124,9 @@ export function AdminProfileReportsPage() {
 
       <div className="mt-4 space-y-3">
         {isLoading ? (
-          <Card padding="p-[22px]"><p className="text-sm text-[#64748B]">Loading…</p></Card>
+          <Card padding="p-[22px]"><p className="text-sm text-[var(--desk-text-muted)]">Loading…</p></Card>
         ) : !reports.length ? (
-          <Card padding="p-[22px]"><p className="text-sm text-[#64748B]">{status === 'OPEN' ? 'No open reports.' : 'Nothing here.'}</p></Card>
+          <Card padding="p-[22px]"><p className="text-sm text-[var(--desk-text-muted)]">{status === 'OPEN' ? 'No open reports.' : 'Nothing here.'}</p></Card>
         ) : (
           reports.map((row) => {
             const reason = reasonFor(row.id);
@@ -135,19 +135,19 @@ export function AdminProfileReportsPage() {
               <Card key={row.id} padding="p-[18px]" data-report={row.id}>
                 <div className="flex flex-wrap items-start justify-between gap-3">
                   <div className="min-w-0">
-                    <p className="text-[15px] font-bold text-[#0F172A]">
+                    <p className="text-[15px] font-bold text-[var(--desk-text)]">
                       {REPORT_TYPE_LABEL[row.type]} · {row.profile ? row.profile.displayName : `@${row.handle} (deleted)`}
                     </p>
-                    <p className="text-xs text-[#64748B]">
+                    <p className="text-xs text-[var(--desk-text-muted)]">
                       <a href={profilePath(row.handle)} target="_blank" rel="noopener noreferrer" className="font-semibold underline">{profilePath(row.handle)}</a>
                       {' · '}{formatDate(row.createdAt)}
                       {row.profile ? ` · ${PROFILE_STATUS_LABEL[row.profile.status]}` : ''}
                       {row.profile && row.profile.openReports > 1 ? ` · ${row.profile.openReports} open reports` : ''}
                     </p>
-                    {row.details ? <p className="mt-2 text-sm text-[#334155] whitespace-pre-line">{row.details}</p> : null}
-                    {row.reviewNote ? <p className="mt-2 text-xs text-[#64748B]">Review note: {row.reviewNote}</p> : null}
+                    {row.details ? <p className="mt-2 text-sm text-[var(--desk-text-body)] whitespace-pre-line">{row.details}</p> : null}
+                    {row.reviewNote ? <p className="mt-2 text-xs text-[var(--desk-text-muted)]">Review note: {row.reviewNote}</p> : null}
                   </div>
-                  <span className="text-xs font-bold text-[#475569] bg-[#F1F5F9] rounded-full px-2.5 py-1">{STATUS_LABEL[row.status]}</span>
+                  <span className="text-xs font-bold text-[var(--desk-text-body)] bg-[var(--desk-surface-muted)] rounded-full px-2.5 py-1">{STATUS_LABEL[row.status]}</span>
                 </div>
                 {row.status === 'OPEN' || row.profile?.status === 'SUSPENDED' ? (
                   <div className="mt-3 flex flex-wrap items-center gap-2">
@@ -157,7 +157,7 @@ export function AdminProfileReportsPage() {
                         value={reasons[row.id] ?? ''}
                         onChange={(e) => setReasons((current) => ({ ...current, [row.id]: e.target.value }))}
                         placeholder={`Reason (the therapist sees it; at least ${REASON_MIN} characters to act)`}
-                        className="w-full h-9 px-3 rounded-[10px] bg-[#F8FAFC] border border-[#E2E8F0] text-[13px]"
+                        className="w-full h-9 px-3 rounded-[10px] bg-[var(--desk-surface)] border border-[var(--desk-border)] text-[13px]"
                       />
                     </label>
                     {row.status === 'OPEN' ? (

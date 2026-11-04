@@ -255,8 +255,8 @@ const fetchStaff = async (url: string): Promise<StaffMember[]> => {
 
 function PageFallback() {
   return (
-    <div className="min-h-screen bg-[#F8FAFC] flex items-center justify-center">
-      <div className="text-sm font-semibold text-[#64748B] animate-pulse">Loading…</div>
+    <div className="min-h-screen bg-[var(--desk-surface)] flex items-center justify-center">
+      <div className="text-sm font-semibold text-[var(--desk-text-muted)] animate-pulse">Loading…</div>
     </div>
   );
 }

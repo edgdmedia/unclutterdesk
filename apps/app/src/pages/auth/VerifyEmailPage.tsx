@@ -105,27 +105,27 @@ export function VerifyEmailPage() {
         footer={
           <>
             Not you?{' '}
-            <Link to="/login" className="font-bold text-[#0F172A] hover:underline">
+            <Link to="/login" className="font-bold text-[var(--desk-text)] hover:underline">
               Sign in
             </Link>{' '}
             instead
           </>
         }
       >
-        <div className="w-16 h-16 mx-auto mt-[28px] rounded-[20px] bg-[#DCFCE7] text-[#15803D] flex items-center justify-center">
+        <div className="w-16 h-16 mx-auto mt-[28px] rounded-[20px] bg-[var(--desk-active-bg)] text-[var(--desk-active)] flex items-center justify-center">
           <MailCheck className="h-[30px] w-[30px]" strokeWidth={2} />
         </div>
-        <div className="mt-5 text-[25px] font-bold tracking-[-0.03em] text-[#0F172A]">
+        <div className="mt-5 text-[25px] font-bold tracking-[-0.03em] text-[var(--desk-text)]">
           Email verified
         </div>
-        <p className="mt-[10px] text-[14.5px] text-[#64748B] leading-[1.65] text-center">
+        <p className="mt-[10px] text-[14.5px] text-[var(--desk-text-muted)] leading-[1.65] text-center">
           Your email has been confirmed and your account is now active. You can sign in and get
           started.
         </p>
         <button
           type="button"
           onClick={() => navigate('/login', { state: { email, returnTo: state?.returnTo } })}
-          className="mt-[22px] w-full h-[54px] rounded-[14px] bg-[#0F3A53] text-white text-[15px] font-bold inline-flex items-center justify-center gap-[10px] cursor-pointer shadow-[0_10px_26px_rgba(15,58,83,0.26)] transition-[filter] hover:brightness-110"
+          className="mt-[22px] w-full h-[54px] rounded-[14px] bg-[var(--desk-pine-600)] text-white text-[15px] font-bold inline-flex items-center justify-center gap-[10px] cursor-pointer shadow-[0_10px_26px_rgba(15,58,83,0.26)] transition-[filter] hover:brightness-110"
         >
           <span>Continue to sign in</span>
           <ArrowRight className="h-[17px] w-[17px]" strokeWidth={2.4} />
@@ -139,29 +139,29 @@ export function VerifyEmailPage() {
       variant="verify"
       accent="green"
       footer={
-        <span className="text-[13px] text-[#64748B]">
+        <span className="text-[13px] text-[var(--desk-text-muted)]">
           Already verified?{' '}
-          <Link to="/login" state={{ email, returnTo: state?.returnTo }} className="font-bold text-[#0F172A] hover:underline">
+          <Link to="/login" state={{ email, returnTo: state?.returnTo }} className="font-bold text-[var(--desk-text)] hover:underline">
             Sign in
           </Link>
         </span>
       }
     >
-      <div className="w-14 h-14 mt-[24px] rounded-[18px] bg-[#DCFCE7] text-[#15803D] flex items-center justify-center">
+      <div className="w-14 h-14 mt-[24px] rounded-[18px] bg-[var(--desk-active-bg)] text-[var(--desk-active)] flex items-center justify-center">
         <ShieldCheck className="h-[26px] w-[26px]" strokeWidth={2} />
       </div>
 
-      <div className="mt-4 text-[25px] font-bold tracking-[-0.03em] text-[#0F172A]">
+      <div className="mt-4 text-[25px] font-bold tracking-[-0.03em] text-[var(--desk-text)]">
         Verify your email
       </div>
-      <p className="mt-[8px] text-[14.5px] text-[#64748B] leading-[1.65]">
+      <p className="mt-[8px] text-[14.5px] text-[var(--desk-text-muted)] leading-[1.65]">
         We sent a 6-digit code to your inbox. Enter it below to activate your account.
       </p>
 
         <form onSubmit={handleVerify} className="mt-[22px] flex flex-col gap-4">
         <AuthField
           label="Email"
-          icon={<Mail className="h-[17px] w-[17px] text-[#94A3B8] flex-none" strokeWidth={2} />}
+          icon={<Mail className="h-[17px] w-[17px] text-[var(--desk-text-subtle)] flex-none" strokeWidth={2} />}
         >
           <input
             type="email"
@@ -193,7 +193,7 @@ export function VerifyEmailPage() {
         <button
           type="submit"
           disabled={verifying}
-          className="w-full h-[54px] rounded-[14px] bg-[#0F3A53] text-white text-[15px] font-bold inline-flex items-center justify-center gap-[10px] cursor-pointer shadow-[0_10px_26px_rgba(15,58,83,0.26)] transition-[filter] hover:brightness-110 disabled:opacity-70"
+          className="w-full h-[54px] rounded-[14px] bg-[var(--desk-pine-600)] text-white text-[15px] font-bold inline-flex items-center justify-center gap-[10px] cursor-pointer shadow-[0_10px_26px_rgba(15,58,83,0.26)] transition-[filter] hover:brightness-110 disabled:opacity-70"
         >
           {verifying ? (
             <Loader2 className="h-[17px] w-[17px] animate-spin" strokeWidth={2.4} />
@@ -209,7 +209,7 @@ export function VerifyEmailPage() {
           type="button"
           onClick={handleResend}
           disabled={resending || resendCooldown > 0}
-          className="text-[13px] font-semibold text-[#0F3A53] hover:underline disabled:text-[#94A3B8] disabled:hover:no-underline cursor-pointer disabled:cursor-default"
+          className="text-[13px] font-semibold text-[var(--desk-pine-600)] hover:underline disabled:text-[var(--desk-text-subtle)] disabled:hover:no-underline cursor-pointer disabled:cursor-default"
         >
           {resending
             ? 'Resending…'

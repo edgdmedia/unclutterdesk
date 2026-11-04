@@ -6,8 +6,8 @@ import { useOptionalAuth } from '../../context/AuthContext';
 
 const watTime = (d: Date) => d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', timeZone: 'Africa/Lagos' });
 
-const READY = 'h-[48px] px-5 rounded-[16px] bg-[#E3B341] text-[#0F172A] text-[13.5px] font-extrabold inline-flex items-center justify-center gap-2 shadow-[0_8px_22px_rgba(227,179,65,0.35)] hover:brightness-105 cursor-pointer';
-const WAITING = 'h-[48px] px-5 rounded-[16px] bg-[#E2E8F0] text-[#64748B] text-[13.5px] font-extrabold inline-flex items-center justify-center gap-2 cursor-not-allowed';
+const READY = 'h-[48px] px-5 rounded-[16px] bg-[var(--ds-sky)] text-[var(--desk-text)] text-[13.5px] font-extrabold inline-flex items-center justify-center gap-2 shadow-[0_8px_22px_rgba(227,179,65,0.35)] hover:brightness-105 cursor-pointer';
+const WAITING = 'h-[48px] px-5 rounded-[16px] bg-[var(--desk-border)] text-[var(--desk-text-muted)] text-[13.5px] font-extrabold inline-flex items-center justify-center gap-2 cursor-not-allowed';
 
 /**
  * VID-02: the only Join button. Before the room opens it reads "Opens at

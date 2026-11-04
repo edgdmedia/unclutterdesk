@@ -8,7 +8,7 @@ import { useAuth } from '../../context/AuthContext';
 import { LEGAL_URLS } from '../../utils/legal';
 
 const inviteInputCls =
-  'w-full h-12 px-[15px] border border-[#E2E8F0] rounded-[14px] bg-[#F8FAFC] text-sm text-[#0F172A] outline-none placeholder:text-[#94A3B8]';
+  'w-full h-12 px-[15px] border border-[var(--desk-border)] rounded-[14px] bg-[var(--desk-surface)] text-sm text-[var(--desk-text)] outline-none placeholder:text-[var(--desk-text-subtle)]';
 
 const bullets = [
   'Your own booking link under the clinic brand',
@@ -137,19 +137,19 @@ export function InvitePage() {
 
   if (loadError) {
     return (
-      <div className="min-h-screen bg-[#EFF3F7] flex items-center justify-center p-8 font-outfit">
+      <div className="min-h-screen bg-[var(--desk-surface-muted)] flex items-center justify-center p-8 font-outfit">
         <div className="w-full max-w-[440px] bg-white rounded-[26px] p-[34px_36px] shadow-[0_20px_60px_rgba(15,23,42,0.1)] text-center">
-          <div className="mx-auto h-12 w-12 rounded-[16px] bg-[#FEF2F2] text-[#DC2626] flex items-center justify-center">
+          <div className="mx-auto h-12 w-12 rounded-[16px] bg-[var(--desk-danger-bg)] text-[var(--desk-danger)] flex items-center justify-center">
             <AlertCircle className="h-6 w-6" strokeWidth={2} />
           </div>
-          <div className="mt-4 text-[20px] font-bold tracking-[-0.02em] text-[#0F172A]">
+          <div className="mt-4 text-[20px] font-bold tracking-[-0.02em] text-[var(--desk-text)]">
             This invitation is no longer valid
           </div>
-          <p className="mt-2 text-[13.5px] text-[#64748B] leading-[1.65]">{loadError}</p>
+          <p className="mt-2 text-[13.5px] text-[var(--desk-text-muted)] leading-[1.65]">{loadError}</p>
           <button
             type="button"
             onClick={() => navigate('/login')}
-            className="mt-6 w-full h-12 rounded-[16px] bg-[#0F3A53] text-white text-sm font-bold cursor-pointer"
+            className="mt-6 w-full h-12 rounded-[16px] bg-[var(--desk-pine-600)] text-white text-sm font-bold cursor-pointer"
           >
             Go to sign in
           </button>
@@ -160,8 +160,8 @@ export function InvitePage() {
 
   if (!invite) {
     return (
-      <div className="min-h-screen bg-[#EFF3F7] flex items-center justify-center font-outfit">
-        <Loader2 className="h-7 w-7 text-[#0F3A53] animate-spin" aria-label="Loading invitation" />
+      <div className="min-h-screen bg-[var(--desk-surface-muted)] flex items-center justify-center font-outfit">
+        <Loader2 className="h-7 w-7 text-[var(--desk-pine-600)] animate-spin" aria-label="Loading invitation" />
       </div>
     );
   }
@@ -169,52 +169,52 @@ export function InvitePage() {
   const roleLabel = ROLE_LABELS[invite.role] ?? 'team member';
 
   return (
-    <div className="min-h-screen bg-[#EFF3F7] flex font-outfit">
+    <div className="min-h-screen bg-[var(--desk-surface-muted)] flex font-outfit">
       {/* Left slate panel */}
-      <div className="hidden lg:flex w-[520px] flex-none bg-[#0F172A] px-11 py-12 flex-col relative overflow-hidden">
+      <div className="hidden lg:flex w-[520px] flex-none bg-[var(--desk-sidebar)] px-11 py-12 flex-col relative overflow-hidden">
         <div
           className="absolute right-[-90px] bottom-[-70px] w-[340px] h-[340px] rounded-full"
           style={{ background: 'radial-gradient(circle, rgba(227,179,65,.16), transparent 68%)' }}
         />
 
         <div className="flex items-center gap-3 relative z-[2]">
-          <div className="w-10 h-10 rounded-[13px] bg-[#E3B341] text-[#0F172A] text-base font-extrabold flex items-center justify-center">
+          <div className="w-10 h-10 rounded-[13px] bg-[var(--ds-sky)] text-[var(--desk-text)] text-base font-extrabold flex items-center justify-center">
             {initialsOf(invite.practiceName, 'UD')}
           </div>
           <div className="leading-[1.3]">
             <div className="text-white text-base font-bold tracking-[-0.01em]">
               {invite.practiceName}
             </div>
-            <div className="text-[#64748B] text-[11.5px]">Unclutter Desk practice</div>
+            <div className="text-[var(--desk-text-muted)] text-[11.5px]">Unclutter Desk practice</div>
           </div>
         </div>
 
         <div className="my-auto py-10 relative z-[2]">
-          <div className="text-[9px] font-black tracking-[0.24em] text-[#E3B341]">
+          <div className="text-[9px] font-black tracking-[0.24em] text-[var(--ds-sky)]">
             YOU'VE BEEN INVITED
           </div>
           <div className="mt-4 text-[38px] font-bold tracking-[-0.035em] text-white leading-[1.15]">
             You've been invited to join the practice
           </div>
-          <p className="mt-[18px] text-[15px] text-[#94A3B8] leading-[1.65] max-w-[380px]">
+          <p className="mt-[18px] text-[15px] text-[var(--desk-text-subtle)] leading-[1.65] max-w-[380px]">
             Your practice manager added you as a{' '}
-            <span className="text-[#E3B341] font-semibold">{roleLabel}</span>. Set a password and
+            <span className="text-[var(--ds-sky)] font-semibold">{roleLabel}</span>. Set a password and
             you'll be in — your calendar and client list are waiting.
           </p>
 
           <div className="mt-[34px] flex flex-col gap-[14px]">
             {bullets.map((b) => (
               <div key={b} className="flex items-center gap-3">
-                <span className="h-[30px] w-[30px] flex-none rounded-[10px] bg-[#E3B341]/14 text-[#E3B341] flex items-center justify-center">
+                <span className="h-[30px] w-[30px] flex-none rounded-[10px] bg-[var(--ds-sky)]/14 text-[var(--ds-sky)] flex items-center justify-center">
                   <Check className="h-[15px] w-[15px]" strokeWidth={2.4} />
                 </span>
-                <span className="text-[13.5px] text-[#CBD5E1]">{b}</span>
+                <span className="text-[13.5px] text-[var(--desk-pine-200)]">{b}</span>
               </div>
             ))}
           </div>
         </div>
 
-        <div className="flex items-center gap-[9px] text-[#475569] text-[11.5px] relative z-[2]">
+        <div className="flex items-center gap-[9px] text-[var(--desk-text-body)] text-[11.5px] relative z-[2]">
           <UnclutterMark size={20} showBadge={false} className="rounded-[6px] opacity-70" />
           <span>Powered by Unclutter Desk · {expiresIn(invite.expiresAt)}</span>
         </div>
@@ -223,10 +223,10 @@ export function InvitePage() {
       {/* Right card */}
       <div className="flex-1 min-w-0 flex items-center justify-center p-8 lg:p-12">
         <div className="w-full max-w-[520px] bg-white rounded-[26px] p-[34px_36px] shadow-[0_20px_60px_rgba(15,23,42,0.1)]">
-          <div className="text-[22px] font-bold tracking-[-0.02em] text-[#0F172A]">
+          <div className="text-[22px] font-bold tracking-[-0.02em] text-[var(--desk-text)]">
             Set up your account
           </div>
-          <p className="mt-[5px] text-[13.5px] text-[#64748B]">
+          <p className="mt-[5px] text-[13.5px] text-[var(--desk-text-muted)]">
             Takes about a minute. Your photo, title and booking details come next, in Settings.
           </p>
 
@@ -234,7 +234,7 @@ export function InvitePage() {
             <div>
               <label
                 htmlFor="invite-name"
-                className="block text-[11.5px] font-bold text-[#475569] mb-[7px]"
+                className="block text-[11.5px] font-bold text-[var(--desk-text-body)] mb-[7px]"
               >
                 Full name
               </label>
@@ -250,10 +250,10 @@ export function InvitePage() {
             </div>
 
             <div className="mt-[14px]">
-              <div className="text-[11.5px] font-bold text-[#475569] mb-[7px]">Email</div>
-              <div className="flex items-center gap-[10px] h-12 px-[15px] border border-[#E2E8F0] rounded-[14px] bg-[#F1F5F9]">
-                <span className="text-sm text-[#64748B] truncate">{invite.email}</span>
-                <span className="ml-auto h-5 px-[9px] rounded-full bg-white text-[#64748B] text-[9px] font-black tracking-[0.1em] inline-flex items-center flex-none">
+              <div className="text-[11.5px] font-bold text-[var(--desk-text-body)] mb-[7px]">Email</div>
+              <div className="flex items-center gap-[10px] h-12 px-[15px] border border-[var(--desk-border)] rounded-[14px] bg-[var(--desk-surface-muted)]">
+                <span className="text-sm text-[var(--desk-text-muted)] truncate">{invite.email}</span>
+                <span className="ml-auto h-5 px-[9px] rounded-full bg-white text-[var(--desk-text-muted)] text-[9px] font-black tracking-[0.1em] inline-flex items-center flex-none">
                   LOCKED
                 </span>
               </div>
@@ -263,13 +263,13 @@ export function InvitePage() {
               <div>
                 <label
                   htmlFor="invite-password"
-                  className="block text-[11.5px] font-bold text-[#475569] mb-[7px]"
+                  className="block text-[11.5px] font-bold text-[var(--desk-text-body)] mb-[7px]"
                 >
                   Create password
                 </label>
                 <div className="relative">
                   <Lock
-                    className="h-[17px] w-[17px] text-[#94A3B8] absolute left-[15px] top-1/2 -translate-y-1/2"
+                    className="h-[17px] w-[17px] text-[var(--desk-text-subtle)] absolute left-[15px] top-1/2 -translate-y-1/2"
                     strokeWidth={2}
                   />
                   <input
@@ -287,7 +287,7 @@ export function InvitePage() {
               <div>
                 <label
                   htmlFor="invite-confirm"
-                  className="block text-[11.5px] font-bold text-[#475569] mb-[7px]"
+                  className="block text-[11.5px] font-bold text-[var(--desk-text-body)] mb-[7px]"
                 >
                   Confirm password
                 </label>
@@ -304,7 +304,7 @@ export function InvitePage() {
             </div>
 
             <div className="mt-[11px] flex items-center gap-2">
-              <div className="flex-1 h-[5px] rounded-[99px] bg-[#E2E8F0] overflow-hidden">
+              <div className="flex-1 h-[5px] rounded-[99px] bg-[var(--desk-border)] overflow-hidden">
                 <div
                   className="h-full transition-all"
                   style={{ width: `${strength.pct}%`, background: strength.colour }}
@@ -321,7 +321,7 @@ export function InvitePage() {
             {submitError && (
               <div
                 role="alert"
-                className="mt-[14px] flex items-start gap-2 p-3 rounded-[12px] bg-[#FEF2F2] text-[#B91C1C] text-[12.5px] leading-[1.5]"
+                className="mt-[14px] flex items-start gap-2 p-3 rounded-[12px] bg-[var(--desk-danger-bg)] text-[var(--desk-danger)] text-[12.5px] leading-[1.5]"
               >
                 <AlertCircle className="h-4 w-4 flex-none mt-[1px]" strokeWidth={2} />
                 <span>{submitError}</span>
@@ -331,17 +331,17 @@ export function InvitePage() {
             <button
               type="submit"
               disabled={submitting}
-              className="mt-[22px] w-full h-[52px] rounded-[16px] bg-[#0F3A53] text-white text-[15px] font-bold cursor-pointer shadow-[0_10px_26px_rgba(15,58,83,0.26)] transition-[filter] hover:brightness-110 disabled:opacity-60 disabled:cursor-not-allowed inline-flex items-center justify-center gap-2"
+              className="mt-[22px] w-full h-[52px] rounded-[16px] bg-[var(--desk-pine-600)] text-white text-[15px] font-bold cursor-pointer shadow-[0_10px_26px_rgba(15,58,83,0.26)] transition-[filter] hover:brightness-110 disabled:opacity-60 disabled:cursor-not-allowed inline-flex items-center justify-center gap-2"
             >
               {submitting && <Loader2 className="h-4 w-4 animate-spin" />}
               {submitting ? 'Setting up your account…' : `Join ${invite.practiceName}`}
             </button>
             {/* Named the documents without linking to either of them. */}
-            <p className="mt-[14px] text-[11.5px] text-[#94A3B8] text-center leading-[1.6]">
+            <p className="mt-[14px] text-[11.5px] text-[var(--desk-text-subtle)] text-center leading-[1.6]">
               By joining you agree to the{' '}
-              <a href={LEGAL_URLS.terms} target="_blank" rel="noopener noreferrer" className="font-bold text-[#475569] hover:underline">Unclutter Desk terms</a>
+              <a href={LEGAL_URLS.terms} target="_blank" rel="noopener noreferrer" className="font-bold text-[var(--desk-text-body)] hover:underline">Unclutter Desk terms</a>
               {' '}and{' '}
-              <a href={LEGAL_URLS.privacy} target="_blank" rel="noopener noreferrer" className="font-bold text-[#475569] hover:underline">privacy policy</a>,
+              <a href={LEGAL_URLS.privacy} target="_blank" rel="noopener noreferrer" className="font-bold text-[var(--desk-text-body)] hover:underline">privacy policy</a>,
               {' '}and to the clinic&apos;s own data-handling policy.
             </p>
           </form>

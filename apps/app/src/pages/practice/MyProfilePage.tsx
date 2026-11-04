@@ -31,7 +31,7 @@ type ProfileRecord = {
 const PERSON_FIELDS = ['welcomeMessage', 'tagline', 'specialty', 'credentials', 'yearsExperience', 'modalities', 'languages'] as const;
 type LocationOption = { id: string; name: string; city: string };
 
-const inputCls = 'h-[46px] w-full px-[14px] rounded-[14px] bg-[#F8FAFC] border border-[#E2E8F0] text-sm font-medium text-[#0F172A] outline-none focus:bg-white focus:border-[#94A3B8]';
+const inputCls = 'h-[46px] w-full px-[14px] rounded-[14px] bg-[var(--desk-surface)] border border-[var(--desk-border)] text-sm font-medium text-[var(--desk-text)] outline-none focus:bg-white focus:border-[var(--desk-border-strong)]';
 
 /**
  * The therapist's settings at this practice: how clients reach them here,
@@ -108,43 +108,43 @@ export function MyProfilePage({
     <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_352px] gap-[20px] items-start">
         <div className="flex flex-col gap-5">
           {error ? <div className="rounded-[18px] border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-medium text-rose-700">{error}</div> : null}
-          {loading ? <div className="rounded-[24px] border border-[#E2E8F0] bg-white px-6 py-10 text-sm font-medium text-[#64748B]">Loading profile...</div> : (
+          {loading ? <div className="rounded-[24px] border border-[var(--desk-border)] bg-white px-6 py-10 text-sm font-medium text-[var(--desk-text-muted)]">Loading profile...</div> : (
             <>
-              <div className="bg-white rounded-[24px] border border-[#E2E8F0] p-[24px_26px]">
+              <div className="bg-white rounded-[24px] border border-[var(--desk-border)] p-[24px_26px]">
                 <Eyebrow className="mb-1">PERSONAL DETAILS</Eyebrow>
                 <div className="grid grid-cols-2 gap-4 mt-4">
-                  <div><label className="block text-[11.5px] font-bold text-[#475569] mb-1.5">First name</label><input className={inputCls} value={profile.firstName || ''} onChange={(e) => setProfile((p) => ({ ...p, firstName: e.target.value }))} /></div>
-                  <div><label className="block text-[11.5px] font-bold text-[#475569] mb-1.5">Last name</label><input className={inputCls} value={profile.lastName || ''} onChange={(e) => setProfile((p) => ({ ...p, lastName: e.target.value }))} /></div>
-                  <div><label className="block text-[11.5px] font-bold text-[#475569] mb-1.5">Phone</label><input className={inputCls} value={profile.phone || ''} onChange={(e) => setProfile((p) => ({ ...p, phone: e.target.value }))} /></div>
-                  <div><label className="block text-[11.5px] font-bold text-[#475569] mb-1.5">Booking email</label><input className={inputCls} value={profile.bookingEmail || ''} onChange={(e) => setProfile((p) => ({ ...p, bookingEmail: e.target.value }))} /></div>
-                  <div><label className="block text-[11.5px] font-bold text-[#475569] mb-1.5">Notification email</label><input className={inputCls} value={profile.notificationEmail || ''} onChange={(e) => setProfile((p) => ({ ...p, notificationEmail: e.target.value }))} /></div>
+                  <div><label className="block text-[11.5px] font-bold text-[var(--desk-text-body)] mb-1.5">First name</label><input className={inputCls} value={profile.firstName || ''} onChange={(e) => setProfile((p) => ({ ...p, firstName: e.target.value }))} /></div>
+                  <div><label className="block text-[11.5px] font-bold text-[var(--desk-text-body)] mb-1.5">Last name</label><input className={inputCls} value={profile.lastName || ''} onChange={(e) => setProfile((p) => ({ ...p, lastName: e.target.value }))} /></div>
+                  <div><label className="block text-[11.5px] font-bold text-[var(--desk-text-body)] mb-1.5">Phone</label><input className={inputCls} value={profile.phone || ''} onChange={(e) => setProfile((p) => ({ ...p, phone: e.target.value }))} /></div>
+                  <div><label className="block text-[11.5px] font-bold text-[var(--desk-text-body)] mb-1.5">Booking email</label><input className={inputCls} value={profile.bookingEmail || ''} onChange={(e) => setProfile((p) => ({ ...p, bookingEmail: e.target.value }))} /></div>
+                  <div><label className="block text-[11.5px] font-bold text-[var(--desk-text-body)] mb-1.5">Notification email</label><input className={inputCls} value={profile.notificationEmail || ''} onChange={(e) => setProfile((p) => ({ ...p, notificationEmail: e.target.value }))} /></div>
                 </div>
               </div>
 
-              <p className="rounded-[18px] border border-[#E2E8F0] bg-white px-5 py-4 text-[13px] text-[#475569]" role="note">
+              <p className="rounded-[18px] border border-[var(--desk-border)] bg-white px-5 py-4 text-[13px] text-[var(--desk-text-body)]" role="note">
                 Your name as clients see it, photo, about, headline, specialties, credentials, experience, approaches and languages are edited once, in{' '}
-                <Link to="/dashboard/profile" className="font-bold text-[#0F3A53] underline">My profile</Link>, and used on your booking page here too.
+                <Link to="/dashboard/profile" className="font-bold text-[var(--desk-pine-600)] underline">My profile</Link>, and used on your booking page here too.
               </p>
 
-              <div className="bg-white rounded-[24px] border border-[#E2E8F0] p-[24px_26px]">
+              <div className="bg-white rounded-[24px] border border-[var(--desk-border)] p-[24px_26px]">
                 <Eyebrow className="mb-1">SEES CLIENTS</Eyebrow>
                 <div className="mt-3 flex flex-wrap gap-4">
-                  <label className="flex items-center gap-2 text-[13.5px] font-semibold text-[#0F172A] cursor-pointer">
+                  <label className="flex items-center gap-2 text-[13.5px] font-semibold text-[var(--desk-text)] cursor-pointer">
                     <input type="checkbox" aria-label="Online" checked={profile.offersOnline !== false} onChange={(e) => setProfile((p) => ({ ...p, offersOnline: e.target.checked }))} />
                     Online
                   </label>
-                  <label className="flex items-center gap-2 text-[13.5px] font-semibold text-[#0F172A] cursor-pointer">
+                  <label className="flex items-center gap-2 text-[13.5px] font-semibold text-[var(--desk-text)] cursor-pointer">
                     <input type="checkbox" aria-label="In person" checked={profile.offersInPerson === true} onChange={(e) => setProfile((p) => ({ ...p, offersInPerson: e.target.checked }))} />
                     In person
                   </label>
                 </div>
                 {profile.offersInPerson ? (
                   <div className="mt-3">
-                    <p className="text-[11.5px] font-bold text-[#475569] mb-1.5">Works at</p>
-                    {locations.length === 0 ? <p className="text-[12.5px] text-[#94A3B8]">No locations yet — ask an admin to add them under Locations.</p> : (
+                    <p className="text-[11.5px] font-bold text-[var(--desk-text-body)] mb-1.5">Works at</p>
+                    {locations.length === 0 ? <p className="text-[12.5px] text-[var(--desk-text-subtle)]">No locations yet — ask an admin to add them under Locations.</p> : (
                       <div className="flex flex-wrap gap-3">
                         {locations.map((l) => (
-                          <label key={l.id} className="flex items-center gap-2 text-[13px] font-semibold text-[#0F172A] cursor-pointer">
+                          <label key={l.id} className="flex items-center gap-2 text-[13px] font-semibold text-[var(--desk-text)] cursor-pointer">
                             <input
                               type="checkbox"
                               aria-label={`Works at ${l.name}`}
@@ -160,32 +160,32 @@ export function MyProfilePage({
                 ) : null}
               </div>
 
-              <div className="bg-white rounded-[24px] border border-[#E2E8F0] p-[24px_26px]">
+              <div className="bg-white rounded-[24px] border border-[var(--desk-border)] p-[24px_26px]">
                 <Eyebrow className="mb-1">PREFERENCES</Eyebrow>
                 <div className="grid grid-cols-2 gap-4 mt-4">
                   <div>
-                    <label className="block text-[11.5px] font-bold text-[#475569] mb-1.5">Currency</label>
+                    <label className="block text-[11.5px] font-bold text-[var(--desk-text-body)] mb-1.5">Currency</label>
                     <select className={inputCls} disabled value="NGN">
                       <option value="NGN">NGN - Nigerian Naira</option>
                     </select>
-                    <p className="text-[10.5px] text-[#94A3B8] mt-1.5 font-medium">Platform default.</p>
+                    <p className="text-[10.5px] text-[var(--desk-text-subtle)] mt-1.5 font-medium">Platform default.</p>
                   </div>
                   <div>
-                    <label className="block text-[11.5px] font-bold text-[#475569] mb-1.5">Date & Time Format</label>
+                    <label className="block text-[11.5px] font-bold text-[var(--desk-text-body)] mb-1.5">Date & Time Format</label>
                     <select className={inputCls} disabled value="en-GB">
                       <option value="en-GB">DD/MM/YYYY, 12-hour</option>
                     </select>
-                    <p className="text-[10.5px] text-[#94A3B8] mt-1.5 font-medium">Platform default.</p>
+                    <p className="text-[10.5px] text-[var(--desk-text-subtle)] mt-1.5 font-medium">Platform default.</p>
                   </div>
                   <div>
-                    <label className="block text-[11.5px] font-bold text-[#475569] mb-1.5">Language</label>
+                    <label className="block text-[11.5px] font-bold text-[var(--desk-text-body)] mb-1.5">Language</label>
                     <select className={inputCls} disabled value="en">
                       <option value="en">English (UK)</option>
                     </select>
-                    <p className="text-[10.5px] text-[#94A3B8] mt-1.5 font-medium">More languages coming soon.</p>
+                    <p className="text-[10.5px] text-[var(--desk-text-subtle)] mt-1.5 font-medium">More languages coming soon.</p>
                   </div>
                   <fieldset className="sm:col-span-2">
-                    <legend className="block text-[11.5px] font-bold text-[#475569] mb-1.5">Video sessions</legend>
+                    <legend className="block text-[11.5px] font-bold text-[var(--desk-text-body)] mb-1.5">Video sessions</legend>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                       {[
                         { value: 'BUILT_IN', title: 'Unclutter Desk video (recommended)', text: 'Sessions run inside Unclutter Desk. Nothing to install.', disabled: false },
@@ -195,7 +195,7 @@ export function MyProfilePage({
                         return (
                           <label
                             key={o.value}
-                            className={`flex gap-3 rounded-[14px] border p-3.5 ${checked ? 'border-[#0F3A53] bg-[#EFF6FB]' : 'border-[#E2E8F0] bg-white'} ${o.disabled ? 'opacity-70 cursor-not-allowed' : 'cursor-pointer'}`}
+                            className={`flex gap-3 rounded-[14px] border p-3.5 ${checked ? 'border-[var(--desk-pine-600)] bg-[var(--desk-pine-100)]' : 'border-[var(--desk-border)] bg-white'} ${o.disabled ? 'opacity-70 cursor-not-allowed' : 'cursor-pointer'}`}
                           >
                             <input
                               type="radio"
@@ -207,17 +207,17 @@ export function MyProfilePage({
                               className="mt-1"
                             />
                             <span>
-                              <span className="block text-[13px] font-bold text-[#0F172A]">{o.title}</span>
-                              <span className="block text-[12px] text-[#64748B] mt-0.5">{o.text}</span>
+                              <span className="block text-[13px] font-bold text-[var(--desk-text)]">{o.title}</span>
+                              <span className="block text-[12px] text-[var(--desk-text-muted)] mt-0.5">{o.text}</span>
                             </span>
                           </label>
                         );
                       })}
                     </div>
                     {!profile.googleConnected ? (
-                      <p className="text-[11.5px] text-[#64748B] mt-2 font-medium">
+                      <p className="text-[11.5px] text-[var(--desk-text-muted)] mt-2 font-medium">
                         Connect Google Calendar first to use Google Meet.{' '}
-                        <button type="button" onClick={() => void connectGoogle()} className="font-bold text-[#0F3A53] underline cursor-pointer">
+                        <button type="button" onClick={() => void connectGoogle()} className="font-bold text-[var(--desk-pine-600)] underline cursor-pointer">
                           Connect Google Calendar
                         </button>
                       </p>
@@ -229,12 +229,12 @@ export function MyProfilePage({
           )}
         </div>
 
-        <div className="bg-white rounded-[24px] border border-[#E2E8F0] p-[22px_24px] shadow-[0_8px_26px_rgba(15,23,42,0.05)]">
-          <span className="text-[15px] font-bold text-[#0F172A]">Public summary</span>
-          <div className="mt-4 space-y-2 text-sm text-[#475569] font-medium">
-            <div><strong className="text-[#0F172A]">Name:</strong> {[profile.firstName, profile.lastName].filter(Boolean).join(' ') || 'Not set'}</div>
-            <div><strong className="text-[#0F172A]">Specialty:</strong> {profile.specialty || 'Not set'}</div>
-            <div><strong className="text-[#0F172A]">Languages:</strong> {(profile.languages || []).join(', ') || 'Not set'}</div>
+        <div className="bg-white rounded-[24px] border border-[var(--desk-border)] p-[22px_24px] shadow-[0_8px_26px_rgba(15,23,42,0.05)]">
+          <span className="text-[15px] font-bold text-[var(--desk-text)]">Public summary</span>
+          <div className="mt-4 space-y-2 text-sm text-[var(--desk-text-body)] font-medium">
+            <div><strong className="text-[var(--desk-text)]">Name:</strong> {[profile.firstName, profile.lastName].filter(Boolean).join(' ') || 'Not set'}</div>
+            <div><strong className="text-[var(--desk-text)]">Specialty:</strong> {profile.specialty || 'Not set'}</div>
+            <div><strong className="text-[var(--desk-text)]">Languages:</strong> {(profile.languages || []).join(', ') || 'Not set'}</div>
           </div>
         </div>
       </div>
@@ -244,7 +244,7 @@ export function MyProfilePage({
     return (
       <div className="flex flex-col gap-4">
         <div className="flex flex-wrap items-center gap-4">
-          <p className="text-[13px] text-[#64748B] font-medium">Settings for this practice: how clients reach you, video, locations and your booking-page welcome.</p>
+          <p className="text-[13px] text-[var(--desk-text-muted)] font-medium">Settings for this practice: how clients reach you, video, locations and your booking-page welcome.</p>
           <span className="ml-auto">{saveButton}</span>
         </div>
         {body}
@@ -254,7 +254,7 @@ export function MyProfilePage({
 
   return (
     <Page header={<PageHeader eyebrow="ACCOUNT" title="My profile" actions={saveButton} />}>
-      <p className="text-xs text-[#64748B] font-medium">Real therapist profile data used on your booking page</p>
+      <p className="text-xs text-[var(--desk-text-muted)] font-medium">Real therapist profile data used on your booking page</p>
       {body}
     </Page>
   );

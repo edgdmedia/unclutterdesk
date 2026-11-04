@@ -39,29 +39,29 @@ export function AssessmentQuestionnaire({ assessment, color, firstName, message,
 
   return (
     <>
-      <div className="bg-white rounded-[20px] border border-[#E2E8F0] p-5">
+      <div className="bg-white rounded-[20px] border border-[var(--desk-border)] p-5">
         <p className="text-xs font-bold uppercase tracking-[0.08em]" style={{ color }}>{assessment.shortName}</p>
-        <h1 className="mt-1 text-[18px] font-bold text-[#0F172A]">
+        <h1 className="mt-1 text-[18px] font-bold text-[var(--desk-text)]">
           {firstName ? `Hi ${firstName}, ` : ''}a few questions before we talk
         </h1>
         {message ? (
-          <div className="mt-3 rounded-[14px] bg-[#F8FAFC] border border-[#E2E8F0] px-3.5 py-2.5">
-            <p className="text-[11px] font-bold uppercase tracking-[0.06em] text-[#64748B]">From your practitioner</p>
-            <p className="mt-1 text-sm text-[#0F172A] whitespace-pre-line">{message}</p>
+          <div className="mt-3 rounded-[14px] bg-[var(--desk-surface)] border border-[var(--desk-border)] px-3.5 py-2.5">
+            <p className="text-[11px] font-bold uppercase tracking-[0.06em] text-[var(--desk-text-muted)]">From your practitioner</p>
+            <p className="mt-1 text-sm text-[var(--desk-text)] whitespace-pre-line">{message}</p>
           </div>
         ) : null}
-        <p className="mt-3 text-sm text-[#0F172A] leading-relaxed">{assessment.instructions}</p>
-        <p className="mt-3 text-xs text-[#64748B] inline-flex items-center gap-1.5">
+        <p className="mt-3 text-sm text-[var(--desk-text)] leading-relaxed">{assessment.instructions}</p>
+        <p className="mt-3 text-xs text-[var(--desk-text-muted)] inline-flex items-center gap-1.5">
           <Clock className="h-3.5 w-3.5" /> About {assessment.estimatedMinutes} minutes · only your practitioner sees your answers
         </p>
       </div>
 
       <ol className="mt-4 space-y-3">
         {assessment.items.map((item, index) => (
-          <li key={item.id} id={`q-${item.id}`} className="bg-white rounded-[18px] border border-[#E2E8F0] p-4">
+          <li key={item.id} id={`q-${item.id}`} className="bg-white rounded-[18px] border border-[var(--desk-border)] p-4">
             <fieldset>
-              <legend className="text-sm font-semibold text-[#0F172A] leading-relaxed">
-                <span className="text-[#94A3B8] mr-1.5">{index + 1}.</span>
+              <legend className="text-sm font-semibold text-[var(--desk-text)] leading-relaxed">
+                <span className="text-[var(--desk-text-subtle)] mr-1.5">{index + 1}.</span>
                 {item.text}
               </legend>
               <div className="mt-3 grid gap-2 sm:grid-cols-2">
@@ -96,10 +96,10 @@ export function AssessmentQuestionnaire({ assessment, color, firstName, message,
         ))}
       </ol>
 
-      <div className="sticky bottom-0 mt-4 -mx-4 px-4 py-3 bg-[#F8FAFC]/95 backdrop-blur border-t border-[#E2E8F0]">
+      <div className="sticky bottom-0 mt-4 -mx-4 px-4 py-3 bg-[var(--desk-surface)]/95 backdrop-blur border-t border-[var(--desk-border)]">
         {error ? <p role="alert" className="mb-2 text-sm font-medium text-rose-700">{error}</p> : null}
         <div className="flex items-center justify-between gap-3">
-          <span className="text-xs font-semibold text-[#475569]">{answered} of {assessment.items.length} answered</span>
+          <span className="text-xs font-semibold text-[var(--desk-text-body)]">{answered} of {assessment.items.length} answered</span>
           <button
             type="button"
             onClick={() => void submit()}

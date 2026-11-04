@@ -4,7 +4,7 @@ import { formatsOffered, slotsForService, type Slot } from './bookingSlots';
 import type { PublicService } from './useBookingData';
 import { StateBox, naira } from './BookingShell';
 
-const TAG = 'h-[26px] px-[11px] rounded-full bg-[#F1F5F9] text-[12px] font-semibold text-[#475569] inline-flex items-center';
+const TAG = 'h-[26px] px-[11px] rounded-full bg-[var(--desk-surface-muted)] text-[12px] font-semibold text-[var(--desk-text-body)] inline-flex items-center';
 
 /** Step 1: the practice's services as cards (README, Step 1). */
 export function ServiceStep({
@@ -26,10 +26,10 @@ export function ServiceStep({
     return (
       <div className="flex flex-col gap-3" aria-busy="true">
         {[0, 1, 2].map((i) => (
-          <div key={i} data-skeleton className="rounded-[20px] border border-[#E2E8F0] p-[18px] space-y-3 animate-pulse">
-            <div className="h-4 w-1/2 rounded bg-[#F1F5F9]" />
-            <div className="h-3 w-3/4 rounded bg-[#F1F5F9]" />
-            <div className="h-6 w-20 rounded-full bg-[#F1F5F9]" />
+          <div key={i} data-skeleton className="rounded-[20px] border border-[var(--desk-border)] p-[18px] space-y-3 animate-pulse">
+            <div className="h-4 w-1/2 rounded bg-[var(--desk-surface-muted)]" />
+            <div className="h-3 w-3/4 rounded bg-[var(--desk-surface-muted)]" />
+            <div className="h-6 w-20 rounded-full bg-[var(--desk-surface-muted)]" />
           </div>
         ))}
       </div>
@@ -39,7 +39,7 @@ export function ServiceStep({
   if (services.length === 0) {
     return (
       <StateBox icon={<CalendarDays className="h-5 w-5" />} title="No sessions open for booking">
-        <p className="text-[13.5px] text-[#64748B]">This practice isn't taking bookings online right now.</p>
+        <p className="text-[13.5px] text-[var(--desk-text-muted)]">This practice isn't taking bookings online right now.</p>
         {practiceEmail ? (
           <a href={`mailto:${practiceEmail}`} className="text-[13.5px] font-bold" style={{ color: 'var(--brand-ink, var(--brand-primary))' }}>
             Email {practiceEmail}
@@ -68,18 +68,18 @@ export function ServiceStep({
           >
             <span className="flex items-start justify-between gap-4">
               <span className="min-w-0">
-                <span className="block text-[16px] font-bold text-[#0F172A]">{service.title}</span>
-                {service.description ? <span className="block mt-1 text-[13.5px] leading-[1.5] text-[#64748B]">{service.description}</span> : null}
+                <span className="block text-[16px] font-bold text-[var(--desk-text)]">{service.title}</span>
+                {service.description ? <span className="block mt-1 text-[13.5px] leading-[1.5] text-[var(--desk-text-muted)]">{service.description}</span> : null}
               </span>
               <span className="text-right shrink-0">
                 {service.formats?.filter((f) => f.isActive).length ? (
-                  <span className="block text-[14px] font-bold text-[#0F172A]" style={{ fontVariantNumeric: 'tabular-nums' }}>
+                  <span className="block text-[14px] font-bold text-[var(--desk-text)]" style={{ fontVariantNumeric: 'tabular-nums' }}>
                     {service.formats.filter((f) => f.isActive).map((f) => `${f.format === 'ONLINE' ? 'Online' : 'In person'} ${naira(f.priceKobo)}`).join(' · ')}
                   </span>
                 ) : (
-                  <span className="block text-[16px] font-bold text-[#0F172A]" style={{ fontVariantNumeric: 'tabular-nums' }}>{naira(service.priceKobo)}</span>
+                  <span className="block text-[16px] font-bold text-[var(--desk-text)]" style={{ fontVariantNumeric: 'tabular-nums' }}>{naira(service.priceKobo)}</span>
                 )}
-                <span className="block text-[12.5px] text-[#64748B]">{service.durationMinutes} min</span>
+                <span className="block text-[12.5px] text-[var(--desk-text-muted)]">{service.durationMinutes} min</span>
               </span>
             </span>
             {formats.length ? (

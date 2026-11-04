@@ -128,15 +128,15 @@ export function TelehealthVideoRoomPage() {
   }, [payload, noteLocked, saveState, subjective, objective, assessment, plan]);
 
   return (
-    <div className="min-h-screen bg-[#0B1220] text-white font-outfit flex flex-col justify-between p-6 relative">
-      {loading ? <div className="rounded-[24px] border border-white/10 bg-[#101A28] px-6 py-10 text-sm font-medium text-slate-300">Loading telehealth room...</div> : error || !payload ? <div className="rounded-[18px] border border-rose-500/30 bg-rose-500/10 px-4 py-3 text-sm font-medium text-rose-200">{error || 'Telehealth room unavailable'}</div> : (
+    <div className="min-h-screen bg-[var(--desk-sidebar)] text-white font-outfit flex flex-col justify-between p-6 relative">
+      {loading ? <div className="rounded-[24px] border border-white/10 bg-[var(--desk-sidebar)] px-6 py-10 text-sm font-medium text-slate-300">Loading telehealth room...</div> : error || !payload ? <div className="rounded-[18px] border border-rose-500/30 bg-rose-500/10 px-4 py-3 text-sm font-medium text-rose-200">{error || 'Telehealth room unavailable'}</div> : (
         <>
-          <header className="h-[66px] bg-[#0B1220]/90 backdrop-blur-md border border-white/10 rounded-[20px] px-6 flex items-center justify-between shrink-0">
+          <header className="h-[66px] bg-[var(--desk-sidebar)]/90 backdrop-blur-md border border-white/10 rounded-[20px] px-6 flex items-center justify-between shrink-0">
             <div className="flex items-center gap-3">
               <div className="flex items-center gap-2 bg-white/5 border border-white/10 px-3 py-1 rounded-full text-slate-300 text-[11.5px] font-bold"><span>SESSION ROOM</span></div>
-              <div><h1 className="text-[15px] font-semibold text-white leading-tight">{payload.booking.clientName}</h1><p className="text-[11.5px] text-[#64748B]">{payload.booking.serviceTitle} · {new Intl.DateTimeFormat('en-GB', { hour: '2-digit', minute: '2-digit' }).format(new Date(payload.booking.startsAt))}</p></div>
+              <div><h1 className="text-[15px] font-semibold text-white leading-tight">{payload.booking.clientName}</h1><p className="text-[11.5px] text-[var(--desk-text-muted)]">{payload.booking.serviceTitle} · {new Intl.DateTimeFormat('en-GB', { hour: '2-digit', minute: '2-digit' }).format(new Date(payload.booking.startsAt))}</p></div>
             </div>
-            <div className="flex items-center gap-3"><span className="h-[28px] px-3 rounded-full bg-[#34D399]/12 text-[#34D399] text-[10.5px] font-black tracking-wider uppercase border border-[#34D399]/30 flex items-center gap-1.5"><ShieldCheck className="h-3.5 w-3.5" /><span>PRIVATE ROOM</span></span></div>
+            <div className="flex items-center gap-3"><span className="h-[28px] px-3 rounded-full bg-[var(--desk-active-dot)]/12 text-[var(--desk-active-dot)] text-[10.5px] font-black tracking-wider uppercase border border-[var(--desk-active-dot)]/30 flex items-center gap-1.5"><ShieldCheck className="h-3.5 w-3.5" /><span>PRIVATE ROOM</span></span></div>
           </header>
 
           <main className="flex-1 my-4 grid grid-cols-12 gap-5 items-stretch min-h-[580px]">
@@ -151,19 +151,19 @@ export function TelehealthVideoRoomPage() {
             </div>
 
             {drawerOpen ? (
-              <div className="col-span-12 lg:col-span-4 bg-[#F8FAFC] text-[#0F172A] rounded-[24px] border border-[#E2E8F0] p-5 flex flex-col justify-between space-y-4 shadow-2xl">
+              <div className="col-span-12 lg:col-span-4 bg-[var(--desk-surface)] text-[var(--desk-text)] rounded-[24px] border border-[var(--desk-border)] p-5 flex flex-col justify-between space-y-4 shadow-2xl">
                 <div className="space-y-4 flex-1 overflow-y-auto pr-1">
-                  <div className="flex items-center justify-between border-b border-[#E2E8F0] pb-3"><div><span className="os-eyebrow block">LIVE DOCUMENTATION</span><h3 className="text-[17px] font-bold text-[#0F172A]">SOAP Notes</h3></div><div className="flex items-center gap-3"><div className="flex items-center gap-2 text-[11px] font-bold">{saveState === 'saving' ? <span className="text-[#B45309]">Saving...</span> : null}{saveState === 'saved' ? <span className="text-[#15803D]">Saved{lastSavedAt ? ` · ${new Intl.DateTimeFormat('en-GB', { hour: '2-digit', minute: '2-digit', second: '2-digit' }).format(new Date(lastSavedAt))}` : ''}</span> : null}{saveState === 'error' ? <span className="text-[#DC2626]">Autosave failed</span> : null}{noteLocked ? <span className="text-[#475569]">Locked</span> : null}</div><button onClick={() => setDrawerOpen(false)} className="h-8 w-8 rounded-full bg-[#EEF2F7] hover:bg-slate-200 text-[#64748B] flex items-center justify-center font-bold text-xs cursor-pointer">✕</button></div></div>
-                  {payload.submissions.length > 0 ? <div className="p-3 rounded-[14px] bg-[#EFF6FB] border border-[#BFDBFE] text-xs font-medium text-[#0F3A53]">{payload.submissions[0].formTitle} received · {payload.submissions[0].answers.length} answers available</div> : null}
+                  <div className="flex items-center justify-between border-b border-[var(--desk-border)] pb-3"><div><span className="os-eyebrow block">LIVE DOCUMENTATION</span><h3 className="text-[17px] font-bold text-[var(--desk-text)]">SOAP Notes</h3></div><div className="flex items-center gap-3"><div className="flex items-center gap-2 text-[11px] font-bold">{saveState === 'saving' ? <span className="text-[var(--desk-pending)]">Saving...</span> : null}{saveState === 'saved' ? <span className="text-[var(--desk-active)]">Saved{lastSavedAt ? ` · ${new Intl.DateTimeFormat('en-GB', { hour: '2-digit', minute: '2-digit', second: '2-digit' }).format(new Date(lastSavedAt))}` : ''}</span> : null}{saveState === 'error' ? <span className="text-[var(--desk-danger)]">Autosave failed</span> : null}{noteLocked ? <span className="text-[var(--desk-text-body)]">Locked</span> : null}</div><button onClick={() => setDrawerOpen(false)} className="h-8 w-8 rounded-full bg-[var(--desk-surface-muted)] hover:bg-slate-200 text-[var(--desk-text-muted)] flex items-center justify-center font-bold text-xs cursor-pointer">✕</button></div></div>
+                  {payload.submissions.length > 0 ? <div className="p-3 rounded-[14px] bg-[var(--desk-pine-100)] border border-[var(--desk-info-border)] text-xs font-medium text-[var(--desk-pine-600)]">{payload.submissions[0].formTitle} received · {payload.submissions[0].answers.length} answers available</div> : null}
                   {[{ chip: 'S', title: 'Subjective', val: subjective, setVal: setSubjective }, { chip: 'O', title: 'Objective', val: objective, setVal: setObjective }, { chip: 'A', title: 'Assessment', val: assessment, setVal: setAssessment }, { chip: 'P', title: 'Plan', val: plan, setVal: setPlan }].map((section) => (
-                    <div key={section.chip} className="p-3.5 rounded-[18px] bg-white border border-[#E2E8F0] space-y-2 shadow-xs">
-                      <div className="flex items-center gap-2"><span className="h-6 w-6 rounded-[8px] bg-[#0F3A53] text-[#E3B341] font-black text-xs flex items-center justify-center">{section.chip}</span><span className="text-[12.5px] font-bold text-[#0F172A] tracking-tight">{section.title}</span></div>
-                      <textarea rows={2} disabled={noteLocked} value={section.val} onChange={(e) => section.setVal(e.target.value)} className="w-full text-[13px] text-[#475569] font-medium leading-relaxed bg-transparent border-none outline-none resize-none disabled:opacity-75" />
+                    <div key={section.chip} className="p-3.5 rounded-[18px] bg-white border border-[var(--desk-border)] space-y-2 shadow-xs">
+                      <div className="flex items-center gap-2"><span className="h-6 w-6 rounded-[8px] bg-[var(--desk-pine-600)] text-[var(--ds-sky)] font-black text-xs flex items-center justify-center">{section.chip}</span><span className="text-[12.5px] font-bold text-[var(--desk-text)] tracking-tight">{section.title}</span></div>
+                      <textarea rows={2} disabled={noteLocked} value={section.val} onChange={(e) => section.setVal(e.target.value)} className="w-full text-[13px] text-[var(--desk-text-body)] font-medium leading-relaxed bg-transparent border-none outline-none resize-none disabled:opacity-75" />
                     </div>
                   ))}
                 </div>
-                <div className="pt-3 border-t border-[#E2E8F0] flex items-center justify-between gap-2">
-                  <button onClick={() => void saveNote()} disabled={noteLocked} className="h-9 px-3 rounded-[12px] bg-[#EEF2F7] text-[#0F172A] text-xs font-bold hover:bg-slate-200 cursor-pointer disabled:opacity-50">Save note</button>
+                <div className="pt-3 border-t border-[var(--desk-border)] flex items-center justify-between gap-2">
+                  <button onClick={() => void saveNote()} disabled={noteLocked} className="h-9 px-3 rounded-[12px] bg-[var(--desk-surface-muted)] text-[var(--desk-text)] text-xs font-bold hover:bg-slate-200 cursor-pointer disabled:opacity-50">Save note</button>
                   <button onClick={() => void lockNote()} disabled={noteLocked} className="h-9 px-4 rounded-[12px] text-xs font-bold flex items-center gap-1.5 cursor-pointer disabled:opacity-50 text-white" style={{ backgroundColor: '#0F3A53' }}><Lock className="h-3.5 w-3.5" /><span>{noteLocked ? 'Locked' : 'Sign & lock'}</span></button>
                 </div>
               </div>
@@ -171,7 +171,7 @@ export function TelehealthVideoRoomPage() {
           </main>
 
 
-          {showEndModal ? <div className="fixed inset-0 bg-black/70 backdrop-blur-xs flex items-center justify-center p-6 z-50"><div className="w-full max-w-[440px] bg-[#1E293B] text-white rounded-[24px] p-6 shadow-2xl space-y-4 border border-slate-700"><h3 className="text-lg font-bold">End this session?</h3><p className="text-xs text-slate-300 mt-1">This ends the call and takes you back to the client record. Your notes are saved.</p><div className="flex items-center gap-3 pt-2"><button onClick={() => setShowEndModal(false)} className="flex-1 h-11 rounded-[14px] bg-slate-800 text-slate-300 font-bold text-xs hover:bg-slate-700">Cancel</button><button onClick={() => navigate('/dashboard/clients')} className="flex-1 h-11 rounded-[14px] bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs cursor-pointer">End session</button></div></div></div> : null}
+          {showEndModal ? <div className="fixed inset-0 bg-black/70 backdrop-blur-xs flex items-center justify-center p-6 z-50"><div className="w-full max-w-[440px] bg-[var(--desk-sidebar-hover)] text-white rounded-[24px] p-6 shadow-2xl space-y-4 border border-slate-700"><h3 className="text-lg font-bold">End this session?</h3><p className="text-xs text-slate-300 mt-1">This ends the call and takes you back to the client record. Your notes are saved.</p><div className="flex items-center gap-3 pt-2"><button onClick={() => setShowEndModal(false)} className="flex-1 h-11 rounded-[14px] bg-slate-800 text-slate-300 font-bold text-xs hover:bg-slate-700">Cancel</button><button onClick={() => navigate('/dashboard/clients')} className="flex-1 h-11 rounded-[14px] bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs cursor-pointer">End session</button></div></div></div> : null}
         </>
       )}
     </div>

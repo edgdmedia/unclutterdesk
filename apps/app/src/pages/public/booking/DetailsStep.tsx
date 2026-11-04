@@ -24,13 +24,13 @@ export function DetailsStep({
   return (
     <div className="flex flex-col gap-5">
       {me ? (
-        <div className="rounded-[18px] bg-[#F8FAFC] border border-[#E2E8F0] px-4 py-3.5 flex items-center gap-3">
+        <div className="rounded-[18px] bg-[var(--desk-surface)] border border-[var(--desk-border)] px-4 py-3.5 flex items-center gap-3">
           <span className="h-11 w-11 rounded-full inline-flex items-center justify-center text-[14px] font-extrabold shrink-0" style={{ background: 'var(--brand-fill)', color: 'var(--brand-ink, var(--brand-primary))' }}>
             {initialsOf(name || me.email, '?')}
           </span>
           <div className="min-w-0 flex-1">
-            <div className="text-[14.5px] font-bold text-[#0F172A]">Booking as {name || me.email}</div>
-            <div className="text-[12.5px] text-[#64748B] truncate">{[me.email, me.phone].filter(Boolean).join(' · ')}</div>
+            <div className="text-[14.5px] font-bold text-[var(--desk-text)]">Booking as {name || me.email}</div>
+            <div className="text-[12.5px] text-[var(--desk-text-muted)] truncate">{[me.email, me.phone].filter(Boolean).join(' · ')}</div>
           </div>
           <button type="button" onClick={onSignOut} className="h-11 px-1 text-[13px] font-bold cursor-pointer shrink-0" style={{ color: 'var(--brand-ink, var(--brand-primary))' }}>
             Not you?
@@ -40,16 +40,16 @@ export function DetailsStep({
         <ClientAuthPanel onDone={onSignedIn} />
       )}
 
-      <label className="flex flex-col gap-1.5 text-[12.5px] font-semibold text-[#475569]">
+      <label className="flex flex-col gap-1.5 text-[12.5px] font-semibold text-[var(--desk-text-body)]">
         <span>
-          Anything the therapist should know before the first session? <span className="font-medium text-[#94A3B8]">Optional</span>
+          Anything the therapist should know before the first session? <span className="font-medium text-[var(--desk-text-subtle)]">Optional</span>
         </span>
         <textarea
           rows={3}
           value={note}
           onChange={(e) => onNote(e.target.value)}
           placeholder={`Shared only with ${therapistName || 'your therapist'}.`}
-          className="w-full px-3.5 py-3 rounded-[14px] bg-[#F8FAFC] border border-[#E2E8F0] text-[14.5px] font-normal text-[#0F172A] outline-none focus:bg-white focus:border-[#94A3B8] focus:shadow-[0_0_0_3px_var(--brand-ring)]"
+          className="w-full px-3.5 py-3 rounded-[14px] bg-[var(--desk-surface)] border border-[var(--desk-border)] text-[14.5px] font-normal text-[var(--desk-text)] outline-none focus:bg-white focus:border-[var(--desk-border-strong)] focus:shadow-[0_0_0_3px_var(--brand-ring)]"
         />
       </label>
     </div>

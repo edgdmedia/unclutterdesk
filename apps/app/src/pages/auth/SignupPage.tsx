@@ -129,10 +129,10 @@ export function SignupPage() {
         'Telehealth room with live SOAP notes',
       ]}
     >
-      <div className="text-[29px] font-bold tracking-[-0.03em] text-[#0F172A]">
+      <div className="text-[29px] font-bold tracking-[-0.03em] text-[var(--desk-text)]">
         Create your workspace
       </div>
-      <p className="mt-[7px] text-[14.5px] text-[#64748B] leading-[1.6]">
+      <p className="mt-[7px] text-[14.5px] text-[var(--desk-text-muted)] leading-[1.6]">
         Setup your portal in under 2 minutes.
       </p>
 
@@ -145,15 +145,15 @@ export function SignupPage() {
             aria-pressed={persona === opt.value}
             className={`rounded-[16px] border p-3.5 text-left transition-colors cursor-pointer ${
               persona === opt.value
-                ? 'border-[#0F3A53] bg-[#EFF6FB]'
-                : 'border-[#E2E8F0] bg-[#F8FAFC] hover:border-[#CBD5E1]'
+                ? 'border-[var(--desk-pine-600)] bg-[var(--desk-pine-100)]'
+                : 'border-[var(--desk-border)] bg-[var(--desk-surface)] hover:border-[var(--desk-pine-200)]'
             }`}
           >
-            <div className={`flex items-center gap-2 ${persona === opt.value ? 'text-[#0F3A53]' : 'text-[#64748B]'}`}>
+            <div className={`flex items-center gap-2 ${persona === opt.value ? 'text-[var(--desk-pine-600)]' : 'text-[var(--desk-text-muted)]'}`}>
               {opt.icon}
               <span className="text-[13px] font-bold">{opt.label}</span>
             </div>
-            <p className="mt-1 text-[11px] text-[#94A3B8] leading-snug">{opt.desc}</p>
+            <p className="mt-1 text-[11px] text-[var(--desk-text-subtle)] leading-snug">{opt.desc}</p>
           </button>
         ))}
       </div>
@@ -166,12 +166,12 @@ export function SignupPage() {
         >
           <span
             className={`h-5 w-5 rounded-[7px] border flex items-center justify-center transition-colors ${
-              alsoTherapist ? 'bg-[#0F3A53] border-[#0F3A53]' : 'bg-white border-[#CBD5E1]'
+              alsoTherapist ? 'bg-[var(--desk-pine-600)] border-[var(--desk-pine-600)]' : 'bg-white border-[var(--desk-pine-200)]'
             }`}
           >
             {alsoTherapist && <Check className="h-3 w-3 text-white" strokeWidth={3.5} />}
           </span>
-          <span className="text-[12.5px] text-[#475569] font-medium group-hover:text-[#0F172A]">
+          <span className="text-[12.5px] text-[var(--desk-text-body)] font-medium group-hover:text-[var(--desk-text)]">
             I'll also provide services myself
           </span>
         </button>
@@ -180,7 +180,7 @@ export function SignupPage() {
       <form onSubmit={handleSignup} className="mt-[26px] flex flex-col gap-4">
         <AuthField
           label="Practice / clinic name"
-          icon={<Building className="h-[17px] w-[17px] text-[#94A3B8] flex-none" strokeWidth={2} />}
+          icon={<Building className="h-[17px] w-[17px] text-[var(--desk-text-subtle)] flex-none" strokeWidth={2} />}
         >
           <input
             type="text"
@@ -194,7 +194,7 @@ export function SignupPage() {
 
         <AuthField
           label="Your full name"
-          icon={<User className="h-[17px] w-[17px] text-[#94A3B8] flex-none" strokeWidth={2} />}
+          icon={<User className="h-[17px] w-[17px] text-[var(--desk-text-subtle)] flex-none" strokeWidth={2} />}
         >
           <input
             type="text"
@@ -208,7 +208,7 @@ export function SignupPage() {
 
         <AuthField
           label="Work email address"
-          icon={<Mail className="h-[17px] w-[17px] text-[#94A3B8] flex-none" strokeWidth={2} />}
+          icon={<Mail className="h-[17px] w-[17px] text-[var(--desk-text-subtle)] flex-none" strokeWidth={2} />}
         >
           <input
             type="email"
@@ -222,12 +222,12 @@ export function SignupPage() {
 
         <AuthField
           label="Password"
-          icon={<Lock className="h-[17px] w-[17px] text-[#94A3B8] flex-none" strokeWidth={2} />}
+          icon={<Lock className="h-[17px] w-[17px] text-[var(--desk-text-subtle)] flex-none" strokeWidth={2} />}
           trailing={
             <button
               type="button"
               onClick={() => setShowPassword((v) => !v)}
-              className="flex-none text-[#94A3B8] hover:text-[#475569] cursor-pointer"
+              className="flex-none text-[var(--desk-text-subtle)] hover:text-[var(--desk-text-body)] cursor-pointer"
               aria-label="Toggle password visibility"
             >
               {showPassword ? 'Hide' : 'Show'}
@@ -246,15 +246,15 @@ export function SignupPage() {
         </AuthField>
 
         {password.length > 0 && (
-          <div className="rounded-[14px] bg-[#F8FAFC] border border-[#E2E8F0] px-4 py-3 grid grid-cols-1 gap-1.5">
+          <div className="rounded-[14px] bg-[var(--desk-surface)] border border-[var(--desk-border)] px-4 py-3 grid grid-cols-1 gap-1.5">
             {passwordChecks.map((rule) => (
               <div key={rule.label} className="flex items-center gap-2 text-xs">
                 {rule.ok ? (
                   <Check className="h-3.5 w-3.5 text-emerald-600 flex-none" strokeWidth={3} />
                 ) : (
-                  <X className="h-3.5 w-3.5 text-[#94A3B8] flex-none" strokeWidth={3} />
+                  <X className="h-3.5 w-3.5 text-[var(--desk-text-subtle)] flex-none" strokeWidth={3} />
                 )}
-                <span className={`font-medium ${rule.ok ? 'text-emerald-700' : 'text-[#64748B]'}`}>
+                <span className={`font-medium ${rule.ok ? 'text-emerald-700' : 'text-[var(--desk-text-muted)]'}`}>
                   {rule.label}
                 </span>
               </div>
@@ -277,7 +277,7 @@ export function SignupPage() {
           <button
             type="button"
             onClick={() => setShowInvite(true)}
-            className="self-start text-xs font-bold text-[#0F3A53] hover:underline cursor-pointer"
+            className="self-start text-xs font-bold text-[var(--desk-pine-600)] hover:underline cursor-pointer"
           >
             Have an invite code?
           </button>
@@ -300,7 +300,7 @@ export function SignupPage() {
         <button
           type="submit"
           disabled={isLoading || submitting}
-          className="w-full h-[54px] rounded-[14px] bg-[#0F3A53] text-white text-[15px] font-bold inline-flex items-center justify-center gap-[10px] cursor-pointer shadow-[0_10px_26px_rgba(15,58,83,0.26)] transition-[filter] hover:brightness-110 disabled:opacity-70 disabled:cursor-not-allowed"
+          className="w-full h-[54px] rounded-[14px] bg-[var(--desk-pine-600)] text-white text-[15px] font-bold inline-flex items-center justify-center gap-[10px] cursor-pointer shadow-[0_10px_26px_rgba(15,58,83,0.26)] transition-[filter] hover:brightness-110 disabled:opacity-70 disabled:cursor-not-allowed"
         >
           {isLoading || submitting ? (
             <>
@@ -323,21 +323,21 @@ export function SignupPage() {
             required
             checked={agreedToTerms}
             onChange={(e) => setAgreedToTerms(e.target.checked)}
-            className="mt-0.5 h-[18px] w-[18px] rounded-[5px] border-[#CBD5E1] text-[#0F3A53] focus:ring-[#0F3A53] cursor-pointer shrink-0"
+            className="mt-0.5 h-[18px] w-[18px] rounded-[5px] border-[var(--desk-pine-200)] text-[var(--desk-pine-600)] focus:ring-[var(--desk-pine-600)] cursor-pointer shrink-0"
           />
-          <label htmlFor="terms" className="text-[11.5px] text-[#64748B] leading-[1.5]">
+          <label htmlFor="terms" className="text-[11.5px] text-[var(--desk-text-muted)] leading-[1.5]">
             {/*
               These pointed at /terms-of-service and /privacy-policy, which
               exist in neither app, so both links 404'd. Someone accepting
               clinical liability could not open either document.
             */}
-            I agree to the <a href={LEGAL_URLS.terms} target="_blank" rel="noopener noreferrer" className="font-bold text-[#0F3A53] hover:underline">Terms of Service</a> and <a href={LEGAL_URLS.privacy} target="_blank" rel="noopener noreferrer" className="font-bold text-[#0F3A53] hover:underline">Privacy Policy</a>, and I acknowledge that I am solely responsible and liable for all clinical advice, diagnosis, and services provided to clients via this platform.
+            I agree to the <a href={LEGAL_URLS.terms} target="_blank" rel="noopener noreferrer" className="font-bold text-[var(--desk-pine-600)] hover:underline">Terms of Service</a> and <a href={LEGAL_URLS.privacy} target="_blank" rel="noopener noreferrer" className="font-bold text-[var(--desk-pine-600)] hover:underline">Privacy Policy</a>, and I acknowledge that I am solely responsible and liable for all clinical advice, diagnosis, and services provided to clients via this platform.
           </label>
         </div>
 
-      <div className="mt-[18px] text-[13.5px] text-[#64748B] text-center">
+      <div className="mt-[18px] text-[13.5px] text-[var(--desk-text-muted)] text-center">
         Already have an account?{' '}
-        <Link to="/login" className="font-bold text-[#0F3A53] hover:underline">
+        <Link to="/login" className="font-bold text-[var(--desk-pine-600)] hover:underline">
           Log in
         </Link>
       </div>
