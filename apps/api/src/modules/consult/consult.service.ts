@@ -972,6 +972,16 @@ export class ConsultService {
   }
 
   /**
+   * Refuses a time on a day off. Shared with the staff booking and reschedule
+   * paths, which otherwise skip the public booking checks.
+   */
+  async assertNotAway(tenantId: bigint, providerProfileId: bigint, moment: Date): Promise<void> {
+    if (await this.isAway(tenantId, providerProfileId, moment)) {
+      throw new BadRequestException('The practice is away on that day. Choose another time.');
+    }
+  }
+
+  /**
    * Saves the repeating week (SET-06) and regenerates open slots from it.
    * The old body shape (days/windows, no formats) is still accepted and turns
    * into online weekly times, so older clients keep working.
