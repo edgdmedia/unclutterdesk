@@ -511,6 +511,13 @@ model ConsultBooking {
   /// The recap written for the client; emailed on request, never automatically.
   clientRecap                 String?   @db.Text
   clientRecapSentAt           DateTime?
+  /// After staff changed the service to a dearer one: what is still owed on top
+  /// of amountKobo. 'DUE' until the desk records it paid (it is then added to
+  /// amountKobo) or waives it.
+  balanceKobo                 BigInt?
+  balanceStatus               String?   @db.VarChar(10)
+  balanceSettledAt            DateTime?
+  balanceSettledByProfileId   BigInt?
   createdAt                   DateTime  @default(now())
   updatedAt                   DateTime?
 

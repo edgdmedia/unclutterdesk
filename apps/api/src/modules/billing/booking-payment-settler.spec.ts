@@ -149,3 +149,23 @@ describe('settling a successful booking charge', () => {
     expect(paystack.refundTransaction).not.toHaveBeenCalled();
   });
 });
+
+describe('a checkout that finishes after staff changed the service', () => {
+  it('confirms, records what was really paid, and leaves the rest owed', async () => {
+    const { settler, prisma } = make({ ...base, status: 'PENDING_PAYMENT', amountKobo: 3_500_000n }, { flips: true });
+    expect(await settler.settle('booking-900-1', { ...OK, amount: 1_000_000 })).toBe('confirmed');
+    expect(prisma.consultBooking.update).toHaveBeenCalledWith({
+      where: { id: 900n },
+      data: { amountKobo: 1_000_000n, balanceKobo: 2_500_000n, balanceStatus: 'DUE' },
+    });
+  });
+
+  it('records nothing extra when the charge covers the price, or carries no amount', async () => {
+    const full = make({ ...base, status: 'PENDING_PAYMENT', amountKobo: 3_500_000n }, { flips: true });
+    await full.settler.settle('booking-900-1', { ...OK, amount: 3_500_000 });
+    expect(full.prisma.consultBooking.update).not.toHaveBeenCalled();
+    const bare = make({ ...base, status: 'PENDING_PAYMENT', amountKobo: 3_500_000n }, { flips: true });
+    await bare.settler.settle('booking-900-1', OK);
+    expect(bare.prisma.consultBooking.findUnique).not.toHaveBeenCalled();
+  });
+});

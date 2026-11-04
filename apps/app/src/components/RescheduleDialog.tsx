@@ -3,6 +3,7 @@ import { AlertCircle, Loader2, X } from 'lucide-react';
 import { api } from '../utils/apiClient';
 import { useToast } from '@unclutterdesk/ui';
 import { formatClock } from '../utils/displayFormat';
+import { SlotDayPicker } from './booking/SlotDayPicker';
 
 interface Slot {
   id: string;
@@ -20,11 +21,6 @@ interface Options {
 }
 
 const DAY = new Intl.DateTimeFormat('en-GB', { weekday: 'short', day: 'numeric', month: 'short' });
-
-function formatSlot(startsAt: string, endsAt: string): string {
-  const start = new Date(startsAt);
-  return `${DAY.format(start)} · ${formatClock(start)} — ${formatClock(endsAt)}`;
-}
 
 function formatMoment(iso: string): string {
   const at = new Date(iso);
@@ -157,31 +153,13 @@ export function RescheduleDialog({
               they will find one for you.
             </p>
           ) : (
-            <div className="flex flex-col gap-2">
-              {options.slots.map((slot) => (
-                <label
-                  key={slot.id}
-                  className={`flex items-center gap-3 px-4 h-[52px] rounded-[14px] border cursor-pointer transition-colors ${
-                    selected === slot.id
-                      ? 'border-transparent bg-[var(--desk-surface-muted)]'
-                      : 'border-[var(--desk-border)] hover:bg-[var(--desk-surface)]'
-                  }`}
-                  style={selected === slot.id ? { boxShadow: `inset 0 0 0 2px ${primaryColor}` } : undefined}
-                >
-                  <input
-                    type="radio"
-                    name="reschedule-slot"
-                    value={slot.id}
-                    checked={selected === slot.id}
-                    onChange={() => setSelected(slot.id)}
-                    className="accent-[var(--desk-pine-600)]"
-                  />
-                  <span className="text-[13.5px] font-semibold text-[var(--desk-text)]">
-                    {formatSlot(slot.startsAt, slot.endsAt)}
-                  </span>
-                </label>
-              ))}
-            </div>
+            <SlotDayPicker
+              name="reschedule-slot"
+              slots={options.slots}
+              value={selected ?? ''}
+              onChange={(slot) => setSelected(slot.id)}
+              accent={primaryColor}
+            />
           )}
 
           {submitError ? (

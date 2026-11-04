@@ -481,7 +481,7 @@ export class BillingService {
       // Without the settler a payment would go unrecorded, so fail loudly and
       // let Paystack retry.
       if (!this.settler) throw new Error('Booking payments cannot be settled: BookingPaymentSettler is not wired.');
-      await this.settler.settle(reference, { status: 'success', paid_at: data?.paid_at });
+      await this.settler.settle(reference, { status: 'success', paid_at: data?.paid_at, amount: typeof data?.amount === 'number' ? data.amount : null });
       return;
     }
 
