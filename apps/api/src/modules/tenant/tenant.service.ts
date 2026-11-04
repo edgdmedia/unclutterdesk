@@ -15,6 +15,7 @@ import { GRANTABLE, PERMISSIONS } from '../../common/permissions';
 import { NEW_PRACTICE_TIER, PLAN_SELECT, PRACTICE_ENTITLEMENTS, practiceEntitlements, requiredTierFor, requiredTierForStaffRole, TIER_NAMES } from '../entitlements/entitlements';
 import { EntitlementError } from '../entitlements/entitlement.error';
 import { PersonFactsService } from '../practitioner-profile/person-facts.service';
+import { labelledAnswers } from '../intake/form-answers';
 import { JOIN_OPENS_CHOICES } from '../video/join-window';
 
 const RESERVED_SLUG_MESSAGE = 'That booking handle is reserved. Try another one.';
@@ -1204,14 +1205,8 @@ export class TenantService {
       .join('')
       .toUpperCase() || '??';
 
-    const intake = intakeResponses.flatMap((sub) => {
-      try {
-        const answers = sub.answersJson as Record<string, string>;
-        return Object.entries(answers).map(([q, a]) => ({ q, a }));
-      } catch {
-        return [];
-      }
-    });
+    // Each answer with its question's label, in the form's order (never a raw field key).
+    const intake = intakeResponses.flatMap((sub) => labelledAnswers(sub.form?.schemaJson, sub.answersJson).map((a) => ({ q: a.label, a: a.display })));
 
     const latestDerived = intakeResponses[0]?.derivedJson as
       | {

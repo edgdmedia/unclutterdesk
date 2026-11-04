@@ -3,6 +3,7 @@ import { BookingNotifier } from '../notifications/booking-notifier.service';
 import { listPendingForms } from './default-forms';
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '../../common/prisma/prisma.service';
+import { labelledAnswers } from './form-answers';
 
 type FormField = {
   id?: string;
@@ -108,18 +109,7 @@ export class IntakeService {
   }
 
   private formatAnswerEntries(schemaJson: unknown, answersJson: unknown) {
-    const fields = Array.isArray(schemaJson) ? (schemaJson as FormField[]) : [];
-    const answers = answersJson && typeof answersJson === 'object' ? (answersJson as Record<string, unknown>) : {};
-
-    return Object.entries(answers).map(([fieldId, value]) => {
-      const field = fields.find((entry) => entry.id === fieldId);
-      return {
-        id: fieldId,
-        label: field?.label || fieldId,
-        type: field?.type || 'text',
-        value,
-      };
-    });
+    return labelledAnswers(schemaJson, answersJson);
   }
 
   private deriveAssessmentPayload(form: { systemKey?: string | null } | null | undefined, answersJson: unknown): DerivedAssessmentPayload {

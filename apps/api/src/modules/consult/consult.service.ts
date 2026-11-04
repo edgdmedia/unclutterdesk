@@ -21,6 +21,7 @@ import { onlineHoldExpiry } from './online-hold';
 import { assertWithinMonthlyLimit, monthlyLimitReached } from './booking-limits';
 import { PLAN_SELECT } from '../entitlements/entitlements';
 import { PersonFactsService } from '../practitioner-profile/person-facts.service';
+import { labelledAnswers } from '../intake/form-answers';
 
 /** A Paystack checkout: the page to send the payer to, and the code its pop-up opens with. */
 type StartedPayment = { url: string; accessCode: string };
@@ -2104,7 +2105,8 @@ export class ConsultService {
         targetType: submission.targetType,
         status: submission.status,
         submittedAt: submission.createdAt.toISOString(),
-        answers: Object.entries((submission.answersJson || {}) as Record<string, unknown>).map(([key, value]) => ({ key, value })),
+        // Each answer with its question's label, in the form's order (never a raw field key).
+        answers: labelledAnswers(submission.form.schemaJson, submission.answersJson).map((a) => ({ key: a.id, label: a.label, value: a.value, display: a.display })),
       })),
       nextBooking: nextBooking
         ? {
