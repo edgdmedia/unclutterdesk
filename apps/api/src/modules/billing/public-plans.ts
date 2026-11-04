@@ -1,4 +1,5 @@
-import { PRACTICE_ENTITLEMENTS, PROFILE_ENTITLEMENTS, TIERS, TIER_NAMES, type Tier } from '../entitlements/entitlements';
+import { PRACTICE_ENTITLEMENTS, PROFILE_ENTITLEMENTS, TIERS, TIER_NAMES, instrumentAllowed, type Tier } from '../entitlements/entitlements';
+import { BUILTIN_INSTRUMENTS } from '../assessments/builtin-instruments';
 import { SUBSCRIPTION_PLANS, formatNaira, isSubscriptionTier } from './subscription-plans';
 
 /**
@@ -23,6 +24,10 @@ export function publicPlans() {
       staffRoles: practice.staffInviteRoles,
       googleCalendarSync: practice.googleCalendarSync,
       profilePdf: PROFILE_ENTITLEMENTS[tier].downloadablePdf,
+      introVideo: PROFILE_ENTITLEMENTS[tier].introVideo,
+      customBrandColor: PROFILE_ENTITLEMENTS[tier].customBrandColor,
+      /** The scored assessments the plan includes, by short name (PHQ-9, GAD-7, …). */
+      assessments: BUILTIN_INSTRUMENTS.filter((i) => instrumentAllowed(practice, i.tier)).map((i) => i.shortName),
     };
   });
 }
