@@ -51,6 +51,9 @@ const NOT_SHIPPED = [
   /(^|\/)__tests__\//,
   /^e2e\//,
   'pnpm-lock.yaml',
+  // The Therapysts design system's tokens, copied unchanged; the domain appears
+  // only in sample captions ("therapysts.com/yourname"), never as an address.
+  'packages/ui/src/brand/therapysts/tokens.json',
 ];
 
 const EXEMPT = [...CONFIG_FILES, ...DEPLOYMENT_FILES, ...NOT_SHIPPED];

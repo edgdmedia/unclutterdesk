@@ -1,0 +1,21 @@
+/*
+ * The Therapysts design system's typefaces, self-hosted (SIL Open Font
+ * License; CSP font-src 'self'). Fraunces for headings and names, Figtree
+ * for everything else.
+ */
+/* Headings use the cut made by scripts/make-heading-font.py: weight 560,
+   'SOFT' 100, 'WONK' 0, optical size 20-96, Latin (30 KB instead of 118 KB). */
+@font-face {
+  font-family: 'Fraunces';
+  src: url('./fonts/Fraunces-Heading.woff2') format('woff2');
+  font-weight: 560;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Figtree';
+  src: url('./fonts/Figtree-Variable.woff2') format('woff2');
+  font-weight: 300 900;
+  font-style: normal;
+  font-display: swap;
+}
