@@ -4,6 +4,7 @@ import { Button, Card, Eyebrow, Page, PageHeader, SegmentedControl, useToast } f
 import { api } from '../../../utils/apiClient';
 import { useSearchParams } from 'react-router-dom';
 import { formatClock } from '../../../utils/displayFormat';
+import { VideoRoomOpensSetting } from '../../../components/settings/VideoRoomOpensSetting';
 
 type Format = 'ONLINE' | 'IN_PERSON';
 type Window = { start: string; end: string };
@@ -12,6 +13,24 @@ type SlotView = {
   id: string; startsAt: string; endsAt: string; isActive: boolean;
   formats: Format[]; location: { id: string; name: string } | null; customised: boolean; booked: boolean;
 };
+type TimeOff = {
+  id: string;
+  startsOn: string;
+  endsOn: string;
+  note: string | null;
+};
+
+type TimeOffView = TimeOff & {
+  bookings: Array<{
+    id: string;
+    startsAt: string;
+    endsAt: string;
+    clientName: string;
+    serviceTitle: string;
+    status: string;
+  }>;
+};
+
 type Payload = {
   cancellationHours: number;
   sessionLengthMinutes: number;
@@ -19,6 +38,7 @@ type Payload = {
   locations: Array<{ id: string; name: string; city: string }>;
   weeklyTimes: WeeklyTime[];
   slots: SlotView[];
+  timeOff: TimeOff[];
 };
 
 const DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
@@ -125,7 +145,7 @@ export function AvailabilitySettingsPage() {
   const toast = useToast();
   const [searchParams, setSearchParams] = useSearchParams();
   const initialTab = (searchParams.get('tab') === 'upcoming' ? 'upcoming' : 'weekly') as 'weekly' | 'upcoming';
-  const [tab, setTab] = useState<typeof initialTab>(initialTab);
+  const [tab, setTab] = useState<'weekly' | 'upcoming' | 'timeoff'>(initialTab as 'weekly' | 'upcoming' | 'timeoff');
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -140,6 +160,9 @@ export function AvailabilitySettingsPage() {
   const [gapMinutes, setGapMinutes] = useState(10);
   const [cancellationHours, setCancellationHours] = useState(24);
   const [openChooser, setOpenChooser] = useState<string | null>(null);
+  const [timeOff, setTimeOff] = useState<TimeOffView[]>([]);
+  const [moving, setMoving] = useState<{ bookingId: string; clientName: string; slots: SlotView[] } | null>(null);
+  const [movingSaving, setMovingSaving] = useState(false);
 
   // Sync tab to URL
   React.useEffect(() => {
@@ -178,6 +201,24 @@ export function AvailabilitySettingsPage() {
       .catch((err) => !cancelled && setError(err instanceof Error ? err.message : 'Unable to load availability'))
       .finally(() => !cancelled && setLoading(false));
     return () => { cancelled = true; };
+  }, []);
+
+  /** Loads the time-off periods and groups the sessions already on those days. */
+  async function loadTimeOff() {
+    const result = await api.get<{ timeOff: TimeOff[]; bookings: Array<{ id: string; startsAt: string; endsAt: string; clientName: string; serviceTitle: string; status: string }> }>('/v1/consult/therapist/time-off');
+    const enriched = result.timeOff.map((t) => ({
+      ...t,
+      bookings: result.bookings.filter((b) => {
+        const slotDay = new Date(b.startsAt).toISOString().slice(0, 10);
+        return slotDay >= t.startsOn && slotDay <= t.endsOn;
+      }),
+    }));
+    setTimeOff(enriched);
+    return enriched;
+  }
+
+  useEffect(() => {
+    loadTimeOff().catch(() => undefined);
   }, []);
 
   const dayTimes = useMemo(() => {
@@ -273,6 +314,41 @@ export function AvailabilitySettingsPage() {
     }
   }
 
+  /** Opens a picker of the practitioner's open times so a session can be moved off a day off. */
+  async function startMove(booking: { id: string; clientName: string }) {
+    setError(null);
+    try {
+      const payload = await api.get<Payload>('/v1/consult/therapist/availability');
+      setMoving({
+        bookingId: booking.id,
+        clientName: booking.clientName,
+        slots: (payload.slots ?? []).filter((s) => !s.booked),
+      });
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Could not load your open times');
+    }
+  }
+
+  async function moveTo(slotId: string) {
+    if (!moving) return;
+    setMovingSaving(true);
+    setError(null);
+    try {
+      await api.post(`/v1/consult/practice/sessions/${moving.bookingId}/reschedule`, { availabilityId: slotId });
+      toast.success('Session moved');
+      setMoving(null);
+      const payload = await api.get<Payload>('/v1/consult/therapist/availability');
+      apply(payload);
+      await loadTimeOff();
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Could not move the session';
+      toast.error(message);
+      setError(message);
+    } finally {
+      setMovingSaving(false);
+    }
+  }
+
   const upcoming = useMemo(() => {
     const byDate = new Map<string, SlotView[]>();
     for (const slot of slots) {
@@ -284,9 +360,13 @@ export function AvailabilitySettingsPage() {
 
   const tabActions = (
     <SegmentedControl
-      options={['Weekly hours', 'Upcoming times']}
-      value={tab === 'upcoming' ? 'Upcoming times' : 'Weekly hours'}
-      onChange={(t: string) => setTab(t === 'Upcoming times' ? 'upcoming' : 'weekly')}
+      options={['Weekly hours', 'Upcoming times', 'Time off']}
+      value={tab === 'upcoming' ? 'Upcoming times' : tab === 'timeoff' ? 'Time off' : 'Weekly hours'}
+      onChange={(t: string) => {
+        if (t === 'Upcoming times') setTab('upcoming');
+        else if (t === 'Time off') setTab('timeoff');
+        else setTab('weekly');
+      }}
       className="h-[40px] p-1 bg-[#EEF2F7] rounded-[14px] inline-flex gap-1 border border-[#E2E8F0] shrink-0"
     />
   );
@@ -374,6 +454,70 @@ export function AvailabilitySettingsPage() {
                 </div>
               ))}
             </Card>
+          ) : tab === 'timeoff' ? (
+            <Card padding="p-5" className="space-y-4">
+              <Eyebrow>TIME OFF</Eyebrow>
+              <p className="text-[12.5px] text-[#64748B]">Mark days you are away. Those days close to booking; existing sessions are listed so you can move them.</p>
+              
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                <input type="date" className="h-[42px] rounded-[13px] border border-[#E2E8F0] bg-[#F8FAFC] px-3 text-[13.5px] font-semibold" id="timeoff-start" />
+                <input type="date" className="h-[42px] rounded-[13px] border border-[#E2E8F0] bg-[#F8FAFC] px-3 text-[13.5px] font-semibold" id="timeoff-end" />
+                <input type="text" placeholder="Optional note" className="h-[42px] rounded-[13px] border border-[#E2E8F0] bg-[#F8FAFC] px-3 text-[13.5px] font-semibold" id="timeoff-note" />
+              </div>
+              <Button className="h-[42px]" onClick={() => {
+                const start = (document.getElementById('timeoff-start') as HTMLInputElement).value;
+                const end = (document.getElementById('timeoff-end') as HTMLInputElement).value || start;
+                const note = (document.getElementById('timeoff-note') as HTMLInputElement).value || null;
+                if (!start) { toast.error('Choose the first day'); return; }
+                api.post('/v1/consult/therapist/time-off', { startsOn: start, endsOn: end, note }).then(() => {
+                  toast.success('Time off added. Open times closed for those days.');
+                  // Refresh
+                  api.get<{ timeOff: TimeOff[]; bookings: any[] }>('/v1/consult/therapist/time-off').then((result) => {
+                    const enriched = result.timeOff.map((t) => ({
+                      ...t,
+                      bookings: result.bookings.filter((b: any) => {
+                        const slotDay = new Date(b.startsAt).toISOString().slice(0, 10);
+                        return slotDay >= t.startsOn && slotDay <= t.endsOn;
+                      }),
+                    }));
+                    setTimeOff(enriched);
+                  });
+                }).catch((err) => toast.error(err instanceof Error ? err.message : 'Could not add time off'));
+              }}><Plus className="h-4 w-4" />Add time off</Button>
+
+              <div className="space-y-3">
+                {timeOff.map((t) => (
+                  <div key={t.id} className="border border-[#F1F5F9] rounded-[14px] p-4">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <div className="text-[14px] font-bold text-[#0F172A]">{t.startsOn} {t.startsOn !== t.endsOn ? `– ${t.endsOn}` : ''}{t.note ? ` · ${t.note}` : ''}</div>
+                        <div className="text-[12px] text-[#64748B]">{t.bookings.length} existing session{t.bookings.length !== 1 ? 's' : ''}</div>
+                      </div>
+                      <Button variant="ghost" className="text-[12px] text-[#DC2626]" onClick={() => {
+                        if (!confirm('Remove this time off? Open times will be regenerated.')) return;
+                        api.delete(`/v1/consult/therapist/time-off/${t.id}`).then(() => {
+                          toast.success('Time off removed');
+                          return loadTimeOff();
+                        }).catch((err) => toast.error(err instanceof Error ? err.message : 'Could not remove'));
+                      }}>Remove</Button>
+                    </div>
+                    {t.bookings.length > 0 && (
+                      <div className="mt-3 space-y-1.5">
+                        {t.bookings.map((b) => (
+                          <div key={b.id} className="flex items-center justify-between text-[12px] bg-[#FEF3C7] border border-[#FDE68A] rounded-[10px] px-3 py-2">
+                            <span><span className="font-bold">{b.clientName}</span> · {b.serviceTitle} · {new Date(b.startsAt).toLocaleString('en-GB', { dateStyle: 'short', timeStyle: 'short' })}</span>
+                            <button className="text-[#0F3A53] underline font-bold cursor-pointer" onClick={() => void startMove(b)}>Move</button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                ))}
+                {timeOff.length === 0 && (
+                  <div className="text-[13px] text-[#64748B]">No time off scheduled.</div>
+                )}
+              </div>
+            </Card>
           ) : (
             <Card padding="p-5" className="space-y-2">
               <Eyebrow>UPCOMING TIMES</Eyebrow>
@@ -425,6 +569,7 @@ export function AvailabilitySettingsPage() {
                 {[12, 24, 48].map((h) => <option key={h} value={h}>{h} hours</option>)}
               </select>
             </label>
+            <VideoRoomOpensSetting />
             <div className="p-3.5 rounded-[14px] bg-[#EFF6FB] text-[#0F3A53] text-xs font-medium flex items-start gap-2.5 leading-relaxed">
               <Info className="h-4 w-4 shrink-0 mt-0.5" />
               <span>Saving regenerates the next 28 days of open times from this week.</span>
@@ -432,6 +577,39 @@ export function AvailabilitySettingsPage() {
           </Card>
         </div>
       )}
+
+      {moving ? (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4" role="dialog" aria-modal="true" aria-label="Move session">
+          <Card padding="p-5" className="w-full max-w-[480px] max-h-[80vh] overflow-y-auto space-y-3">
+            <div>
+              <Eyebrow>MOVE SESSION</Eyebrow>
+              <p className="mt-1 text-[13px] text-[#475569]">
+                Choose a new time for <span className="font-bold text-[#0F172A]">{moving.clientName}</span>. Their current time is not cancelled.
+              </p>
+            </div>
+            {moving.slots.length === 0 ? (
+              <p className="text-[13px] text-[#64748B]">No open times to move to. Add hours in Weekly hours first.</p>
+            ) : (
+              <div className="grid grid-cols-2 gap-2">
+                {moving.slots.slice(0, 24).map((slot) => (
+                  <button
+                    key={slot.id}
+                    type="button"
+                    disabled={movingSaving}
+                    onClick={() => void moveTo(slot.id)}
+                    className="h-[40px] rounded-[12px] border border-[#E2E8F0] bg-white px-2 text-[12.5px] font-bold text-[#0F172A] hover:border-[#0F3A53] disabled:opacity-50 cursor-pointer"
+                  >
+                    {new Date(slot.startsAt).toLocaleString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit', timeZone: 'Africa/Lagos' })}
+                  </button>
+                ))}
+              </div>
+            )}
+            <div className="flex justify-end">
+              <Button variant="ghost" onClick={() => setMoving(null)} disabled={movingSaving}>Close</Button>
+            </div>
+          </Card>
+        </div>
+      ) : null}
     </Page>
   );
 }

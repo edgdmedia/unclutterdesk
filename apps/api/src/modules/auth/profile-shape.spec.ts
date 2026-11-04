@@ -25,6 +25,7 @@ const FIELDS = [
   'practiceName',
   'tenantSlug',
   'onboardingIntent',
+  'joinOpensMinutesBefore',
   'plan',
   'isTherapist',
   'platformAdmin',

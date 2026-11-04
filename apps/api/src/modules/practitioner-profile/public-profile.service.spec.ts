@@ -65,7 +65,7 @@ describe('public profile reads (§6.11)', () => {
     const result = (await service.byHandle('adaeze')) as any;
     expect(Object.keys(result.profile).sort()).toEqual(
       [
-        'about', 'acceptingClients', 'approach', 'bookingMode', 'city', 'contactEmail', 'countryCode', 'credentialsText',
+        'about', 'acceptingClients', 'approach', 'bookingMode', 'brandColor', 'city', 'colors', 'contactEmail', 'countryCode', 'credentialsText',
         'deskBookingUrl', 'displayName', 'externalBookingUrl', 'faithIntegration', 'feeRangeText', 'handle', 'headline', 'kind', 'languages', 'layoutKey',
         'modalities', 'offersInPerson', 'offersOnline', 'photoUrl', 'populations', 'previewImageUrl', 'pronouns', 'publishedAt',
         'socialLinks', 'specialties', 'supervisedBy', 'themeKey', 'timeline', 'updatedAt', 'yearsInPractice',
@@ -133,5 +133,14 @@ describe('public profile reads (§6.11)', () => {
     const { service, prisma } = setup();
     await service.sitemap();
     expect(prisma.practitionerProfile.findMany.mock.calls[0][0].where).toEqual({ status: 'PUBLISHED' });
+  });
+
+  it('gives a custom-colour profile its colour and readable palette, and no colour otherwise', async () => {
+    const custom = ((await setup({ ...ROW, themeKey: 'custom', brandColor: '#FFEB3B' }).service.byHandle('adaeze')) as any).profile;
+    expect(custom.brandColor).toBe('#FFEB3B');
+    expect(custom.colors.accent).not.toBe('#FFEB3B');
+    expect(custom.colors.background).toBe('#F7FAFE');
+    const warm = ((await setup({ ...ROW, themeKey: 'warm', brandColor: '#FFEB3B' }).service.byHandle('adaeze')) as any).profile;
+    expect(warm.brandColor).toBeNull();
   });
 });

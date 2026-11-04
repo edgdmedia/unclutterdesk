@@ -42,6 +42,7 @@ function make({ booking = null as any, slots = [] as any[] } = {}) {
     consultBooking: { count: vi.fn().mockResolvedValue(0), findFirst: vi.fn().mockResolvedValue(booking), update: vi.fn(), updateMany: vi.fn().mockResolvedValue({ count: 1 }) },
     profile: { findFirst: vi.fn().mockResolvedValue({ id: CLIENT, email: 'ada@example.com', firstName: 'Ada', lastName: 'Okafor', phone: '080' }) },
     tenant: { findUnique: vi.fn().mockResolvedValue({ slug: 'smith', customDomain: null, customDomainStatus: null }) },
+    timeOff: { findMany: vi.fn().mockResolvedValue([]) },
     $transaction: vi.fn(async (cb: any) => cb(tx)),
   };
   const billing: any = {

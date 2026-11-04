@@ -24,11 +24,30 @@ type BookingState = {
   email?: string;
 };
 
-export function BookingConfirmedPage() {
+/** Optional preview data for Brand settings page. When provided, renders a
+ * sample confirmed session instead of "No booking confirmation found". */
+export interface PreviewBooking {
+  bookingId: string;
+  icalToken?: string;
+  startsAt: string;
+  endsAt: string;
+  serviceTitle: string;
+  therapistName: string;
+  format?: string;
+  status: string;
+  manualPayment?: ManualPayment | null;
+}
+
+interface BookingConfirmedPageProps {
+  /** Preview sample for Brand page; not used on the real confirmed page. */
+  preview?: PreviewBooking;
+}
+
+export function BookingConfirmedPage({ preview }: BookingConfirmedPageProps = {}) {
   const navigate = useNavigate();
   const location = useLocation();
   const state = (location.state as BookingState | null) || {};
-  const booking = state.booking;
+  const booking = state.booking ?? preview;
   const brand = useBrand();
   const primaryColor = brand.primaryColor || '#0F3A53';
 

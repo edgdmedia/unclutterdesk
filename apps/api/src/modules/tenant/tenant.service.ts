@@ -16,6 +16,7 @@ import { NEW_PRACTICE_TIER, PLAN_SELECT, PRACTICE_ENTITLEMENTS, practiceEntitlem
 import { EntitlementError } from '../entitlements/entitlement.error';
 import { PersonFactsService } from '../practitioner-profile/person-facts.service';
 import { labelledAnswers } from '../intake/form-answers';
+import { JOIN_OPENS_CHOICES } from '../video/join-window';
 
 const RESERVED_SLUG_MESSAGE = 'That booking handle is reserved. Try another one.';
 
@@ -349,7 +350,11 @@ export class TenantService {
     address?: string;
     category?: string;
     useProfileForPractice?: boolean;
+    joinOpensMinutesBefore?: number;
   }) {
+    if (dto.joinOpensMinutesBefore !== undefined && !(JOIN_OPENS_CHOICES as readonly number[]).includes(dto.joinOpensMinutesBefore as number)) {
+      throw new BadRequestException('Choose 0, 5, 10 or 15 minutes');
+    }
     if (dto.useProfileForPractice !== undefined && typeof dto.useProfileForPractice !== 'boolean') {
       throw new BadRequestException('useProfileForPractice must be true or false');
     }
@@ -405,6 +410,7 @@ export class TenantService {
       ...(dto.address !== undefined ? { address: dto.address?.trim() || null } : {}),
       ...(dto.category !== undefined ? { category: dto.category?.trim() || null } : {}),
       ...(dto.useProfileForPractice !== undefined ? { useProfileForPractice: dto.useProfileForPractice } : {}),
+      ...(dto.joinOpensMinutesBefore !== undefined ? { joinOpensMinutesBefore: dto.joinOpensMinutesBefore } : {}),
     };
 
     try {
@@ -514,6 +520,7 @@ export class TenantService {
         address: true,
         category: true,
         useProfileForPractice: true,
+        joinOpensMinutesBefore: true,
       },
     });
 

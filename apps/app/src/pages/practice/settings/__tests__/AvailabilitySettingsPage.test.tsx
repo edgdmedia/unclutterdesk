@@ -4,9 +4,20 @@ import { cleanup, fireEvent, renderWithApp, screen, waitFor } from '../../../../
 
 const get = vi.fn();
 const patch = vi.fn();
+const post = vi.fn();
+const del = vi.fn();
 vi.mock('../../../../utils/apiClient', async (importOriginal) => {
   const real = await importOriginal<typeof import('../../../../utils/apiClient')>();
-  return { ...real, api: { ...real.api, get: (...a: unknown[]) => get(...a), patch: (...a: unknown[]) => patch(...a) } };
+  return {
+    ...real,
+    api: {
+      ...real.api,
+      get: (...a: unknown[]) => get(...a),
+      patch: (...a: unknown[]) => patch(...a),
+      post: (...a: unknown[]) => post(...a),
+      delete: (...a: unknown[]) => del(...a),
+    },
+  };
 });
 const { AvailabilitySettingsPage } = await import('../AvailabilitySettingsPage');
 
@@ -29,9 +40,15 @@ const PAYLOAD = {
 };
 
 beforeEach(() => {
-  get.mockReset(); patch.mockReset();
-  get.mockResolvedValue(PAYLOAD);
+  get.mockReset(); patch.mockReset(); post.mockReset(); del.mockReset();
+  get.mockImplementation((url: string) =>
+    Promise.resolve(url.includes('time-off')
+      ? { timeOff: [], bookings: [] }
+      : PAYLOAD),
+  );
   patch.mockResolvedValue(PAYLOAD);
+  post.mockResolvedValue({ timeOff: [], bookings: [] });
+  del.mockResolvedValue({ timeOff: [], bookings: [] });
 });
 afterEach(cleanup);
 
@@ -120,5 +137,81 @@ describe('the availability page', () => {
     await screen.findByText('Monday');
     fireEvent.click(screen.getByRole('button', { name: /save availability/i }));
     expect((await screen.findAllByText(/only works online/))[0].textContent).toMatch(/Mon 10:00/);
+  });
+
+  it('the Time off tab lists periods and the sessions already on those days', async () => {
+    get.mockImplementation((url: string) =>
+      Promise.resolve(url.includes('time-off')
+        ? {
+            timeOff: [{ id: 't1', startsOn: '2026-11-05', endsOn: '2026-11-06', note: 'Conference' }],
+            bookings: [
+              { id: '100', startsAt: '2026-11-05T08:00:00.000Z', endsAt: '2026-11-05T08:50:00.000Z', clientName: 'Bisi Ade', serviceTitle: 'Individual Therapy', status: 'CONFIRMED' },
+            ],
+          }
+        : PAYLOAD),
+    );
+    renderWithApp(<AvailabilitySettingsPage />);
+    await screen.findByText('Monday');
+    fireEvent.click(screen.getByRole('tab', { name: 'Time off' }));
+    expect(await screen.findByText(/Conference/)).toBeTruthy();
+    expect(screen.getByText(/Bisi Ade/)).toBeTruthy();
+    expect(screen.getByRole('button', { name: /Move/ })).toBeTruthy();
+  });
+
+  it('adding time off posts the range and note', async () => {
+    renderWithApp(<AvailabilitySettingsPage />);
+    await screen.findByText('Monday');
+    fireEvent.click(screen.getByRole('tab', { name: 'Time off' }));
+    fireEvent.change(document.getElementById('timeoff-start') as HTMLInputElement, { target: { value: '2026-11-05' } });
+    fireEvent.change(document.getElementById('timeoff-end') as HTMLInputElement, { target: { value: '2026-11-06' } });
+    fireEvent.change(document.getElementById('timeoff-note') as HTMLInputElement, { target: { value: 'Conference' } });
+    fireEvent.click(screen.getByRole('button', { name: /add time off/i }));
+    await waitFor(() => expect(post).toHaveBeenCalledWith('/v1/consult/therapist/time-off', {
+      startsOn: '2026-11-05',
+      endsOn: '2026-11-06',
+      note: 'Conference',
+    }));
+  });
+
+  it('removing a period deletes it by id', async () => {
+    get.mockImplementation((url: string) =>
+      Promise.resolve(url.includes('time-off')
+        ? {
+            timeOff: [{ id: 't1', startsOn: '2026-11-05', endsOn: '2026-11-05', note: null }],
+            bookings: [],
+          }
+        : PAYLOAD),
+    );
+    const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true);
+    renderWithApp(<AvailabilitySettingsPage />);
+    await screen.findByText('Monday');
+    fireEvent.click(screen.getByRole('tab', { name: 'Time off' }));
+    fireEvent.click(await screen.findByRole('button', { name: /Remove/ }));
+    await waitFor(() => expect(del).toHaveBeenCalledWith('/v1/consult/therapist/time-off/t1'));
+    confirmSpy.mockRestore();
+  });
+
+  it('moving a session on a day off posts to the staff reschedule endpoint', async () => {
+    get.mockImplementation((url: string) =>
+      Promise.resolve(url.includes('time-off')
+        ? {
+            timeOff: [{ id: 't1', startsOn: '2026-11-05', endsOn: '2026-11-05', note: null }],
+            bookings: [
+              { id: '100', startsAt: '2026-11-05T08:00:00.000Z', endsAt: '2026-11-05T08:50:00.000Z', clientName: 'Bisi Ade', serviceTitle: 'Individual Therapy', status: 'CONFIRMED' },
+            ],
+          }
+        : PAYLOAD),
+    );
+    post.mockResolvedValue({ id: '100' });
+    renderWithApp(<AvailabilitySettingsPage />);
+    await screen.findByText('Monday');
+    fireEvent.click(screen.getByRole('tab', { name: 'Time off' }));
+    fireEvent.click(await screen.findByRole('button', { name: /^Move$/ }));
+    const dialog = await screen.findByRole('dialog', { name: /move session/i });
+    // The first open time is slot 30; slot 31 is booked and is not offered.
+    const options = Array.from(dialog.querySelectorAll('button')).filter((b) => /Oct|Nov/.test(b.textContent ?? ''));
+    expect(options.length).toBe(1);
+    fireEvent.click(options[0]);
+    await waitFor(() => expect(post).toHaveBeenCalledWith('/v1/consult/practice/sessions/100/reschedule', { availabilityId: '30' }));
   });
 });

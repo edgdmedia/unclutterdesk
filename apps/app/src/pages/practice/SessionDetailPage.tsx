@@ -6,7 +6,8 @@ import { Card, Eyebrow, Page, PageHeader, StatTile, StatusBadge, useToast } from
 import { PaymentChip } from '../../components/booking/PaymentChip';
 import { api } from '../../utils/apiClient';
 import type { SessionRow } from './SessionsPage';
-import { formatWhen } from '../../utils/displayFormat';
+import { activeDisplayPrefs, formatWhen } from '../../utils/displayFormat';
+import { sessionStatus } from '../../utils/sessionStatus';
 
 interface SessionDetail extends SessionRow {
   clientEmail: string;
@@ -132,7 +133,7 @@ export function SessionDetailPage() {
       }
     >
       <div className="flex flex-wrap items-center gap-3">
-        <StatusBadge status={d.status} />
+        {(() => { const st = sessionStatus(d.status, d.startsAt, d.endsAt, new Date(), activeDisplayPrefs().timezone); return <StatusBadge status={st.label} tone={st.tone} />; })()}
         <PaymentChip status={d.status} paymentMethod={d.paymentMethod} holdExpiresAt={d.holdExpiresAt} />
         {d.bookedBy ? <span className="text-[11.5px] text-[#64748B]">Booked by {d.bookedBy}</span> : null}
       </div>

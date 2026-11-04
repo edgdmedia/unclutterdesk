@@ -16,6 +16,8 @@ interface AuthProfile {
   tenantSlug?: string;
   /** §6.8: PROFILE for a therapist who signed up for a profile first; they start in the profile editor. */
   onboardingIntent?: 'PROFILE' | 'PRACTICE';
+  /** VID-02: how early this practice's video rooms open (0, 5, 10 or 15 minutes). */
+  joinOpensMinutesBefore?: number;
   /** The practice's plan: FREE, STARTER, PRO or CLINIC. */
   plan?: string;
   platformRole?: string;

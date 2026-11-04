@@ -101,6 +101,8 @@ model Tenant {
 
   /// v2 §6.8: how the owner arrived. PROFILE = profile-first signup.
   onboardingIntent        OnboardingIntent          @default(PRACTICE)
+  /// VID-02: minutes before a session that its video room opens (0, 5, 10 or 15). Closing stays fixed.
+  joinOpensMinutesBefore  Int                       @default(10)
   /// §6.17: while the practice is solo, its page fills empty fields from the owner's profile.
   useProfileForPractice   Boolean                   @default(true)
   /// v2 §6.16: what a solo practice shows at `/`. Set once at the owner's first
@@ -117,6 +119,7 @@ model Tenant {
   discountCodes           DiscountCode[]
   locations               PracticeLocation[]
   weeklyTimes             TherapistWeeklyTime[]
+  timeOff                 TimeOff[]
   pendingInvites          ConsultPendingInvite[]
   universalForms          UniversalForm[]
   formTemplates           FormTemplate[]
@@ -321,6 +324,7 @@ model ConsultTherapistProfile {
   availabilities     ConsultAvailability[]
   workLocations      TherapistLocation[]
   weeklyTimes        TherapistWeeklyTime[]
+  timeOff            TimeOff[]
   practitionerPlaces PractitionerPlace[]
 
   @@unique([tenantId, profileId])
@@ -414,6 +418,24 @@ model TherapistWeeklyTime {
 
   @@unique([profileId, weekday, start])
   @@index([tenantId, profileId])
+}
+
+/// A date or date range the therapist is away. Those days close to booking;
+/// existing bookings stay and are listed to move, never cancelled automatically.
+model TimeOff {
+  id        BigInt   @id @default(autoincrement())
+  tenantId  BigInt
+  profileId BigInt
+  startsOn  DateTime @db.Date
+  endsOn    DateTime @db.Date
+  note      String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  tenant    Tenant                  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  therapist ConsultTherapistProfile @relation(fields: [profileId], references: [profileId], onDelete: Cascade)
+
+  @@index([tenantId, profileId, startsOn, endsOn])
 }
 
 model ConsultAvailability {
@@ -1005,6 +1027,7 @@ model PractitionerProfile {
   templateKey               String? // template used to start (§6.6)
   themeKey                  String                    @default("calm") // §6.5 palette
   layoutKey                 String                    @default("classic") // §6.5 layout
+  brandColor                String?                   @db.VarChar(7) // §6.5 custom colour '#RRGGBB'; used when themeKey = 'custom' (Starter and up)
   displayName               String
   pronouns                  String?
   photoKey                  String? // R2 object key (§4.4)

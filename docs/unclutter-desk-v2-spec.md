@@ -650,7 +650,7 @@ A profile's look is two separate choices, decided 3 Nov 2026 (design canvas "The
   - `editorial`: wide photo banner, the headline as a serif pull quote (Fraunces), numbered sections divided by rules.
   - `compact`: small header with the photo or initials beside the name, sections as cards. Suits short profiles.
   - `split`: on a desktop, the sessions-and-fees panel stays beside the profile; on a phone it comes straight after the introduction.
-- **Palettes** (colour tokens only). `themeKey` keeps its name and values: `calm` (default, pine), `warm` (clay), `clinical` (blue), `earth` (olive), `night` (dark).
+- **Palettes** (colour tokens only), from the Therapysts design system (adopted 4 Nov 2026): `calm` (default, blue), `warm`, `crisp` (replaces `clinical`; the API accepts `clinical` for one release), `earth`, `night`. Values are in the design system's palette table.
 - Every palette passes WCAG 2.1 AA on every layout: body, muted and accent text at 4.5:1 on their backgrounds, and button text at 4.5:1 on the accent. A test checks each pair.
 - The editor shows both pickers with a live phone preview. All layouts and the five palettes are on all plans.
 - **Custom brand colour** (agreed 3 Nov 2026): a sixth palette choice, `themeKey = 'custom'`, with `brandColor` (hex).
@@ -660,7 +660,7 @@ A profile's look is two separate choices, decided 3 Nov 2026 (design canvas "The
   - A solo practice has no separate brand colour. Its practice page, booking flow and emails use the owner's profile layout and palette (custom colour included).
   - A team practice keeps its own brand colour (`Tenant.primaryColor`), and it's offered the same palettes and custom colour.
 - **The booking flow wears the page it came from:** the same palette or brand colour, and the practice's logo. Going from profile to booking never looks like a different website.
-- Fonts are self-hosted (CSP `font-src 'self'`): Outfit, and Fraunces for `editorial` only.
+- Fonts are self-hosted (CSP `font-src 'self'`): Fraunces for headings and names, Figtree for everything else (Therapysts design system). The dashboard uses the same system, Figtree throughout.
 - The public site and the dashboard share one design language: the Unclutter Desk design system, extended with a Public surface (larger type, one photograph per page, more air). The profile PDF (§6.10) and preview images (§6.3) follow the profile's layout and palette.
 
 ### 6.6 Templates

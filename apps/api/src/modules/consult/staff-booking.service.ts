@@ -105,6 +105,7 @@ export class StaffBookingService {
     if (!service) throw new BadRequestException('That service is not offered. Choose another service.');
 
     const time = await this.resolveTime(tenantId, providerId, service, dto);
+    await this.consult.assertNotAway(tenantId, providerId, time.startsAt);
 
     // §5.5: a session today (Lagos time) is never blocked by the month's
     // limit, though it counts; a future one follows the limit.

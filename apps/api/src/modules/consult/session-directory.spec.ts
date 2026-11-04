@@ -150,6 +150,7 @@ describe('rescheduleByStaff', () => {
         update: vi.fn(),
         updateMany: vi.fn().mockResolvedValue({ count: 1 }),
       },
+      timeOff: { findFirst: vi.fn().mockResolvedValue(over.timeOff ?? null) },
     };
   }
   it('moves the booking and returns the old slot to the pool', async () => {
@@ -206,6 +207,13 @@ describe('rescheduleByStaff', () => {
       prisma.$transaction = vi.fn(async (fn: any) => fn(t));
       await expect(service.rescheduleByStaff(TENANT, DESK, 900n, 301n)).rejects.toThrow(/cannot be moved/i);
     }
+  });
+  it('refuses to move a session onto a day the therapist is away', async () => {
+    const t = tx({ timeOff: { id: 7n } });
+    const { service, prisma } = make();
+    prisma.$transaction = vi.fn(async (fn: any) => fn(t));
+    await expect(service.rescheduleByStaff(TENANT, DESK, 900n, 301n)).rejects.toThrow(/away on that day/i);
+    expect(t.consultBooking.update).not.toHaveBeenCalled();
   });
 });
 

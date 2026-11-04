@@ -6,7 +6,7 @@ import { contrastRatio } from '../tenantBrandStyle';
 
 describe('profile themes (§6.5)', () => {
   it('offers the five v2 presets, calm first as the default', () => {
-    expect(PROFILE_THEMES.map((t) => t.key)).toEqual(['calm', 'warm', 'clinical', 'earth', 'night']);
+    expect(PROFILE_THEMES.map((t) => t.key)).toEqual(['calm', 'warm', 'crisp', 'earth', 'night']);
     expect(profileTheme('nope').key).toBe('calm');
   });
 
@@ -36,5 +36,12 @@ describe('profile themes (§6.5)', () => {
     ])('%s', (_pair, fg, bg) => {
       expect(contrastRatio(fg, bg)).toBeGreaterThanOrEqual(4.5);
     });
+  });
+});
+
+describe('the old clinical palette', () => {
+  it('is read as crisp', async () => {
+    const { profileTheme } = await import('../profileThemes');
+    expect(profileTheme('clinical').key).toBe('crisp');
   });
 });

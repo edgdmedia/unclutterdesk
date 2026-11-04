@@ -12,9 +12,10 @@ vi.mock('../../../../utils/apiClient', () => ({
   TENANT_SLUG: 'dr-smith',
   API_BASE: '',
 }));
-vi.mock('../../../../context/AuthContext', () => ({
-  useAuth: () => ({ isAuthenticated: true, profile: { email: 'ada@example.com', type: 'user', firstName: 'Ada', lastName: 'O' }, logout: vi.fn() }),
-}));
+vi.mock('../../../../context/AuthContext', () => {
+  const auth = ({ isAuthenticated: true, profile: { email: 'ada@example.com', type: 'user', firstName: 'Ada', lastName: 'O' }, logout: vi.fn() });
+  return { useAuth: () => auth, useOptionalAuth: () => auth };
+});
 // The dialog's own flow is tested separately; here it just reports success.
 vi.mock('../../../../components/RescheduleDialog', () => ({
   RescheduleDialog: ({ onRescheduled }: { onRescheduled: () => void }) => (

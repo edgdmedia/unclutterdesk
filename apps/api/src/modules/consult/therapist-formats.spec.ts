@@ -33,6 +33,7 @@ function make(therapistOver: Record<string, unknown> = {}) {
       count: vi.fn().mockResolvedValue(0),
     },
     tenant: { findUnique: vi.fn().mockResolvedValue({ cancellationHours: 24 }), update: vi.fn() },
+    timeOff: { findMany: vi.fn().mockResolvedValue([]) },
   };
   const service = new ConsultService(prisma, {} as any, {} as any, {} as any, {} as any, {} as any, {} as any);
   return { service, prisma };

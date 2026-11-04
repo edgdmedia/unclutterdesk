@@ -35,6 +35,7 @@ function make(s: Record<string, unknown> | null, bookedCount = 0) {
     practiceLocation: { findMany: vi.fn().mockResolvedValue([{ id: 4n }]) },
     therapistWeeklyTime: { findMany: vi.fn().mockResolvedValue([]), deleteMany: vi.fn(), createMany: vi.fn() },
     tenant: { findUnique: vi.fn().mockResolvedValue({ cancellationHours: 24 }), update: vi.fn() },
+    timeOff: { findMany: vi.fn().mockResolvedValue([]) },
   };
   const service = new ConsultService(prisma, {} as any, {} as any, {} as any, {} as any, {} as any, {} as any);
   return { service, prisma };
