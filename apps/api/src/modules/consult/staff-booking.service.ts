@@ -5,6 +5,7 @@ import { NotificationService } from '../notifications/notification.service';
 import { CalendarService } from '../calendar/calendar.service';
 import { ConsultService } from './consult.service';
 import { assertWithinMonthlyLimit } from './booking-limits';
+import { lagosTomorrowStart } from '../../common/lagos-time';
 import { paidAmount, parseStaffPayment, paymentsAllowed, payLinkToken, payLinkTokenValid, staffLinkHold } from './staff-booking-rules';
 import { allowedFormats, asFormat, priceFor } from './formats';
 import { chargedKobo } from '../../common/revenue';
@@ -40,6 +41,23 @@ export interface StaffBookingResult {
   location: { id: string } | null;
 }
 
+/** One time in a request for several: an open slot, or a time staff choose. */
+export interface StaffTimeInput {
+  availabilityId?: string;
+  startsAt?: string;
+  format?: string;
+  locationId?: string | null;
+}
+
+/** Several times for one client, with everything else as one booking. */
+export type StaffSeveralInput = StaffBookingInput & { times?: StaffTimeInput[] };
+export type StaffSeveralResult = { bookings: StaffBookingResult[] };
+
+/** A client who paid for a block books part of it now; more than this is a plan (§11.2). */
+export const MAX_TIMES_AT_ONCE = 8;
+
+type BookingContext = Awaited<ReturnType<StaffBookingService['bookingContext']>>;
+
 const id = (v: unknown, what: string): bigint => {
   if (!/^\d+$/.test(String(v ?? ''))) throw new BadRequestException(`Choose ${what}.`);
   return BigInt(String(v));
@@ -68,6 +86,12 @@ export class StaffBookingService {
   ) {}
 
   async createForClient(tenantId: bigint, actorProfileId: bigint, dto: StaffBookingInput): Promise<StaffBookingResult> {
+    const ctx = await this.bookingContext(tenantId, actorProfileId, dto);
+    return (await this.bookTimes(tenantId, actorProfileId, dto, ctx.payment, ctx, [dto]))[0];
+  }
+
+  /** Who books, for whom, with whom and what: checked once however many times are booked. */
+  async bookingContext(tenantId: bigint, actorProfileId: bigint, dto: StaffBookingInput) {
     const payment = parseStaffPayment(dto?.payment);
     const clientId = id(dto?.clientProfileId, 'a client');
     const serviceId = id(dto?.serviceId, 'a service');
@@ -104,13 +128,40 @@ export class StaffBookingService {
     const service = await this.prisma.consultService.findFirst({ where: { id: serviceId, tenantId, isActive: true }, include: { formats: true } });
     if (!service) throw new BadRequestException('That service is not offered. Choose another service.');
 
-    const time = await this.resolveTime(tenantId, providerId, service, dto);
-    await this.consult.assertNotAway(tenantId, providerId, time.startsAt);
+    return { payment, client, therapist, service, providerId };
+  }
 
-    // §5.5: a session today (Lagos time) is never blocked by the month's
-    // limit, though it counts; a future one follows the limit.
-    const tenant = await this.prisma.tenant.findUnique({ where: { id: tenantId } });
-    await assertWithinMonthlyLimit(this.prisma, tenantId, tenant, { sessionStartsAt: time.startsAt });
+  /**
+   * Several sessions for one client in one go: a client who paid for four
+   * sessions books two now (today 20:00, tomorrow 14:00) and the rest later.
+   * The same rules as one booking, applied to every time; all are booked or
+   * none, and the client gets one email listing them.
+   */
+  async createSeveralForClient(
+    tenantId: bigint,
+    actorProfileId: bigint,
+    dto: StaffSeveralInput,
+  ): Promise<StaffSeveralResult> {
+    const times = Array.isArray(dto?.times) ? dto.times : [];
+    if (times.length === 0) throw new BadRequestException('Choose at least one time.');
+    if (times.length > MAX_TIMES_AT_ONCE) throw new BadRequestException(`Book up to ${MAX_TIMES_AT_ONCE} sessions at once.`);
+    const ctx = await this.bookingContext(tenantId, actorProfileId, dto);
+    return { bookings: await this.bookTimes(tenantId, actorProfileId, dto, ctx.payment, ctx, times) };
+  }
+
+  /** One time, as one booking would have it: its slot or custom time, format, place and price. */
+  private async planTime(
+    tenantId: bigint,
+    actorProfileId: bigint,
+    dto: StaffBookingInput,
+    payment: ReturnType<typeof parseStaffPayment>,
+    ctx: BookingContext,
+    t: StaffTimeInput,
+    now: Date,
+  ) {
+    const { therapist, service, providerId } = ctx;
+    const time = await this.resolveTime(tenantId, providerId, service, { ...dto, availabilityId: t.availabilityId, startsAt: t.startsAt });
+    await this.consult.assertNotAway(tenantId, providerId, time.startsAt);
 
     // SET-06: the format follows the time and the therapist, decided here.
     const tf = {
@@ -128,19 +179,19 @@ export class StaffBookingService {
       tf,
     );
     const possible = [allowedFmts.online && 'ONLINE', allowedFmts.inPerson && 'IN_PERSON'].filter(Boolean) as Array<'ONLINE' | 'IN_PERSON'>;
-    const requested = asFormat(dto?.format);
+    const requested = asFormat(t.format ?? dto?.format);
     if (!requested) {
       if (possible.length !== 1) throw new BadRequestException('Choose online or in person.');
     } else if (!possible.includes(requested)) {
       throw new BadRequestException('That time does not offer this format. Choose another.');
     }
     const format: 'ONLINE' | 'IN_PERSON' = requested ?? possible[0];
-    const locationId = format === 'IN_PERSON' ? (time as any).locationId ?? (dto?.locationId ? BigInt(dto.locationId) : null) : null;
+    const wantedLocation = t.locationId ?? dto?.locationId;
+    const locationId = format === 'IN_PERSON' ? (time as any).locationId ?? (wantedLocation ? BigInt(wantedLocation) : null) : null;
     if (format === 'IN_PERSON' && !locationId) throw new BadRequestException('Choose where the session happens.');
 
     const price = priceFor((service as any).formats ?? [], format) ?? (format === 'ONLINE' ? BigInt(service.priceKobo ?? 0) : null);
     if (price === null) throw new BadRequestException('That service is not offered in person. Choose another.');
-    const now = new Date();
     const free = price === 0n || payment === 'NONE';
     let hold: Date | null = null;
     if (!free && payment === 'LINK') {
@@ -149,49 +200,122 @@ export class StaffBookingService {
         throw new BadRequestException('This session starts too soon for a payment link. Mark it as paid, or as no charge.');
       }
     }
-
     const paymentData = free
       ? { status: 'CONFIRMED', paymentMethod: 'NONE', amountKobo: 0n }
       : payment === 'PAID'
         ? { status: 'CONFIRMED', paymentMethod: 'MANUAL', amountKobo: paidAmount(dto.amountKobo, price), paidAt: now, paymentConfirmedByProfileId: actorProfileId }
         : { status: 'PENDING_PAYMENT', paymentMethod: 'PAYSTACK', amountKobo: price, holdExpiresAt: hold };
+    return { time, format, locationId, hold, paymentData };
+  }
 
-    const booking = await this.prisma.$transaction(async (tx) => {
-      const slotId = await this.claimTime(tx, tenantId, providerId, service.id, time, fullName(therapist.profile), therapist.profile?.timezone || 'Africa/Lagos');
-      return tx.consultBooking.create({
-        data: {
-          tenantId,
-          serviceId: service.id,
-          availabilityId: slotId,
-          clientProfileId: client.id,
-          createdByProfileId: actorProfileId,
-          notes: dto.note ? String(dto.note).trim().slice(0, 1000) || null : null,
-          format,
-          locationId,
-          ...paymentData,
-        } as any,
-      });
+  private async bookTimes(
+    tenantId: bigint,
+    actorProfileId: bigint,
+    dto: StaffBookingInput,
+    payment: ReturnType<typeof parseStaffPayment>,
+    ctx: BookingContext,
+    times: StaffTimeInput[],
+  ): Promise<StaffBookingResult[]> {
+    const { client, therapist, service, providerId } = ctx;
+    const now = new Date();
+    const plans = [];
+    for (const t of times) plans.push(await this.planTime(tenantId, actorProfileId, dto, payment, ctx, t, now));
+
+    // §5.5: a session today (Lagos time) is never blocked by the month's
+    // limit, though it counts; future ones follow the limit, together.
+    const future = plans.filter((p) => p.time.startsAt >= lagosTomorrowStart(now));
+    if (future.length) {
+      const tenant = await this.prisma.tenant.findUnique({ where: { id: tenantId } });
+      await assertWithinMonthlyLimit(this.prisma, tenantId, tenant, { sessionStartsAt: future[0].time.startsAt, adding: future.length });
+    }
+
+    const note = dto.note ? String(dto.note).trim().slice(0, 1000) || null : null;
+    // All or none. Each claim sees the ones before it in this transaction, so
+    // two chosen times that overlap are refused like any other clash.
+    const bookings = await this.prisma.$transaction(async (tx) => {
+      const made = [];
+      for (const p of plans) {
+        const slotId = await this.claimTime(tx, tenantId, providerId, service.id, p.time, fullName(therapist.profile), therapist.profile?.timezone || 'Africa/Lagos');
+        made.push(
+          await tx.consultBooking.create({
+            data: {
+              tenantId,
+              serviceId: service.id,
+              availabilityId: slotId,
+              clientProfileId: client.id,
+              createdByProfileId: actorProfileId,
+              notes: note,
+              format: p.format,
+              locationId: p.locationId,
+              ...p.paymentData,
+            } as any,
+          }),
+        );
+      }
+      return made;
     });
 
-    const result: StaffBookingResult = {
-      bookingId: booking.id.toString(),
-      status: paymentData.status as StaffBookingResult['status'],
-      paymentMethod: paymentData.paymentMethod as StaffBookingResult['paymentMethod'],
-      amountKobo: paymentData.amountKobo.toString(),
-      startsAt: time.startsAt.toISOString(),
-      endsAt: time.endsAt.toISOString(),
-      holdExpiresAt: hold ? hold.toISOString() : null,
-      serviceTitle: service.title,
-      practitionerName: fullName(therapist.profile),
-      clientName: fullName(client) || client.email,
-      format,
-      location: locationId ? { id: locationId.toString() } : null,
-    };
+    const results: StaffBookingResult[] = bookings.map((booking, i) => {
+      const p = plans[i];
+      return {
+        bookingId: booking.id.toString(),
+        status: p.paymentData.status as StaffBookingResult['status'],
+        paymentMethod: p.paymentData.paymentMethod as StaffBookingResult['paymentMethod'],
+        amountKobo: p.paymentData.amountKobo.toString(),
+        startsAt: p.time.startsAt.toISOString(),
+        endsAt: p.time.endsAt.toISOString(),
+        holdExpiresAt: p.hold ? p.hold.toISOString() : null,
+        serviceTitle: service.title,
+        practitionerName: fullName(therapist.profile),
+        clientName: fullName(client) || client.email,
+        format: p.format,
+        location: p.locationId ? { id: p.locationId.toString() } : null,
+      };
+    });
+
     // After commit, and never failing the booking.
-    await this.afterCreate(booking.id, result, dto.notifyClient !== false).catch((err) =>
-      this.logger.warn(`After-booking steps failed for ${booking.id}: ${(err as Error).message}`),
-    );
-    return result;
+    const notify = dto.notifyClient !== false;
+    const confirmed = results.filter((r) => r.status === 'CONFIRMED');
+    if (results.length > 1 && confirmed.length === results.length) {
+      // One email listing every session, not one per session.
+      for (const r of results) await this.calendar.pushBookingToGoogle(BigInt(r.bookingId)).catch(() => undefined);
+      if (notify) {
+        await this.emailSeveral(results).catch((err) =>
+          this.logger.warn(`Could not email the client about bookings ${results.map((r) => r.bookingId).join(', ')}: ${(err as Error).message}`),
+        );
+      }
+    } else {
+      for (const r of results) {
+        await this.afterCreate(BigInt(r.bookingId), r, notify).catch((err) =>
+          this.logger.warn(`After-booking steps failed for ${r.bookingId}: ${(err as Error).message}`),
+        );
+      }
+    }
+    return results;
+  }
+
+  /** The client's one email for several confirmed sessions. */
+  protected async emailSeveral(results: StaffBookingResult[]): Promise<void> {
+    const first = await this.prisma.consultBooking.findFirst({
+      where: { id: BigInt(results[0].bookingId) },
+      include: { client: true, tenant: true },
+    });
+    if (!first) return;
+    const origin = tenantWebOrigin(first.tenant as any);
+    const timeZone = (first.client as { timezone?: string | null }).timezone || 'Africa/Lagos';
+    const fmt = new Intl.DateTimeFormat('en-GB', { weekday: 'long', day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit', timeZone });
+    const lines = results.map((r) => `• ${fmt.format(new Date(r.startsAt))}${r.format === 'IN_PERSON' ? ' (in person)' : ''}`).join('\n');
+    const r = results[0];
+    await this.notifications.sendEmail({
+      to: first.client.email,
+      type: 'bookings.staff_confirmed',
+      title: `Your ${results.length} sessions are booked`,
+      message: `${first.tenant.name} has booked ${results.length} sessions of ${r.serviceTitle} with ${r.practitionerName}:\n${lines}\n\nOnline sessions are joined from your portal.`,
+      link: `${origin}/portal`,
+      actionLabel: 'View my bookings',
+      tenantId: first.tenantId,
+      profileId: first.clientProfileId,
+    });
   }
 
   /** Emails and calendar sync, after the transaction commits. */

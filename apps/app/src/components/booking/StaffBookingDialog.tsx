@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useState } from 'react';
-import { CalendarPlus, Loader2, X } from 'lucide-react';
+import { CalendarPlus, Loader2, Plus, X } from 'lucide-react';
 import { api, TENANT_SLUG } from '../../utils/apiClient';
 import { useAuth } from '../../context/AuthContext';
+import { formatWhen } from '../../utils/displayFormat';
 import { SlotDayPicker } from './SlotDayPicker';
 
 type Service = { id: string; title: string; durationMinutes: number; priceKobo: string };
@@ -10,6 +11,10 @@ type Staff = { id: string; name: string };
 type Slot = { id: string; startsAt: string; endsAt: string; formats?: Array<'ONLINE' | 'IN_PERSON'>; location?: { id?: string; name: string; city: string } | null };
 type Payment = 'LINK' | 'PAID' | 'NONE';
 export type StaffBookingResult = { bookingId: string; status: 'PENDING_PAYMENT' | 'CONFIRMED' };
+/** A time added to the list, to book with the others in one go. */
+type Pick = { availabilityId?: string; startsAt: string; format?: 'ONLINE' | 'IN_PERSON'; locationId?: string };
+/** As the API: more than this at once is a session plan (§11.2). */
+const MAX_AT_ONCE = 8;
 
 const naira = (kobo: string | number) => `₦${(Number(kobo) / 100).toLocaleString('en-NG')}`;
 
@@ -57,6 +62,8 @@ export function StaffBookingDialog({
   const [note, setNote] = useState('');
   const [notifyClient, setNotifyClient] = useState(true);
   const [busy, setBusy] = useState(false);
+  // Several sessions at once: times already added, booked with the current one.
+  const [picks, setPicks] = useState<Pick[]>([]);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -98,28 +105,57 @@ export function StaffBookingDialog({
     if (mode !== 'custom') return;
     api.get<typeof locations>('/v1/tenant/locations', tenantHeaders).then((r) => setLocations(r ?? [])).catch(() => setLocations([]));
   }, [mode]);
-  const ready = clientId && serviceId && (mode === 'slot' ? slotId : customAt)
+  // Another service or practitioner means other times: start the list again.
+  useEffect(() => setPicks([]), [serviceId, providerId]);
+  const started = mode === 'slot' ? !!slotId : !!customAt;
+  const timeReady = started
     && (mode === 'custom' ? format !== '' : slotFormats.length === 1 || format !== '')
     && (format !== 'IN_PERSON' || (mode === 'slot' ? true : locationId !== ''));
+  const ready = clientId && serviceId && (timeReady || (picks.length > 0 && !started));
+  const currentPick = (): Pick => ({
+    ...(mode === 'slot' ? { availabilityId: slotId, startsAt: chosenSlot?.startsAt ?? '' } : { startsAt: new Date(customAt).toISOString() }),
+    format: (format || (slotFormats.length === 1 ? slotFormats[0] : undefined)) as Pick['format'],
+    locationId: format === 'IN_PERSON' && mode === 'custom' ? locationId : undefined,
+  });
+  const all = [...picks, ...(timeReady ? [currentPick()] : [])];
+  function addAnother() {
+    if (!timeReady) return;
+    setPicks((p) => [...p, currentPick()].sort((a, b) => a.startsAt.localeCompare(b.startsAt)));
+    setSlotId('');
+    setCustomAt('');
+  }
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
     setBusy(true);
     setError(null);
     try {
-      const result = await api.post<StaffBookingResult>('/v1/consult/practice/bookings', {
+      const common = {
         clientProfileId: clientId,
         serviceId,
         providerProfileId: providerId || undefined,
-        ...(mode === 'slot' ? { availabilityId: slotId } : { startsAt: new Date(customAt).toISOString() }),
-        format: format || (slotFormats.length === 1 ? slotFormats[0] : undefined),
-        locationId: format === 'IN_PERSON' && mode === 'custom' ? locationId : undefined,
         payment,
         ...(payment === 'PAID' && amount ? { amountKobo: String(Math.round(Number(amount) * 100)) } : {}),
         note: note || undefined,
         notifyClient,
-      });
-      onBooked(result);
+      };
+      if (all.length > 1) {
+        // All or none: the API books every time in one transaction.
+        const r = await api.post<{ bookings: StaffBookingResult[] }>('/v1/consult/practice/bookings/several', {
+          ...common,
+          times: all.map(({ availabilityId, startsAt, format: f, locationId: l }) => (availabilityId ? { availabilityId, format: f } : { startsAt, format: f, locationId: l })),
+        });
+        onBooked(r.bookings[0]);
+      } else {
+        const one = all[0];
+        const result = await api.post<StaffBookingResult>('/v1/consult/practice/bookings', {
+          ...common,
+          ...(one.availabilityId ? { availabilityId: one.availabilityId } : { startsAt: one.startsAt }),
+          format: one.format,
+          locationId: one.locationId,
+        });
+        onBooked(result);
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Could not book the session');
       setBusy(false);
@@ -190,7 +226,7 @@ export function StaffBookingDialog({
               slots.length ? (
                 <SlotDayPicker
                   name="slot"
-                  slots={slots}
+                  slots={slots.filter((x) => !picks.some((p) => p.availabilityId === x.id))}
                   value={slotId}
                   onChange={(s) => {
                     setSlotId(s.id);
@@ -234,6 +270,37 @@ export function StaffBookingDialog({
           </fieldset>
         ) : null}
 
+        <div className="space-y-2">
+          {picks.length ? (
+            <div className="rounded-[12px] border border-[var(--desk-border)] bg-[var(--desk-surface)] p-3 space-y-1.5">
+              <p className="text-[12px] font-semibold text-[var(--desk-text-body)]">
+                Booking {all.length} sessions{timeReady ? ' (with the time chosen above)' : ''}
+              </p>
+              <ul className="space-y-1">
+                {picks.map((p, i) => (
+                  <li key={`${p.availabilityId ?? p.startsAt}`} className="flex items-center justify-between gap-2 text-[13px] text-[var(--desk-text)]">
+                    <span>{formatWhen(p.startsAt, 'short')}{p.format === 'IN_PERSON' ? ' · In person' : ''}</span>
+                    <button type="button" onClick={() => setPicks((all) => all.filter((_, j) => j !== i))} aria-label={`Remove ${formatWhen(p.startsAt, 'short')}`} className="h-6 w-6 inline-flex items-center justify-center rounded-[6px] text-[var(--desk-text-muted)] hover:bg-[var(--desk-surface-muted)] cursor-pointer">
+                      <X className="h-3.5 w-3.5" />
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ) : null}
+          <button
+            type="button"
+            onClick={addAnother}
+            disabled={!timeReady || all.length >= MAX_AT_ONCE}
+            className="h-[36px] px-3 rounded-[10px] border border-dashed border-[var(--desk-pine-300)] text-[12.5px] font-bold text-[var(--desk-pine-600)] inline-flex items-center gap-1.5 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            <Plus className="h-3.5 w-3.5" /> Add another time
+          </button>
+          {!picks.length ? (
+            <p className="text-[11.5px] text-[var(--desk-text-muted)]">To book several sessions together, choose a time and add another.</p>
+          ) : null}
+        </div>
+
         <fieldset className="space-y-2">
           <legend className="text-[12px] font-semibold text-[var(--desk-text-body)] mb-1">Payment</legend>
           {payments.map((p) => (
@@ -244,7 +311,7 @@ export function StaffBookingDialog({
           ))}
           {payment === 'PAID' && (
             <label className="block text-[12px] font-semibold text-[var(--desk-text-body)]">
-              Amount received (₦)
+              {all.length > 1 ? 'Amount received per session (₦)' : 'Amount received (₦)'}
               <input type="number" min="0" step="0.01" placeholder={service ? String(Number(service.priceKobo) / 100) : ''} className="mt-1 w-full h-[40px] px-3 rounded-[12px] border border-[var(--desk-border)] text-[13px]" value={amount} onChange={(e) => setAmount(e.target.value)} />
             </label>
           )}
@@ -263,7 +330,7 @@ export function StaffBookingDialog({
         {error ? <p className="text-[12px] font-medium text-rose-700">{error}</p> : null}
         <button type="submit" disabled={busy || !ready} className="w-full h-[42px] rounded-[12px] bg-[var(--desk-pine-600)] text-white text-[13px] font-bold inline-flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50">
           {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
-          Book session
+          {all.length > 1 ? `Book ${all.length} sessions` : 'Book session'}
         </button>
       </form>
     </div>

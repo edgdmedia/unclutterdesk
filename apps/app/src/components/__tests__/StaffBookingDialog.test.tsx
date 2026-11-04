@@ -145,3 +145,67 @@ describe('StaffBookingDialog', () => {
     await waitFor(() => expect(screen.getByText(/already has a session/)).toBeTruthy());
   });
 });
+
+// A client paid for four sessions by transfer and books two now: today 20:00 and tomorrow 14:00.
+describe('booking several sessions at once', () => {
+  beforeEach(() => {
+    role = 'OWNER';
+    apiGet.mockReset().mockImplementation(routes);
+    apiPost.mockReset().mockResolvedValue({ bookings: [{ bookingId: '900', status: 'CONFIRMED' }, { bookingId: '901', status: 'CONFIRMED' }] });
+  });
+  afterEach(cleanup);
+
+  async function start() {
+    const onBooked = vi.fn();
+    render(<StaffBookingDialog client={{ id: '40', name: 'Ada Ola' }} onClose={() => {}} onBooked={onBooked} />);
+    fireEvent.click(await screen.findByRole('radio', { name: /Therapy session/ }));
+    fireEvent.click(screen.getByRole('radio', { name: 'Custom time' }));
+    return onBooked;
+  }
+
+  it('adds times to a list and books them together, marked as paid', async () => {
+    const onBooked = await start();
+    fireEvent.change(screen.getByLabelText('Date and time'), { target: { value: '2026-12-01T20:00' } });
+    fireEvent.click(screen.getByRole('button', { name: /Add another time/ }));
+    fireEvent.change(screen.getByLabelText('Date and time'), { target: { value: '2026-12-02T14:00' } });
+    fireEvent.click(screen.getByRole('radio', { name: /Mark as paid/ }));
+    expect(screen.getByText(/Booking 2 sessions/)).toBeTruthy();
+    expect(screen.getByText(/Amount received per session/)).toBeTruthy();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Book 2 sessions' }));
+    await waitFor(() => expect(apiPost).toHaveBeenCalled());
+    const [path, body] = apiPost.mock.calls[0];
+    expect(path).toBe('/v1/consult/practice/bookings/several');
+    expect(body).toMatchObject({ clientProfileId: '40', serviceId: '20', payment: 'PAID' });
+    expect(body.times).toHaveLength(2);
+    expect(body.times[0].startsAt).toBe(new Date('2026-12-01T20:00').toISOString());
+    expect(body.times[1].startsAt).toBe(new Date('2026-12-02T14:00').toISOString());
+    await waitFor(() => expect(onBooked).toHaveBeenCalled());
+  });
+
+  it('books from the list alone once the last time is added, and a time can be removed', async () => {
+    await start();
+    fireEvent.change(screen.getByLabelText('Date and time'), { target: { value: '2026-12-01T20:00' } });
+    fireEvent.click(screen.getByRole('button', { name: /Add another time/ }));
+    fireEvent.change(screen.getByLabelText('Date and time'), { target: { value: '2026-12-02T14:00' } });
+    fireEvent.click(screen.getByRole('button', { name: /Add another time/ }));
+    expect(screen.getByRole('button', { name: 'Book 2 sessions' })).toBeTruthy();
+
+    fireEvent.click(screen.getAllByRole('button', { name: /^Remove/ })[0]);
+    fireEvent.click(screen.getByRole('radio', { name: /No charge/ }));
+    apiPost.mockResolvedValue({ bookingId: '901', status: 'CONFIRMED' });
+    fireEvent.click(screen.getByRole('button', { name: 'Book session' }));
+    // One left: the single-booking endpoint, as before.
+    await waitFor(() => expect(apiPost.mock.calls[0][0]).toBe('/v1/consult/practice/bookings'));
+    expect(apiPost.mock.calls[0][1]).toMatchObject({ startsAt: new Date('2026-12-02T14:00').toISOString() });
+  });
+
+  it('one time still books as a single session', async () => {
+    await start();
+    apiPost.mockResolvedValue({ bookingId: '900', status: 'CONFIRMED' });
+    fireEvent.change(screen.getByLabelText('Date and time'), { target: { value: '2026-12-01T20:00' } });
+    fireEvent.click(screen.getByRole('radio', { name: /No charge/ }));
+    fireEvent.click(screen.getByRole('button', { name: 'Book session' }));
+    await waitFor(() => expect(apiPost.mock.calls[0][0]).toBe('/v1/consult/practice/bookings'));
+  });
+});
