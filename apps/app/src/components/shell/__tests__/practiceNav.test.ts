@@ -6,21 +6,20 @@ const CLINIC = summary({ customDomain: true, bankTransferPayments: true, googleC
 const hrefsOf = (s: ReturnType<typeof practiceSections>) => s.flatMap((x) => x.groups.flatMap((g) => g.items.map((i) => i.href)));
 
 describe('practiceSections (GEN-03)', () => {
-  it('gives owners the regrouped menu: Main, Forms & assessments, Settings, Reports, Payouts', () => {
+  it('gives owners the regrouped menu: Main (with My profile), Forms & assessments, Settings, Reports', () => {
     const sections = practiceSections({ role: 'OWNER' }, CLINIC);
     expect(sections.map((s) => s.key)).toEqual(['main', 'forms', 'settings', 'insights']);
     const hrefs = hrefsOf(sections);
     expect(hrefs).toEqual([
       '/dashboard',
+      '/dashboard/profile',
       '/dashboard/schedule',
       '/dashboard/sessions',
       '/dashboard/clients',
       '/dashboard/submissions',
       '/dashboard/assessments',
-      '/dashboard/settings/forms',
       '/dashboard/settings',
       '/dashboard/analytics',
-      '/dashboard/settings/payouts',
     ]);
   });
 
@@ -34,7 +33,7 @@ describe('practiceSections (GEN-03)', () => {
   it('renames Analytics to Reports and keeps the tour ids that still have a home', () => {
     const items = practiceSections({ role: 'OWNER' }, CLINIC).flatMap((s) => s.groups.flatMap((g) => g.items));
     expect(items.find((i) => i.href === '/dashboard/analytics')?.label).toBe('Reports');
-    for (const tour of ['nav-sessions', 'nav-clients', 'nav-forms', 'nav-payouts', 'nav-settings']) {
+    for (const tour of ['nav-sessions', 'nav-clients', 'nav-settings']) {
       expect(items.some((i) => i.tourId === tour)).toBe(true);
     }
   });
@@ -54,29 +53,35 @@ describe('practiceSections (GEN-03)', () => {
 describe('settingsTabsFor (GEN-04)', () => {
   it('shows owners every tab, grouped in rail order', () => {
     const tabs = settingsTabsFor({ role: 'OWNER' });
-    expect(tabs.map((t) => t.group)).toEqual(['Practice', 'Practice', 'Practice', 'Booking', 'Booking', 'Booking', 'Domain & email', 'Domain & email', 'Domain & email', 'Team & billing', 'Team & billing', 'Team & billing']);
+    expect(tabs.map((t) => t.group)).toEqual(['You', 'You', 'You', 'Practice', 'Practice', 'Practice', 'Practice', 'Practice', 'Practice', 'Booking page', 'Booking page', 'Booking page', 'Booking page', 'Money', 'Money']);
     expect(tabs.map((t) => t.href)).toEqual([
+      '/dashboard/profile',
+      '/dashboard/settings/account',
+      '/dashboard/settings/notifications',
       '/dashboard/settings/profile',
       '/dashboard/settings/locations',
-      '/dashboard/settings/brand',
-      '/dashboard/settings/availability',
-      '/dashboard/settings/services',
-      '/dashboard/settings/discounts',
-      '/dashboard/settings/domain',
-      '/dashboard/settings/notifications',
-      '/dashboard/settings/sending-domain',
       '/dashboard/settings/team',
+      '/dashboard/settings/services',
+      '/dashboard/settings/availability',
+      '/dashboard/settings/discounts',
+      '/dashboard/settings/brand',
+      '/dashboard/settings/domain',
+      '/dashboard/settings/sending-domain',
+      '/dashboard/settings/forms',
+      '/dashboard/settings/payouts',
       '/dashboard/settings/subscription',
-      '/dashboard/settings/account',
     ]);
   });
 
   it('receptionists and therapists only get their own availability and account', () => {
     for (const role of ['RECEPTIONIST', 'THERAPIST']) {
       const tabs = settingsTabsFor({ role: role as never, type: role.toLowerCase() });
-      expect(tabs.map((t) => t.href)).toEqual([
-        '/dashboard/settings/availability',
+      // Receptionists/therapists see: You group (My profile external, Account & preferences), Practice group (Availability)
+      // Notifications is owner-only
+      // Internal tabs only: Account & preferences, Availability
+      expect(tabs.filter((t) => t.href.startsWith('/dashboard/settings/')).map((t) => t.href)).toEqual([
         '/dashboard/settings/account',
+        '/dashboard/settings/availability',
       ]);
     }
   });
