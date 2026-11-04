@@ -161,6 +161,8 @@ export function AvailabilitySettingsPage() {
   const [cancellationHours, setCancellationHours] = useState(24);
   const [openChooser, setOpenChooser] = useState<string | null>(null);
   const [timeOff, setTimeOff] = useState<TimeOffView[]>([]);
+  const [moving, setMoving] = useState<{ bookingId: string; clientName: string; slots: SlotView[] } | null>(null);
+  const [movingSaving, setMovingSaving] = useState(false);
 
   // Sync tab to URL
   React.useEffect(() => {
@@ -176,7 +178,6 @@ export function AvailabilitySettingsPage() {
     setSessionLengthMinutes(payload.sessionLengthMinutes ?? 50);
     setGapMinutes(payload.gapMinutes ?? 10);
     setCancellationHours(payload.cancellationHours ?? 24);
-    setTimeOff([]); // will be fetched separately
     const length = payload.sessionLengthMinutes ?? 50;
     const nextDays = Object.fromEntries(DAY_KEYS.map((k) => [k, { on: false, windows: [] as Window[] }])) as Record<DayKey, { on: boolean; windows: Window[] }>;
     const nextTimes: Record<string, { formats: Format[]; locationId: string | null }> = {};
@@ -202,25 +203,22 @@ export function AvailabilitySettingsPage() {
     return () => { cancelled = true; };
   }, []);
 
+  /** Loads the time-off periods and groups the sessions already on those days. */
+  async function loadTimeOff() {
+    const result = await api.get<{ timeOff: TimeOff[]; bookings: Array<{ id: string; startsAt: string; endsAt: string; clientName: string; serviceTitle: string; status: string }> }>('/v1/consult/therapist/time-off');
+    const enriched = result.timeOff.map((t) => ({
+      ...t,
+      bookings: result.bookings.filter((b) => {
+        const slotDay = new Date(b.startsAt).toISOString().slice(0, 10);
+        return slotDay >= t.startsOn && slotDay <= t.endsOn;
+      }),
+    }));
+    setTimeOff(enriched);
+    return enriched;
+  }
+
   useEffect(() => {
-    let cancelled = false;
-    api.get<{ timeOff: TimeOff[]; bookings: Array<{ id: string; startsAt: string; endsAt: string; clientName: string; serviceTitle: string; status: string }> }>('/v1/consult/therapist/time-off')
-      .then((result) => {
-        if (!cancelled) {
-          const enriched = result.timeOff.map((t) => ({
-            ...t,
-            bookings: result.bookings.filter((b) => {
-              const slotDay = new Date(b.startsAt).toISOString().slice(0, 10);
-              return slotDay >= t.startsOn && slotDay <= t.endsOn;
-            }),
-          }));
-          setTimeOff(enriched);
-        }
-      })
-      .catch(() => {
-        // Time off is optional
-      });
-    return () => { cancelled = true; };
+    loadTimeOff().catch(() => undefined);
   }, []);
 
   const dayTimes = useMemo(() => {
@@ -313,6 +311,41 @@ export function AvailabilitySettingsPage() {
       toast.success('Back to the weekly pattern.');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'That time could not be reset');
+    }
+  }
+
+  /** Opens a picker of the practitioner's open times so a session can be moved off a day off. */
+  async function startMove(booking: { id: string; clientName: string }) {
+    setError(null);
+    try {
+      const payload = await api.get<Payload>('/v1/consult/therapist/availability');
+      setMoving({
+        bookingId: booking.id,
+        clientName: booking.clientName,
+        slots: (payload.slots ?? []).filter((s) => !s.booked),
+      });
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Could not load your open times');
+    }
+  }
+
+  async function moveTo(slotId: string) {
+    if (!moving) return;
+    setMovingSaving(true);
+    setError(null);
+    try {
+      await api.post(`/v1/consult/practice/sessions/${moving.bookingId}/reschedule`, { availabilityId: slotId });
+      toast.success('Session moved');
+      setMoving(null);
+      const payload = await api.get<Payload>('/v1/consult/therapist/availability');
+      apply(payload);
+      await loadTimeOff();
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Could not move the session';
+      toast.error(message);
+      setError(message);
+    } finally {
+      setMovingSaving(false);
     }
   }
 
@@ -464,16 +497,7 @@ export function AvailabilitySettingsPage() {
                         if (!confirm('Remove this time off? Open times will be regenerated.')) return;
                         api.delete(`/v1/consult/therapist/time-off/${t.id}`).then(() => {
                           toast.success('Time off removed');
-                          api.get<{ timeOff: TimeOff[]; bookings: any[] }>('/v1/consult/therapist/time-off').then((result) => {
-                            const enriched = result.timeOff.map((t) => ({
-                              ...t,
-                              bookings: result.bookings.filter((b: any) => {
-                                const slotDay = new Date(b.startsAt).toISOString().slice(0, 10);
-                                return slotDay >= t.startsOn && slotDay <= t.endsOn;
-                              }),
-                            }));
-                            setTimeOff(enriched);
-                          });
+                          return loadTimeOff();
                         }).catch((err) => toast.error(err instanceof Error ? err.message : 'Could not remove'));
                       }}>Remove</Button>
                     </div>
@@ -482,9 +506,7 @@ export function AvailabilitySettingsPage() {
                         {t.bookings.map((b) => (
                           <div key={b.id} className="flex items-center justify-between text-[12px] bg-[#FEF3C7] border border-[#FDE68A] rounded-[10px] px-3 py-2">
                             <span><span className="font-bold">{b.clientName}</span> · {b.serviceTitle} · {new Date(b.startsAt).toLocaleString('en-GB', { dateStyle: 'short', timeStyle: 'short' })}</span>
-                            <button className="text-[#0F3A53] underline font-bold cursor-pointer" onClick={() => {
-                              window.open(`/dashboard/sessions/${b.id}`, '_blank');
-                            }}>Move</button>
+                            <button className="text-[#0F3A53] underline font-bold cursor-pointer" onClick={() => void startMove(b)}>Move</button>
                           </div>
                         ))}
                       </div>
@@ -555,6 +577,39 @@ export function AvailabilitySettingsPage() {
           </Card>
         </div>
       )}
+
+      {moving ? (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4" role="dialog" aria-modal="true" aria-label="Move session">
+          <Card padding="p-5" className="w-full max-w-[480px] max-h-[80vh] overflow-y-auto space-y-3">
+            <div>
+              <Eyebrow>MOVE SESSION</Eyebrow>
+              <p className="mt-1 text-[13px] text-[#475569]">
+                Choose a new time for <span className="font-bold text-[#0F172A]">{moving.clientName}</span>. Their current time is not cancelled.
+              </p>
+            </div>
+            {moving.slots.length === 0 ? (
+              <p className="text-[13px] text-[#64748B]">No open times to move to. Add hours in Weekly hours first.</p>
+            ) : (
+              <div className="grid grid-cols-2 gap-2">
+                {moving.slots.slice(0, 24).map((slot) => (
+                  <button
+                    key={slot.id}
+                    type="button"
+                    disabled={movingSaving}
+                    onClick={() => void moveTo(slot.id)}
+                    className="h-[40px] rounded-[12px] border border-[#E2E8F0] bg-white px-2 text-[12.5px] font-bold text-[#0F172A] hover:border-[#0F3A53] disabled:opacity-50 cursor-pointer"
+                  >
+                    {new Date(slot.startsAt).toLocaleString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit', timeZone: 'Africa/Lagos' })}
+                  </button>
+                ))}
+              </div>
+            )}
+            <div className="flex justify-end">
+              <Button variant="ghost" onClick={() => setMoving(null)} disabled={movingSaving}>Close</Button>
+            </div>
+          </Card>
+        </div>
+      ) : null}
     </Page>
   );
 }

@@ -190,4 +190,28 @@ describe('the availability page', () => {
     await waitFor(() => expect(del).toHaveBeenCalledWith('/v1/consult/therapist/time-off/t1'));
     confirmSpy.mockRestore();
   });
+
+  it('moving a session on a day off posts to the staff reschedule endpoint', async () => {
+    get.mockImplementation((url: string) =>
+      Promise.resolve(url.includes('time-off')
+        ? {
+            timeOff: [{ id: 't1', startsOn: '2026-11-05', endsOn: '2026-11-05', note: null }],
+            bookings: [
+              { id: '100', startsAt: '2026-11-05T08:00:00.000Z', endsAt: '2026-11-05T08:50:00.000Z', clientName: 'Bisi Ade', serviceTitle: 'Individual Therapy', status: 'CONFIRMED' },
+            ],
+          }
+        : PAYLOAD),
+    );
+    post.mockResolvedValue({ id: '100' });
+    renderWithApp(<AvailabilitySettingsPage />);
+    await screen.findByText('Monday');
+    fireEvent.click(screen.getByRole('tab', { name: 'Time off' }));
+    fireEvent.click(await screen.findByRole('button', { name: /^Move$/ }));
+    const dialog = await screen.findByRole('dialog', { name: /move session/i });
+    // The first open time is slot 30; slot 31 is booked and is not offered.
+    const options = Array.from(dialog.querySelectorAll('button')).filter((b) => /Oct|Nov/.test(b.textContent ?? ''));
+    expect(options.length).toBe(1);
+    fireEvent.click(options[0]);
+    await waitFor(() => expect(post).toHaveBeenCalledWith('/v1/consult/practice/sessions/100/reschedule', { availabilityId: '30' }));
+  });
 });
