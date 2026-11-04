@@ -70,7 +70,9 @@ describe('RescheduleDialog', () => {
 
   it('lists the times it was given', async () => {
     renderDialog();
-    await waitFor(() => expect(screen.getAllByRole('radio')).toHaveLength(2));
+    // A day per date, then that day's times: two days here, one time on each.
+    await waitFor(() => expect(screen.getAllByRole('button', { pressed: false }).length + screen.getAllByRole('button', { pressed: true }).length).toBe(2));
+    expect(screen.getAllByRole('radio')).toHaveLength(1);
   });
 
   it('will not submit until a time is picked', async () => {
@@ -84,8 +86,10 @@ describe('RescheduleDialog', () => {
 
   it('sends the chosen slot', async () => {
     renderDialog();
-    const radios = await screen.findAllByRole('radio');
-    fireEvent.click(radios[1]);
+    await screen.findAllByRole('radio');
+    // The second time is on the second day.
+    fireEvent.click(screen.getByRole('button', { pressed: false }));
+    fireEvent.click(screen.getByRole('radio'));
     fireEvent.click(screen.getByRole('button', { name: /move session/i }));
 
     await waitFor(() =>

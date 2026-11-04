@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { CalendarPlus, Loader2, X } from 'lucide-react';
 import { api, TENANT_SLUG } from '../../utils/apiClient';
 import { useAuth } from '../../context/AuthContext';
-import { formatWhen } from '../../utils/displayFormat';
+import { SlotDayPicker } from './SlotDayPicker';
 
 type Service = { id: string; title: string; durationMinutes: number; priceKobo: string };
 type StaffRow = { kind: 'member' | 'invite'; id: string; firstName: string | null; lastName: string | null; status: string; isTherapist: boolean };
@@ -12,7 +12,6 @@ type Payment = 'LINK' | 'PAID' | 'NONE';
 export type StaffBookingResult = { bookingId: string; status: 'PENDING_PAYMENT' | 'CONFIRMED' };
 
 const naira = (kobo: string | number) => `₦${(Number(kobo) / 100).toLocaleString('en-NG')}`;
-const when = (iso: string) => formatWhen(iso, 'short');
 
 const PAYMENTS: Array<{ value: Payment; label: string; hint: string; frontDeskOnly?: boolean }> = [
   { value: 'LINK', label: 'Send a payment link', hint: 'The client pays online. The time is held for up to 48 hours.' },
@@ -189,14 +188,17 @@ export function StaffBookingDialog({
           {mode === 'slot' ? (
             serviceId ? (
               slots.length ? (
-                <div className="grid grid-cols-2 gap-2">
-                  {slots.map((s) => (
-                    <label key={s.id} data-testid={`slot-${s.id}`} className={radio(slotId === s.id)} onClick={() => { setSlotId(s.id); const fs: Array<'ONLINE' | 'IN_PERSON'> = s.formats?.length ? s.formats : ['ONLINE']; setFormat(fs.length === 1 ? fs[0] : ''); }}>
-                      <input type="radio" name="slot" checked={slotId === s.id} onChange={() => { setSlotId(s.id); const fs: Array<'ONLINE' | 'IN_PERSON'> = s.formats?.length ? s.formats : ['ONLINE']; setFormat(fs.length === 1 ? fs[0] : ''); }} aria-label={when(s.startsAt)} />
-                      <span className="text-[12.5px]">{when(s.startsAt)}</span>
-                    </label>
-                  ))}
-                </div>
+                <SlotDayPicker
+                  name="slot"
+                  slots={slots}
+                  value={slotId}
+                  onChange={(s) => {
+                    setSlotId(s.id);
+                    const full = slots.find((x) => x.id === s.id);
+                    const fs: Array<'ONLINE' | 'IN_PERSON'> = full?.formats?.length ? full.formats : ['ONLINE'];
+                    setFormat(fs.length === 1 ? fs[0] : '');
+                  }}
+                />
               ) : <p className="text-[12px] text-[var(--desk-text-muted)]">No open slots. Use a custom time.</p>
             ) : <p className="text-[12px] text-[var(--desk-text-muted)]">Choose a service first.</p>
           ) : (
