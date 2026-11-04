@@ -5,6 +5,8 @@ import { BookingChoice } from './BookingChoice';
 import { BookingNudge } from './BookingNudge';
 import { SocialLinksField } from './SocialLinksField';
 import { profilePath } from '../../../config/domains';
+import { ApiError } from '../../../utils/apiClient';
+import { useProfileEntitlements } from '../../../utils/entitlements';
 import {
   KIND_LABELS,
   SECTION_TITLES,
@@ -294,6 +296,7 @@ interface PracticeBrand {
 
 export function PublicProfileEditor({ onProfileChange, practiceBrand }: { onProfileChange?: (p: OwnProfile | null) => void; practiceBrand?: PracticeBrand | null }) {
   const toast = useToast();
+  const entitlements = useProfileEntitlements();
   const [loading, setLoading] = useState(true);
   const [profile, setProfile] = useState<OwnProfile | null>(null);
   const [draft, setDraft] = useState<Draft | null>(null);
@@ -440,12 +443,15 @@ export function PublicProfileEditor({ onProfileChange, practiceBrand }: { onProf
     }
   }
 
-  async function chooseAppearance(change: { layoutKey?: string; themeKey?: string }) {
+  async function chooseAppearance(change: { layoutKey?: string; themeKey?: string; brandColor?: string | null }) {
     try {
       const next = await profileApi.update(change);
       setProfile(next);
       onProfileChange?.(next);
     } catch (err) {
+      // A plan gate is not an error: the API client has already raised the
+      // upgrade prompt, so a second toast would be noise.
+      if (err instanceof ApiError && err.entitlement) return;
       toast.error(errorText(err));
     }
   }
@@ -797,10 +803,12 @@ export function PublicProfileEditor({ onProfileChange, practiceBrand }: { onProf
         <AppearancePicker
           layoutKey={profile.layoutKey}
           themeKey={profile.themeKey}
+          brandColor={profile.brandColor}
           name={profile.displayName}
           kindLabel={KIND_LABELS[profile.kind as keyof typeof KIND_LABELS] ?? 'Therapist'}
           headline={profile.headline}
           handle={profile.handle}
+          customLocked={entitlements?.customBrandColor === false}
           onChange={(change) => void chooseAppearance(change)}
         />
       </aside>

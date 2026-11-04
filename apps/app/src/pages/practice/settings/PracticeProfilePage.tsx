@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Save, Info } from 'lucide-react';
-import { Eyebrow, Page, PageHeader, Toggle, useToast } from '@unclutterdesk/ui';
+import { Eyebrow, Page, PageHeader, PROFILE_THEMES, Toggle, useToast } from '@unclutterdesk/ui';
+import { PaletteSwatches } from '../../practice/profile/AppearancePicker';
 import { api } from '../../../utils/apiClient';
 
 type PracticeProfile = {
@@ -20,7 +21,25 @@ type PracticeProfile = {
   /** From the API: whether this practice is solo, and what the profile fills in. Not saved. */
   solo?: boolean;
   fromProfile?: { welcomeMessage?: string; tagline?: string; city?: string; logoUrl?: string };
+  /** The practice's accent; the Look picker writes the chosen palette's accent here. */
+  primaryColor?: string;
 };
+
+/** The owner's public profile look, shown read-only while a solo practice uses its profile. */
+type ProfileLook = { themeKey: string; brandColor: string | null };
+
+/** Which palette a stored practice accent belongs to; anything else is the Custom colour. */
+function lookFromAccent(accent: string | null | undefined): ProfileLook {
+  const hex = (accent ?? '').toUpperCase();
+  const match = PROFILE_THEMES.find((t) => t.colors.accent.toUpperCase() === hex);
+  return match ? { themeKey: match.key, brandColor: null } : { themeKey: 'custom', brandColor: accent ?? null };
+}
+
+/** What to store on the practice brand for the chosen palette. */
+function accentFromLook(look: ProfileLook): string | undefined {
+  if (look.themeKey === 'custom') return look.brandColor ?? undefined;
+  return PROFILE_THEMES.find((t) => t.key === look.themeKey)?.colors.accent;
+}
 
 const inputCls = 'h-[46px] w-full px-[14px] rounded-[14px] bg-[var(--desk-surface)] border border-[var(--desk-border)] text-sm text-[var(--desk-text)] outline-none focus:bg-white focus:border-[var(--desk-border-strong)]';
 
@@ -34,6 +53,8 @@ function fromProfileHint(p: PracticeProfile, field: 'welcomeMessage' | 'tagline'
 export function PracticeProfilePage() {
   const toast = useToast();
   const [profile, setProfile] = useState<PracticeProfile>({});
+  const [profileLook, setProfileLook] = useState<ProfileLook | null>(null);
+  const [look, setLook] = useState<ProfileLook>({ themeKey: 'custom', brandColor: null });
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -43,8 +64,17 @@ export function PracticeProfilePage() {
     async function loadProfile() {
       setLoading(true);
       try {
-        const data = await api.get<PracticeProfile>('/v1/tenant/brand');
-        if (!cancelled) setProfile(data);
+        const [data, own] = await Promise.all([
+          api.get<PracticeProfile>('/v1/tenant/brand'),
+          // The owner's public profile: a solo practice's page borrows its look.
+          api.get<ProfileLook | null>('/v1/practitioner-profile/me').catch(() => null),
+        ]);
+        if (cancelled) return;
+        setProfile(data);
+        setLook(lookFromAccent(data.primaryColor));
+        if (own && typeof own === 'object') {
+          setProfileLook({ themeKey: own.themeKey ?? 'calm', brandColor: own.brandColor ?? null });
+        }
       } catch (err) {
         if (!cancelled) setError(err instanceof Error ? err.message : 'Unable to load practice profile');
       } finally {
@@ -60,7 +90,11 @@ export function PracticeProfilePage() {
     setError(null);
     try {
       const { solo: _solo, fromProfile: _from, ...editable } = profile;
-      await api.patch('/v1/tenant/brand', editable);
+      // A solo practice using its profile takes its look from there, so the
+      // practice-accent picker is not shown and must not overwrite it.
+      const usesProfileLook = profile.solo && profile.useProfileForPractice !== false;
+      const accent = usesProfileLook ? undefined : accentFromLook(look);
+      await api.patch('/v1/tenant/brand', { ...editable, ...(accent ? { primaryColor: accent } : {}) });
       toast.success('Practice profile saved');
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Could not save the practice profile');
@@ -110,6 +144,50 @@ export function PracticeProfilePage() {
                   </div>
                 </div>
               ) : null}
+
+              <div className="bg-[var(--desk-surface)] rounded-[24px] border border-[var(--desk-border)] p-[24px_26px]">
+                <Eyebrow className="mb-1">LOOK</Eyebrow>
+                {profile.solo && profile.useProfileForPractice !== false ? (
+                  <>
+                    <p className="text-[12.5px] text-[var(--desk-text-muted)] mt-1">
+                      Your page uses the look from{' '}
+                      <Link to="/dashboard/profile" className="font-bold text-[var(--desk-text)] underline">My profile</Link>.
+                      Change the palette or custom colour there.
+                    </p>
+                    <div className="mt-3">
+                      <PaletteSwatches
+                        themeKey={profileLook?.themeKey ?? 'calm'}
+                        brandColor={profileLook?.brandColor ?? null}
+                        readOnly
+                      />
+                    </div>
+                    <Link
+                      to="/dashboard/profile"
+                      className="mt-3 inline-flex h-[38px] items-center rounded-[12px] border border-[var(--desk-border)] px-4 text-[12.5px] font-bold text-[var(--desk-text)]"
+                    >
+                      Change in your profile
+                    </Link>
+                  </>
+                ) : (
+                  <>
+                    <p className="text-[12.5px] text-[var(--desk-text-muted)] mt-1">
+                      The palette for your booking page and your practice page.
+                    </p>
+                    <span className="mt-3 block text-[9px] font-black tracking-[0.22em] uppercase text-[var(--desk-text-subtle)]" id="palette-label">
+                      Colour palette
+                    </span>
+                    <div className="mt-2">
+                      <PaletteSwatches
+                        themeKey={look.themeKey}
+                        brandColor={look.brandColor}
+                        onPick={(change) =>
+                          setLook({ themeKey: change.themeKey, brandColor: change.brandColor ?? null })
+                        }
+                      />
+                    </div>
+                  </>
+                )}
+              </div>
 
               <div className="bg-white rounded-[24px] border border-[var(--desk-border)] p-[24px_26px]">
                 <Eyebrow className="mb-1">PRACTICE IDENTITY</Eyebrow>

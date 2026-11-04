@@ -63,6 +63,8 @@ export interface OwnProfile {
   templateKey: string | null;
   themeKey: string;
   layoutKey: string;
+  /** `#RRGGBB` for the Custom palette (Starter and up); kept when another palette is chosen. */
+  brandColor: string | null;
   displayName: string;
   pronouns: string | null;
   photoKey: string | null;
