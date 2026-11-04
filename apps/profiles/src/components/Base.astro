@@ -1,9 +1,8 @@
 ---
-// Self-hosted fonts (spec §6.5; CSP font-src 'self'). Vite bundles the woff2
-// files with the site. A face only downloads when a page uses it, so Fraunces
-// (the Editorial layout's quote face) costs nothing on the other layouts.
-import '@fontsource-variable/outfit/wght.css';
-import '@fontsource/fraunces/500-italic.css';
+// The Therapysts design system's faces, self-hosted (spec §6.5; CSP font-src
+// 'self'): Fraunces for headings and names, Figtree for everything else.
+import '@unclutterdesk/ui/src/brand/therapysts/fonts.css';
+import appIcon from '@unclutterdesk/ui/src/brand/therapysts/logos/therapysts-app-icon.svg?url';
 import '../styles/profile.css';
 import { safeJsonLd } from '../lib/security';
 
@@ -33,6 +32,7 @@ const { title, description, canonical, theme = 'calm', image, noindex = false, j
     <meta property="og:type" content="profile" />
     {image && <meta property="og:image" content={image} />}
     <meta name="twitter:card" content={image ? 'summary_large_image' : 'summary'} />
+    <link rel="icon" type="image/svg+xml" href={appIcon} />
     <link rel="stylesheet" href="/themes.css" />
     {jsonLd && <script type="application/ld+json" set:html={safeJsonLd(jsonLd)} />}
   </head>
