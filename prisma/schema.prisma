@@ -119,6 +119,7 @@ model Tenant {
   discountCodes           DiscountCode[]
   locations               PracticeLocation[]
   weeklyTimes             TherapistWeeklyTime[]
+  timeOff                 TimeOff[]
   pendingInvites          ConsultPendingInvite[]
   universalForms          UniversalForm[]
   formTemplates           FormTemplate[]
@@ -323,6 +324,7 @@ model ConsultTherapistProfile {
   availabilities     ConsultAvailability[]
   workLocations      TherapistLocation[]
   weeklyTimes        TherapistWeeklyTime[]
+  timeOff            TimeOff[]
   practitionerPlaces PractitionerPlace[]
 
   @@unique([tenantId, profileId])
@@ -416,6 +418,24 @@ model TherapistWeeklyTime {
 
   @@unique([profileId, weekday, start])
   @@index([tenantId, profileId])
+}
+
+/// A date or date range the therapist is away. Those days close to booking;
+/// existing bookings stay and are listed to move, never cancelled automatically.
+model TimeOff {
+  id        BigInt   @id @default(autoincrement())
+  tenantId  BigInt
+  profileId BigInt
+  startsOn  DateTime @db.Date
+  endsOn    DateTime @db.Date
+  note      String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  tenant    Tenant                  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  therapist ConsultTherapistProfile @relation(fields: [profileId], references: [profileId], onDelete: Cascade)
+
+  @@index([tenantId, profileId, startsOn, endsOn])
 }
 
 model ConsultAvailability {

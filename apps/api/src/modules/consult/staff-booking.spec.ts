@@ -86,6 +86,7 @@ function setup(over: Record<string, any> = {}) {
   };
   const consult: any = {
     startOnlinePayment: vi.fn(),
+    assertNotAway: vi.fn().mockResolvedValue(undefined),
   };
   const notifications: any = { sendEmail: vi.fn().mockResolvedValue({ success: true }) };
   const calendar: any = { pushBookingToGoogle: vi.fn().mockResolvedValue(undefined) };
@@ -128,6 +129,13 @@ describe('payment choices', () => {
   it('a payment link is refused for a session under 2 hours away', async () => {
     const { service } = setup({ startsAt: new Date(Date.now() + 60 * 60 * 1000) });
     await expect(service.createForClient(TENANT, OWNER, { ...base, payment: 'LINK' })).rejects.toThrow(/starts too soon/);
+  });
+
+  it('refuses a time on a day the practice is away', async () => {
+    const { service, consult, tx } = setup();
+    consult.assertNotAway.mockRejectedValueOnce(new BadRequestException('The practice is away on that day. Choose another time.'));
+    await expect(service.createForClient(TENANT, OWNER, { ...base, payment: 'NONE' })).rejects.toThrow(/away on that day/);
+    expect(tx.consultBooking.create).not.toHaveBeenCalled();
   });
 });
 

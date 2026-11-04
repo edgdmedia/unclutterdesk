@@ -135,6 +135,7 @@ describe('booking with a bank transfer', () => {
       },
       consultBooking: { count: vi.fn().mockResolvedValue(0) },
       profile: { findFirst: vi.fn().mockResolvedValue({ id: 5n, email: 'ada@example.com', firstName: 'Ada', lastName: 'Obi', phone: null }) },
+      timeOff: { findMany: vi.fn().mockResolvedValue([]) },
       $transaction: vi.fn(async (cb: any) => cb(tx)),
     };
     const paystack = { initializeTransaction: vi.fn() };

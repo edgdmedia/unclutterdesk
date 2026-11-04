@@ -92,6 +92,7 @@ function makeService({
       ]),
     },
     tenant: { findUnique: vi.fn().mockResolvedValue({ cancellationHours }) },
+    timeOff: { findMany: vi.fn().mockResolvedValue([]) },
     $transaction: vi.fn(async (cb: any) => cb(tx)),
   };
 
