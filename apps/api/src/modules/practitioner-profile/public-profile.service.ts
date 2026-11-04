@@ -4,6 +4,7 @@ import { StorageService } from '../storage/storage.service';
 import { HANDLE_PATTERN, normalizeHandle } from './handles';
 import { tenantWebOrigin } from '../../common/origins';
 import { describeSocialLink, readSocialLinks, type SocialLink } from './social-links';
+import { CUSTOM_THEME, themePalette, type ThemePalette } from './themes';
 
 /**
  * What the public-profile site may read (spec §6.11). No auth, no cookies.
@@ -48,6 +49,10 @@ export interface PublicProfile {
   contactEmail: string | null;
   socialLinks: SocialLink[];
   themeKey: string;
+  /** The custom colour, when themeKey is 'custom'; null otherwise. */
+  brandColor: string | null;
+  /** The resolved palette colours (custom colour already made readable). */
+  colors: ThemePalette;
   layoutKey: string;
   specialties: (PublicTerm & { primary: boolean })[];
   modalities: PublicTerm[];
@@ -129,6 +134,8 @@ export class PublicProfileService {
         contactEmail: profile.contactEmailPublic,
         socialLinks,
         themeKey: profile.themeKey,
+        brandColor: profile.themeKey === CUSTOM_THEME ? profile.brandColor : null,
+        colors: themePalette(profile.themeKey, profile.brandColor),
         layoutKey: profile.layoutKey,
         specialties: terms('SPECIALTY'),
         modalities: plain(terms('MODALITY')),

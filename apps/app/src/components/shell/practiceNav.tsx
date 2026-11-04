@@ -26,6 +26,7 @@ interface NavEntry {
   /** A feature the plan gates; tagged with the plan that includes it when the practice's plan doesn't. */
   requires?: GatedFeature;
   clinicalOnly?: boolean;
+  ownerOnly?: boolean;
 }
 
 // GEN-03: the menu in the order the founder signed off — a few meaningful
@@ -34,6 +35,7 @@ interface NavEntry {
 // not where every page is.
 const MAIN: NavEntry[] = [
   { href: '/dashboard', label: 'Today', icon: LayoutDashboard },
+  { href: '/dashboard/profile', label: 'My profile', icon: IdCard, tourId: 'nav-my-profile' },
   { href: '/dashboard/schedule', label: 'Schedule', icon: Calendar },
   { href: '/dashboard/sessions', label: 'Sessions', icon: ClipboardList, tourId: 'nav-sessions' },
   { href: '/dashboard/clients', label: 'Clients', icon: Users, tourId: 'nav-clients' },
@@ -42,18 +44,15 @@ const MAIN: NavEntry[] = [
 const FORMS: NavEntry[] = [
   { href: '/dashboard/submissions', label: 'Submissions', icon: ClipboardCheck },
   { href: '/dashboard/assessments', label: 'Assessments', icon: ClipboardList },
-  { href: '/dashboard/settings/forms', label: 'Forms', icon: FileText, tourId: 'nav-forms' },
 ];
 
-// One entry for the whole settings area; the page itself is the tab hub.
+// Settings is now a single entry; the page itself is the tab hub.
 const SETTINGS: NavEntry[] = [
   { href: '/dashboard/settings', label: 'Settings', icon: Settings, tourId: 'nav-settings' },
 ];
 
 const INSIGHTS: NavEntry[] = [
   { href: '/dashboard/analytics', label: 'Reports', icon: BarChart3 },
-  // Money earns its own link: the tour and the payout alerts point here.
-  { href: '/dashboard/settings/payouts', label: 'Payouts', icon: CreditCard, tourId: 'nav-payouts' },
 ];
 
 /**
@@ -76,23 +75,34 @@ interface TabDefinition extends Omit<SettingsTab, 'badgeTier'> {
 }
 
 const SETTINGS_TABS: TabDefinition[] = [
+  // You
+  { href: '/dashboard/profile', label: 'My profile', icon: IdCard, group: 'You', ownerOnly: false },
+  { href: '/dashboard/settings/account', label: 'Account & preferences', icon: UserCog, group: 'You', ownerOnly: false },
+  { href: '/dashboard/settings/notifications', label: 'Notifications', icon: Bell, group: 'You', ownerOnly: true },
+
+  // Practice
   { href: '/dashboard/settings/profile', label: 'Practice profile', icon: IdCard, group: 'Practice', ownerOnly: true },
   { href: '/dashboard/settings/locations', label: 'Locations', icon: MapPin, group: 'Practice', ownerOnly: true },
-  { href: '/dashboard/settings/brand', label: 'Brand & booking page', icon: Palette, group: 'Practice', ownerOnly: true },
-  { href: '/dashboard/settings/availability', label: 'Availability', icon: CalendarClock, group: 'Booking' },
-  { href: '/dashboard/settings/services', label: 'Services & pricing', icon: Settings, group: 'Booking', ownerOnly: true },
-  { href: '/dashboard/settings/discounts', label: 'Discounts & promos', icon: BarChart3, group: 'Booking', ownerOnly: true },
-  { href: '/dashboard/settings/domain', label: 'Custom domain', icon: Globe, group: 'Domain & email', requires: 'customDomain', ownerOnly: true },
-  { href: '/dashboard/settings/notifications', label: 'Notifications', icon: Bell, group: 'Domain & email', ownerOnly: true },
-  { href: '/dashboard/settings/sending-domain', label: 'Sending domain', icon: Mail, group: 'Domain & email', ownerOnly: true },
-  { href: '/dashboard/settings/team', label: 'Team & staff', icon: Users, group: 'Team & billing', requires: 'staff', ownerOnly: true },
-  { href: '/dashboard/settings/subscription', label: 'Subscription', icon: CreditCard, group: 'Team & billing', ownerOnly: true },
-  { href: '/dashboard/settings/account', label: 'Preferences', icon: UserCog, group: 'Team & billing' },
+  { href: '/dashboard/settings/team', label: 'Team', icon: Users, group: 'Practice', requires: 'staff', ownerOnly: true },
+  { href: '/dashboard/settings/services', label: 'Services', icon: Settings, group: 'Practice', ownerOnly: true },
+  { href: '/dashboard/settings/availability', label: 'Availability', icon: CalendarClock, group: 'Practice' },
+  { href: '/dashboard/settings/discounts', label: 'Discounts', icon: BarChart3, group: 'Practice', ownerOnly: true },
+
+  // Booking page
+  { href: '/dashboard/settings/brand', label: 'Brand & booking page', icon: Palette, group: 'Booking page', ownerOnly: true },
+  { href: '/dashboard/settings/domain', label: 'Custom domain', icon: Globe, group: 'Booking page', requires: 'customDomain', ownerOnly: true },
+  { href: '/dashboard/settings/sending-domain', label: 'Sending mail', icon: Mail, group: 'Booking page', ownerOnly: true },
+  { href: '/dashboard/settings/forms', label: 'Forms', icon: FileText, group: 'Booking page', ownerOnly: true },
+
+  // Money
+  { href: '/dashboard/settings/payouts', label: 'Payouts', icon: CreditCard, group: 'Money', ownerOnly: true },
+  { href: '/dashboard/settings/subscription', label: 'Subscription', icon: CreditCard, group: 'Money', ownerOnly: true },
 ];
 
 /** The phone's bottom bar; everything else is under "More". */
 export const PRACTICE_BOTTOM_NAV: { href: string; label: string; icon: LucideIcon; tourId?: string }[] = [
   { href: '/dashboard', label: 'Today', icon: Home },
+  { href: '/dashboard/profile', label: 'Profile', icon: IdCard },
   { href: '/dashboard/schedule', label: 'Schedule', icon: Calendar },
   { href: '/dashboard/sessions', label: 'Sessions', icon: ClipboardList, tourId: 'nav-sessions' },
   { href: '/dashboard/clients', label: 'Clients', icon: Users, tourId: 'nav-clients' },

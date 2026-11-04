@@ -27,6 +27,14 @@ describe('route authorisation', () => {
     expect(all.length).toBeGreaterThan(70);
   });
 
+  it('reschedule route is reachable by THERAPIST via clinical.record', () => {
+    const route = all.find((r) => r.verb.toUpperCase() === 'POST' && r.path === '/v1/consult/practice/sessions/:bookingId/reschedule');
+    expect(route, 'POST /v1/consult/practice/sessions/:bookingId/reschedule not found').toBeDefined();
+    expect(route!.permissions, 'reschedule must be guardable by clinical.record').toContain('clinical.record');
+    // THERAPIST gets clinical.record from its role, so the route guard will admit them.
+    // The service then restricts them to their own sessions.
+  });
+
   it('every authenticated route declares its roles', () => {
     const missing = all
       .filter((r) => r.authenticated && !r.platformAdmin && !r.hasPermissions)

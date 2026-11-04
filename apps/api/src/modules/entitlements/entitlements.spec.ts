@@ -42,10 +42,10 @@ const PRACTICE_TABLE: Record<Tier, Record<string, unknown>> = {
   CLINIC:  { monthlyBookingLimit: null, platformFeeBps: 0,   bankTransferPayments: true,  customDomain: true,  staffInviteRoles: ['ADMIN', 'RECEPTIONIST', 'THERAPIST'], assessmentRank: 2, googleCalendarSync: true },
 };
 const PROFILE_TABLE: Record<Tier, Record<string, boolean>> = {
-  FREE: { downloadablePdf: false, introVideo: false },
-  STARTER: { downloadablePdf: true, introVideo: true },
-  PRO: { downloadablePdf: true, introVideo: true },
-  CLINIC: { downloadablePdf: true, introVideo: true },
+  FREE: { downloadablePdf: false, introVideo: false, customBrandColor: false },
+  STARTER: { downloadablePdf: true, introVideo: true, customBrandColor: true },
+  PRO: { downloadablePdf: true, introVideo: true, customBrandColor: true },
+  CLINIC: { downloadablePdf: true, introVideo: true, customBrandColor: true },
 };
 
 describe('the plan tables', () => {

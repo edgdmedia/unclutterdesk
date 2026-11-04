@@ -16,6 +16,17 @@ export interface SessionActor {
 const name = (p: { firstName?: string | null; lastName?: string | null } | null | undefined, fallback = 'Client') =>
   `${p?.firstName ?? ''} ${p?.lastName ?? ''}`.trim() || fallback;
 
+/** The Lagos calendar date of a moment, as the UTC midnight a DATE column stores. */
+function lagosDay(moment: Date): Date {
+  const key = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Africa/Lagos',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).format(moment);
+  return new Date(`${key}T00:00:00.000Z`);
+}
+
 
 /**
  * The practice's session register and the single-session view: the same rows
@@ -174,9 +185,6 @@ export class SessionDirectoryService {
     newAvailabilityId: bigint,
     opts: { toOwnSlot?: boolean } = {},
   ) {
-    if (!actor.viewAll) {
-      throw new ForbiddenException('Ask the front desk or a practice admin to move a session.');
-    }
     return this.prisma.$transaction(async (tx: any) => {
       const b = await tx.consultBooking.findFirst({
         where: { id: bookingId, tenantId },
@@ -190,6 +198,11 @@ export class SessionDirectoryService {
         tx.consultAvailability.findFirst({ where: { id: newAvailabilityId, tenantId } }),
         tx.consultAvailability.findFirst({ where: { id: b.availabilityId }, select: { providerProfileId: true } }),
       ]);
+      // A therapist may move their own session without view-all. Moving another
+      // practitioner's booking still needs the front desk or a practice admin.
+      if (!actor.viewAll && oldSlot?.providerProfileId !== actor.profileId) {
+        throw new ForbiddenException('Ask the front desk or a practice admin to move a session.');
+      }
       if (!slot || !slot.isActive || slot.startsAt <= new Date()) {
         throw new BadRequestException('That time is no longer open. Choose another.');
       }
@@ -201,6 +214,12 @@ export class SessionDirectoryService {
       if (slot.serviceId !== null && slot.serviceId !== b.serviceId) {
         throw new BadRequestException('That time is kept for a different service. Choose another.');
       }
+      const day = lagosDay(slot.startsAt);
+      const away = await tx.timeOff.findFirst({
+        where: { tenantId, profileId: slot.providerProfileId, startsOn: { lte: day }, endsOn: { gte: day } },
+        select: { id: true },
+      });
+      if (away) throw new BadRequestException('The practice is away on that day. Choose another time.');
       // SET-06: a move keeps the bought format; the place comes with the time.
       if (b.format === 'IN_PERSON' && (!slot.allowsInPerson || !slot.locationId)) {
         throw new BadRequestException("That time isn't available in person. Choose another.");

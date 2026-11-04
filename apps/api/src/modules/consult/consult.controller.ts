@@ -233,6 +233,45 @@ export class ConsultController {
     );
   }
 
+  @Permissions('clinical.record')
+  @Get('therapist/time-off')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @ApiBearerAuth('access-token')
+  @ApiOperation({ summary: 'List the therapist\'s time off and any bookings on those days' })
+  listTimeOff(@Req() req: any) {
+    return this.consultService.listTimeOff(
+      authenticatedTenantId(req),
+      authenticatedProfileId(req),
+    );
+  }
+
+  @Permissions('clinical.record')
+  @Post('therapist/time-off')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @ApiBearerAuth('access-token')
+  @ApiOperation({ summary: 'Add a day or date range off; those days close to booking' })
+  createTimeOff(@Req() req: any, @Body() dto: any) {
+    return this.consultService.createTimeOff(
+      authenticatedTenantId(req),
+      authenticatedProfileId(req),
+      dto ?? {},
+    );
+  }
+
+  @Permissions('clinical.record')
+  @Delete('therapist/time-off/:id')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @ApiBearerAuth('access-token')
+  @ApiOperation({ summary: 'Remove a time-off period' })
+  deleteTimeOff(@Req() req: any, @Param('id') id: string) {
+    if (!/^\d+$/.test(id)) throw new NotFoundException('Time off not found');
+    return this.consultService.deleteTimeOff(
+      authenticatedTenantId(req),
+      authenticatedProfileId(req),
+      BigInt(id),
+    );
+  }
+
   @Permissions('any.authenticated')
   @Post('public/bookings')
   @UseGuards(JwtAuthGuard, RolesGuard)
@@ -360,7 +399,7 @@ export class ConsultController {
     return this.sessions.setStatus(authenticatedTenantId(req), this.actor(req), BigInt(bookingId), s as 'CONFIRMED' | 'COMPLETED' | 'CANCELLED');
   }
 
-  @Permissions('sessions.edit')
+  @Permissions('sessions.edit', 'clinical.record')
   @Post('practice/sessions/:bookingId/reschedule')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @ApiBearerAuth('access-token')

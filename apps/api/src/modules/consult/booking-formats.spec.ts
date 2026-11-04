@@ -36,6 +36,7 @@ function makeService({ slots = [onlineSlot, bothSlot], svc = svcRow([{ format: '
     consultBooking: { count: vi.fn().mockResolvedValue(0) },
     profile: { findFirst: vi.fn().mockResolvedValue({ id: CLIENT, email: 'ada@example.com', firstName: 'Ada', lastName: 'O', phone: '080' }) },
     tenant: { findUnique: vi.fn().mockResolvedValue({ id: TENANT, slug: 'p', customDomain: null, customDomainStatus: null }) },
+    timeOff: { findMany: vi.fn().mockResolvedValue([]) },
     $transaction: vi.fn(async (cb: any) => cb(tx)),
   };
   const notifications = { sendEmail: vi.fn().mockResolvedValue({ success: true }), notify: vi.fn().mockResolvedValue([]) };

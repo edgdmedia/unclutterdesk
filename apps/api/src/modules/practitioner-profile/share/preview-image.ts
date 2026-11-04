@@ -25,6 +25,8 @@ export interface PreviewInput {
   address: string;
   layoutKey: string;
   themeKey: string;
+  /** Custom colour (themeKey 'custom'). */
+  brandColor?: string | null;
   /** JPEG, PNG or WebP bytes; null draws initials instead. */
   photo: Buffer | null;
   initials: string;
@@ -36,16 +38,20 @@ const el = (type: string, style: Record<string, unknown>, children?: unknown, ex
   props: { style, ...(children === undefined ? {} : { children }), ...extra },
 });
 
-let fonts: { name: string; data: Buffer; weight: 400 | 500 | 700 | 800; style: 'normal' | 'italic' }[] | null = null;
+// Therapysts design system: Figtree for text, Fraunces (soft) for the name and
+// the editorial pull quote. Static faces, because satori can't read variable fonts.
+let fonts: { name: string; data: Buffer; weight: 400 | 500 | 600 | 700 | 800; style: 'normal' | 'italic' }[] | null = null;
 function loadFonts() {
   if (fonts) return fonts;
   const dir = (pkg: string) => join(dirname(require.resolve(`${pkg}/package.json`)), 'files');
-  const outfit = (w: number) => readFileSync(join(dir('@fontsource/outfit'), `outfit-latin-${w}-normal.woff2`));
+  const figtree = (w: number) => readFileSync(join(dir('@fontsource/figtree'), `figtree-latin-${w}-normal.woff2`));
+  const fraunces = (file: string) => readFileSync(join(dir('@fontsource/fraunces'), file));
   fonts = [
-    { name: 'Outfit', data: outfit(400), weight: 400, style: 'normal' },
-    { name: 'Outfit', data: outfit(700), weight: 700, style: 'normal' },
-    { name: 'Outfit', data: outfit(800), weight: 800, style: 'normal' },
-    { name: 'Fraunces', data: readFileSync(join(dir('@fontsource/fraunces'), 'fraunces-latin-500-italic.woff2')), weight: 500, style: 'italic' },
+    { name: 'Figtree', data: figtree(400), weight: 400, style: 'normal' },
+    { name: 'Figtree', data: figtree(700), weight: 700, style: 'normal' },
+    { name: 'Figtree', data: figtree(800), weight: 800, style: 'normal' },
+    { name: 'Fraunces', data: fraunces('fraunces-latin-600-normal.woff2'), weight: 600, style: 'normal' },
+    { name: 'Fraunces', data: fraunces('fraunces-latin-500-italic.woff2'), weight: 500, style: 'italic' },
   ];
   return fonts;
 }
@@ -80,7 +86,7 @@ function textBlock(input: PreviewInput, c: ThemePalette, opts: { quote?: boolean
   const nameSize = opts.nameSize ?? (input.name.length > 22 ? 60 : 76);
   return el('div', { display: 'flex', flexDirection: 'column', gap: 18 }, [
     el('div', { fontSize: 26, fontWeight: 700, color: c.accent }, input.kindLabel),
-    el('div', { fontSize: nameSize, fontWeight: 800, letterSpacing: -3, lineHeight: 1 }, clip(input.name, 40)),
+    el('div', { fontFamily: 'Fraunces', fontSize: nameSize, fontWeight: 600, letterSpacing: -1.5, lineHeight: 1.04 }, clip(input.name, 40)),
     input.headline
       ? opts.quote
         ? el('div', { fontFamily: 'Fraunces', fontStyle: 'italic', fontWeight: 500, fontSize: 34, lineHeight: 1.3 }, `“${clip(input.headline, 110)}”`)
@@ -97,8 +103,8 @@ function footer(input: PreviewInput, c: ThemePalette): Node {
 }
 
 function card(input: PreviewInput): Node {
-  const c = themePalette(input.themeKey);
-  const base = { width: PREVIEW_WIDTH, height: PREVIEW_HEIGHT, display: 'flex', background: c.background, color: c.text, fontFamily: 'Outfit' };
+  const c = themePalette(input.themeKey, input.brandColor);
+  const base = { width: PREVIEW_WIDTH, height: PREVIEW_HEIGHT, display: 'flex', background: c.background, color: c.text, fontFamily: 'Figtree' };
   const column = (children: Node[], padding = '72px 72px 56px') =>
     el('div', { flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'space-between', padding }, children);
 
@@ -113,7 +119,7 @@ function card(input: PreviewInput): Node {
         el('div', { display: 'flex', alignItems: 'center', gap: 32 }, [
           portrait(input, c, { width: 150, height: 150, radius: 40 }),
           el('div', { display: 'flex', flexDirection: 'column', gap: 10 }, [
-            el('div', { fontSize: 72, fontWeight: 800, letterSpacing: -3, lineHeight: 1 }, clip(input.name, 30)),
+            el('div', { fontFamily: 'Fraunces', fontSize: 72, fontWeight: 600, letterSpacing: -1.5, lineHeight: 1.04 }, clip(input.name, 30)),
             el('div', { fontSize: 28, fontWeight: 700, color: c.accent }, input.kindLabel),
           ]),
         ]),

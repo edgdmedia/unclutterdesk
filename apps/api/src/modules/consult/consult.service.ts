@@ -21,12 +21,44 @@ import { onlineHoldExpiry } from './online-hold';
 import { assertWithinMonthlyLimit, monthlyLimitReached } from './booking-limits';
 import { PLAN_SELECT } from '../entitlements/entitlements';
 import { PersonFactsService } from '../practitioner-profile/person-facts.service';
+import { labelledAnswers } from '../intake/form-answers';
 
 /** A Paystack checkout: the page to send the payer to, and the code its pop-up opens with. */
 type StartedPayment = { url: string; accessCode: string };
 
 /** Monday first, matching TherapistWeeklyTime.weekday. */
 const DAY_NAMES = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+
+/** The calendar date (YYYY-MM-DD) a moment falls on in the practice's time zone. */
+function localDayKey(value: Date | string): string {
+  return new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Africa/Lagos',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).format(new Date(value));
+}
+
+/** A stored DATE (UTC midnight) as YYYY-MM-DD. */
+function dateOnlyKey(value: Date): string {
+  return value.toISOString().slice(0, 10);
+}
+
+/** Whether a moment falls inside one of the therapist's time-off periods. */
+function inAwayPeriod(periods: Array<{ startsOn: Date; endsOn: Date }>, moment: Date | string): boolean {
+  const day = localDayKey(moment);
+  return periods.some((p) => day >= dateOnlyKey(p.startsOn) && day <= dateOnlyKey(p.endsOn));
+}
+
+/** Parses a date input (YYYY-MM-DD) into the UTC midnight a DATE column stores. */
+function parseDateOnly(value: string): Date {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) throw new BadRequestException('Choose a valid date.');
+  const date = new Date(`${value}T00:00:00.000Z`);
+  if (Number.isNaN(date.getTime()) || date.toISOString().slice(0, 10) !== value) {
+    throw new BadRequestException('Choose a valid date.');
+  }
+  return date;
+}
 
 /** §6.17: edited only in My profile (PractitionerProfile), never on the practice record. */
 export const PERSON_FIELDS = ['welcomeMessage', 'tagline', 'specialty', 'credentials', 'yearsExperience', 'modalities', 'languages'] as const;
@@ -628,7 +660,25 @@ export class ConsultService {
     const serviceFormats = (service as { formats?: Array<{ format: string; priceKobo: bigint; isActive: boolean }> } | null)?.formats ?? null;
     const wants = asFormat(format);
 
+    // Time off closes those days even for a slot that was generated before
+    // the therapist added it, or for a one-off time staff made by hand.
+    const providerIds = [...new Set(slots.map((s) => s.providerProfileId))];
+    const awayRows = providerIds.length
+      ? await this.prisma.timeOff.findMany({
+          where: { tenantId, profileId: { in: providerIds } },
+          select: { profileId: true, startsOn: true, endsOn: true },
+        })
+      : [];
+    const awayByProvider = new Map<string, Array<{ startsOn: Date; endsOn: Date }>>();
+    for (const row of awayRows) {
+      const key = row.profileId.toString();
+      awayByProvider.set(key, [...(awayByProvider.get(key) ?? []), { startsOn: row.startsOn, endsOn: row.endsOn }]);
+    }
+    const notAway = (s: (typeof slots)[number]) =>
+      !inAwayPeriod(awayByProvider.get(s.providerProfileId.toString()) ?? [], s.startsAt);
+
     return slots
+      .filter(notAway)
       .filter(longEnough)
       .map((s) => {
         // Rule 1 again at read time: a slot only offers what its therapist
@@ -677,12 +727,18 @@ export class ConsultService {
     serviceId?: string;
     channel?: string;
   }) {
+    const startsAt = new Date(dto.startsAt);
+    if (Number.isNaN(startsAt.getTime())) throw new BadRequestException('Choose a valid time.');
+    if (await this.isAway(tenantId, providerProfileId, startsAt)) {
+      throw new BadRequestException('You are away on that day. Remove the time off first.');
+    }
+
     const slot = await this.prisma.consultAvailability.create({
       data: {
         tenantId,
         providerProfileId,
         serviceId: dto.serviceId ? BigInt(dto.serviceId) : null,
-        startsAt: new Date(dto.startsAt),
+        startsAt,
         endsAt: new Date(dto.endsAt),
         channel: dto.channel || 'VIDEO',
         isActive: true,
@@ -698,7 +754,7 @@ export class ConsultService {
 
   async getTherapistAvailability(tenantId: bigint, providerProfileId: bigint) {
     const now = new Date();
-    const [slots, tenant, therapist, weekly, locations] = await Promise.all([
+    const [slots, tenant, therapist, weekly, locations, timeOff] = await Promise.all([
       this.prisma.consultAvailability.findMany({
         where: { tenantId, providerProfileId, startsAt: { gte: now } },
         include: { location: { select: { id: true, name: true } } },
@@ -711,6 +767,10 @@ export class ConsultService {
       }),
       this.prisma.therapistWeeklyTime.findMany({ where: { tenantId, profileId: providerProfileId }, orderBy: [{ weekday: 'asc' }, { start: 'asc' }] }),
       this.prisma.practiceLocation.findMany({ where: { tenantId }, select: { id: true, name: true, city: true } }),
+      this.prisma.timeOff.findMany({
+        where: { tenantId, profileId: providerProfileId },
+        orderBy: [{ startsOn: 'asc' }, { endsOn: 'asc' }],
+      }),
     ]);
 
     const bookedIds = slots.length
@@ -732,6 +792,12 @@ export class ConsultService {
         start: w.start,
         formats: [w.allowsOnline && 'ONLINE', w.allowsInPerson && 'IN_PERSON'].filter(Boolean) as Format[],
         locationId: w.locationId ? w.locationId.toString() : null,
+      })),
+      timeOff: timeOff.map((t) => ({
+        id: t.id.toString(),
+        startsOn: dateOnlyKey(t.startsOn),
+        endsOn: dateOnlyKey(t.endsOn),
+        note: t.note,
       })),
       slots: slots.map((slot) => ({
         id: slot.id.toString(),
@@ -776,6 +842,144 @@ export class ConsultService {
     }
 
     return { id: slotId.toString(), deleted: true };
+  }
+
+  /**
+   * Time off: a date or range the therapist is away. The public booking page
+   * hides those days, generated slots skip them, and any booking already on
+   * them is listed to move rather than being cancelled behind the client's back.
+   */
+  async listTimeOff(tenantId: bigint, providerProfileId: bigint) {
+    const [timeOff, bookings] = await Promise.all([
+      this.prisma.timeOff.findMany({
+        where: { tenantId, profileId: providerProfileId },
+        orderBy: [{ startsOn: 'asc' }, { endsOn: 'asc' }],
+      }),
+      this.prisma.consultBooking.findMany({
+        where: {
+          tenantId,
+          status: { not: 'CANCELLED' },
+          availability: { providerProfileId },
+        },
+        include: {
+          client: { select: { firstName: true, lastName: true } },
+          service: { select: { title: true } },
+          availability: { select: { startsAt: true, endsAt: true } },
+        },
+      }),
+    ]);
+
+    const away = timeOff.map((t) => ({ startsOn: t.startsOn, endsOn: t.endsOn }));
+    const conflicting = bookings
+      .filter((b) => inAwayPeriod(away, b.availability.startsAt))
+      .map((b) => ({
+        id: b.id.toString(),
+        startsAt: b.availability.startsAt.toISOString(),
+        endsAt: b.availability.endsAt.toISOString(),
+        clientName:
+          [b.client.firstName, b.client.lastName].filter(Boolean).join(' ') || 'Client',
+        serviceTitle: b.service?.title ?? 'Session',
+        status: b.status,
+      }))
+      .sort((a, b) => a.startsAt.localeCompare(b.startsAt));
+
+    return {
+      timeOff: timeOff.map((t) => ({
+        id: t.id.toString(),
+        startsOn: dateOnlyKey(t.startsOn),
+        endsOn: dateOnlyKey(t.endsOn),
+        note: t.note,
+      })),
+      bookings: conflicting,
+    };
+  }
+
+  async createTimeOff(tenantId: bigint, providerProfileId: bigint, dto: {
+    startsOn?: string;
+    endsOn?: string;
+    note?: string | null;
+  }) {
+    if (!dto?.startsOn) throw new BadRequestException('Choose the first day you are away.');
+    const startsOn = parseDateOnly(String(dto.startsOn));
+    const endsOn = dto.endsOn ? parseDateOnly(String(dto.endsOn)) : startsOn;
+    if (endsOn < startsOn) throw new BadRequestException('The last day cannot be before the first day.');
+
+    const created = await this.prisma.timeOff.create({
+      data: {
+        tenantId,
+        profileId: providerProfileId,
+        startsOn,
+        endsOn,
+        note: dto.note?.trim() || null,
+      },
+    });
+
+    // Close the open times on those days. Booked times stay where they are so
+    // the therapist can move them deliberately.
+    await this.closeOpenTimes(tenantId, providerProfileId, startsOn, endsOn);
+
+    const payload = await this.listTimeOff(tenantId, providerProfileId);
+    return {
+      ...payload,
+      created: {
+        id: created.id.toString(),
+        startsOn: dateOnlyKey(created.startsOn),
+        endsOn: dateOnlyKey(created.endsOn),
+        note: created.note,
+      },
+    };
+  }
+
+  async deleteTimeOff(tenantId: bigint, providerProfileId: bigint, timeOffId: bigint) {
+    const deleted = await this.prisma.timeOff.deleteMany({
+      where: { id: timeOffId, tenantId, profileId: providerProfileId },
+    });
+    if (deleted.count === 0) throw new NotFoundException('Time off not found');
+
+    // Reopen the days that are no longer covered by any time off.
+    await this.regenerateFromPattern(tenantId, providerProfileId);
+    return this.listTimeOff(tenantId, providerProfileId);
+  }
+
+  /** Marks unbooked open times on these dates inactive; booked times stay for a deliberate move. */
+  private async closeOpenTimes(tenantId: bigint, providerProfileId: bigint, startsOn: Date, endsOn: Date) {
+    const slots = await this.prisma.consultAvailability.findMany({
+      where: {
+        tenantId,
+        providerProfileId,
+        isActive: true,
+        startsAt: { gte: startsOn, lt: new Date(endsOn.getTime() + 86_400_000) },
+        bookings: { none: { status: { not: 'CANCELLED' } } },
+      },
+      select: { id: true, startsAt: true },
+    });
+    const away = [{ startsOn, endsOn }];
+    const ids = slots.filter((s) => inAwayPeriod(away, s.startsAt)).map((s) => s.id);
+    if (ids.length) {
+      await this.prisma.consultAvailability.updateMany({
+        where: { id: { in: ids }, tenantId, providerProfileId },
+        data: { isActive: false },
+      });
+    }
+  }
+
+  /** Whether a time falls on one of the therapist's days off. */
+  private async isAway(tenantId: bigint, providerProfileId: bigint, moment: Date): Promise<boolean> {
+    const away = await this.prisma.timeOff.findMany({
+      where: { tenantId, profileId: providerProfileId },
+      select: { startsOn: true, endsOn: true },
+    });
+    return inAwayPeriod(away, moment);
+  }
+
+  /**
+   * Refuses a time on a day off. Shared with the staff booking and reschedule
+   * paths, which otherwise skip the public booking checks.
+   */
+  async assertNotAway(tenantId: bigint, providerProfileId: bigint, moment: Date): Promise<void> {
+    if (await this.isAway(tenantId, providerProfileId, moment)) {
+      throw new BadRequestException('The practice is away on that day. Choose another time.');
+    }
   }
 
   /**
@@ -878,6 +1082,10 @@ export class ConsultService {
     });
 
     const weekly = await this.prisma.therapistWeeklyTime.findMany({ where: { tenantId, profileId: providerProfileId } });
+    const timeOff = await this.prisma.timeOff.findMany({
+      where: { tenantId, profileId: providerProfileId },
+      select: { startsOn: true, endsOn: true },
+    });
     const kept = await this.prisma.consultAvailability.findMany({
       where: {
         tenantId,
@@ -897,7 +1105,7 @@ export class ConsultService {
     const generated = slotsFromPattern(
       weekly.map((w): WeeklyTime => ({ weekday: w.weekday, start: w.start, allowsOnline: w.allowsOnline, allowsInPerson: w.allowsInPerson, locationId: w.locationId })),
       { now, days: 28, sessionLengthMinutes: therapist.sessionLengthMinutes, isTaken },
-    );
+    ).filter((slot) => !inAwayPeriod(timeOff, slot.startsAt));
 
     const data = generated.flatMap((slot) => {
       const allowed = allowedFormats({ allowsOnline: slot.allowsOnline, allowsInPerson: slot.allowsInPerson, locationId: slot.locationId }, tf);
@@ -1008,6 +1216,9 @@ export class ConsultService {
 
     if (!slot) {
       throw new BadRequestException('The selected time slot is no longer available');
+    }
+    if (await this.isAway(tenantId, slot.providerProfileId, slot.startsAt)) {
+      throw new BadRequestException('The practice is away on that day. Please choose another time.');
     }
 
     // A slot either names its service or is open to any of the practice's
@@ -1522,18 +1733,24 @@ export class ConsultService {
       orderBy: { startsAt: 'asc' },
       take: 60,
     });
+    const away = await this.prisma.timeOff.findMany({
+      where: { tenantId, profileId: booking.availability.providerProfileId },
+      select: { startsOn: true, endsOn: true },
+    });
 
     return {
       bookingId: booking.id.toString(),
       serviceTitle: booking.service.title,
       currentStartsAt: booking.availability.startsAt.toISOString(),
       noticeHours,
-      slots: slots.map((slot) => ({
-        id: slot.id.toString(),
-        startsAt: slot.startsAt.toISOString(),
-        endsAt: slot.endsAt.toISOString(),
-        channel: slot.channel,
-      })),
+      slots: slots
+        .filter((slot) => !inAwayPeriod(away, slot.startsAt))
+        .map((slot) => ({
+          id: slot.id.toString(),
+          startsAt: slot.startsAt.toISOString(),
+          endsAt: slot.endsAt.toISOString(),
+          channel: slot.channel,
+        })),
     };
   }
 
@@ -1576,6 +1793,9 @@ export class ConsultService {
     }
     if (target.serviceId !== booking.serviceId) {
       throw new BadRequestException('That time is not open for this service');
+    }
+    if (await this.isAway(tenantId, target.providerProfileId, target.startsAt)) {
+      throw new BadRequestException('The practice is away on that day. Choose another time.');
     }
     // SET-06: the move keeps the format that was bought; it never changes it
     // silently. Rows predating the flags read as online, as they were.
@@ -1885,7 +2105,8 @@ export class ConsultService {
         targetType: submission.targetType,
         status: submission.status,
         submittedAt: submission.createdAt.toISOString(),
-        answers: Object.entries((submission.answersJson || {}) as Record<string, unknown>).map(([key, value]) => ({ key, value })),
+        // Each answer with its question's label, in the form's order (never a raw field key).
+        answers: labelledAnswers(submission.form.schemaJson, submission.answersJson).map((a) => ({ key: a.id, label: a.label, value: a.value, display: a.display })),
       })),
       nextBooking: nextBooking
         ? {

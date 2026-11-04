@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ChevronLeft, ChevronRight, Plus, Settings, X, Calendar, Clock, User, Trash2, CheckCircle2, CalendarPlus } from 'lucide-react';
 import { Page, PageHeader, useBrand, useToast } from '@unclutterdesk/ui';
@@ -11,6 +11,7 @@ function localDateInput(d: Date): string {
 }
 import { PaymentChip } from '../../components/booking/PaymentChip';
 import { formatClock } from '../../utils/displayFormat';
+import { serviceColour, servicesInView, visibleDays, visibleHours, type WeeklyTimeLite } from './scheduleView';
 
 interface Client {
   id: string;
@@ -49,7 +50,6 @@ export function SchedulePage({ sessions, setSessions, clients, tenantSlug, onRef
   const toast = useToast();
   const brand = useBrand();
   const primaryColor = brand.primaryColor || '#0F3A53';
-  const secondaryColor = brand.secondaryColor || '#E3B341';
 
   const [saving, setSaving] = useState(false);
   const [showBooking, setShowBooking] = useState(false);
@@ -65,17 +65,44 @@ export function SchedulePage({ sessions, setSessions, clients, tenantSlug, onRef
   const [sessionCompleteEvent, setSessionCompleteEvent] = useState<CalendarEvent | null>(null);
 
   // Form state
-  const [formClientName, setFormClientName] = useState('');
-  const [formType, setFormType] = useState('Individual Therapy');
   const [formDate, setFormDate] = useState(() => localDateInput(new Date()));
   const [formTime, setFormTime] = useState('09:00');
   const [formDuration, setFormDuration] = useState(50);
-  const [formVideoProvider, setFormVideoProvider] = useState('DEFAULT');
   const [showAvailabilityModal, setShowAvailabilityModal] = useState(false);
   const [updatingStatusId, setUpdatingStatusId] = useState<string | null>(null);
   const [reviewLinkCopied, setReviewLinkCopied] = useState(false);
 
-  const hours = ['9 AM', '10 AM', '11 AM', '12 PM', '1 PM', '2 PM', '3 PM', '4 PM', '5 PM', '6 PM'];
+  // The hours and days shown come from your weekly availability and the sessions in view.
+  const [weekly, setWeekly] = useState<{ weeklyTimes: WeeklyTimeLite[]; sessionLengthMinutes: number }>({ weeklyTimes: [], sessionLengthMinutes: 50 });
+  useEffect(() => {
+    let live = true;
+    api
+      .get<{ weeklyTimes?: WeeklyTimeLite[]; sessionLengthMinutes?: number }>('/v1/consult/therapist/availability')
+      .then((p) => live && setWeekly({ weeklyTimes: p.weeklyTimes ?? [], sessionLengthMinutes: p.sessionLengthMinutes ?? 50 }))
+      .catch(() => undefined);
+    return () => {
+      live = false;
+    };
+  }, []);
+
+  // Days the therapist is away. They show as grey blocks and close to booking.
+  const [timeOff, setTimeOff] = useState<Array<{ id: string; startsOn: string; endsOn: string; note: string | null }>>([]);
+  useEffect(() => {
+    let live = true;
+    api
+      .get<{ timeOff?: Array<{ id: string; startsOn: string; endsOn: string; note: string | null }> }>('/v1/consult/therapist/time-off')
+      .then((r) => live && setTimeOff(r.timeOff ?? []))
+      .catch(() => undefined);
+    return () => {
+      live = false;
+    };
+  }, []);
+
+  /** The time-off period covering this date, if any. */
+  const awayOn = (day: Date) => {
+    const key = localDateInput(day);
+    return timeOff.find((t) => key >= t.startsOn && key <= t.endsOn) ?? null;
+  };
 
   // Helper: Get Monday of the week
   const getStartOfWeek = (d: Date) => {
@@ -100,11 +127,6 @@ export function SchedulePage({ sessions, setSessions, clients, tenantSlug, onRef
     setCurrentDate(newDate);
   };
 
-  // Helper: Format Date strings
-  const getLocalDateKey = (date: Date) => {
-    return date.toISOString().split('T')[0];
-  };
-
   const isSameDay = (date1: Date, date2: Date) => {
     return (
       date1.getFullYear() === date2.getFullYear() &&
@@ -115,11 +137,7 @@ export function SchedulePage({ sessions, setSessions, clients, tenantSlug, onRef
 
   // Generate current view dates
   const weekStart = getStartOfWeek(currentDate);
-  const weekDays = Array.from({ length: 5 }, (_, idx) => {
-    const d = new Date(weekStart);
-    d.setDate(weekStart.getDate() + idx);
-    return d;
-  });
+  const weekDays = visibleDays(weekStart, sessions, weekly.weeklyTimes);
 
   const monthGridDays = (() => {
     const start = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);
@@ -135,6 +153,14 @@ export function SchedulePage({ sessions, setSessions, clients, tenantSlug, onRef
   })();
 
   const activeDays = viewMode === 'day' ? [currentDate] : weekDays;
+  const { startHour, endHour } = visibleHours(
+    sessions.filter((s) => activeDays.some((d) => isSameDay(new Date(s.startsAt), d))),
+    weekly.weeklyTimes,
+    weekly.sessionLengthMinutes,
+  );
+  const hourRows = Array.from({ length: endHour - startHour }, (_, i) => startHour + i);
+  const hourLabel = (h: number) => formatClock(new Date(2000, 0, 1, h, 0)).replace(':00', '');
+  const services = servicesInView(sessions.filter((s) => s.category !== 'admin'));
 
   // Header string formatting
   const getHeaderTitle = () => {
@@ -143,7 +169,7 @@ export function SchedulePage({ sessions, setSessions, clients, tenantSlug, onRef
       return currentDate.toLocaleDateString('en-US', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
     } else if (viewMode === 'week') {
       const start = weekDays[0];
-      const end = weekDays[4];
+      const end = weekDays[weekDays.length - 1];
       if (start.getMonth() === end.getMonth()) {
         return `${start.getDate()} — ${end.getDate()} ${start.toLocaleDateString('en-US', options)}`;
       } else {
@@ -156,13 +182,13 @@ export function SchedulePage({ sessions, setSessions, clients, tenantSlug, onRef
 
   // Handle cell click
   const handleCellClick = (date: Date, hour: number) => {
-    const formattedDate = date.toISOString().split('T')[0];
-    const formattedTime = `${hour.toString().padStart(2, '0')}:00`;
-    setFormDate(formattedDate);
-    setFormTime(formattedTime);
-    setFormClientName(clients[0]?.name || '');
-    setFormType('Individual Therapy');
-    setFormDuration(50);
+    if (awayOn(date)) {
+      toast.info('You are away that day. Remove the time off to add hours.');
+      return;
+    }
+    setFormDate(localDateInput(date));
+    setFormTime(`${hour.toString().padStart(2, '0')}:00`);
+    setFormDuration(weekly.sessionLengthMinutes);
     setScheduleError(null);
     setShowNewSessionModal(true);
   };
@@ -271,19 +297,18 @@ export function SchedulePage({ sessions, setSessions, clients, tenantSlug, onRef
 
               <button
                 onClick={() => {
-                  setFormDate(currentDate.toISOString().split('T')[0]);
-                  setFormTime('09:00');
-                  setFormClientName(clients[0]?.name || '');
-                  setFormType('Individual Therapy');
-                  setFormDuration(50);
+                  setFormDate(localDateInput(currentDate));
+                  setFormTime(`${String(startHour).padStart(2, '0')}:00`);
+                  setFormDuration(weekly.sessionLengthMinutes);
+                  setScheduleError(null);
                   setShowNewSessionModal(true);
                 }}
                 className="os-brand-btn h-[40px] px-3 md:px-4 rounded-[14px] font-bold text-xs flex items-center gap-1.5 cursor-pointer"
                 style={{ backgroundColor: primaryColor }}
               >
                 <Plus className="h-4 w-4" />
-                <span className="hidden sm:inline">+ New session</span>
-                <span className="sm:hidden">New</span>
+                <span className="hidden sm:inline">Add open time</span>
+                <span className="sm:hidden">Open time</span>
               </button>
 
               <button
@@ -322,20 +347,16 @@ export function SchedulePage({ sessions, setSessions, clients, tenantSlug, onRef
             </div>
           </div>
 
-          <div className="flex items-center gap-4 text-[11.5px] text-[#64748B] font-semibold">
-            <span className="flex items-center gap-1.5">
-              <span className="h-2.5 w-2.5 rounded-[4px]" style={{ backgroundColor: primaryColor }} />
-              Individual Therapy
-            </span>
-            <span className="flex items-center gap-1.5">
-              <span className="h-2.5 w-2.5 rounded-[4px]" style={{ backgroundColor: secondaryColor }} />
-              Couples Therapy
-            </span>
-            <span className="flex items-center gap-1.5">
-              <span className="h-2.5 w-2.5 rounded-[4px] bg-[#CBD5E1]" />
-              Admin Block
-            </span>
-          </div>
+          {services.length ? (
+            <ul className="flex flex-wrap items-center gap-x-4 gap-y-1 text-[11.5px] text-[#64748B] font-semibold" aria-label="Services">
+              {services.map((title) => (
+                <li key={title} className="flex items-center gap-1.5">
+                  <span className="h-2.5 w-2.5 rounded-[4px]" style={{ backgroundColor: serviceColour(title, primaryColor) }} aria-hidden />
+                  {title}
+                </li>
+              ))}
+            </ul>
+          ) : null}
         </div>
 
         {/* View Mode Rendering */}
@@ -346,9 +367,9 @@ export function SchedulePage({ sessions, setSessions, clients, tenantSlug, onRef
             {/* Hour Gutter */}
             <div className="bg-[#FCFDFE] border-r border-[#E2E8F0]">
               <div className="h-[58px] border-b border-[#E2E8F0]" />
-              {hours.map((h, i) => (
-                <div key={i} className="h-[62px] pr-3 text-right text-[10.5px] font-semibold text-[#94A3B8] -translate-y-1.5">
-                  {h}
+              {hourRows.map((h) => (
+                <div key={h} data-hour={h} className="h-[62px] pr-3 text-right text-[10.5px] font-semibold text-[#94A3B8] -translate-y-1.5">
+                  {hourLabel(h)}
                 </div>
               ))}
             </div>
@@ -356,6 +377,7 @@ export function SchedulePage({ sessions, setSessions, clients, tenantSlug, onRef
             {/* Day Columns */}
             {activeDays.map((day, dayIdx) => {
               const dayEvents = sessions.filter((s) => isSameDay(new Date(s.startsAt), day));
+              const away = awayOn(day);
 
               return (
                 <div key={dayIdx} className="border-r border-[#E2E8F0] last:border-r-0 relative flex flex-col">
@@ -365,43 +387,50 @@ export function SchedulePage({ sessions, setSessions, clients, tenantSlug, onRef
                       {day.toLocaleDateString('en-US', { weekday: 'short' }).toUpperCase()}
                     </span>
                     <span className="text-[15px] font-bold text-[#0F172A] leading-none">{day.getDate()}</span>
+                    {away ? (
+                      <span className="mt-0.5 inline-block rounded-full bg-slate-200 px-1.5 text-[8.5px] font-black uppercase tracking-[0.08em] text-slate-600">
+                        Away
+                      </span>
+                    ) : null}
                   </div>
 
                   {/* Grid Canvas with Interactive Hourly Rows */}
-                  <div className="flex-1 min-h-[620px] relative bg-white">
+                  <div className="flex-1 relative bg-white" style={{ minHeight: `${hourRows.length * 62}px` }}>
                     {/* Clickable cells background overlay */}
-                    <div className="absolute inset-0 grid grid-rows-10">
-                      {Array.from({ length: 10 }).map((_, hourIdx) => (
+                    <div className="absolute inset-0 grid" style={{ gridTemplateRows: `repeat(${hourRows.length}, 1fr)` }}>
+                      {hourRows.map((hour) => (
                         <div
-                          key={hourIdx}
-                          onClick={() => handleCellClick(day, hourIdx + 9)}
+                          key={hour}
+                          onClick={() => handleCellClick(day, hour)}
                           className="border-b border-slate-100 hover:bg-slate-50/50 cursor-crosshair transition-all"
                         />
                       ))}
                     </div>
 
+                    {/* Time off: a grey block over the whole day */}
+                    {away ? (
+                      <div
+                        className="absolute inset-0 z-20 bg-slate-200/60 pointer-events-none flex items-start justify-center pt-2"
+                        aria-label={away.note ? `Away: ${away.note}` : 'Away'}
+                      >
+                        <span className="rounded-full bg-white/80 px-2 py-0.5 text-[10px] font-bold text-slate-600 shadow-sm">
+                          {away.note ?? 'Away'}
+                        </span>
+                      </div>
+                    ) : null}
+
                     {/* Scheduled Events overlay */}
                     {dayEvents.map((ev) => {
                       const startDate = new Date(ev.startsAt);
                       const endDate = new Date(ev.endsAt);
-                      const startMin = (startDate.getHours() - 9) * 60 + startDate.getMinutes();
+                      const startMin = (startDate.getHours() - startHour) * 60 + startDate.getMinutes();
                       const duration = (endDate.getTime() - startDate.getTime()) / 60000;
 
                       const top = (startMin / 60) * 62;
                       const height = (duration / 60) * 62 - 4;
 
-                      const bgColor =
-                        ev.category === 'individual'
-                          ? `${primaryColor}14`
-                          : ev.category === 'couples'
-                          ? `${secondaryColor}1F`
-                          : '#F1F5F9';
-                      const borderColor =
-                        ev.category === 'individual'
-                          ? primaryColor
-                          : ev.category === 'couples'
-                          ? secondaryColor
-                          : '#CBD5E1';
+                      const borderColor = serviceColour(ev.type, primaryColor);
+                      const bgColor = `${borderColor}14`;
 
                       return (
                         <div
@@ -454,13 +483,18 @@ export function SchedulePage({ sessions, setSessions, clients, tenantSlug, onRef
               {monthGridDays.map((day, idx) => {
                 const dayEvents = sessions.filter((s) => isSameDay(new Date(s.startsAt), day));
                 const isCurrentMonth = day.getMonth() === currentDate.getMonth();
+                const away = awayOn(day);
 
                 return (
                   <div
                     key={idx}
                     onClick={() => handleCellClick(day, 9)}
                     className={`border-r border-b border-slate-100 p-2 flex flex-col gap-1 cursor-pointer transition-all min-h-[100px] ${
-                      isCurrentMonth ? 'bg-white' : 'bg-slate-50/50'
+                      away
+                        ? 'bg-slate-200/60'
+                        : isCurrentMonth
+                          ? 'bg-white'
+                          : 'bg-slate-50/50'
                     } hover:bg-slate-50`}
                   >
                     <span
@@ -470,16 +504,16 @@ export function SchedulePage({ sessions, setSessions, clients, tenantSlug, onRef
                     >
                       {day.getDate()}
                     </span>
+                    {away ? (
+                      <span className="self-start rounded-full bg-white/80 px-1.5 py-0.5 text-[9px] font-bold text-slate-600 shadow-sm">
+                        {away.note ?? 'Away'}
+                      </span>
+                    ) : null}
 
                     {/* Month events list */}
                     <div className="space-y-1 overflow-y-auto flex-1 max-h-[80px]">
                       {dayEvents.map((ev) => {
-                        const borderColor =
-                          ev.category === 'individual'
-                            ? primaryColor
-                            : ev.category === 'couples'
-                            ? secondaryColor
-                            : '#CBD5E1';
+                        const borderColor = serviceColour(ev.type, primaryColor);
                         return (
                           <div
                             key={ev.id}
@@ -528,41 +562,12 @@ export function SchedulePage({ sessions, setSessions, clients, tenantSlug, onRef
               <X className="h-5 w-5" />
             </button>
 
-            <div className="flex items-center gap-2 pb-1 border-b border-slate-100">
-              <Calendar className="h-5 w-5" style={{ color: primaryColor }} />
-              <h3 className="text-lg font-bold text-[#0F172A]">Schedule New Session</h3>
-            </div>
-
-            {/* Client Selection */}
-            <div className="space-y-1">
-              <label className="text-[11.5px] font-bold text-slate-500 block uppercase">Client / Description</label>
-              <select
-                value={formClientName}
-                onChange={(e) => setFormClientName(e.target.value)}
-                className="w-full h-11 px-3 rounded-[12px] bg-[#F8FAFC] border border-[#E2E8F0] text-xs font-semibold outline-none"
-              >
-                {clients.map((c) => (
-                  <option key={c.id} value={c.name}>
-                    {c.name}
-                  </option>
-                ))}
-                <option value="Clinical Supervision">Clinical Supervision (Admin Block)</option>
-                <option value="Notes & Billing">Notes & Billing (Admin Block)</option>
-              </select>
-            </div>
-
-            {/* Session Type */}
-            <div className="space-y-1">
-              <label className="text-[11.5px] font-bold text-slate-500 block uppercase">Session Category</label>
-              <select
-                value={formType}
-                onChange={(e) => setFormType(e.target.value)}
-                className="w-full h-11 px-3 rounded-[12px] bg-[#F8FAFC] border border-[#E2E8F0] text-xs font-semibold outline-none"
-              >
-                <option value="Individual Therapy">Individual Therapy</option>
-                <option value="Couples Therapy">Couples Therapy</option>
-                <option value="Admin Block">Admin Block / Busy Time</option>
-              </select>
+            <div className="pb-1 border-b border-slate-100">
+              <div className="flex items-center gap-2">
+                <Calendar className="h-5 w-5" style={{ color: primaryColor }} />
+                <h3 className="text-lg font-bold text-[#0F172A]">Add open time</h3>
+              </div>
+              <p className="mt-1 text-[12px] text-[#64748B]">A time clients can book from your booking page. To book a client in yourself, use New booking.</p>
             </div>
 
             {/* Date & Time fields */}
@@ -602,20 +607,6 @@ export function SchedulePage({ sessions, setSessions, clients, tenantSlug, onRef
               </select>
             </div>
 
-            {/* Video Provider */}
-            <div className="space-y-1">
-              <label className="text-[11.5px] font-bold text-slate-500 block uppercase">Video Platform</label>
-              <select
-                value={formVideoProvider}
-                onChange={(e) => setFormVideoProvider(e.target.value)}
-                className="w-full h-11 px-3 rounded-[12px] bg-[#F8FAFC] border border-[#E2E8F0] text-xs font-semibold outline-none"
-              >
-                <option value="DEFAULT">Use my Default Profile Setting</option>
-                <option value="JITSI">Jitsi (Built-in)</option>
-                <option value="GOOGLE_MEET">Google Meet</option>
-              </select>
-            </div>
-
             {/* Action buttons */}
             <div className="flex items-center gap-3 pt-3">
               <button
@@ -631,7 +622,7 @@ export function SchedulePage({ sessions, setSessions, clients, tenantSlug, onRef
                 className="flex-1 h-11 rounded-[14px] text-white font-bold text-xs hover:brightness-95 cursor-pointer flex items-center justify-center"
                 style={{ backgroundColor: primaryColor }}
               >
-                Schedule Session
+                {saving ? 'Adding…' : 'Add open time'}
               </button>
             </div>
           </form>
@@ -653,24 +644,9 @@ export function SchedulePage({ sessions, setSessions, clients, tenantSlug, onRef
               <span
                 className="text-[9px] font-black uppercase tracking-[0.12em] px-2.5 py-1 rounded-full border"
                 style={{
-                  backgroundColor:
-                    selectedEvent.category === 'individual'
-                      ? `${primaryColor}14`
-                      : selectedEvent.category === 'couples'
-                      ? `${secondaryColor}1F`
-                      : '#F1F5F9',
-                  borderColor:
-                    selectedEvent.category === 'individual'
-                      ? `${primaryColor}40`
-                      : selectedEvent.category === 'couples'
-                      ? `${secondaryColor}40`
-                      : '#CBD5E1',
-                  color:
-                    selectedEvent.category === 'individual'
-                      ? primaryColor
-                      : selectedEvent.category === 'couples'
-                      ? secondaryColor
-                      : '#64748B',
+                  backgroundColor: `${serviceColour(selectedEvent.type, primaryColor)}14`,
+                  borderColor: `${serviceColour(selectedEvent.type, primaryColor)}40`,
+                  color: serviceColour(selectedEvent.type, primaryColor),
                 }}
               >
                 {selectedEvent.type}

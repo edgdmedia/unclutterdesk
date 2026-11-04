@@ -59,7 +59,7 @@ export class ProfilePreviewJob implements OnModuleInit {
       where: { id: BigInt(payload.practitionerProfileId) },
       select: {
         id: true, handle: true, status: true, displayName: true, kind: true, headline: true, city: true, countryCode: true,
-        photoKey: true, previewImageKey: true, layoutKey: true, themeKey: true,
+        photoKey: true, previewImageKey: true, layoutKey: true, themeKey: true, brandColor: true,
       },
     });
     if (!profile || profile.status !== 'PUBLISHED') return;
@@ -74,6 +74,7 @@ export class ProfilePreviewJob implements OnModuleInit {
       address: `${PROFILE_PUBLIC_ORIGIN.replace(/^https?:\/\//, '')}/${profile.handle}`,
       layoutKey: profile.layoutKey,
       themeKey: profile.themeKey,
+      brandColor: profile.brandColor,
       photo,
       initials: initialsOf(profile.displayName),
     });

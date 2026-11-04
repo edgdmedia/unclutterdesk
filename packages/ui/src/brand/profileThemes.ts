@@ -10,12 +10,15 @@
  * (apps/profiles), so the two always match. Keys must match the API's
  * THEME_KEYS and LAYOUT_KEYS (apps/api/src/modules/practitioner-profile/themes.ts).
  *
- * Values come from the approved design (the approved design canvas,
- * 3 Nov 2026), built on the Unclutter Desk design system: pine, clay, slate.
+ * Values come from the Therapysts design system's profile palette table
+ * (adopted 4 Nov 2026). `crisp` replaced `clinical`; profileTheme() still
+ * reads an old `clinical` value as `crisp`.
  * Every palette passes WCAG 2.1 AA (profileThemes.test.ts).
  */
 
-export type ProfileThemeKey = 'calm' | 'warm' | 'clinical' | 'earth' | 'night';
+import { brandTokens } from './brandTokens';
+
+export type ProfileThemeKey = 'calm' | 'warm' | 'crisp' | 'earth' | 'night';
 export type ProfileLayoutKey = 'classic' | 'editorial' | 'compact' | 'split';
 
 export interface ProfileTheme {
@@ -40,8 +43,8 @@ export const PROFILE_THEMES: readonly ProfileTheme[] = [
   {
     key: 'calm',
     label: 'Calm',
-    description: 'Pine green and plenty of space. The default.',
-    colors: { background: '#F6FAF8', surface: '#FFFFFF', text: '#0F172A', mutedText: '#475569', accent: '#24614F', accentText: '#FFFFFF', soft: '#DDEDE6', border: '#E2E8F0' },
+    description: 'Blue-white and calm blue. The default.',
+    colors: { background: '#F7FAFE', surface: '#FFFFFF', text: '#0F1B33', mutedText: '#4A5876', accent: '#2A56A8', accentText: '#FFFFFF', soft: '#E9F0FB', border: '#E3EAF5' },
   },
   {
     key: 'warm',
@@ -50,10 +53,10 @@ export const PROFILE_THEMES: readonly ProfileTheme[] = [
     colors: { background: '#FBF6F1', surface: '#FFFFFF', text: '#2A1D15', mutedText: '#5B4A3E', accent: '#8A5A3C', accentText: '#FFFFFF', soft: '#F3EAE3', border: '#E3D2C4' },
   },
   {
-    key: 'clinical',
-    label: 'Clinical',
-    description: 'Crisp white and deep blue, precise and professional.',
-    colors: { background: '#F8FAFC', surface: '#FFFFFF', text: '#0F172A', mutedText: '#475569', accent: '#1D4E89', accentText: '#FFFFFF', soft: '#E6EEF8', border: '#E2E8F0' },
+    key: 'crisp',
+    label: 'Crisp',
+    description: 'White and slate, precise and professional.',
+    colors: { background: '#FFFFFF', surface: '#FFFFFF', text: '#111827', mutedText: '#4B5563', accent: '#334155', accentText: '#FFFFFF', soft: '#F1F5F9', border: '#E2E8F0' },
   },
   {
     key: 'earth',
@@ -64,15 +67,23 @@ export const PROFILE_THEMES: readonly ProfileTheme[] = [
   {
     key: 'night',
     label: 'Night',
-    description: 'Deep slate with a soft green accent, calm after dark.',
-    colors: { background: '#0F172A', surface: '#17233A', text: '#F1F5F9', mutedText: '#CBD5E1', accent: '#7DB8A5', accentText: '#0E2A22', soft: '#1C3A33', border: '#22324D' },
+    description: 'Deep ink with a sky-blue accent, calm after dark.',
+    colors: { background: '#0F1B33', surface: '#16264A', text: '#F1F5F9', mutedText: '#CBD5E1', accent: '#8FB6EC', accentText: '#0F1B33', soft: '#1E3F7A', border: '#24365E' },
   },
 ];
 
 export const DEFAULT_PROFILE_THEME: ProfileThemeKey = 'calm';
 
-export function profileTheme(key: string | null | undefined): ProfileTheme {
-  return PROFILE_THEMES.find((t) => t.key === key) ?? PROFILE_THEMES[0];
+export function profileTheme(key: string | null | undefined, brandColor?: string | null): ProfileTheme {
+  // A custom colour (Starter and up): Calm, with the accent made readable from the brand colour.
+  if (key === 'custom') {
+    const accent = brandTokens(brandColor);
+    const calm = PROFILE_THEMES[0];
+    if (accent) return { ...calm, label: 'Custom', description: 'Your brand colour.', colors: { ...calm.colors, accent: accent.accent, accentText: accent.accentText, soft: accent.soft } };
+    return calm;
+  }
+  const k = key === 'clinical' ? 'crisp' : key;
+  return PROFILE_THEMES.find((t) => t.key === k) ?? PROFILE_THEMES[0];
 }
 
 export interface ProfileLayout {
