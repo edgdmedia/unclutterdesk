@@ -17,10 +17,16 @@ export function countMonthlyBookings(prisma: BookingCounter, tenantId: bigint, n
 }
 
 /** True when the practice has used up this month's bookings. Always false on unlimited plans. */
-export async function monthlyLimitReached(prisma: BookingCounter, tenantId: bigint, tenant: PlanFields | null | undefined): Promise<boolean> {
+export async function monthlyLimitReached(
+  prisma: BookingCounter,
+  tenantId: bigint,
+  tenant: PlanFields | null | undefined,
+  adding = 1,
+): Promise<boolean> {
   const limit = practiceEntitlements(tenant).monthlyBookingLimit;
   if (limit === null) return false;
-  return (await countMonthlyBookings(prisma, tenantId)) >= limit;
+  // `adding` bookings must all fit: several booked together count together.
+  return (await countMonthlyBookings(prisma, tenantId)) + adding > limit;
 }
 
 /**
@@ -36,10 +42,10 @@ export async function assertWithinMonthlyLimit(
   prisma: BookingCounter,
   tenantId: bigint,
   tenant: PlanFields | null | undefined,
-  opts: { sessionStartsAt?: Date; now?: Date } = {},
+  opts: { sessionStartsAt?: Date; now?: Date; adding?: number } = {},
 ): Promise<void> {
   if (opts.sessionStartsAt && opts.sessionStartsAt < lagosTomorrowStart(opts.now)) return;
-  if (!(await monthlyLimitReached(prisma, tenantId, tenant))) return;
+  if (!(await monthlyLimitReached(prisma, tenantId, tenant, opts.adding ?? 1))) return;
   const upgrade = nextTier(effectiveTier(tenant));
   throw new HttpException(
     {

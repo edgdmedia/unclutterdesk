@@ -381,3 +381,69 @@ describe('staff booking a format', () => {
     expect(tx.consultBooking.create.mock.calls[0][0].data.amountKobo).toBe(3000000n);
   });
 });
+
+describe('several sessions at once', () => {
+  // A client paid for four by transfer and books two now: today 20:00 and tomorrow 14:00.
+  const at = (d: number) => new Date(Date.now() + d * DAY).toISOString();
+  const several = (times: any[], payment = 'PAID') => ({ clientProfileId: String(CLIENT), serviceId: '20', payment, times });
+  const numbered = (s: ReturnType<typeof setup>) => {
+    let n = 900n;
+    s.tx.consultBooking.create.mockImplementation(async ({ data }: any) => ({ id: n++, ...data }));
+  };
+
+  it('books every time in one transaction, each marked paid, and sends one email listing them', async () => {
+    const s = setup();
+    numbered(s);
+    const res = await s.service.createSeveralForClient(TENANT, OWNER, several([{ startsAt: at(0.2) }, { startsAt: at(1) }]));
+    expect(s.prisma.$transaction).toHaveBeenCalledTimes(1);
+    expect(s.tx.consultBooking.create).toHaveBeenCalledTimes(2);
+    for (const call of s.tx.consultBooking.create.mock.calls) {
+      expect(call[0].data).toMatchObject({ status: 'CONFIRMED', paymentMethod: 'MANUAL', clientProfileId: CLIENT });
+    }
+    expect(res.bookings.map((b) => b.bookingId)).toEqual(['900', '901']);
+    expect(s.notifications.sendEmail).toHaveBeenCalledTimes(1);
+    expect(s.notifications.sendEmail.mock.calls[0][0].title).toBe('Your 2 sessions are booked');
+    expect(s.calendar.pushBookingToGoogle).toHaveBeenCalledTimes(2);
+  });
+
+  it('mixes an open slot and a custom time', async () => {
+    const s = setup();
+    numbered(s);
+    await s.service.createSeveralForClient(TENANT, OWNER, several([{ availabilityId: '300' }, { startsAt: at(2) }]));
+    expect(s.tx.consultAvailability.updateMany).toHaveBeenCalled(); // the slot claimed
+    expect(s.tx.consultAvailability.create).toHaveBeenCalledTimes(1); // the custom time made
+  });
+
+  it('books none when one time clashes', async () => {
+    const s = setup({ clash: { availability: { startsAt: inDays(1), endsAt: inDays(1) } } });
+    await expect(s.service.createSeveralForClient(TENANT, OWNER, several([{ startsAt: at(1) }, { startsAt: at(2) }]))).rejects.toThrow(BadRequestException);
+    expect(s.notifications.sendEmail).not.toHaveBeenCalled();
+  });
+
+  it('counts the future ones together against the monthly limit', async () => {
+    // Free allows 10: with 9 used, two future sessions do not fit, though one would.
+    const s = setup({ tier: 'FREE', monthCount: 9 });
+    await expect(s.service.createSeveralForClient(TENANT, OWNER, several([{ startsAt: at(3) }, { startsAt: at(4) }]))).rejects.toMatchObject({ status: 409 });
+    const one = setup({ tier: 'FREE', monthCount: 9 });
+    await expect(one.service.createSeveralForClient(TENANT, OWNER, several([{ startsAt: at(3) }]))).resolves.toBeTruthy();
+  });
+
+  it('refuses no times, or more than the cap', async () => {
+    const s = setup();
+    await expect(s.service.createSeveralForClient(TENANT, OWNER, several([]))).rejects.toThrow(/at least one time/);
+    await expect(s.service.createSeveralForClient(TENANT, OWNER, several(Array.from({ length: 9 }, (_, i) => ({ startsAt: at(i + 1) }))))).rejects.toThrow(/up to 8/);
+  });
+
+  it('payment links still go one email per session, each with its own link', async () => {
+    const s = setup();
+    numbered(s);
+    await s.service.createSeveralForClient(TENANT, OWNER, several([{ startsAt: at(3) }, { startsAt: at(4) }], 'LINK'));
+    expect(s.notifications.sendEmail).toHaveBeenCalledTimes(2);
+    expect(s.notifications.sendEmail.mock.calls[0][0].type).toBe('bookings.staff_payment_link');
+  });
+
+  it('a therapist still cannot mark sessions as paid', async () => {
+    const s = setup();
+    await expect(s.service.createSeveralForClient(TENANT, THERAPIST, several([{ startsAt: at(1) }]))).rejects.toThrow(ForbiddenException);
+  });
+});
