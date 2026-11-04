@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react';
 import { JoinButton } from '../../components/video/JoinButton';
 import { Link, useParams } from 'react-router-dom';
-import { CalendarClock, CheckCircle2, Download, FileText, Loader2, Video } from 'lucide-react';
+import { CalendarClock, CheckCircle2, Download, FileText, Loader2, Repeat, Video } from 'lucide-react';
 import { Card, Eyebrow, Page, PageHeader, StatTile, StatusBadge, useToast } from '@unclutterdesk/ui';
 import { PaymentChip } from '../../components/booking/PaymentChip';
+import { ChangeServiceDialog } from '../../components/booking/ChangeServiceDialog';
 import { api } from '../../utils/apiClient';
 import type { SessionRow } from './SessionsPage';
 import { activeDisplayPrefs, formatWhen } from '../../utils/displayFormat';
@@ -20,6 +21,11 @@ interface SessionDetail extends SessionRow {
   clientRecap: string | null;
   clientRecapSentAt: string | null;
   can: { edit: boolean; summary: boolean; markPaid: boolean };
+  serviceId?: string | null;
+  durationMinutes?: number | null;
+  /** After a change to a dearer service: what is still owed, and how it was settled. */
+  balanceKobo?: string | null;
+  balanceStatus?: 'DUE' | 'PAID' | 'WAIVED' | null;
 }
 
 const naira = (kobo: string | null) => (kobo === null ? '—' : `₦${(Number(kobo) / 100).toLocaleString('en-NG')}`);
@@ -33,6 +39,7 @@ export function SessionDetailPage() {
   const [internal, setInternal] = useState('');
   const [recap, setRecap] = useState('');
   const [busy, setBusy] = useState(false);
+  const [changing, setChanging] = useState(false);
   // BKG-06: whether the client's default forms are in yet.
   const [forms, setForms] = useState<{ intake: boolean; confidentiality: boolean } | null>(null);
 
@@ -121,6 +128,11 @@ export function SessionDetailPage() {
                     <Download className="h-4 w-4" /> Mark as paid
                   </button>
                 ) : null}
+                {d.status !== 'CANCELLED' ? (
+                  <button type="button" disabled={busy} onClick={() => setChanging(true)} className="h-[40px] px-4 rounded-[12px] bg-white border border-[var(--desk-pine-200)] text-[var(--desk-text)] text-xs font-bold inline-flex items-center gap-1.5 cursor-pointer disabled:opacity-50">
+                    <Repeat className="h-4 w-4" /> Change service
+                  </button>
+                ) : null}
                 {d.status !== 'CANCELLED' && d.status !== 'COMPLETED' ? (
                   <button type="button" disabled={busy} onClick={() => void act(() => api.patch(`/v1/consult/practice/sessions/${d.id}/status`, { status: 'CANCELLED' }), 'Session cancelled — the time is open again')} className="h-[40px] px-4 rounded-[12px] bg-white border border-rose-200 text-rose-600 text-xs font-bold inline-flex items-center gap-1.5 cursor-pointer disabled:opacity-50">
                     Cancel session
@@ -166,6 +178,43 @@ export function SessionDetailPage() {
           </p>
         ) : null}
       </Card>
+
+      {d.balanceStatus === 'DUE' && d.balanceKobo ? (
+        <Card padding="p-[22px]" className="space-y-3 border-[var(--desk-pending-border)] bg-[var(--desk-pending-bg)]">
+          <Eyebrow>BALANCE</Eyebrow>
+          <p className="text-[13.5px] text-[var(--desk-text)]">
+            <span className="font-bold">{naira(d.balanceKobo)}</span> is still owed: the session was changed to a dearer service after the client paid.
+          </p>
+          {d.can.markPaid ? (
+            <div className="flex flex-wrap gap-2">
+              <button type="button" disabled={busy} onClick={() => void act(() => api.post(`/v1/consult/practice/sessions/${d.id}/balance`, { action: 'PAID' }), 'Balance recorded as paid')} className="h-[38px] px-4 rounded-[12px] bg-[var(--desk-pine-600)] text-white text-[12.5px] font-bold cursor-pointer disabled:opacity-50">
+                Paid at the practice
+              </button>
+              <button type="button" disabled={busy} onClick={() => void act(() => api.post(`/v1/consult/practice/sessions/${d.id}/balance`, { action: 'WAIVED' }), 'Balance waived')} className="h-[38px] px-4 rounded-[12px] bg-white border border-[var(--desk-pine-200)] text-[var(--desk-text)] text-[12.5px] font-bold cursor-pointer disabled:opacity-50">
+                Waive
+              </button>
+            </div>
+          ) : (
+            <p className="text-[12px] text-[var(--desk-text-muted)]">The front desk records it as paid, or waives it.</p>
+          )}
+        </Card>
+      ) : d.balanceStatus === 'WAIVED' && d.balanceKobo ? (
+        <p className="text-[12.5px] text-[var(--desk-text-muted)]">A balance of {naira(d.balanceKobo)} was waived.</p>
+      ) : null}
+
+      {changing ? (
+        <ChangeServiceDialog
+          session={d}
+          onClose={() => setChanging(false)}
+          onChanged={(r) => {
+            setChanging(false);
+            const owed = r.balanceKobo ? ` ${naira(r.balanceKobo)} is still owed.` : '';
+            const over = r.overpaidKobo !== '0' ? ` The client paid ${naira(r.overpaidKobo)} more than the new price.` : '';
+            toast.success(`Now ${r.serviceTitle}.${owed}${over}`);
+            void api.get<SessionDetail>(`/v1/consult/practice/sessions/${id}`).then(setD).catch(() => undefined);
+          }}
+        />
+      ) : null}
 
       {d.can.summary ? (
         <Card padding="p-[22px]" className="space-y-3">

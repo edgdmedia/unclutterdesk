@@ -5,6 +5,9 @@ import { NotificationService } from '../notifications/notification.service';
 import { BookingNotifier } from '../notifications/booking-notifier.service';
 import { chargedKobo } from '../../common/revenue';
 import { tenantWebOrigin } from '../../common/origins';
+import { formatNaira } from '../billing/subscription-plans';
+import { priceFor, type Format } from './formats';
+import { isUnpaid, moneyAfterServiceChange } from './service-change';
 
 export interface SessionActor {
   profileId: bigint;
@@ -44,7 +47,7 @@ export class SessionDirectoryService {
   private include() {
     return {
       client: { select: { id: true, firstName: true, lastName: true, email: true, phone: true } },
-      service: { select: { title: true } },
+      service: { select: { id: true, title: true, durationMinutes: true } },
       availability: { include: { therapist: { select: { profile: { select: { firstName: true, lastName: true } } } } } },
       location: { select: { id: true, name: true, city: true } },
       clinicalNotes: { select: { id: true, isLocked: true }, take: 1, orderBy: { createdAt: 'desc' as const } },
@@ -63,6 +66,11 @@ export class SessionDirectoryService {
       bookedBy,
       client: { id: b.client.id.toString(), name: name(b.client) },
       serviceTitle: b.service.title,
+      serviceId: b.service.id?.toString?.() ?? null,
+      durationMinutes: (b.service.durationMinutes as number | undefined) ?? null,
+      // After a change to a dearer service: what is still owed, and how it was settled.
+      balanceKobo: b.balanceKobo !== null && b.balanceKobo !== undefined ? String(b.balanceKobo) : null,
+      balanceStatus: (b.balanceStatus as 'DUE' | 'PAID' | 'WAIVED' | null | undefined) ?? null,
       provider: {
         id: b.availability.providerProfileId?.toString?.() ?? '',
         name: name(b.availability.therapist?.profile, 'Practitioner'),
@@ -235,6 +243,167 @@ export class SessionDirectoryService {
       });
       return { id: b.id.toString(), startsAt: slot.startsAt.toISOString() };
     });
+  }
+
+  /**
+   * The client booked the wrong service: staff put it right. Same permission as
+   * a move (the desk, or the practitioner for their own session). The time
+   * stretches to the new length when the practitioner is free for it; the
+   * money follows `moneyAfterServiceChange`. The client is emailed.
+   */
+  async changeService(tenantId: bigint, actor: SessionActor, bookingId: bigint, serviceId: bigint) {
+    const result = await this.prisma.$transaction(async (tx: any) => {
+      const b = await tx.consultBooking.findFirst({
+        where: { id: bookingId, tenantId },
+        include: {
+          availability: { include: { therapist: { select: { profile: { select: { firstName: true, lastName: true, timezone: true } } } } } },
+        },
+      });
+      if (!b) throw new NotFoundException('Session not found');
+      const slot = b.availability;
+      if (!actor.viewAll && slot.providerProfileId !== actor.profileId) {
+        throw new ForbiddenException("Ask the front desk or a practice admin to change another practitioner's session.");
+      }
+      if (b.status === 'CANCELLED') throw new BadRequestException('A cancelled session cannot be changed. Book a new one.');
+      if (b.serviceId === serviceId) throw new BadRequestException('The session is already for that service.');
+
+      const service = await tx.consultService.findFirst({ where: { id: serviceId, tenantId, isActive: true }, include: { formats: true } });
+      if (!service) throw new BadRequestException('That service is not offered. Choose another.');
+      const format = (b.format ?? 'ONLINE') as Format;
+      // As a staff booking prices it: the format's price, or the old single price online.
+      const price = priceFor(service.formats ?? [], format) ?? (format === 'ONLINE' ? BigInt(service.priceKobo ?? 0) : null);
+      if (price === null) throw new BadRequestException('That service is not offered in person. Choose another.');
+
+      // The time: only a session still ahead changes length.
+      let endsAt: Date = slot.endsAt;
+      if (slot.startsAt > new Date()) {
+        const wanted = new Date(slot.startsAt.getTime() + service.durationMinutes * 60_000);
+        if (wanted > slot.endsAt) {
+          // The same lock as a staff custom time, so the two cannot double-book.
+          const lockKey = `staff-booking:${tenantId}:${slot.providerProfileId}`;
+          await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtextextended(${lockKey}, 0))`;
+          // Close open times in the added stretch FIRST, so a public booking
+          // mid-claim of one commits before the clash check below reads it.
+          await tx.consultAvailability.updateMany({
+            where: { tenantId, providerProfileId: slot.providerProfileId, isActive: true, id: { not: slot.id }, startsAt: { lt: wanted }, endsAt: { gt: slot.endsAt } },
+            data: { isActive: false },
+          });
+          const clash = await tx.consultBooking.findFirst({
+            where: {
+              tenantId,
+              id: { not: b.id },
+              status: { not: 'CANCELLED' },
+              availability: { providerProfileId: slot.providerProfileId, startsAt: { lt: wanted }, endsAt: { gt: slot.endsAt } },
+            },
+            include: { availability: true },
+          });
+          if (clash) {
+            const tz = slot.therapist?.profile?.timezone || 'Africa/Lagos';
+            const hhmm = (d: Date) => new Intl.DateTimeFormat('en-GB', { hour: '2-digit', minute: '2-digit', timeZone: tz }).format(d);
+            throw new BadRequestException(
+              `${name(slot.therapist?.profile, 'The practitioner')} has another session from ${hhmm(clash.availability.startsAt)} to ${hhmm(clash.availability.endsAt)}, so ${service.title} (${service.durationMinutes} min) doesn't fit. Reschedule the session first.`,
+            );
+          }
+        }
+        if (wanted.getTime() !== slot.endsAt.getTime()) {
+          // A shorter session's freed minutes are not reopened: too short to book.
+          await tx.consultAvailability.update({
+            where: { id: slot.id },
+            data: { endsAt: wanted, ...(slot.serviceId !== null ? { serviceId: service.id } : {}) },
+          });
+          endsAt = wanted;
+        }
+      }
+
+      const money = moneyAfterServiceChange(b, price);
+      await tx.consultBooking.update({
+        where: { id: b.id },
+        data: {
+          serviceId: service.id,
+          amountKobo: money.amountKobo,
+          balanceKobo: money.balanceKobo,
+          balanceStatus: money.balanceStatus,
+          balanceSettledAt: null,
+          balanceSettledByProfileId: null,
+          updatedAt: new Date(),
+        },
+      });
+      return {
+        id: b.id.toString(),
+        serviceTitle: service.title as string,
+        durationMinutes: service.durationMinutes as number,
+        startsAt: slot.startsAt.toISOString(),
+        endsAt: endsAt.toISOString(),
+        priceKobo: price.toString(),
+        amountKobo: money.amountKobo.toString(),
+        unpaid: isUnpaid(b),
+        balanceKobo: money.balanceKobo !== null ? money.balanceKobo.toString() : null,
+        balanceStatus: money.balanceStatus,
+        overpaidKobo: money.overpaidKobo.toString(),
+        clientProfileId: b.clientProfileId as bigint,
+        upcoming: slot.startsAt > new Date(),
+      };
+    });
+
+    const { clientProfileId, upcoming, ...out } = result;
+    if (upcoming) {
+      await this.emailServiceChange(tenantId, clientProfileId, out).catch(() => undefined);
+    }
+    return out;
+  }
+
+  /** Tells the client what their session is now, and what (if anything) is owed. */
+  private async emailServiceChange(
+    tenantId: bigint,
+    clientProfileId: bigint,
+    r: { serviceTitle: string; durationMinutes: number; startsAt: string; priceKobo: string; amountKobo: string; unpaid: boolean; balanceKobo: string | null },
+  ) {
+    const [client, tenant] = await Promise.all([
+      this.prisma.profile.findUnique({ where: { id: clientProfileId }, select: { email: true, timezone: true } }),
+      this.prisma.tenant.findUnique({ where: { id: tenantId }, select: { name: true, slug: true, customDomain: true, customDomainStatus: true } }),
+    ]);
+    if (!client?.email) return;
+    const when = new Intl.DateTimeFormat('en-GB', {
+      weekday: 'long', day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit', timeZone: client.timezone || 'Africa/Lagos',
+    }).format(new Date(r.startsAt));
+    const money = r.unpaid
+      ? ` The amount to pay is now ${formatNaira(Number(r.amountKobo))}.`
+      : r.balanceKobo
+        ? ` The new price is ${formatNaira(Number(r.priceKobo))}. You have paid ${formatNaira(Number(r.amountKobo))}, so ${formatNaira(Number(r.balanceKobo))} is still due; the practice will tell you how to pay it.`
+        : '';
+    await this.notifications.sendEmail({
+      to: client.email,
+      type: 'bookings.service_changed',
+      title: `Your session on ${when} is now ${r.serviceTitle}`,
+      message: `${tenant?.name ?? 'Your practice'} has changed your session on ${when} to ${r.serviceTitle} (${r.durationMinutes} minutes).${money}`,
+      link: `${tenantWebOrigin(tenant as any)}/portal`,
+      actionLabel: 'View my booking',
+      tenantId,
+      profileId: clientProfileId,
+    });
+  }
+
+  /** The desk settles a balance left by a service change: paid at the practice, or waived. */
+  async settleBalance(tenantId: bigint, actorProfileId: bigint, bookingId: bigint, action: 'PAID' | 'WAIVED') {
+    const b = await this.prisma.consultBooking.findFirst({
+      where: { id: bookingId, tenantId },
+      select: { id: true, amountKobo: true, paidAt: true, balanceKobo: true, balanceStatus: true, service: { select: { priceKobo: true } } },
+    });
+    if (!b) throw new NotFoundException('Session not found');
+    if (b.balanceStatus !== 'DUE' || !b.balanceKobo) throw new BadRequestException('Nothing is owed on this session.');
+    const now = new Date();
+    const data =
+      action === 'PAID'
+        ? // Folded into what was collected, so revenue and the client's payments count it.
+          { amountKobo: chargedKobo(b) + b.balanceKobo, paidAt: b.paidAt ?? now, balanceStatus: 'PAID' }
+        : { balanceStatus: 'WAIVED' };
+    // The status is part of the match: two clicks settle it once.
+    const done = await this.prisma.consultBooking.updateMany({
+      where: { id: b.id, tenantId, balanceStatus: 'DUE' },
+      data: { ...data, balanceSettledAt: now, balanceSettledByProfileId: actorProfileId },
+    });
+    if (done.count !== 1) throw new BadRequestException('Nothing is owed on this session.');
+    return { id: b.id.toString(), balanceStatus: action };
   }
 
   async setSummary(
