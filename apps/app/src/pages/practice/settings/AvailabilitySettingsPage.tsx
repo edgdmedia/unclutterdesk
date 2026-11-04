@@ -100,28 +100,28 @@ function Tile(props: {
         disabled={locked}
         aria-label={`${locked ? 'Booked time' : 'Format'} ${label}${badge ? ` (${badge})` : ''}`}
         onClick={onToggle}
-        className={`h-[34px] px-3 rounded-[10px] border text-[12.5px] font-bold ${locked ? 'border-[#E2E8F0] bg-[#F1F5F9] text-[#94A3B8] cursor-not-allowed' : 'border-[#E2E8F0] bg-white text-[#0F172A] cursor-pointer hover:border-[#0F3A53]'}`}
+        className={`h-[34px] px-3 rounded-[10px] border text-[12.5px] font-bold ${locked ? 'border-[var(--desk-border)] bg-[var(--desk-surface-muted)] text-[var(--desk-text-subtle)] cursor-not-allowed' : 'border-[var(--desk-border)] bg-white text-[var(--desk-text)] cursor-pointer hover:border-[var(--desk-pine-600)]'}`}
       >
-        {label}{badge ? <span className="ml-1.5 text-[10px] font-black uppercase text-[#B45309]">{badge}</span> : null}
+        {label}{badge ? <span className="ml-1.5 text-[10px] font-black uppercase text-[var(--desk-pending)]">{badge}</span> : null}
       </button>
       {open && !locked ? (
-        <div role="menu" className="absolute left-0 top-full mt-1 z-20 w-[230px] rounded-[14px] border border-[#E2E8F0] bg-white shadow-xl p-2 space-y-1.5">
+        <div role="menu" className="absolute left-0 top-full mt-1 z-20 w-[230px] rounded-[14px] border border-[var(--desk-border)] bg-white shadow-xl p-2 space-y-1.5">
           {([['Online', ['ONLINE'] as Format[]], ['In person', ['IN_PERSON'] as Format[]], ['Either', ['ONLINE', 'IN_PERSON'] as Format[]]] as const).map(([name, fs]) => (
             <button
               key={name}
               type="button"
               role="menuitem"
               onClick={() => onPick(fs, fs.includes('IN_PERSON') ? (locationId ?? locations[0]?.id ?? null) : null)}
-              className="w-full text-left px-2.5 h-[32px] rounded-[9px] text-[13px] font-semibold hover:bg-[#F1F5F9] cursor-pointer"
+              className="w-full text-left px-2.5 h-[32px] rounded-[9px] text-[13px] font-semibold hover:bg-[var(--desk-surface-muted)] cursor-pointer"
             >
               {name}
             </button>
           ))}
           {locations.length ? (
-            <label className="block text-[11px] font-bold text-[#475569]">
+            <label className="block text-[11px] font-bold text-[var(--desk-text-body)]">
               Location
               <select
-                className="mt-1 w-full h-[34px] rounded-[9px] border border-[#E2E8F0] bg-[#F8FAFC] px-2 text-[12.5px] font-semibold"
+                className="mt-1 w-full h-[34px] rounded-[9px] border border-[var(--desk-border)] bg-[var(--desk-surface)] px-2 text-[12.5px] font-semibold"
                 value={locationId ?? ''}
                 onChange={(e) => {
                   const loc = e.target.value || null;
@@ -134,7 +134,7 @@ function Tile(props: {
               </select>
             </label>
           ) : null}
-          <button type="button" onClick={onToggle} className="w-full text-left px-2.5 h-[30px] rounded-[9px] text-[12.5px] font-semibold text-[#64748B] hover:bg-[#F1F5F9] cursor-pointer">Close</button>
+          <button type="button" onClick={onToggle} className="w-full text-left px-2.5 h-[30px] rounded-[9px] text-[12.5px] font-semibold text-[var(--desk-text-muted)] hover:bg-[var(--desk-surface-muted)] cursor-pointer">Close</button>
         </div>
       ) : null}
     </div>
@@ -367,7 +367,7 @@ export function AvailabilitySettingsPage() {
         else if (t === 'Time off') setTab('timeoff');
         else setTab('weekly');
       }}
-      className="h-[40px] p-1 bg-[#EEF2F7] rounded-[14px] inline-flex gap-1 border border-[#E2E8F0] shrink-0"
+      className="h-[40px] p-1 bg-[var(--desk-surface-muted)] rounded-[14px] inline-flex gap-1 border border-[var(--desk-border)] shrink-0"
     />
   );
 
@@ -389,33 +389,33 @@ export function AvailabilitySettingsPage() {
       }
     >
       {error ? <div role="alert" className="rounded-[14px] border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-medium text-rose-700">{error}</div> : null}
-      {loading ? <p className="text-sm text-[#64748B]">Loading…</p> : (
+      {loading ? <p className="text-sm text-[var(--desk-text-muted)]">Loading…</p> : (
         <div className="space-y-4">
           {tab === 'weekly' ? (
             <Card padding="p-5" className="space-y-1">
               <Eyebrow>WEEKLY HOURS</Eyebrow>
-              <p className="text-[13px] text-[#64748B] mb-2">Each session time gets its own format. Changes apply to open times; booked sessions and this-date-only changes stay as they are.</p>
+              <p className="text-[13px] text-[var(--desk-text-muted)] mb-2">Each session time gets its own format. Changes apply to open times; booked sessions and this-date-only changes stay as they are.</p>
               {DAY_KEYS.map((key, weekday) => (
-                <div key={key} className="py-3 border-t border-[#F1F5F9] first:border-t-0">
+                <div key={key} className="py-3 border-t border-[var(--desk-border-soft)] first:border-t-0">
                   <div className="flex items-center gap-3 flex-wrap">
                     <Switch on={days[key].on} onChange={() => toggleDay(key)} label={DAYS[weekday]} />
-                    <span className={`text-[14px] font-bold w-[92px] ${days[key].on ? 'text-[#0F172A]' : 'text-[#94A3B8]'}`}>{DAYS[weekday]}</span>
+                    <span className={`text-[14px] font-bold w-[92px] ${days[key].on ? 'text-[var(--desk-text)]' : 'text-[var(--desk-text-subtle)]'}`}>{DAYS[weekday]}</span>
                     {days[key].on ? (
                       <>
                         {days[key].windows.map((w, i) => (
                           <span key={i} className="inline-flex items-center gap-1.5">
-                            <input type="time" aria-label={`${DAYS[weekday]} from`} value={w.start} onChange={(e) => setWindow(key, i, 'start', e.target.value)} className="h-[36px] px-2 rounded-[10px] border border-[#E2E8F0] bg-[#F8FAFC] text-[13px] font-bold" />
-                            <span className="text-[11px] text-[#94A3B8]">to</span>
-                            <input type="time" aria-label={`${DAYS[weekday]} until`} value={w.end} onChange={(e) => setWindow(key, i, 'end', e.target.value)} className="h-[36px] px-2 rounded-[10px] border border-[#E2E8F0] bg-[#F8FAFC] text-[13px] font-bold" />
-                            {days[key].windows.length > 1 ? <button type="button" onClick={() => removeWindow(key, i)} className="text-[#94A3B8] hover:text-[#DC2626] cursor-pointer" aria-label={`Remove ${DAYS[weekday]} hours`}>×</button> : null}
+                            <input type="time" aria-label={`${DAYS[weekday]} from`} value={w.start} onChange={(e) => setWindow(key, i, 'start', e.target.value)} className="h-[36px] px-2 rounded-[10px] border border-[var(--desk-border)] bg-[var(--desk-surface)] text-[13px] font-bold" />
+                            <span className="text-[11px] text-[var(--desk-text-subtle)]">to</span>
+                            <input type="time" aria-label={`${DAYS[weekday]} until`} value={w.end} onChange={(e) => setWindow(key, i, 'end', e.target.value)} className="h-[36px] px-2 rounded-[10px] border border-[var(--desk-border)] bg-[var(--desk-surface)] text-[13px] font-bold" />
+                            {days[key].windows.length > 1 ? <button type="button" onClick={() => removeWindow(key, i)} className="text-[var(--desk-text-subtle)] hover:text-[var(--desk-danger)] cursor-pointer" aria-label={`Remove ${DAYS[weekday]} hours`}>×</button> : null}
                           </span>
                         ))}
-                        <button type="button" onClick={() => addWindow(key)} aria-label={`Add hours on ${DAYS[weekday]}`} className="w-[22px] h-[22px] rounded-full bg-[#F1F5F9] text-[#0F3A53] flex items-center justify-center cursor-pointer"><Plus className="h-3 w-3" /></button>
+                        <button type="button" onClick={() => addWindow(key)} aria-label={`Add hours on ${DAYS[weekday]}`} className="w-[22px] h-[22px] rounded-full bg-[var(--desk-surface-muted)] text-[var(--desk-pine-600)] flex items-center justify-center cursor-pointer"><Plus className="h-3 w-3" /></button>
                         {locations.length ? (
-                          <label className="ml-auto text-[11.5px] font-bold text-[#475569] inline-flex items-center gap-1.5">
+                          <label className="ml-auto text-[11.5px] font-bold text-[var(--desk-text-body)] inline-flex items-center gap-1.5">
                             Set all {DAYS[weekday].toLowerCase()} times to
                             <select
-                              className="h-[32px] rounded-[9px] border border-[#E2E8F0] bg-[#F8FAFC] px-2 text-[12px] font-semibold"
+                              className="h-[32px] rounded-[9px] border border-[var(--desk-border)] bg-[var(--desk-surface)] px-2 text-[12px] font-semibold"
                               value=""
                               onChange={(e) => {
                                 if (e.target.value === 'ONLINE') setAllDay(weekday, ['ONLINE'], null);
@@ -431,13 +431,13 @@ export function AvailabilitySettingsPage() {
                           </label>
                         ) : null}
                       </>
-                    ) : <span className="text-[13px] text-[#94A3B8] font-medium">Unavailable</span>}
+                    ) : <span className="text-[13px] text-[var(--desk-text-subtle)] font-medium">Unavailable</span>}
                   </div>
                   {days[key].on && dayTimes.some((t) => t.weekday === weekday) ? (
                     <div className="mt-2.5 flex flex-wrap gap-2 pl-[127px]">
                       {dayTimes.filter((t) => t.weekday === weekday).map((t) => (
                         <div key={t.start} className="flex items-center gap-1.5">
-                          <span className="text-[12px] font-bold text-[#475569]">{t.start}</span>
+                          <span className="text-[12px] font-bold text-[var(--desk-text-body)]">{t.start}</span>
                           <Tile
                             id={`${weekday}|${t.start}`}
                             formats={times[`${weekday}|${t.start}`]?.formats ?? ['ONLINE']}
@@ -457,12 +457,12 @@ export function AvailabilitySettingsPage() {
           ) : tab === 'timeoff' ? (
             <Card padding="p-5" className="space-y-4">
               <Eyebrow>TIME OFF</Eyebrow>
-              <p className="text-[12.5px] text-[#64748B]">Mark days you are away. Those days close to booking; existing sessions are listed so you can move them.</p>
+              <p className="text-[12.5px] text-[var(--desk-text-muted)]">Mark days you are away. Those days close to booking; existing sessions are listed so you can move them.</p>
               
               <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                <input type="date" className="h-[42px] rounded-[13px] border border-[#E2E8F0] bg-[#F8FAFC] px-3 text-[13.5px] font-semibold" id="timeoff-start" />
-                <input type="date" className="h-[42px] rounded-[13px] border border-[#E2E8F0] bg-[#F8FAFC] px-3 text-[13.5px] font-semibold" id="timeoff-end" />
-                <input type="text" placeholder="Optional note" className="h-[42px] rounded-[13px] border border-[#E2E8F0] bg-[#F8FAFC] px-3 text-[13.5px] font-semibold" id="timeoff-note" />
+                <input type="date" className="h-[42px] rounded-[13px] border border-[var(--desk-border)] bg-[var(--desk-surface)] px-3 text-[13.5px] font-semibold" id="timeoff-start" />
+                <input type="date" className="h-[42px] rounded-[13px] border border-[var(--desk-border)] bg-[var(--desk-surface)] px-3 text-[13.5px] font-semibold" id="timeoff-end" />
+                <input type="text" placeholder="Optional note" className="h-[42px] rounded-[13px] border border-[var(--desk-border)] bg-[var(--desk-surface)] px-3 text-[13.5px] font-semibold" id="timeoff-note" />
               </div>
               <Button className="h-[42px]" onClick={() => {
                 const start = (document.getElementById('timeoff-start') as HTMLInputElement).value;
@@ -487,13 +487,13 @@ export function AvailabilitySettingsPage() {
 
               <div className="space-y-3">
                 {timeOff.map((t) => (
-                  <div key={t.id} className="border border-[#F1F5F9] rounded-[14px] p-4">
+                  <div key={t.id} className="border border-[var(--desk-border-soft)] rounded-[14px] p-4">
                     <div className="flex items-center justify-between">
                       <div>
-                        <div className="text-[14px] font-bold text-[#0F172A]">{t.startsOn} {t.startsOn !== t.endsOn ? `– ${t.endsOn}` : ''}{t.note ? ` · ${t.note}` : ''}</div>
-                        <div className="text-[12px] text-[#64748B]">{t.bookings.length} existing session{t.bookings.length !== 1 ? 's' : ''}</div>
+                        <div className="text-[14px] font-bold text-[var(--desk-text)]">{t.startsOn} {t.startsOn !== t.endsOn ? `– ${t.endsOn}` : ''}{t.note ? ` · ${t.note}` : ''}</div>
+                        <div className="text-[12px] text-[var(--desk-text-muted)]">{t.bookings.length} existing session{t.bookings.length !== 1 ? 's' : ''}</div>
                       </div>
-                      <Button variant="ghost" className="text-[12px] text-[#DC2626]" onClick={() => {
+                      <Button variant="ghost" className="text-[12px] text-[var(--desk-danger)]" onClick={() => {
                         if (!confirm('Remove this time off? Open times will be regenerated.')) return;
                         api.delete(`/v1/consult/therapist/time-off/${t.id}`).then(() => {
                           toast.success('Time off removed');
@@ -504,9 +504,9 @@ export function AvailabilitySettingsPage() {
                     {t.bookings.length > 0 && (
                       <div className="mt-3 space-y-1.5">
                         {t.bookings.map((b) => (
-                          <div key={b.id} className="flex items-center justify-between text-[12px] bg-[#FEF3C7] border border-[#FDE68A] rounded-[10px] px-3 py-2">
+                          <div key={b.id} className="flex items-center justify-between text-[12px] bg-[var(--desk-pending-bg)] border border-[var(--desk-pending-border)] rounded-[10px] px-3 py-2">
                             <span><span className="font-bold">{b.clientName}</span> · {b.serviceTitle} · {new Date(b.startsAt).toLocaleString('en-GB', { dateStyle: 'short', timeStyle: 'short' })}</span>
-                            <button className="text-[#0F3A53] underline font-bold cursor-pointer" onClick={() => void startMove(b)}>Move</button>
+                            <button className="text-[var(--desk-pine-600)] underline font-bold cursor-pointer" onClick={() => void startMove(b)}>Move</button>
                           </div>
                         ))}
                       </div>
@@ -514,21 +514,21 @@ export function AvailabilitySettingsPage() {
                   </div>
                 ))}
                 {timeOff.length === 0 && (
-                  <div className="text-[13px] text-[#64748B]">No time off scheduled.</div>
+                  <div className="text-[13px] text-[var(--desk-text-muted)]">No time off scheduled.</div>
                 )}
               </div>
             </Card>
           ) : (
             <Card padding="p-5" className="space-y-2">
               <Eyebrow>UPCOMING TIMES</Eyebrow>
-              <p className="text-[12.5px] text-[#64748B]">Change a single date for that day only. Booked times are locked.</p>
+              <p className="text-[12.5px] text-[var(--desk-text-muted)]">Change a single date for that day only. Booked times are locked.</p>
               {upcoming.map(([day, daySlots]) => (
-                <div key={day} className="flex items-start gap-3 py-2 border-t border-[#F1F5F9]">
-                  <span className="w-[92px] shrink-0 text-[12.5px] font-bold text-[#0F172A] pt-1">{day}</span>
+                <div key={day} className="flex items-start gap-3 py-2 border-t border-[var(--desk-border-soft)]">
+                  <span className="w-[92px] shrink-0 text-[12.5px] font-bold text-[var(--desk-text)] pt-1">{day}</span>
                   <div className="flex flex-wrap gap-2">
                     {daySlots.map((slot) => (
                       <div key={slot.id} className="flex items-center gap-1">
-                        <span className="text-[12px] font-bold text-[#475569]">{formatClock(slot.startsAt)}</span>
+                        <span className="text-[12px] font-bold text-[var(--desk-text-body)]">{formatClock(slot.startsAt)}</span>
                         <Tile
                           id={`slot-${slot.id}`}
                           formats={slot.formats}
@@ -541,7 +541,7 @@ export function AvailabilitySettingsPage() {
                           locations={locations}
                         />
                         {slot.customised && !slot.booked ? (
-                          <button type="button" onClick={() => void resetSlot(slot)} className="text-[11.5px] font-bold text-[#0F3A53] underline cursor-pointer">Back to weekly</button>
+                          <button type="button" onClick={() => void resetSlot(slot)} className="text-[11.5px] font-bold text-[var(--desk-pine-600)] underline cursor-pointer">Back to weekly</button>
                         ) : null}
                       </div>
                     ))}
@@ -554,23 +554,23 @@ export function AvailabilitySettingsPage() {
           {/* Booking rules moved below tabs, full width */}
           <Card padding="p-5" className="space-y-4">
             <Eyebrow>BOOKING RULES</Eyebrow>
-            <label className="block text-[11.5px] font-bold text-[#475569]">Session length
-              <select className="mt-1 h-[42px] w-full rounded-[13px] border border-[#E2E8F0] bg-[#F8FAFC] px-3 text-[13.5px] font-semibold" value={sessionLengthMinutes} onChange={(e) => setSessionLengthMinutes(Number(e.target.value))}>
+            <label className="block text-[11.5px] font-bold text-[var(--desk-text-body)]">Session length
+              <select className="mt-1 h-[42px] w-full rounded-[13px] border border-[var(--desk-border)] bg-[var(--desk-surface)] px-3 text-[13.5px] font-semibold" value={sessionLengthMinutes} onChange={(e) => setSessionLengthMinutes(Number(e.target.value))}>
                 {[30, 50, 60, 80, 90].map((m) => <option key={m} value={m}>{m} min</option>)}
               </select>
             </label>
-            <label className="block text-[11.5px] font-bold text-[#475569]">Gap between sessions
-              <select className="mt-1 h-[42px] w-full rounded-[13px] border border-[#E2E8F0] bg-[#F8FAFC] px-3 text-[13.5px] font-semibold" value={gapMinutes} onChange={(e) => setGapMinutes(Number(e.target.value))}>
+            <label className="block text-[11.5px] font-bold text-[var(--desk-text-body)]">Gap between sessions
+              <select className="mt-1 h-[42px] w-full rounded-[13px] border border-[var(--desk-border)] bg-[var(--desk-surface)] px-3 text-[13.5px] font-semibold" value={gapMinutes} onChange={(e) => setGapMinutes(Number(e.target.value))}>
                 {[0, 10, 15, 30].map((m) => <option key={m} value={m}>{m === 0 ? 'No gap' : `${m} min`}</option>)}
               </select>
             </label>
-            <label className="block text-[11.5px] font-bold text-[#475569]">Minimum notice
-              <select className="mt-1 h-[42px] w-full rounded-[13px] border border-[#E2E8F0] bg-[#F8FAFC] px-3 text-[13.5px] font-semibold" value={cancellationHours} onChange={(e) => setCancellationHours(Number(e.target.value))}>
+            <label className="block text-[11.5px] font-bold text-[var(--desk-text-body)]">Minimum notice
+              <select className="mt-1 h-[42px] w-full rounded-[13px] border border-[var(--desk-border)] bg-[var(--desk-surface)] px-3 text-[13.5px] font-semibold" value={cancellationHours} onChange={(e) => setCancellationHours(Number(e.target.value))}>
                 {[12, 24, 48].map((h) => <option key={h} value={h}>{h} hours</option>)}
               </select>
             </label>
             <VideoRoomOpensSetting />
-            <div className="p-3.5 rounded-[14px] bg-[#EFF6FB] text-[#0F3A53] text-xs font-medium flex items-start gap-2.5 leading-relaxed">
+            <div className="p-3.5 rounded-[14px] bg-[var(--desk-pine-100)] text-[var(--desk-pine-600)] text-xs font-medium flex items-start gap-2.5 leading-relaxed">
               <Info className="h-4 w-4 shrink-0 mt-0.5" />
               <span>Saving regenerates the next 28 days of open times from this week.</span>
             </div>
@@ -583,12 +583,12 @@ export function AvailabilitySettingsPage() {
           <Card padding="p-5" className="w-full max-w-[480px] max-h-[80vh] overflow-y-auto space-y-3">
             <div>
               <Eyebrow>MOVE SESSION</Eyebrow>
-              <p className="mt-1 text-[13px] text-[#475569]">
-                Choose a new time for <span className="font-bold text-[#0F172A]">{moving.clientName}</span>. Their current time is not cancelled.
+              <p className="mt-1 text-[13px] text-[var(--desk-text-body)]">
+                Choose a new time for <span className="font-bold text-[var(--desk-text)]">{moving.clientName}</span>. Their current time is not cancelled.
               </p>
             </div>
             {moving.slots.length === 0 ? (
-              <p className="text-[13px] text-[#64748B]">No open times to move to. Add hours in Weekly hours first.</p>
+              <p className="text-[13px] text-[var(--desk-text-muted)]">No open times to move to. Add hours in Weekly hours first.</p>
             ) : (
               <div className="grid grid-cols-2 gap-2">
                 {moving.slots.slice(0, 24).map((slot) => (
@@ -597,7 +597,7 @@ export function AvailabilitySettingsPage() {
                     type="button"
                     disabled={movingSaving}
                     onClick={() => void moveTo(slot.id)}
-                    className="h-[40px] rounded-[12px] border border-[#E2E8F0] bg-white px-2 text-[12.5px] font-bold text-[#0F172A] hover:border-[#0F3A53] disabled:opacity-50 cursor-pointer"
+                    className="h-[40px] rounded-[12px] border border-[var(--desk-border)] bg-white px-2 text-[12.5px] font-bold text-[var(--desk-text)] hover:border-[var(--desk-pine-600)] disabled:opacity-50 cursor-pointer"
                   >
                     {new Date(slot.startsAt).toLocaleString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit', timeZone: 'Africa/Lagos' })}
                   </button>

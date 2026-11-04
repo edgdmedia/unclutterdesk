@@ -28,8 +28,8 @@ interface Preview {
 
 const STATUS_STYLE: Record<StoredInstrument['status'], string> = {
   PUBLISHED: 'bg-emerald-50 text-emerald-700',
-  DRAFT: 'bg-[#FEF3C7] text-[#92400E]',
-  RETIRED: 'bg-[#F1F5F9] text-[#64748B]',
+  DRAFT: 'bg-[var(--desk-pending-bg)] text-[var(--desk-pending)]',
+  RETIRED: 'bg-[var(--desk-surface-muted)] text-[var(--desk-text-muted)]',
 };
 
 const TEMPLATE = {
@@ -138,12 +138,12 @@ export function AdminAssessmentsPage() {
       <Eyebrow>Platform console</Eyebrow>
       <div className="mt-1 flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h1 className="text-[26px] font-bold tracking-[-0.03em] text-[#0F172A]">Assessment library</h1>
-          <p className="mt-1 text-[13.5px] text-[#64748B]">
+          <h1 className="text-[26px] font-bold tracking-[-0.03em] text-[var(--desk-text)]">Assessment library</h1>
+          <p className="mt-1 text-[13.5px] text-[var(--desk-text-muted)]">
             Every instrument is a definition: questions, scale, bands, subscales and rules, with separate clinician and client wording.
           </p>
         </div>
-        <button type="button" onClick={() => setSelected('new')} className="h-10 px-4 rounded-[12px] bg-[#0F172A] text-white text-xs font-bold cursor-pointer">
+        <button type="button" onClick={() => setSelected('new')} className="h-10 px-4 rounded-[12px] bg-[var(--desk-sidebar)] text-white text-xs font-bold cursor-pointer">
           New instrument
         </button>
       </div>
@@ -155,13 +155,13 @@ export function AdminAssessmentsPage() {
               key={i.key}
               type="button"
               onClick={() => setSelected(i.key)}
-              className={`w-full text-left rounded-[14px] border px-3 py-2.5 cursor-pointer ${selected === i.key ? 'border-[#0F172A] bg-white' : 'border-[#E2E8F0] bg-white hover:border-[#CBD5E1]'}`}
+              className={`w-full text-left rounded-[14px] border px-3 py-2.5 cursor-pointer ${selected === i.key ? 'border-[var(--desk-text)] bg-white' : 'border-[var(--desk-border)] bg-white hover:border-[var(--desk-pine-200)]'}`}
             >
               <div className="flex items-center justify-between gap-2">
-                <span className="text-[13.5px] font-bold text-[#0F172A]">{i.definition.shortName}</span>
+                <span className="text-[13.5px] font-bold text-[var(--desk-text)]">{i.definition.shortName}</span>
                 <span className={`text-[10px] font-bold uppercase rounded-full px-2 py-0.5 ${STATUS_STYLE[i.status]}`}>{i.status.toLowerCase()}</span>
               </div>
-              <p className="text-[11.5px] text-[#64748B]">v{i.version} · {i.definition.tier} · updated {formatDate(i.updatedAt)}</p>
+              <p className="text-[11.5px] text-[var(--desk-text-muted)]">v{i.version} · {i.definition.tier} · updated {formatDate(i.updatedAt)}</p>
             </button>
           ))}
         </div>
@@ -170,7 +170,7 @@ export function AdminAssessmentsPage() {
           <>
             <Card padding="p-[16px]" className="lg:col-span-5">
               <div className="flex items-center justify-between gap-2 mb-2">
-                <span className="text-[13px] font-bold text-[#0F172A]">{selected === 'new' ? 'New instrument' : `${selected} · v${current?.version ?? ''}`}</span>
+                <span className="text-[13px] font-bold text-[var(--desk-text)]">{selected === 'new' ? 'New instrument' : `${selected} · v${current?.version ?? ''}`}</span>
                 {parsed.error ? <span className="text-[11px] font-semibold text-rose-600">JSON: {parsed.error}</span> : null}
               </div>
               <textarea
@@ -178,38 +178,38 @@ export function AdminAssessmentsPage() {
                 value={text}
                 onChange={(e) => setText(e.target.value)}
                 spellCheck={false}
-                className="w-full h-[560px] font-mono text-[12px] leading-[1.5] p-3 rounded-[12px] bg-[#0F172A] text-[#E2E8F0] outline-none"
+                className="w-full h-[560px] font-mono text-[12px] leading-[1.5] p-3 rounded-[12px] bg-[var(--desk-sidebar)] text-[var(--desk-pine-200)] outline-none"
               />
               <div className="mt-3 flex flex-wrap gap-2">
-                <button type="button" onClick={() => void check()} disabled={!def} className="h-9 px-3 rounded-[10px] border border-[#E2E8F0] bg-white text-xs font-bold cursor-pointer disabled:opacity-50">
+                <button type="button" onClick={() => void check()} disabled={!def} className="h-9 px-3 rounded-[10px] border border-[var(--desk-border)] bg-white text-xs font-bold cursor-pointer disabled:opacity-50">
                   Check and test
                 </button>
-                <button type="button" onClick={() => void save()} disabled={!def || saving} className="h-9 px-3 rounded-[10px] bg-[#0F172A] text-white text-xs font-bold cursor-pointer disabled:opacity-50">
+                <button type="button" onClick={() => void save()} disabled={!def || saving} className="h-9 px-3 rounded-[10px] bg-[var(--desk-sidebar)] text-white text-xs font-bold cursor-pointer disabled:opacity-50">
                   {saving ? 'Saving…' : selected === 'new' ? 'Save draft' : 'Save new version'}
                 </button>
                 {current && current.status !== 'PUBLISHED' ? (
                   <button type="button" onClick={() => void setStatus('PUBLISHED')} className="h-9 px-3 rounded-[10px] bg-emerald-600 text-white text-xs font-bold cursor-pointer">Publish</button>
                 ) : null}
                 {current && current.status === 'PUBLISHED' ? (
-                  <button type="button" onClick={() => void setStatus('RETIRED')} className="h-9 px-3 rounded-[10px] border border-[#E2E8F0] bg-white text-xs font-bold text-rose-700 cursor-pointer">Retire</button>
+                  <button type="button" onClick={() => void setStatus('RETIRED')} className="h-9 px-3 rounded-[10px] border border-[var(--desk-border)] bg-white text-xs font-bold text-rose-700 cursor-pointer">Retire</button>
                 ) : null}
               </div>
               {current?.status === 'PUBLISHED' ? (
-                <p className="mt-2 text-[11.5px] text-[#64748B]">Changes apply to new results immediately. Past results keep the version they were scored with.</p>
+                <p className="mt-2 text-[11.5px] text-[var(--desk-text-muted)]">Changes apply to new results immediately. Past results keep the version they were scored with.</p>
               ) : null}
             </Card>
 
             <Card padding="p-[16px]" className="lg:col-span-4">
-              <h2 className="text-[13px] font-bold text-[#0F172A]">Test answers</h2>
+              <h2 className="text-[13px] font-bold text-[var(--desk-text)]">Test answers</h2>
               {def?.items && def?.scale ? (
                 <div className="mt-2 max-h-[300px] overflow-auto space-y-2 pr-1">
                   {def.items.map((item) => (
-                    <label key={item.id} className="block text-[12px] text-[#334155]">
+                    <label key={item.id} className="block text-[12px] text-[var(--desk-text-body)]">
                       <span className="block truncate">{item.id}: {item.text}</span>
                       <select
                         value={answers[item.id] ?? ''}
                         onChange={(e) => setAnswers((a) => ({ ...a, [item.id]: Number(e.target.value) }))}
-                        className="mt-0.5 w-full h-8 px-2 rounded-[8px] border border-[#E2E8F0] text-[12px]"
+                        className="mt-0.5 w-full h-8 px-2 rounded-[8px] border border-[var(--desk-border)] text-[12px]"
                       >
                         <option value="" disabled>Choose…</option>
                         {def.scale.map((s) => <option key={s.value} value={s.value}>{s.value}: {s.label}</option>)}
@@ -218,20 +218,20 @@ export function AdminAssessmentsPage() {
                   ))}
                 </div>
               ) : (
-                <p className="mt-2 text-xs text-[#64748B]">Fix the JSON to test it.</p>
+                <p className="mt-2 text-xs text-[var(--desk-text-muted)]">Fix the JSON to test it.</p>
               )}
               {preview ? (
-                <div className="mt-3 border-t border-[#E2E8F0] pt-3">
+                <div className="mt-3 border-t border-[var(--desk-border)] pt-3">
                   {preview.errors.length ? (
                     <ul className="space-y-1 text-[12px] font-semibold text-rose-700">
                       {preview.errors.map((e) => <li key={e}>• {e}</li>)}
                     </ul>
                   ) : preview.answersError ? (
-                    <p className="text-[12px] text-[#475569]">The definition is valid. {preview.answersError} to see a result.</p>
+                    <p className="text-[12px] text-[var(--desk-text-body)]">The definition is valid. {preview.answersError} to see a result.</p>
                   ) : (
                     <>
                       <p className="text-[12px] font-bold text-emerald-700">The definition is valid.</p>
-                      <pre className="mt-2 max-h-[260px] overflow-auto text-[11px] bg-[#F8FAFC] border border-[#E2E8F0] rounded-[10px] p-2">{JSON.stringify(preview.result, null, 2)}</pre>
+                      <pre className="mt-2 max-h-[260px] overflow-auto text-[11px] bg-[var(--desk-surface)] border border-[var(--desk-border)] rounded-[10px] p-2">{JSON.stringify(preview.result, null, 2)}</pre>
                     </>
                   )}
                 </div>
@@ -240,7 +240,7 @@ export function AdminAssessmentsPage() {
           </>
         ) : (
           <Card padding="p-[22px]" className="lg:col-span-9">
-            <p className="text-sm text-[#64748B]">Choose an instrument to view or edit, or add a new one.</p>
+            <p className="text-sm text-[var(--desk-text-muted)]">Choose an instrument to view or edit, or add a new one.</p>
           </Card>
         )}
       </div>

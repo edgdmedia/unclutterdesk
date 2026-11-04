@@ -110,7 +110,7 @@ export function NotificationsPage() {
                 type="button"
                 onClick={markAllRead}
                 disabled={markingAll}
-                className="h-[38px] px-4 rounded-[12px] border border-[#E2E8F0] bg-white text-[13px] font-bold text-[#475569] hover:bg-[#F8FAFC] cursor-pointer disabled:opacity-60"
+                className="h-[38px] px-4 rounded-[12px] border border-[var(--desk-border)] bg-white text-[13px] font-bold text-[var(--desk-text-body)] hover:bg-[var(--desk-surface)] cursor-pointer disabled:opacity-60"
               >
                 {markingAll ? 'Marking…' : `Mark all read (${unread})`}
               </button>
@@ -126,23 +126,23 @@ export function NotificationsPage() {
           </div>
         ) : null}
 
-        <Card padding="p-0" className="overflow-hidden border border-[#E2E8F0]">
+        <Card padding="p-0" className="overflow-hidden border border-[var(--desk-border)]">
           {items === null && !error ? (
             <div className="p-10 flex justify-center">
-              <Loader2 className="h-6 w-6 animate-spin text-[#94A3B8]" aria-label="Loading notifications" />
+              <Loader2 className="h-6 w-6 animate-spin text-[var(--desk-text-subtle)]" aria-label="Loading notifications" />
             </div>
           ) : (items ?? []).length === 0 ? (
             <div className="p-10 text-center">
-              <div className="mx-auto h-12 w-12 rounded-[16px] bg-[#F1F5F9] text-[#94A3B8] flex items-center justify-center">
+              <div className="mx-auto h-12 w-12 rounded-[16px] bg-[var(--desk-surface-muted)] text-[var(--desk-text-subtle)] flex items-center justify-center">
                 <CheckCircle2 className="h-6 w-6" />
               </div>
-              <p className="mt-3 text-sm font-semibold text-[#0F172A]">You are all caught up</p>
-              <p className="mt-1 text-xs font-medium text-[#64748B]">
+              <p className="mt-3 text-sm font-semibold text-[var(--desk-text)]">You are all caught up</p>
+              <p className="mt-1 text-xs font-medium text-[var(--desk-text-muted)]">
                 Bookings, intake submissions and settlements will appear here as they happen.
               </p>
             </div>
           ) : (
-            <div className="divide-y divide-[#F1F5F9]">
+            <div className="divide-y divide-[var(--desk-border-soft)]">
               {(items ?? []).map((notification) => {
                 const { Icon, cls } = iconFor(notification.type);
                 const unopened = notification.status === 'unread';
@@ -158,24 +158,24 @@ export function NotificationsPage() {
                         void open(notification);
                       }
                     }}
-                    className={`p-4 flex items-start gap-4 hover:bg-[#FCFDFE] ${
+                    className={`p-4 flex items-start gap-4 hover:bg-[var(--desk-surface-alt)] ${
                       notification.link ? 'cursor-pointer' : ''
-                    } ${unopened ? 'bg-[#F8FBFF]' : ''}`}
+                    } ${unopened ? 'bg-[var(--desk-surface-alt)]' : ''}`}
                   >
                     <div className={`h-10 w-10 rounded-[12px] flex items-center justify-center shrink-0 ${cls}`}>
                       <Icon className="h-5 w-5" />
                     </div>
                     <div className="space-y-1 min-w-0">
                       <div className="flex items-center gap-3">
-                        <h4 className="text-sm font-bold text-[#0F172A]">{notification.title}</h4>
-                        <span className="text-[11px] text-[#94A3B8] font-medium">
+                        <h4 className="text-sm font-bold text-[var(--desk-text)]">{notification.title}</h4>
+                        <span className="text-[11px] text-[var(--desk-text-subtle)] font-medium">
                           {timeAgo(notification.createdAt)}
                         </span>
                         {unopened ? (
-                          <span className="h-1.5 w-1.5 rounded-full bg-[#0F3A53]" aria-label="Unread" />
+                          <span className="h-1.5 w-1.5 rounded-full bg-[var(--desk-pine-600)]" aria-label="Unread" />
                         ) : null}
                       </div>
-                      <p className="text-xs text-[#475569] font-medium">{notification.message}</p>
+                      <p className="text-xs text-[var(--desk-text-body)] font-medium">{notification.message}</p>
                     </div>
                   </div>
                 );

@@ -77,16 +77,16 @@ export function LapseNotice() {
           </p>
           <ul className="space-y-1.5">
             {status.sessions.map((s) => (
-              <li key={s.id} className="rounded-[12px] bg-white border border-amber-100 px-3 py-2 text-[13px] text-[#0F172A]">
+              <li key={s.id} className="rounded-[12px] bg-white border border-amber-100 px-3 py-2 text-[13px] text-[var(--desk-text)]">
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <span>
                     {WHEN.format(new Date(s.startsAt))} · {s.clientName} with {s.practitionerName}
                   </span>
                   <span className="flex gap-2">
-                    <button type="button" onClick={() => void openPicker(s.id)} className="text-[12px] font-bold text-[#0F3A53] cursor-pointer">
+                    <button type="button" onClick={() => void openPicker(s.id)} className="text-[12px] font-bold text-[var(--desk-pine-600)] cursor-pointer">
                       Take it over
                     </button>
-                    <Link to={`/dashboard/sessions/${s.id}`} className="text-[12px] font-bold text-[#0F3A53]">
+                    <Link to={`/dashboard/sessions/${s.id}`} className="text-[12px] font-bold text-[var(--desk-pine-600)]">
                       Reschedule or cancel
                     </Link>
                   </span>
@@ -94,9 +94,9 @@ export function LapseNotice() {
                 {picking === s.id ? (
                   <div className="mt-2 flex flex-wrap gap-1.5">
                     {ownSlots === null ? (
-                      <span className="text-[12px] text-[#64748B]">Loading your open times…</span>
+                      <span className="text-[12px] text-[var(--desk-text-muted)]">Loading your open times…</span>
                     ) : ownSlots.length === 0 ? (
-                      <span className="text-[12px] text-[#64748B]">You have no open times. Add some in Schedule, then come back.</span>
+                      <span className="text-[12px] text-[var(--desk-text-muted)]">You have no open times. Add some in Schedule, then come back.</span>
                     ) : (
                       ownSlots.slice(0, 12).map((slot) => (
                         <button
@@ -104,7 +104,7 @@ export function LapseNotice() {
                           type="button"
                           disabled={busy}
                           onClick={() => void takeOver(s.id, slot.id)}
-                          className="h-8 px-2.5 rounded-[8px] border border-[#E2E8F0] text-[12px] font-semibold cursor-pointer hover:bg-[#F8FAFC] disabled:opacity-50"
+                          className="h-8 px-2.5 rounded-[8px] border border-[var(--desk-border)] text-[12px] font-semibold cursor-pointer hover:bg-[var(--desk-surface)] disabled:opacity-50"
                         >
                           {WHEN.format(new Date(slot.startsAt))}
                         </button>

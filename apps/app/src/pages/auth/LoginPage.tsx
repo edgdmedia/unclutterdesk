@@ -82,17 +82,17 @@ export function LoginPage() {
       tagline="Log in to manage your bookings, clinical SOAP notes, telehealth rooms, and practice branding."
       footer="© 2026 Unclutter Desk"
       stats={[
-        { value: '1,240+', label: 'practices in Nigeria' },
+        { value: '₦0', label: 'to start, with a free profile' },
         { value: '0%', label: 'platform fee from Starter up' },
       ]}
     >
-      <div className="text-[29px] font-bold tracking-[-0.03em] text-[#0F172A]">Welcome back</div>
-      <p className="mt-[7px] text-[14.5px] text-[#64748B] leading-[1.6]">
+      <div className="text-[29px] font-bold tracking-[-0.03em] text-[var(--desk-text)]">Welcome back</div>
+      <p className="mt-[7px] text-[14.5px] text-[var(--desk-text-muted)] leading-[1.6]">
         Enter your credentials to access your practice workspace.
       </p>
 
       <form onSubmit={handleLogin} className="mt-[30px]">
-        <AuthField label="Email address" icon={<Mail className="h-[17px] w-[17px] text-[#94A3B8] flex-none" strokeWidth={2} />}>
+        <AuthField label="Email address" icon={<Mail className="h-[17px] w-[17px] text-[var(--desk-text-subtle)] flex-none" strokeWidth={2} />}>
           <input
             type="email"
             required
@@ -106,11 +106,11 @@ export function LoginPage() {
         <div className="mt-[18px]">
           <AuthField
             label="Password"
-            icon={<Lock className="h-[17px] w-[17px] text-[#94A3B8] flex-none" strokeWidth={2} />}
+            icon={<Lock className="h-[17px] w-[17px] text-[var(--desk-text-subtle)] flex-none" strokeWidth={2} />}
             labelRow={
               <Link
                 to="/forgot-password"
-                className="ml-auto text-xs font-semibold text-[#64748B] hover:text-[#0F3A53]"
+                className="ml-auto text-xs font-semibold text-[var(--desk-text-muted)] hover:text-[var(--desk-pine-600)]"
               >
                 Forgot password?
               </Link>
@@ -119,7 +119,7 @@ export function LoginPage() {
               <button
                 type="button"
                 onClick={() => setShowPassword((v) => !v)}
-                className="flex-none text-[#94A3B8] hover:text-[#475569] cursor-pointer"
+                className="flex-none text-[var(--desk-text-subtle)] hover:text-[var(--desk-text-body)] cursor-pointer"
                 aria-label="Toggle password visibility"
               >
                 {showPassword ? (
@@ -144,7 +144,7 @@ export function LoginPage() {
         <label className="mt-[18px] flex items-center gap-[9px] cursor-pointer select-none">
           <span
             className={`h-[19px] w-[19px] rounded-[6px] flex items-center justify-center transition-colors ${
-              remember ? 'bg-[#0F3A53] text-white' : 'bg-white text-transparent border border-[#CBD5E1]'
+              remember ? 'bg-[var(--desk-pine-600)] text-white' : 'bg-white text-transparent border border-[var(--desk-pine-200)]'
             }`}
           >
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3.2" strokeLinecap="round" strokeLinejoin="round">
@@ -157,14 +157,14 @@ export function LoginPage() {
               className="sr-only"
             />
           </span>
-          <span className="text-[13px] text-[#475569]">Keep me signed in on this device</span>
+          <span className="text-[13px] text-[var(--desk-text-body)]">Keep me signed in on this device</span>
         </label>
 
         {error && (
           <div className="mt-4 rounded-[12px] bg-red-50 px-3.5 py-2.5 text-xs font-medium text-red-500">
             <p>{error}</p>
             {looksLikeVerificationPending(error) ? (
-              <div className="mt-2 flex gap-3 text-[#0F3A53]">
+              <div className="mt-2 flex gap-3 text-[var(--desk-pine-600)]">
                 <Link
                   to="/verify-email"
                   state={{ email }}
@@ -187,7 +187,7 @@ export function LoginPage() {
         <button
           type="submit"
           disabled={isLoading}
-          className="mt-[26px] w-full h-[54px] rounded-[14px] bg-[#0F3A53] text-white text-[15px] font-bold inline-flex items-center justify-center gap-[10px] cursor-pointer shadow-[0_10px_26px_rgba(15,58,83,0.26)] transition-[filter] hover:brightness-110 disabled:opacity-70 disabled:cursor-not-allowed"
+          className="mt-[26px] w-full h-[54px] rounded-[14px] bg-[var(--desk-pine-600)] text-white text-[15px] font-bold inline-flex items-center justify-center gap-[10px] cursor-pointer shadow-[0_10px_26px_rgba(15,58,83,0.26)] transition-[filter] hover:brightness-110 disabled:opacity-70 disabled:cursor-not-allowed"
         >
           {isLoading ? (
             <>
@@ -203,9 +203,9 @@ export function LoginPage() {
         </button>
       </form>
 
-      <div className="mt-6 text-[13.5px] text-[#64748B] text-center">
+      <div className="mt-6 text-[13.5px] text-[var(--desk-text-muted)] text-center">
         Don't have a practice account yet?{' '}
-        <Link to="/register" className="font-bold text-[#0F3A53] hover:underline">
+        <Link to="/register" className="font-bold text-[var(--desk-pine-600)] hover:underline">
           Create a practice
         </Link>
       </div>

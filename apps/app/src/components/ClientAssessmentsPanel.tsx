@@ -142,30 +142,30 @@ export function ClientAssessmentsPanel({ clientId, clientName, primaryColor }: P
     <div className="space-y-4">
       <Card padding="p-[20px_24px]" className="bg-white border border-slate-100 shadow-sm rounded-2xl">
         {enabled.length === 0 ? (
-          <p className="text-sm text-[#475569]">
+          <p className="text-sm text-[var(--desk-text-body)]">
             No assessments are switched on yet.{' '}
             <Link to="/dashboard/assessments" className="font-bold" style={{ color: primaryColor }}>Choose which ones to use</Link>.
           </p>
         ) : (
           <div className="flex flex-wrap items-end gap-3">
             <label className="space-y-1.5">
-              <span className="text-[11.5px] font-bold text-[#475569] block">Send assessment</span>
+              <span className="text-[11.5px] font-bold text-[var(--desk-text-body)] block">Send assessment</span>
               <select
                 value={choice}
                 onChange={(e) => setChoice(e.target.value)}
-                className="h-[40px] px-3 rounded-[12px] bg-[#F8FAFC] border border-[#E2E8F0] text-[13px] font-semibold text-[#0F172A]"
+                className="h-[40px] px-3 rounded-[12px] bg-[var(--desk-surface)] border border-[var(--desk-border)] text-[13px] font-semibold text-[var(--desk-text)]"
               >
                 {enabled.map((e) => <option key={e.key} value={e.key}>{e.shortName} · {e.measures}</option>)}
               </select>
             </label>
             <label className="space-y-1.5 flex-1 min-w-[220px]">
-              <span className="text-[11.5px] font-bold text-[#475569] block">Note to the client (optional)</span>
+              <span className="text-[11.5px] font-bold text-[var(--desk-text-body)] block">Note to the client (optional)</span>
               <input
                 value={note}
                 onChange={(e) => setNote(e.target.value)}
                 maxLength={500}
                 placeholder="Please fill this in before our next session."
-                className="w-full h-[40px] px-3 rounded-[12px] bg-[#F8FAFC] border border-[#E2E8F0] text-[13px] font-medium text-[#0F172A]"
+                className="w-full h-[40px] px-3 rounded-[12px] bg-[var(--desk-surface)] border border-[var(--desk-border)] text-[13px] font-medium text-[var(--desk-text)]"
               />
             </label>
             <button
@@ -180,26 +180,26 @@ export function ClientAssessmentsPanel({ clientId, clientName, primaryColor }: P
           </div>
         )}
         {fallbackLink ? (
-          <div className="mt-3 flex items-center gap-2 rounded-[12px] bg-[#FFFBEB] border border-amber-200 px-3 py-2">
-            <code className="text-[11px] text-[#92400E] truncate flex-1">{fallbackLink}</code>
+          <div className="mt-3 flex items-center gap-2 rounded-[12px] bg-[var(--desk-pending-bg)] border border-amber-200 px-3 py-2">
+            <code className="text-[11px] text-[var(--desk-pending)] truncate flex-1">{fallbackLink}</code>
             <button
               type="button"
               onClick={() => void navigator.clipboard?.writeText(fallbackLink).then(() => toast.success('Link copied'))}
-              className="text-xs font-bold text-[#92400E] flex items-center gap-1 cursor-pointer"
+              className="text-xs font-bold text-[var(--desk-pending)] flex items-center gap-1 cursor-pointer"
             >
               <Copy className="h-3.5 w-3.5" /> Copy
             </button>
           </div>
         ) : null}
         {pending.length ? (
-          <ul className="mt-4 border-t border-[#E2E8F0] pt-3 space-y-1.5">
+          <ul className="mt-4 border-t border-[var(--desk-border)] pt-3 space-y-1.5">
             {pending.map((p) => (
               <li key={p.id} className="flex items-center justify-between text-xs">
-                <span className="text-[#475569] min-w-0">
-                  <strong className="text-[#0F172A]">{p.shortName}</strong> sent {date(p.sentAt)}, waiting for answers
-                  {p.message ? <span className="block text-[#64748B] truncate">Your note: “{p.message}”</span> : null}
+                <span className="text-[var(--desk-text-body)] min-w-0">
+                  <strong className="text-[var(--desk-text)]">{p.shortName}</strong> sent {date(p.sentAt)}, waiting for answers
+                  {p.message ? <span className="block text-[var(--desk-text-muted)] truncate">Your note: “{p.message}”</span> : null}
                 </span>
-                <button type="button" onClick={() => void cancel(p)} className="text-[#64748B] hover:text-rose-600 flex items-center gap-1 font-semibold cursor-pointer">
+                <button type="button" onClick={() => void cancel(p)} className="text-[var(--desk-text-muted)] hover:text-rose-600 flex items-center gap-1 font-semibold cursor-pointer">
                   <X className="h-3.5 w-3.5" /> Cancel
                 </button>
               </li>
@@ -218,10 +218,10 @@ export function ClientAssessmentsPanel({ clientId, clientName, primaryColor }: P
             <div className="flex items-start justify-between gap-4">
               <div>
                 <div className="flex items-center gap-2 flex-wrap">
-                  <h3 className="text-[15px] font-bold text-[#0F172A]">{latest.shortName}</h3>
+                  <h3 className="text-[15px] font-bold text-[var(--desk-text)]">{latest.shortName}</h3>
                   <Badge level={latest.severityLevel}>{latest.severity}</Badge>
                 </div>
-                <p className="mt-1 text-xs text-[#64748B]">
+                <p className="mt-1 text-xs text-[var(--desk-text-muted)]">
                   Latest {latest.totalScore}{latest.maxScore ? ` / ${latest.maxScore}` : ''} on {date(latest.completedAt)}
                   {history.length > 1 ? ` · ${history.length} results` : ''}
                 </p>
@@ -233,7 +233,7 @@ export function ClientAssessmentsPanel({ clientId, clientName, primaryColor }: P
               <div
                 key={f.key}
                 className={`flex items-start gap-2 rounded-[12px] border px-3 py-2 text-xs font-semibold ${
-                  f.level === 'urgent' ? 'bg-[#FEF2F2] border-rose-200 text-rose-800' : 'bg-[#FFFBEB] border-amber-200 text-amber-900'
+                  f.level === 'urgent' ? 'bg-[var(--desk-danger-bg)] border-rose-200 text-rose-800' : 'bg-[var(--desk-pending-bg)] border-amber-200 text-amber-900'
                 }`}
               >
                 <AlertTriangle className="h-4 w-4 shrink-0 mt-px" />
@@ -242,19 +242,19 @@ export function ClientAssessmentsPanel({ clientId, clientName, primaryColor }: P
             ))}
 
             {latest.clinicianText ? (
-              <div className="rounded-[12px] bg-[#F8FAFC] border border-[#E2E8F0] px-3 py-2">
-                <span className="text-[10.5px] font-black uppercase tracking-[0.08em] text-[#64748B]">Clinical analysis</span>
-                <p className="mt-0.5 text-[13px] text-[#0F172A]">{latest.clinicianText}</p>
+              <div className="rounded-[12px] bg-[var(--desk-surface)] border border-[var(--desk-border)] px-3 py-2">
+                <span className="text-[10.5px] font-black uppercase tracking-[0.08em] text-[var(--desk-text-muted)]">Clinical analysis</span>
+                <p className="mt-0.5 text-[13px] text-[var(--desk-text)]">{latest.clinicianText}</p>
               </div>
             ) : null}
 
             {latest.subscales.length ? (
               <div className="grid grid-cols-2 md:grid-cols-4 gap-2.5">
                 {latest.subscales.map((s) => (
-                  <div key={s.key} className="p-3 rounded-[14px] bg-[#F8FAFC] border border-[#E2E8F0]">
-                    <span className="text-[11px] font-bold text-[#475569] block">{s.label}</span>
-                    <span className="text-[15px] font-extrabold text-[#0F172A]">{s.score}</span>
-                    <span className="text-[11px] text-[#94A3B8]"> / {s.max}</span>
+                  <div key={s.key} className="p-3 rounded-[14px] bg-[var(--desk-surface)] border border-[var(--desk-border)]">
+                    <span className="text-[11px] font-bold text-[var(--desk-text-body)] block">{s.label}</span>
+                    <span className="text-[15px] font-extrabold text-[var(--desk-text)]">{s.score}</span>
+                    <span className="text-[11px] text-[var(--desk-text-subtle)]"> / {s.max}</span>
                     {s.severity ? <div className="mt-1"><Badge level={s.severity.level}>{s.severity.label}</Badge></div> : null}
                   </div>
                 ))}
@@ -262,16 +262,16 @@ export function ClientAssessmentsPanel({ clientId, clientName, primaryColor }: P
             ) : null}
 
             {latest.clientView ? (
-              <details className="rounded-[12px] border border-[#E2E8F0] px-3 py-2">
-                <summary className="text-xs font-bold text-[#475569] cursor-pointer">What {clientName.split(' ')[0]} sees</summary>
-                <div className="mt-2 text-[13px] text-[#334155] space-y-1">
+              <details className="rounded-[12px] border border-[var(--desk-border)] px-3 py-2">
+                <summary className="text-xs font-bold text-[var(--desk-text-body)] cursor-pointer">What {clientName.split(' ')[0]} sees</summary>
+                <div className="mt-2 text-[13px] text-[var(--desk-text-body)] space-y-1">
                   {latest.clientView.show === 'none' ? (
                     <p>Only a thank-you: this assessment does not show clients a result.</p>
                   ) : (
                     <>
-                      {latest.clientView.headline ? <p className="font-bold text-[#0F172A]">{latest.clientView.headline}</p> : null}
+                      {latest.clientView.headline ? <p className="font-bold text-[var(--desk-text)]">{latest.clientView.headline}</p> : null}
                       {latest.clientView.summary ? <p>{latest.clientView.summary}</p> : null}
-                      {latest.clientView.score !== undefined ? <p className="text-xs text-[#64748B]">Score shown: {latest.clientView.score} / {latest.clientView.maxScore}</p> : null}
+                      {latest.clientView.score !== undefined ? <p className="text-xs text-[var(--desk-text-muted)]">Score shown: {latest.clientView.score} / {latest.clientView.maxScore}</p> : null}
                       {latest.clientView.subscales?.map((s) => <p key={s.label}><strong>{s.label}:</strong> {s.text}</p>)}
                     </>
                   )}
@@ -280,7 +280,7 @@ export function ClientAssessmentsPanel({ clientId, clientName, primaryColor }: P
               </details>
             ) : null}
 
-            <div className="border-t border-[#E2E8F0] pt-2">
+            <div className="border-t border-[var(--desk-border)] pt-2">
               {history
                 .slice()
                 .reverse()
@@ -291,18 +291,18 @@ export function ClientAssessmentsPanel({ clientId, clientName, primaryColor }: P
                       onClick={() => setOpenResult(openResult === r.id ? null : r.id)}
                       className="w-full flex items-center justify-between py-1.5 text-xs cursor-pointer"
                     >
-                      <span className="font-semibold text-[#475569]">{date(r.completedAt)}</span>
+                      <span className="font-semibold text-[var(--desk-text-body)]">{date(r.completedAt)}</span>
                       <span className="flex items-center gap-2">
-                        <span className="font-bold text-[#0F172A]">{r.totalScore}</span>
+                        <span className="font-bold text-[var(--desk-text)]">{r.totalScore}</span>
                         <Badge level={r.severityLevel}>{r.severity}</Badge>
                       </span>
                     </button>
                     {openResult === r.id ? (
                       <ol className="mb-2 space-y-1 text-xs list-decimal pl-5">
                         {Object.entries(r.answers).map(([itemId, value]) => (
-                          <li key={itemId} className="text-[#0F172A]">
+                          <li key={itemId} className="text-[var(--desk-text)]">
                             {itemText[itemId] ?? itemId}{' '}
-                            <strong className="text-[#475569]">{answerLabel(r.instrumentKey, value)}</strong>
+                            <strong className="text-[var(--desk-text-body)]">{answerLabel(r.instrumentKey, value)}</strong>
                           </li>
                         ))}
                       </ol>

@@ -58,7 +58,7 @@ export function AuthCardShell({
   const color = CIRCLE_COLOR[accent];
 
   return (
-    <div className="min-h-screen bg-[#0F172A] flex items-center justify-center p-6 font-outfit relative overflow-hidden">
+    <div className="min-h-screen bg-[var(--desk-sidebar)] flex items-center justify-center p-6 font-outfit relative overflow-hidden">
       {MOTIFS[variant].map((c, i) => (
         <div
           key={i}
@@ -80,7 +80,7 @@ export function AuthCardShell({
       <div className="w-full max-w-[480px] bg-white rounded-[24px] p-[36px_38px_30px] shadow-[0_30px_80px_rgba(0,0,0,0.4)] relative">
         <div className={center ? 'flex items-center justify-center gap-[10px]' : 'flex items-center gap-[10px]'}>
           <UnclutterMark size={30} showBadge={false} className="rounded-[10px]" />
-          <span className="text-[16px] font-semibold text-[#0F172A] tracking-[-0.02em]">
+          <span className="text-[16px] font-semibold text-[var(--desk-text)] tracking-[-0.02em]">
             unclutter <span className="opacity-45">desk</span>
           </span>
         </div>
@@ -88,7 +88,7 @@ export function AuthCardShell({
         {children}
 
         {footer && (
-          <div className="mt-[26px] pt-5 border-t border-[#F1F5F9] text-center">{footer}</div>
+          <div className="mt-[26px] pt-5 border-t border-[var(--desk-border-soft)] text-center">{footer}</div>
         )}
       </div>
     </div>

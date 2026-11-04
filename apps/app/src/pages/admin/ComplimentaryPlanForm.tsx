@@ -73,26 +73,26 @@ export function ComplimentaryPlanForm({ tenantId, plan, onSaved }: { tenantId: s
     }
   }
 
-  const field = 'h-9 px-3 rounded-[10px] bg-[#F8FAFC] border border-[#E2E8F0] text-[13px] text-[#0F172A]';
+  const field = 'h-9 px-3 rounded-[10px] bg-[var(--desk-surface)] border border-[var(--desk-border)] text-[13px] text-[var(--desk-text)]';
   return (
     <div className="space-y-3">
-      <p className="text-[13px] text-[#475569]">
-        Now: <span className="font-semibold text-[#0F172A]">{describePlan(plan)}</span>
+      <p className="text-[13px] text-[var(--desk-text-body)]">
+        Now: <span className="font-semibold text-[var(--desk-text)]">{describePlan(plan)}</span>
       </p>
       <div className="flex flex-wrap items-end gap-2">
-        <label className="text-[11px] font-bold text-[#64748B] space-y-1">
+        <label className="text-[11px] font-bold text-[var(--desk-text-muted)] space-y-1">
           <span className="block">Plan</span>
           <select aria-label="Plan" className={field} value={tier} onChange={(e) => setTier(e.target.value as Tier)}>
             {PAID.map((t) => <option key={t} value={t}>{TIER_NAMES[t]}</option>)}
           </select>
         </label>
-        <label className="text-[11px] font-bold text-[#64748B] space-y-1">
+        <label className="text-[11px] font-bold text-[var(--desk-text-muted)] space-y-1">
           <span className="block">Reason</span>
           <select aria-label="Reason" className={field} value={reason} onChange={(e) => setReason(e.target.value)}>
             {REASONS.map((r) => <option key={r.value} value={r.value}>{r.label}</option>)}
           </select>
         </label>
-        <label className="text-[11px] font-bold text-[#64748B] space-y-1">
+        <label className="text-[11px] font-bold text-[var(--desk-text-muted)] space-y-1">
           <span className="block">Free until{reason === 'INTERNAL' ? ' (optional)' : ''}</span>
           <input aria-label="Free until" type="date" className={field} value={until} onChange={(e) => setUntil(e.target.value)} />
         </label>
@@ -100,12 +100,12 @@ export function ComplimentaryPlanForm({ tenantId, plan, onSaved }: { tenantId: s
           type="button"
           onClick={() => void save()}
           disabled={busy || (!until && reason !== 'INTERNAL')}
-          className="h-9 px-4 rounded-[10px] bg-[#0F3A53] text-white text-[12px] font-bold cursor-pointer disabled:opacity-50"
+          className="h-9 px-4 rounded-[10px] bg-[var(--desk-pine-600)] text-white text-[12px] font-bold cursor-pointer disabled:opacity-50"
         >
           {noEnd ? 'Set with no end date' : 'Set plan'}
         </button>
         {plan.complimentaryReason ? (
-          <button type="button" onClick={() => void end()} disabled={busy} className="h-9 px-3 rounded-[10px] bg-[#F1F5F9] text-[#475569] text-[12px] font-bold cursor-pointer">
+          <button type="button" onClick={() => void end()} disabled={busy} className="h-9 px-3 rounded-[10px] bg-[var(--desk-surface-muted)] text-[var(--desk-text-body)] text-[12px] font-bold cursor-pointer">
             End now
           </button>
         ) : null}

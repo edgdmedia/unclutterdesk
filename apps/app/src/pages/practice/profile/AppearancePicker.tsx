@@ -6,10 +6,10 @@ import { profilePath } from '../../../config/domains';
 function LayoutThumb({ layout }: { layout: ProfileLayoutKey }) {
   const bar = (w: string, h = 5, bg = '#CBD5E1'): CSSProperties => ({ width: w, height: h, borderRadius: 999, background: bg });
   return (
-    <span aria-hidden className="h-[64px] rounded-[10px] bg-[#F1F5F9] overflow-hidden flex flex-col p-1.5 gap-1">
+    <span aria-hidden className="h-[64px] rounded-[10px] bg-[var(--desk-surface-muted)] overflow-hidden flex flex-col p-1.5 gap-1">
       {layout === 'classic' && (
         <span className="flex flex-col items-center gap-1 pt-1">
-          <span className="h-[18px] w-[18px] rounded-full bg-[#94A3B8]" />
+          <span className="h-[18px] w-[18px] rounded-full bg-[var(--desk-text-subtle)]" />
           <span style={bar('50%', 5, '#64748B')} />
           <span style={bar('70%')} />
           <span style={bar('80%', 7, '#94A3B8')} />
@@ -17,14 +17,14 @@ function LayoutThumb({ layout }: { layout: ProfileLayoutKey }) {
       )}
       {layout === 'editorial' && (
         <>
-          <span className="h-[26px] -mx-1.5 -mt-1.5 bg-[#CBD5E1]" />
+          <span className="h-[26px] -mx-1.5 -mt-1.5 bg-[var(--desk-pine-200)]" />
           <span style={bar('60%', 6, '#64748B')} />
           <span style={bar('85%', 4, '#94A3B8')} />
         </>
       )}
       {layout === 'compact' && (
         <>
-          <span className="flex items-center gap-1"><span className="h-[14px] w-[14px] rounded-[4px] bg-[#94A3B8]" /><span style={bar('45%', 5, '#64748B')} /></span>
+          <span className="flex items-center gap-1"><span className="h-[14px] w-[14px] rounded-[4px] bg-[var(--desk-text-subtle)]" /><span style={bar('45%', 5, '#64748B')} /></span>
           <span className="h-[10px] rounded-[4px] bg-white" />
           <span className="h-[10px] rounded-[4px] bg-white" />
           <span className="h-[10px] rounded-[4px] bg-white" />
@@ -70,7 +70,7 @@ function ProfilePreview({
   const line = headline || 'Your headline appears here.';
 
   return (
-    <div className="mx-auto w-[240px] overflow-hidden rounded-[26px] border-[6px] border-[#0F172A]" style={{ background: c.background, color: c.text }}>
+    <div className="mx-auto w-[240px] overflow-hidden rounded-[26px] border-[6px] border-[var(--desk-text)]" style={{ background: c.background, color: c.text }}>
       <div className="h-[330px] overflow-hidden">
         {layout === 'classic' && (
           <div className="flex flex-col items-center gap-1.5 px-4 py-5 text-center" style={{ background: c.surface }}>
@@ -149,10 +149,10 @@ export function AppearancePicker({
 
   return (
     <Card padding="lg">
-      <span className="text-[15px] font-bold text-[#0F172A]">Appearance</span>
-      <p className="mt-1 text-[12.5px] text-[#64748B]">Pick a layout and a colour palette. Your words stay the same.</p>
+      <span className="text-[15px] font-bold text-[var(--desk-text)]">Appearance</span>
+      <p className="mt-1 text-[12.5px] text-[var(--desk-text-muted)]">Pick a layout and a colour palette. Your words stay the same.</p>
 
-      <span className="mt-4 block text-[9px] font-black tracking-[0.22em] uppercase text-[#94A3B8]" id="layout-label">Layout</span>
+      <span className="mt-4 block text-[9px] font-black tracking-[0.22em] uppercase text-[var(--desk-text-subtle)]" id="layout-label">Layout</span>
       <div className="mt-2 grid grid-cols-2 gap-2" role="radiogroup" aria-labelledby="layout-label">
         {PROFILE_LAYOUTS.map((l) => (
           <button
@@ -162,17 +162,17 @@ export function AppearancePicker({
             aria-checked={layout.key === l.key}
             onClick={() => layout.key !== l.key && onChange({ layoutKey: l.key })}
             className={`flex flex-col gap-1.5 p-2 rounded-[14px] border bg-white cursor-pointer text-left ${
-              layout.key === l.key ? 'border-[#24614F] ring-2 ring-[#24614F]/20' : 'border-[#E2E8F0]'
+              layout.key === l.key ? 'border-[var(--desk-pine-600)] ring-2 ring-[var(--desk-pine-600)]/20' : 'border-[var(--desk-border)]'
             }`}
           >
             <LayoutThumb layout={l.key} />
-            <span className="text-[13px] font-bold text-[#0F172A]">{l.label}</span>
-            <span className="text-[11.5px] leading-snug text-[#64748B]">{l.description}</span>
+            <span className="text-[13px] font-bold text-[var(--desk-text)]">{l.label}</span>
+            <span className="text-[11.5px] leading-snug text-[var(--desk-text-muted)]">{l.description}</span>
           </button>
         ))}
       </div>
 
-      <span className="mt-4 block text-[9px] font-black tracking-[0.22em] uppercase text-[#94A3B8]" id="palette-label">Colour palette</span>
+      <span className="mt-4 block text-[9px] font-black tracking-[0.22em] uppercase text-[var(--desk-text-subtle)]" id="palette-label">Colour palette</span>
       <div className="mt-2 flex flex-wrap gap-2" role="radiogroup" aria-labelledby="palette-label">
         {PROFILE_THEMES.map((t) => (
           <button
@@ -183,7 +183,7 @@ export function AppearancePicker({
             onClick={() => theme.key !== t.key && onChange({ themeKey: t.key })}
             title={t.description}
             className={`flex items-center gap-2 h-[44px] pl-1.5 pr-3 rounded-[14px] border bg-white cursor-pointer ${
-              theme.key === t.key ? 'border-[#24614F] ring-2 ring-[#24614F]/20' : 'border-[#E2E8F0]'
+              theme.key === t.key ? 'border-[var(--desk-pine-600)] ring-2 ring-[var(--desk-pine-600)]/20' : 'border-[var(--desk-border)]'
             }`}
           >
             <span
@@ -193,7 +193,7 @@ export function AppearancePicker({
             >
               <span className="h-[14px] w-[14px] rounded-full" style={{ background: t.colors.accent }} />
             </span>
-            <span className="text-[13px] font-bold text-[#0F172A]">{t.label}</span>
+            <span className="text-[13px] font-bold text-[var(--desk-text)]">{t.label}</span>
           </button>
         ))}
       </div>

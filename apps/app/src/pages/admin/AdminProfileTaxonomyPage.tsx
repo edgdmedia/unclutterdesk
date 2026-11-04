@@ -6,7 +6,7 @@ import { adminProfileContentApi } from './adminProfileContentApi';
 import { ProfileContentTabs } from './ProfileContentTabs';
 import { PROFILE_CONTENT_BASE, TAXONOMY_KINDS, TAXONOMY_KIND_LABELS, TAXONOMY_KIND_SINGULAR, type AdminTaxonomyTerm, type TaxonomyKind } from './profileContentTypes';
 
-const fieldShell = 'h-10 w-full rounded-[12px] border border-[#E2E8F0] bg-white px-3 text-[13.5px] text-[#0F172A]';
+const fieldShell = 'h-10 w-full rounded-[12px] border border-[var(--desk-border)] bg-white px-3 text-[13.5px] text-[var(--desk-text)]';
 
 interface TermForm {
   kind: TaxonomyKind;
@@ -182,8 +182,8 @@ export function AdminProfileTaxonomyPage() {
   return (
     <div className="flex-1 min-w-0 px-4 md:px-[32px] py-[28px] max-w-[1100px] w-full">
       <Eyebrow>Platform console</Eyebrow>
-      <h1 className="mt-1 text-[26px] font-bold tracking-[-0.03em] text-[#0F172A]">Profile taxonomy</h1>
-      <p className="mt-1 max-w-[780px] text-[13.5px] text-[#64748B]">
+      <h1 className="mt-1 text-[26px] font-bold tracking-[-0.03em] text-[var(--desk-text)]">Profile taxonomy</h1>
+      <p className="mt-1 max-w-[780px] text-[13.5px] text-[var(--desk-text-muted)]">
         The terms practitioners choose from. Deactivated terms stay on existing profiles in the database but disappear from public pages and the editor.
         Renames, deactivations and reorders purge the pages that use them. Every change is recorded in the admin audit log.
       </p>
@@ -192,8 +192,8 @@ export function AdminProfileTaxonomyPage() {
       <Card className="mt-5 p-[22px] space-y-4">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
-            <p className="text-[16px] font-bold text-[#0F172A]">{selected ? 'Edit term' : 'Add a term'}</p>
-            <p className="mt-1 text-[12.5px] text-[#64748B]">
+            <p className="text-[16px] font-bold text-[var(--desk-text)]">{selected ? 'Edit term' : 'Add a term'}</p>
+            <p className="mt-1 text-[12.5px] text-[var(--desk-text-muted)]">
               {selected
                 ? 'Changing the key rewrites it in every template that suggests it. Profiles keep the term they chose, so they are unaffected.'
                 : 'The key is the stable slug; leave it blank to make one from the label.'}
@@ -205,7 +205,7 @@ export function AdminProfileTaxonomyPage() {
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-          <label className="flex flex-col gap-1.5 text-[11.5px] font-bold text-[#475569]">
+          <label className="flex flex-col gap-1.5 text-[11.5px] font-bold text-[var(--desk-text-body)]">
             Kind
             <select
               className={fieldShell}
@@ -237,18 +237,18 @@ export function AdminProfileTaxonomyPage() {
         {selected ? (
           <div className="flex flex-wrap items-center gap-3">
             <Toggle width={48} checked={form.isActive} onChange={(next: boolean) => setForm((current) => ({ ...current, isActive: next }))} aria-label="Term active" />
-            <span className="text-[12.5px] text-[#64748B]">
+            <span className="text-[12.5px] text-[var(--desk-text-muted)]">
               {form.isActive ? 'Active: shown in the editor and on public profiles' : 'Inactive: hidden from the editor and public profiles'}
             </span>
           </div>
         ) : null}
 
         <div className="space-y-1">
-          <label htmlFor="taxonomy-reason" className="text-[11.5px] font-bold text-[#475569]">Reason for change</label>
+          <label htmlFor="taxonomy-reason" className="text-[11.5px] font-bold text-[var(--desk-text-body)]">Reason for change</label>
           <textarea
             id="taxonomy-reason"
             ref={reasonRef}
-            className="w-full rounded-[12px] border border-[#E2E8F0] bg-white px-3 py-2 text-[13.5px] text-[#0F172A] min-h-[80px]"
+            className="w-full rounded-[12px] border border-[var(--desk-border)] bg-white px-3 py-2 text-[13.5px] text-[var(--desk-text)] min-h-[80px]"
             placeholder="Optional, unless deactivating or changing the key."
             maxLength={500}
             value={reason}
@@ -256,7 +256,7 @@ export function AdminProfileTaxonomyPage() {
           />
         </div>
 
-        {error ? <p role="alert" className="text-[13px] font-semibold text-[#B91C1C]">{error}</p> : null}
+        {error ? <p role="alert" className="text-[13px] font-semibold text-[var(--desk-danger)]">{error}</p> : null}
 
         <div className="flex justify-end gap-2">
           <Button onClick={save} disabled={saving}>{saving ? 'Saving…' : selected ? 'Save term' : 'Add term'}</Button>
@@ -264,17 +264,17 @@ export function AdminProfileTaxonomyPage() {
       </Card>
 
       {isLoading ? (
-        <Card className="mt-5 p-[22px]"><p className="text-sm text-[#64748B]">Loading terms…</p></Card>
+        <Card className="mt-5 p-[22px]"><p className="text-sm text-[var(--desk-text-muted)]">Loading terms…</p></Card>
       ) : loadError ? (
-        <Card className="mt-5 p-[22px]"><p className="text-sm text-[#B91C1C]">Could not load taxonomy. Please refresh.</p></Card>
+        <Card className="mt-5 p-[22px]"><p className="text-sm text-[var(--desk-danger)]">Could not load taxonomy. Please refresh.</p></Card>
       ) : (
         <div className="mt-5 space-y-4">
           {groups.map((group) => (
             <Card key={group.kind} className="p-[22px]">
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <div>
-                  <p className="text-[16px] font-bold text-[#0F172A]">{group.label}</p>
-                  <p className="text-[12px] text-[#64748B]">{group.terms.length} term{group.terms.length === 1 ? '' : 's'}</p>
+                  <p className="text-[16px] font-bold text-[var(--desk-text)]">{group.label}</p>
+                  <p className="text-[12px] text-[var(--desk-text-muted)]">{group.terms.length} term{group.terms.length === 1 ? '' : 's'}</p>
                 </div>
                 <Button variant="secondary" size="sm" icon={<Plus className="h-3.5 w-3.5" />} onClick={() => startNew(group.kind)}>
                   Add {TAXONOMY_KIND_SINGULAR[group.kind]}
@@ -282,18 +282,18 @@ export function AdminProfileTaxonomyPage() {
               </div>
 
               {!group.terms.length ? (
-                <p className="mt-4 text-[13px] text-[#64748B]">No terms yet.</p>
+                <p className="mt-4 text-[13px] text-[var(--desk-text-muted)]">No terms yet.</p>
               ) : (
-                <div className="mt-4 divide-y divide-[#F1F5F9]">
+                <div className="mt-4 divide-y divide-[var(--desk-border-soft)]">
                   {group.terms.map((term, index) => (
                     <div key={term.id} className="flex flex-wrap items-center gap-2 py-2.5">
                       <div className="min-w-0 flex-1">
                         <div className="flex flex-wrap items-center gap-2">
-                          <span className="truncate text-[13.5px] font-bold text-[#0F172A]">{term.label}</span>
-                          <span className="font-mono text-[11.5px] text-[#94A3B8]">{term.key}</span>
+                          <span className="truncate text-[13.5px] font-bold text-[var(--desk-text)]">{term.label}</span>
+                          <span className="font-mono text-[11.5px] text-[var(--desk-text-subtle)]">{term.key}</span>
                           {!term.isActive ? <Badge>Inactive</Badge> : null}
                         </div>
-                        <p className="mt-0.5 text-[11.5px] text-[#64748B]">
+                        <p className="mt-0.5 text-[11.5px] text-[var(--desk-text-muted)]">
                           {term.usageCount} profile{term.usageCount === 1 ? '' : 's'} using this term
                         </p>
                       </div>

@@ -184,7 +184,7 @@ export function FormEditorPage() {
         <PageHeader
           eyebrow="SETTINGS"
           breadcrumb={
-            <Link to="/dashboard/settings/forms" className="inline-flex items-center gap-1.5 text-xs font-bold text-[#64748B] hover:text-[#0F172A]">
+            <Link to="/dashboard/settings/forms" className="inline-flex items-center gap-1.5 text-xs font-bold text-[var(--desk-text-muted)] hover:text-[var(--desk-text)]">
               <ArrowLeft className="h-4 w-4" />
               <span>Back to forms</span>
             </Link>
@@ -197,14 +197,14 @@ export function FormEditorPage() {
                 value={formTitle}
                 onChange={(event) => setFormTitle(event.target.value)}
                 disabled={isSystemTemplate}
-                className="w-[300px] max-w-full text-[16px] font-bold text-[#0F172A] bg-transparent outline-none border-b border-transparent focus:border-[#0F3A53]"
+                className="w-[300px] max-w-full text-[16px] font-bold text-[var(--desk-text)] bg-transparent outline-none border-b border-transparent focus:border-[var(--desk-pine-600)]"
               />
               <select
                 value={category}
                 aria-label="Form category"
                 onChange={(event) => setCategory(event.target.value)}
                 disabled={isSystemTemplate}
-                className="h-7 px-3 rounded-full bg-[#F1F5F9] text-[10px] font-black tracking-wider uppercase border border-[#E2E8F0]"
+                className="h-7 px-3 rounded-full bg-[var(--desk-surface-muted)] text-[10px] font-black tracking-wider uppercase border border-[var(--desk-border)]"
               >
                 <option value="INTAKE">INTAKE</option>
                 <option value="ASSESSMENT">ASSESSMENT</option>
@@ -216,8 +216,8 @@ export function FormEditorPage() {
           }
           actions={
             <>
-              <span className="flex items-center gap-1.5 text-xs text-[#B45309] font-bold">
-                <span className="h-2 w-2 rounded-full bg-[#E3B341]" />
+              <span className="flex items-center gap-1.5 text-xs text-[var(--desk-pending)] font-bold">
+                <span className="h-2 w-2 rounded-full bg-[var(--ds-sky)]" />
                 <span>{saving ? 'Saving...' : `${isSystemTemplate ? 'System template' : isNew ? 'New' : 'Live'} · ${questions.length} questions`}</span>
               </span>
               {/* FRM-01: only a saved custom form; system assessments stay locked. */}
@@ -225,7 +225,7 @@ export function FormEditorPage() {
                 <button
                   type="button"
                   onClick={() => setTemplateOpen(true)}
-                  className="h-[40px] px-4 rounded-[14px] border border-[#E2E8F0] bg-white text-[#0F172A] font-bold text-xs cursor-pointer"
+                  className="h-[40px] px-4 rounded-[14px] border border-[var(--desk-border)] bg-white text-[var(--desk-text)] font-bold text-xs cursor-pointer"
                 >
                   Save as template
                 </button>
@@ -244,11 +244,11 @@ export function FormEditorPage() {
         />
       }
     >
-      <div className="grid grid-cols-1 xl:grid-cols-[250px_1fr_392px] items-stretch min-h-[680px] rounded-[16px] border border-[#E2E8F0] overflow-hidden bg-white">
-        <div className="bg-white border-r border-[#E2E8F0] p-5 space-y-4">
+      <div className="grid grid-cols-1 xl:grid-cols-[250px_1fr_392px] items-stretch min-h-[680px] rounded-[16px] border border-[var(--desk-border)] overflow-hidden bg-white">
+        <div className="bg-white border-r border-[var(--desk-border)] p-5 space-y-4">
           <div>
             <Eyebrow className="mb-1">COMPONENTS</Eyebrow>
-            <p className="text-[11.5px] text-[#64748B] font-medium">{isSystemTemplate ? 'System assessment templates are locked to preserve scoring accuracy.' : 'Click a block to add to canvas.'}</p>
+            <p className="text-[11.5px] text-[var(--desk-text-muted)] font-medium">{isSystemTemplate ? 'System assessment templates are locked to preserve scoring accuracy.' : 'Click a block to add to canvas.'}</p>
           </div>
 
           <div className={`space-y-2 ${isSystemTemplate ? 'opacity-50 pointer-events-none' : ''}`}>
@@ -257,39 +257,39 @@ export function FormEditorPage() {
                 type="button"
                 key={component.label}
                 onClick={() => addQuestion(component.type, `New ${component.label}`)}
-                className="w-full p-3 rounded-[15px] bg-[#F8FAFC] border border-[#E2E8F0] text-xs font-bold text-[#0F172A] flex items-center gap-2.5 cursor-pointer hover:bg-[#F1F5F9] hover:border-[#0F3A53]"
+                className="w-full p-3 rounded-[15px] bg-[var(--desk-surface)] border border-[var(--desk-border)] text-xs font-bold text-[var(--desk-text)] flex items-center gap-2.5 cursor-pointer hover:bg-[var(--desk-surface-muted)] hover:border-[var(--desk-pine-600)]"
               >
-                <GripVertical className="h-4 w-4 text-[#CBD5E1]" />
+                <GripVertical className="h-4 w-4 text-[var(--desk-pine-200)]" />
                 <span>{component.label}</span>
               </button>
             ))}
           </div>
 
           {category === 'REVIEW' ? (
-            <div className="rounded-[18px] border border-[#E2E8F0] bg-[#FCF7EF] p-4 space-y-3">
+            <div className="rounded-[18px] border border-[var(--desk-border)] bg-[var(--desk-surface)] p-4 space-y-3">
               <div>
                 <Eyebrow>REVIEW SETTINGS</Eyebrow>
-                <p className="mt-1 text-[11.5px] font-medium text-[#64748B]">Per-form publishing controls for practice testimonials.</p>
+                <p className="mt-1 text-[11.5px] font-medium text-[var(--desk-text-muted)]">Per-form publishing controls for practice testimonials.</p>
               </div>
 
-              <label className="block space-y-1.5 text-xs font-bold text-[#0F172A]">
+              <label className="block space-y-1.5 text-xs font-bold text-[var(--desk-text)]">
                 <span>Publication mode</span>
                 <select
                   value={reviewPublicationMode}
                   onChange={(event) => setReviewPublicationMode(event.target.value)}
-                  className="w-full rounded-[12px] border border-[#E2E8F0] bg-white px-3 py-2 text-xs font-bold"
+                  className="w-full rounded-[12px] border border-[var(--desk-border)] bg-white px-3 py-2 text-xs font-bold"
                 >
                   <option value="MANUAL">Require approval</option>
                   <option value="AUTO">Auto-publish</option>
                 </select>
               </label>
 
-              <label className="block space-y-1.5 text-xs font-bold text-[#0F172A]">
+              <label className="block space-y-1.5 text-xs font-bold text-[var(--desk-text)]">
                 <span>Reviewer identity</span>
                 <select
                   value={reviewerDisplayMode}
                   onChange={(event) => setReviewerDisplayMode(event.target.value)}
-                  className="w-full rounded-[12px] border border-[#E2E8F0] bg-white px-3 py-2 text-xs font-bold"
+                  className="w-full rounded-[12px] border border-[var(--desk-border)] bg-white px-3 py-2 text-xs font-bold"
                 >
                   <option value="FIRST_NAME">Show first name + last initial</option>
                   <option value="ANONYMOUS">Show anonymous</option>
@@ -307,20 +307,20 @@ export function FormEditorPage() {
           ) : null}
 
           {loading ? (
-            <div className="rounded-[16px] border border-[#E2E8F0] bg-white px-4 py-8 text-sm font-medium text-[#64748B]">
+            <div className="rounded-[16px] border border-[var(--desk-border)] bg-white px-4 py-8 text-sm font-medium text-[var(--desk-text-muted)]">
               Loading form editor...
             </div>
           ) : (
             <>
               <div className="space-y-2">
-                <h2 className="text-[17px] font-bold text-[#0F172A]">Questions</h2>
+                <h2 className="text-[17px] font-bold text-[var(--desk-text)]">Questions</h2>
                 <textarea
                   value={description}
                   onChange={(event) => setDescription(event.target.value)}
                   disabled={isSystemTemplate}
                   rows={2}
                   placeholder="Describe what this form is for..."
-                  className="w-full rounded-[16px] border border-[#E2E8F0] bg-white px-4 py-3 text-sm font-medium text-[#0F172A] outline-none"
+                  className="w-full rounded-[16px] border border-[var(--desk-border)] bg-white px-4 py-3 text-sm font-medium text-[var(--desk-text)] outline-none"
                 />
               </div>
 
@@ -328,24 +328,24 @@ export function FormEditorPage() {
                 {questions.map((question, questionIndex) => (
                   <div
                     key={question.id}
-                    className="p-5 rounded-[20px] bg-white border border-[#E2E8F0] shadow-xs space-y-4 relative"
+                    className="p-5 rounded-[20px] bg-white border border-[var(--desk-border)] shadow-xs space-y-4 relative"
                   >
                     <div className="flex items-center justify-between gap-4">
                       <div className="flex items-center gap-2">
-                        <GripVertical className="h-4 w-4 text-[#CBD5E1]" />
-                        <span className="h-5 px-2 rounded-full bg-[#0F3A53]/10 text-[#0F3A53] text-[9px] font-black uppercase">
+                        <GripVertical className="h-4 w-4 text-[var(--desk-pine-200)]" />
+                        <span className="h-5 px-2 rounded-full bg-[var(--desk-pine-600)]/10 text-[var(--desk-pine-600)] text-[9px] font-black uppercase">
                           Q{questionIndex + 1} · {question.type.replace(/_/g, ' ')}
                         </span>
                       </div>
                       <div className="flex items-center gap-3">
-                        <label className="flex items-center gap-1.5 text-xs font-bold text-[#475569]">
+                        <label className="flex items-center gap-1.5 text-xs font-bold text-[var(--desk-text-body)]">
                           <span>Required</span>
                           <input
                             type="checkbox"
                             checked={question.required}
                             onChange={(event) => updateQuestion(question.id, { required: event.target.checked })}
                             disabled={isSystemTemplate}
-                            className="rounded text-[#0F3A53]"
+                            className="rounded text-[var(--desk-pine-600)]"
                           />
                         </label>
                         <button
@@ -364,14 +364,14 @@ export function FormEditorPage() {
                       value={question.label}
                       onChange={(event) => updateQuestion(question.id, { label: event.target.value })}
                       disabled={isSystemTemplate}
-                      className="w-full text-sm font-bold text-[#0F172A] p-2 bg-[#F8FAFC] border border-[#E2E8F0] rounded-[12px] outline-none"
+                      className="w-full text-sm font-bold text-[var(--desk-text)] p-2 bg-[var(--desk-surface)] border border-[var(--desk-border)] rounded-[12px] outline-none"
                     />
 
                     {question.options ? (
-                      <div className="space-y-2 pt-2 border-t border-[#F1F5F9]">
+                      <div className="space-y-2 pt-2 border-t border-[var(--desk-border-soft)]">
                         {question.options.map((option, optionIndex) => (
                           <div key={`${question.id}_${optionIndex}`} className="flex items-center gap-2 text-xs">
-                            <span className="h-6 w-6 rounded-[6px] bg-[#EEF2F7] font-bold text-[#0F172A] flex items-center justify-center shrink-0">
+                            <span className="h-6 w-6 rounded-[6px] bg-[var(--desk-surface-muted)] font-bold text-[var(--desk-text)] flex items-center justify-center shrink-0">
                               {optionIndex + 1}
                             </span>
                             <input
@@ -379,7 +379,7 @@ export function FormEditorPage() {
                               value={option}
                               onChange={(event) => updateOption(question.id, optionIndex, event.target.value)}
                               disabled={isSystemTemplate}
-                              className="flex-1 p-2 rounded-[10px] bg-[#F8FAFC] border border-[#E2E8F0] font-medium text-[#0F172A]"
+                              className="flex-1 p-2 rounded-[10px] bg-[var(--desk-surface)] border border-[var(--desk-border)] font-medium text-[var(--desk-text)]"
                             />
                           </div>
                         ))}
@@ -387,7 +387,7 @@ export function FormEditorPage() {
                           type="button"
                           onClick={() => addOption(question.id)}
                           disabled={isSystemTemplate}
-                          className="text-xs font-bold text-[#0F3A53] hover:underline inline-flex items-center gap-1 pt-1 cursor-pointer"
+                          className="text-xs font-bold text-[var(--desk-pine-600)] hover:underline inline-flex items-center gap-1 pt-1 cursor-pointer"
                         >
                           <Plus className="h-3.5 w-3.5" />
                           <span>Add Option</span>
@@ -401,40 +401,40 @@ export function FormEditorPage() {
           )}
         </div>
 
-        <div className="bg-white border-l border-[#E2E8F0] p-5 space-y-4">
-          <div className="flex items-center justify-between border-b border-[#E2E8F0] pb-3">
+        <div className="bg-white border-l border-[var(--desk-border)] p-5 space-y-4">
+          <div className="flex items-center justify-between border-b border-[var(--desk-border)] pb-3">
             <div>
               <Eyebrow>LIVE PREVIEW</Eyebrow>
-              <h3 className="text-sm font-bold text-[#0F172A]">What the client sees</h3>
+              <h3 className="text-sm font-bold text-[var(--desk-text)]">What the client sees</h3>
             </div>
             <span className="h-5 px-2 rounded-full bg-emerald-50 text-emerald-600 text-[10px] font-bold border border-emerald-200">
               {category}
             </span>
           </div>
 
-          <div className="p-5 rounded-[20px] bg-[#F8FAFC] border border-[#E2E8F0] space-y-4">
+          <div className="p-5 rounded-[20px] bg-[var(--desk-surface)] border border-[var(--desk-border)] space-y-4">
             <div className="p-4 rounded-[16px] text-white space-y-1" style={{ backgroundColor: primaryColor }}>
-              <span className="text-[9px] font-black tracking-widest text-[#E3B341] uppercase block">PREVIEW FORM</span>
+              <span className="text-[9px] font-black tracking-widest text-[var(--ds-sky)] uppercase block">PREVIEW FORM</span>
               <h4 className="text-sm font-extrabold">{formTitle}</h4>
               {description ? <p className="text-[11px] text-white/80">{description}</p> : null}
             </div>
 
             <div className="space-y-3">
               {questions.map((question, index) => (
-                <div key={question.id} className="p-3.5 bg-white rounded-[14px] border border-[#E2E8F0] space-y-2">
-                  <p className="text-xs font-bold text-[#0F172A]">{index + 1}. {question.label}</p>
+                <div key={question.id} className="p-3.5 bg-white rounded-[14px] border border-[var(--desk-border)] space-y-2">
+                  <p className="text-xs font-bold text-[var(--desk-text)]">{index + 1}. {question.label}</p>
                   {question.options && question.options.length > 0 ? (
                     <div className="grid grid-cols-2 gap-1.5 text-[10.5px] font-bold text-center">
                       {question.options.map((option) => (
-                        <button key={option} type="button" disabled title="Preview only" className="h-8 rounded-[8px] bg-[#F1F5F9] text-[#0F172A]">
+                        <button key={option} type="button" disabled title="Preview only" className="h-8 rounded-[8px] bg-[var(--desk-surface-muted)] text-[var(--desk-text)]">
                           {option}
                         </button>
                       ))}
                     </div>
                   ) : question.type === 'textarea' ? (
-                    <div className="h-20 rounded-[10px] border border-dashed border-[#CBD5E1] bg-[#F8FAFC]" />
+                    <div className="h-20 rounded-[10px] border border-dashed border-[var(--desk-pine-200)] bg-[var(--desk-surface)]" />
                   ) : (
-                    <div className="h-10 rounded-[10px] border border-dashed border-[#CBD5E1] bg-[#F8FAFC]" />
+                    <div className="h-10 rounded-[10px] border border-dashed border-[var(--desk-pine-200)] bg-[var(--desk-surface)]" />
                   )}
                 </div>
               ))}

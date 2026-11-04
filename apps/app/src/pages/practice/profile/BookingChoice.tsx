@@ -53,8 +53,8 @@ export function BookingChoice() {
     };
   }, []);
 
-  if (loadError) return <p className="text-[13px] text-[#B42318]">Could not load your booking choice: {loadError}</p>;
-  if (!info) return <p className="text-[13px] text-[#64748B]">Loading your booking choice…</p>;
+  if (loadError) return <p className="text-[13px] text-[var(--desk-danger)]">Could not load your booking choice: {loadError}</p>;
+  if (!info) return <p className="text-[13px] text-[var(--desk-text-muted)]">Loading your booking choice…</p>;
 
   const deskBlocked = mode === 'DESK' && !info.deskReady;
   const unchanged = mode === info.mode && (mode !== 'EXTERNAL' || link.trim() === (info.externalBookingUrl ?? ''));
@@ -74,26 +74,26 @@ export function BookingChoice() {
 
   return (
     <fieldset className="flex flex-col gap-3 min-w-0">
-      <legend className="text-[14px] font-bold text-[#0F172A] mb-2">How clients book you</legend>
+      <legend className="text-[14px] font-bold text-[var(--desk-text)] mb-2">How clients book you</legend>
       {CHOICES.map((c) => {
         const checked = mode === c.mode;
         return (
           <label
             key={c.mode}
             className={`flex gap-3 rounded-[16px] border p-4 cursor-pointer transition-colors ${
-              checked ? 'border-[#24614F] bg-[#F0F7F4]' : 'border-[#E2E8F0] bg-white hover:border-[#B6D8CC]'
+              checked ? 'border-[var(--desk-pine-600)] bg-[var(--desk-pine-050)]' : 'border-[var(--desk-border)] bg-white hover:border-[var(--desk-pine-200)]'
             }`}
           >
-            <input type="radio" name={name} value={c.mode} checked={checked} onChange={() => setMode(c.mode)} className="mt-1 h-4 w-4 accent-[#24614F] shrink-0" />
+            <input type="radio" name={name} value={c.mode} checked={checked} onChange={() => setMode(c.mode)} className="mt-1 h-4 w-4 accent-[var(--desk-pine-600)] shrink-0" />
             <span className="min-w-0">
               <span className="flex flex-wrap items-center gap-2">
-                <span className="text-[14.5px] font-bold text-[#0F172A]">{c.title}</span>
+                <span className="text-[14.5px] font-bold text-[var(--desk-text)]">{c.title}</span>
                 {c.recommended && (
-                  <span className="text-[10px] font-black uppercase tracking-[0.14em] text-[#24614F] bg-[#DDEDE6] rounded-full px-2 py-0.5">Recommended</span>
+                  <span className="text-[10px] font-black uppercase tracking-[0.14em] text-[var(--desk-pine-600)] bg-[var(--desk-pine-100)] rounded-full px-2 py-0.5">Recommended</span>
                 )}
-                {info.mode === c.mode && <span className="text-[12px] text-[#64748B]">· current</span>}
+                {info.mode === c.mode && <span className="text-[12px] text-[var(--desk-text-muted)]">· current</span>}
               </span>
-              <span className="block mt-0.5 text-[13px] leading-relaxed text-[#475569]">{c.body}</span>
+              <span className="block mt-0.5 text-[13px] leading-relaxed text-[var(--desk-text-body)]">{c.body}</span>
             </span>
           </label>
         );
@@ -110,8 +110,8 @@ export function BookingChoice() {
       )}
 
       {deskBlocked && (
-        <div role="status" className="rounded-[16px] bg-[#FFF8EB] border border-[#F5DDB0] p-4 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-          <p className="text-[13px] leading-relaxed text-[#5C3D0E]">
+        <div role="status" className="rounded-[16px] bg-[var(--desk-pending-bg)] border border-[var(--desk-pending-border)] p-4 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+          <p className="text-[13px] leading-relaxed text-[var(--desk-pending)]">
             To take bookings here, add {info.deskMissing.map((m) => MISSING_TEXT[m]).join(' and ')}.
           </p>
           <Button onClick={() => void start(info.deskMissing)} disabled={starting}>
@@ -121,8 +121,8 @@ export function BookingChoice() {
       )}
 
       {info.mode === 'DESK' && info.deskBookingUrl && (
-        <p className="text-[13px] text-[#475569]">
-          Your Book button opens <a className="font-semibold text-[#24614F] underline" href={info.deskBookingUrl} target="_blank" rel="noreferrer">{info.deskBookingUrl}</a>
+        <p className="text-[13px] text-[var(--desk-text-body)]">
+          Your Book button opens <a className="font-semibold text-[var(--desk-pine-600)] underline" href={info.deskBookingUrl} target="_blank" rel="noreferrer">{info.deskBookingUrl}</a>
         </p>
       )}
 

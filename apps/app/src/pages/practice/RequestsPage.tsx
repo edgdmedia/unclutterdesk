@@ -22,8 +22,8 @@ const PLACEHOLDER: Record<RequestType, { subject: string; details: string }> = {
 };
 
 const inputCls =
-  'w-full h-[44px] px-3.5 rounded-[14px] bg-[#F8FAFC] border border-[#E2E8F0] text-[13px] font-medium text-[#0F172A] outline-none focus:border-[#94A3B8]';
-const labelCls = 'text-[11.5px] font-bold text-[#475569]';
+  'w-full h-[44px] px-3.5 rounded-[14px] bg-[var(--desk-surface)] border border-[var(--desk-border)] text-[13px] font-medium text-[var(--desk-text)] outline-none focus:border-[var(--desk-border-strong)]';
+const labelCls = 'text-[11.5px] font-bold text-[var(--desk-text-body)]';
 
 /** Ask Unclutter Desk for something (a feature, an assessment, a service) or send feedback, and follow it. */
 export function RequestsPage() {
@@ -64,15 +64,15 @@ export function RequestsPage() {
 
   return (
     <Page header={<PageHeader eyebrow="HELP" title="Requests & feedback" />}>
-      <p className="text-xs text-[#64748B] font-medium">
+      <p className="text-xs text-[var(--desk-text-muted)] font-medium">
         Ask us for a feature, an assessment or a service, or tell us what you think.
       </p>
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 md:gap-6 items-start">
         <Card padding="p-[22px]" className="lg:col-span-6">
           <div className="flex items-center gap-2">
-            <MessageSquarePlus className="h-4 w-4 text-[#475569]" />
-            <h2 className="text-[14px] font-bold text-[#0F172A]">New request</h2>
+            <MessageSquarePlus className="h-4 w-4 text-[var(--desk-text-body)]" />
+            <h2 className="text-[14px] font-bold text-[var(--desk-text)]">New request</h2>
           </div>
           <form onSubmit={submit} className="mt-4 space-y-3">
             <div className="flex flex-wrap gap-1.5" role="radiogroup" aria-label="Kind of request">
@@ -115,23 +115,23 @@ export function RequestsPage() {
         </Card>
 
         <Card padding="p-[22px]" className="lg:col-span-6">
-          <h2 className="text-[14px] font-bold text-[#0F172A]">Your requests</h2>
+          <h2 className="text-[14px] font-bold text-[var(--desk-text)]">Your requests</h2>
           {requests === null ? (
-            <p className="mt-3 text-sm text-[#64748B]">Loading…</p>
+            <p className="mt-3 text-sm text-[var(--desk-text-muted)]">Loading…</p>
           ) : requests.length === 0 ? (
-            <p className="mt-3 text-sm text-[#64748B]">Nothing yet.</p>
+            <p className="mt-3 text-sm text-[var(--desk-text-muted)]">Nothing yet.</p>
           ) : (
-            <ul className="mt-3 divide-y divide-[#F1F5F9]">
+            <ul className="mt-3 divide-y divide-[var(--desk-border-soft)]">
               {requests.map((r) => (
                 <li key={r.id} className="py-2.5">
                   <div className="flex items-center justify-between gap-2">
-                    <span className="text-[13px] font-semibold text-[#0F172A]">{r.subject}</span>
-                    <span className="text-[11px] font-bold text-[#475569] bg-[#F1F5F9] rounded-full px-2 py-0.5 shrink-0">{REQUEST_STATUS_LABEL[r.status]}</span>
+                    <span className="text-[13px] font-semibold text-[var(--desk-text)]">{r.subject}</span>
+                    <span className="text-[11px] font-bold text-[var(--desk-text-body)] bg-[var(--desk-surface-muted)] rounded-full px-2 py-0.5 shrink-0">{REQUEST_STATUS_LABEL[r.status]}</span>
                   </div>
-                  <p className="text-[11.5px] text-[#94A3B8] font-medium">
+                  <p className="text-[11.5px] text-[var(--desk-text-subtle)] font-medium">
                     {REQUEST_KIND_LABEL[r.type]} · {new Date(r.createdAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
                   </p>
-                  {r.adminNote ? <p className="mt-1 text-xs text-[#334155]"><strong>Unclutter Desk:</strong> {r.adminNote}</p> : null}
+                  {r.adminNote ? <p className="mt-1 text-xs text-[var(--desk-text-body)]"><strong>Unclutter Desk:</strong> {r.adminNote}</p> : null}
                 </li>
               ))}
             </ul>

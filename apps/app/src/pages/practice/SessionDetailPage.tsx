@@ -78,12 +78,12 @@ export function SessionDetailPage() {
   if (!d) {
     return (
       <Page header={<PageHeader title="Session" />}>
-        <div className="flex justify-center py-16"><Loader2 className="h-5 w-5 animate-spin text-[#64748B]" /></div>
+        <div className="flex justify-center py-16"><Loader2 className="h-5 w-5 animate-spin text-[var(--desk-text-muted)]" /></div>
       </Page>
     );
   }
 
-  const area = 'w-full px-3 py-2 rounded-[12px] bg-[#F8FAFC] border border-[#E2E8F0] text-[13px] font-medium text-[#0F172A] outline-none';
+  const area = 'w-full px-3 py-2 rounded-[12px] bg-[var(--desk-surface)] border border-[var(--desk-border)] text-[13px] font-medium text-[var(--desk-text)] outline-none';
 
   return (
     <Page
@@ -99,11 +99,11 @@ export function SessionDetailPage() {
                   endsAt={d.endsAt}
                   to={`/session/${d.id}`}
                   label="Start session"
-                  className="h-[40px] px-4 rounded-[12px] bg-[#0F3A53] text-white text-[12.5px] font-bold inline-flex items-center gap-2 cursor-pointer"
-                  waitingClassName="h-[40px] px-4 rounded-[12px] bg-[#E2E8F0] text-[#64748B] text-[12.5px] font-bold inline-flex items-center gap-2 cursor-not-allowed"
+                  className="h-[40px] px-4 rounded-[12px] bg-[var(--desk-pine-600)] text-white text-[12.5px] font-bold inline-flex items-center gap-2 cursor-pointer"
+                  waitingClassName="h-[40px] px-4 rounded-[12px] bg-[var(--desk-border)] text-[var(--desk-text-muted)] text-[12.5px] font-bold inline-flex items-center gap-2 cursor-not-allowed"
                 />
               ) : null}
-              <Link to={`/session/${d.id}/prep`} className="h-[40px] px-4 rounded-[12px] bg-white border border-[#CBD5E1] text-[#0F172A] text-[12.5px] font-bold inline-flex items-center gap-2 cursor-pointer">
+              <Link to={`/session/${d.id}/prep`} className="h-[40px] px-4 rounded-[12px] bg-white border border-[var(--desk-pine-200)] text-[var(--desk-text)] text-[12.5px] font-bold inline-flex items-center gap-2 cursor-pointer">
                 <FileText className="h-4 w-4" /> Session prep
               </Link>
             </>
@@ -112,12 +112,12 @@ export function SessionDetailPage() {
             d.can.edit ? (
               <>
                 {d.status === 'CONFIRMED' ? (
-                  <button type="button" disabled={busy} onClick={() => void act(() => api.patch(`/v1/consult/practice/sessions/${d.id}/status`, { status: 'COMPLETED' }), 'Session completed')} className="h-[40px] px-4 rounded-[12px] bg-white border border-[#CBD5E1] text-[#0F172A] text-xs font-bold inline-flex items-center gap-1.5 cursor-pointer disabled:opacity-50">
+                  <button type="button" disabled={busy} onClick={() => void act(() => api.patch(`/v1/consult/practice/sessions/${d.id}/status`, { status: 'COMPLETED' }), 'Session completed')} className="h-[40px] px-4 rounded-[12px] bg-white border border-[var(--desk-pine-200)] text-[var(--desk-text)] text-xs font-bold inline-flex items-center gap-1.5 cursor-pointer disabled:opacity-50">
                     <CheckCircle2 className="h-4 w-4" /> Complete
                   </button>
                 ) : null}
                 {d.status === 'PENDING_PAYMENT' && d.can.markPaid ? (
-                  <button type="button" disabled={busy} onClick={() => void act(() => api.post(`/v1/consult/bookings/${d.id}/mark-paid`, {}), 'Payment recorded')} className="h-[40px] px-4 rounded-[12px] bg-white border border-[#CBD5E1] text-[#0F172A] text-xs font-bold inline-flex items-center gap-1.5 cursor-pointer disabled:opacity-50">
+                  <button type="button" disabled={busy} onClick={() => void act(() => api.post(`/v1/consult/bookings/${d.id}/mark-paid`, {}), 'Payment recorded')} className="h-[40px] px-4 rounded-[12px] bg-white border border-[var(--desk-pine-200)] text-[var(--desk-text)] text-xs font-bold inline-flex items-center gap-1.5 cursor-pointer disabled:opacity-50">
                     <Download className="h-4 w-4" /> Mark as paid
                   </button>
                 ) : null}
@@ -135,7 +135,7 @@ export function SessionDetailPage() {
       <div className="flex flex-wrap items-center gap-3">
         {(() => { const st = sessionStatus(d.status, d.startsAt, d.endsAt, new Date(), activeDisplayPrefs().timezone); return <StatusBadge status={st.label} tone={st.tone} />; })()}
         <PaymentChip status={d.status} paymentMethod={d.paymentMethod} holdExpiresAt={d.holdExpiresAt} />
-        {d.bookedBy ? <span className="text-[11.5px] text-[#64748B]">Booked by {d.bookedBy}</span> : null}
+        {d.bookedBy ? <span className="text-[11.5px] text-[var(--desk-text-muted)]">Booked by {d.bookedBy}</span> : null}
       </div>
 
       <Card padding="p-[22px]" className="space-y-4">
@@ -147,18 +147,18 @@ export function SessionDetailPage() {
           <StatTile variant="inset" size="sm" label="PAID" value={`${d.paymentMethod === 'NONE' ? 'No charge' : naira(d.amountKobo)}`} />
           <StatTile variant="inset" size="sm" label="FORMAT" value={d.format === 'IN_PERSON' && d.location ? `In person · ${d.location.name}` : d.format === 'IN_PERSON' ? 'In person' : 'Online'} />
         </div>
-        <p className="text-[12.5px] text-[#64748B]">
+        <p className="text-[12.5px] text-[var(--desk-text-muted)]">
           {d.clientEmail}{d.clientPhone ? ` · ${d.clientPhone}` : ''}
           {' · '}
-          <Link to={`/dashboard/clients/${d.client.id}`} className="font-bold text-[#0F3A53] underline">Client file</Link>
+          <Link to={`/dashboard/clients/${d.client.id}`} className="font-bold text-[var(--desk-pine-600)] underline">Client file</Link>
         </p>
         {d.note ? (
-          <p className="text-[12.5px] font-medium text-[#475569] inline-flex items-center gap-1.5">
+          <p className="text-[12.5px] font-medium text-[var(--desk-text-body)] inline-flex items-center gap-1.5">
             <CalendarClock className="h-4 w-4" /> Note {d.note.status === 'COMPLETED' ? 'signed' : 'in draft'}
           </p>
         ) : null}
         {forms ? (
-          <p className="text-[12.5px] font-medium text-[#475569] inline-flex items-center gap-2">
+          <p className="text-[12.5px] font-medium text-[var(--desk-text-body)] inline-flex items-center gap-2">
             <FileText className="h-4 w-4" />
             <span>Intake: {forms.intake ? 'done' : 'waiting'}</span>
             <span aria-hidden="true">·</span>
@@ -186,7 +186,7 @@ export function SessionDetailPage() {
               type="button"
               disabled={busy}
               onClick={() => void act(() => api.patch(`/v1/consult/practice/sessions/${d.id}/summary`, { internalSummary: internal, clientRecap: recap }), 'Summary saved')}
-              className="h-[38px] px-4 rounded-[12px] bg-[#0F3A53] text-white text-[12.5px] font-bold cursor-pointer disabled:opacity-50"
+              className="h-[38px] px-4 rounded-[12px] bg-[var(--desk-pine-600)] text-white text-[12.5px] font-bold cursor-pointer disabled:opacity-50"
             >
               Save
             </button>
@@ -194,7 +194,7 @@ export function SessionDetailPage() {
               type="button"
               disabled={busy || !recap.trim()}
               onClick={() => void act(() => api.post(`/v1/consult/practice/sessions/${d.id}/recap-email`, {}), 'Recap emailed to the client')}
-              className="h-[38px] px-4 rounded-[12px] bg-white border border-[#CBD5E1] text-[#0F172A] text-[12.5px] font-bold cursor-pointer disabled:opacity-50"
+              className="h-[38px] px-4 rounded-[12px] bg-white border border-[var(--desk-pine-200)] text-[var(--desk-text)] text-[12.5px] font-bold cursor-pointer disabled:opacity-50"
             >
               Send recap
             </button>

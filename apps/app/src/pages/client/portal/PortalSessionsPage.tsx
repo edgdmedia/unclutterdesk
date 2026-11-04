@@ -35,9 +35,9 @@ export function PortalSessionsPage() {
           />
         }
       >
-        <div className="bg-white rounded-[22px] border border-[#E2E8F0] overflow-hidden divide-y divide-[#F1F5F9]">
+        <div className="bg-white rounded-[22px] border border-[var(--desk-border)] overflow-hidden divide-y divide-[var(--desk-border-soft)]">
           {(view === 'upcoming' ? portal.upcoming : portal.past).length === 0 ? (
-            <div className="px-5 py-10 text-sm font-medium text-[#64748B]">
+            <div className="px-5 py-10 text-sm font-medium text-[var(--desk-text-muted)]">
               {view === 'upcoming' ? 'No upcoming sessions. Book one when it suits you.' : 'No completed or past sessions yet.'}
             </div>
           ) : view === 'upcoming' ? (
@@ -47,10 +47,10 @@ export function PortalSessionsPage() {
               <div key={session.id} className="flex items-center gap-4 px-5 py-[16px]">
                 <DateTile startsAt={session.startsAt} />
                 <div className="flex-1 min-w-0">
-                  <div className="text-[14px] font-bold text-[#0F172A]">{session.serviceTitle}</div>
-                  <div className="text-[12px] text-[#64748B] font-medium">{formatTimeRange(session.startsAt, session.endsAt)} · with {session.therapistName}</div>
+                  <div className="text-[14px] font-bold text-[var(--desk-text)]">{session.serviceTitle}</div>
+                  <div className="text-[12px] text-[var(--desk-text-muted)] font-medium">{formatTimeRange(session.startsAt, session.endsAt)} · with {session.therapistName}</div>
                 </div>
-                <span className="h-[22px] px-2.5 rounded-full bg-[#ECFDF5] text-[#059669] text-[9.5px] font-black tracking-[0.06em] uppercase flex items-center gap-1">
+                <span className="h-[22px] px-2.5 rounded-full bg-[var(--desk-active-bg)] text-[var(--desk-active)] text-[9.5px] font-black tracking-[0.06em] uppercase flex items-center gap-1">
                   <Check className="h-3 w-3" strokeWidth={3} />
                   {session.status}
                 </span>

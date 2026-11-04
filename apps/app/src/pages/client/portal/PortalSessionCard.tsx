@@ -12,12 +12,12 @@ export function PortalSessionCard({ session, onReschedule }: { session: PortalSe
     <div className="flex items-center gap-4 px-5 py-[16px] flex-wrap">
       <DateTile startsAt={session.startsAt} />
       <div className="flex-1 min-w-0">
-        <div className="text-[14px] font-bold text-[#0F172A]">{session.serviceTitle}</div>
-        <div className="text-[12px] text-[#64748B] font-medium">{formatTimeRange(session.startsAt, session.endsAt)} · with {session.therapistName}</div>
+        <div className="text-[14px] font-bold text-[var(--desk-text)]">{session.serviceTitle}</div>
+        <div className="text-[12px] text-[var(--desk-text-muted)] font-medium">{formatTimeRange(session.startsAt, session.endsAt)} · with {session.therapistName}</div>
       </div>
       <div className="text-right">
-        <div className="text-[13.5px] font-extrabold text-[#0F172A]">{formatMoney(session.priceKobo)}</div>
-        <div className="text-[11px] text-[#94A3B8] font-medium">{session.status}</div>
+        <div className="text-[13.5px] font-extrabold text-[var(--desk-text)]">{formatMoney(session.priceKobo)}</div>
+        <div className="text-[11px] text-[var(--desk-text-subtle)] font-medium">{session.status}</div>
       </div>
       {session.status !== 'CANCELLED' && session.icalToken ? (
         <AddToCalendar
@@ -35,7 +35,7 @@ export function PortalSessionCard({ session, onReschedule }: { session: PortalSe
         <button
           type="button"
           onClick={() => onReschedule(session.id)}
-          className="h-[34px] px-3 rounded-[10px] border border-[#E2E8F0] text-[12px] font-bold text-[#475569] hover:bg-[#F8FAFC] cursor-pointer"
+          className="h-[34px] px-3 rounded-[10px] border border-[var(--desk-border)] text-[12px] font-bold text-[var(--desk-text-body)] hover:bg-[var(--desk-surface)] cursor-pointer"
         >
           Reschedule
         </button>

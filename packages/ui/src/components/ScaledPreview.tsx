@@ -62,20 +62,20 @@ export function ScaledPreview({
 
   return (
     <Card padding="p-[22px]" className={`space-y-4 ${className}`}>
-      <div className="flex items-center justify-between border-b border-[#E2E8F0] pb-3">
+      <div className="flex items-center justify-between border-b border-[var(--desk-border)] pb-3">
         <div className="flex items-center gap-2">
           <span className="h-4 w-4" aria-hidden="true" />
-          <span className="text-[9px] font-black tracking-[0.2em] uppercase text-[#94A3B8]">LIVE SCALED PREVIEW</span>
+          <span className="text-[9px] font-black tracking-[0.2em] uppercase text-[var(--desk-text-subtle)]">LIVE SCALED PREVIEW</span>
         </div>
         {showDeviceSwitch && (
-          <div className="flex items-center gap-1 bg-[#F1F5F9] p-1 rounded-[12px]">
+          <div className="flex items-center gap-1 bg-[var(--desk-surface-muted)] p-1 rounded-[12px]">
             {DEVICE_PRESETS.map((d) => (
               <button
                 key={d.key}
                 type="button"
                 onClick={() => setDevice(d.key)}
                 className={`px-3 py-1 text-xs font-bold rounded-[8px] transition-all ${
-                  device === d.key ? 'bg-white text-[#0F172A] shadow-xs' : 'text-[#64748B]'
+                  device === d.key ? 'bg-white text-[var(--desk-text)] shadow-xs' : 'text-[var(--desk-text-muted)]'
                 }`}
                 aria-pressed={device === d.key}
               >
@@ -86,9 +86,9 @@ export function ScaledPreview({
         )}
       </div>
 
-      <div className="rounded-[20px] border border-[#E2E8F0] bg-[#F8FAFC] p-4 flex items-center justify-center overflow-hidden" style={{ minHeight }}>
+      <div className="rounded-[20px] border border-[var(--desk-border)] bg-[var(--desk-surface)] p-4 flex items-center justify-center overflow-hidden" style={{ minHeight }}>
         <div
-          className="relative rounded-[16px] bg-slate-50 border border-[#E2E8F0] overflow-auto"
+          className="relative rounded-[16px] bg-slate-50 border border-[var(--desk-border)] overflow-auto"
           style={{
             width: previewWidth,
             height: previewHeight,

@@ -39,7 +39,7 @@ export function AssessmentPage() {
   if (loadError) {
     return <AssessmentShell><AssessmentMessage title="This link is not working" body={`${loadError} Ask your practitioner to send a new one.`} /></AssessmentShell>;
   }
-  if (!opened) return <AssessmentShell><p className="text-sm text-[#64748B]">Loading…</p></AssessmentShell>;
+  if (!opened) return <AssessmentShell><p className="text-sm text-[var(--desk-text-muted)]">Loading…</p></AssessmentShell>;
 
   if (result) {
     return (
