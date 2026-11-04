@@ -399,7 +399,7 @@ export class ConsultController {
     return this.sessions.setStatus(authenticatedTenantId(req), this.actor(req), BigInt(bookingId), s as 'CONFIRMED' | 'COMPLETED' | 'CANCELLED');
   }
 
-  @Permissions('sessions.edit')
+  @Permissions('sessions.edit', 'clinical.record')
   @Post('practice/sessions/:bookingId/reschedule')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @ApiBearerAuth('access-token')

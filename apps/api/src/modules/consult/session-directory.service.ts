@@ -185,9 +185,6 @@ export class SessionDirectoryService {
     newAvailabilityId: bigint,
     opts: { toOwnSlot?: boolean } = {},
   ) {
-    if (!actor.viewAll) {
-      throw new ForbiddenException('Ask the front desk or a practice admin to move a session.');
-    }
     return this.prisma.$transaction(async (tx: any) => {
       const b = await tx.consultBooking.findFirst({
         where: { id: bookingId, tenantId },
@@ -201,6 +198,11 @@ export class SessionDirectoryService {
         tx.consultAvailability.findFirst({ where: { id: newAvailabilityId, tenantId } }),
         tx.consultAvailability.findFirst({ where: { id: b.availabilityId }, select: { providerProfileId: true } }),
       ]);
+      // A therapist may move their own session without view-all. Moving another
+      // practitioner's booking still needs the front desk or a practice admin.
+      if (!actor.viewAll && oldSlot?.providerProfileId !== actor.profileId) {
+        throw new ForbiddenException('Ask the front desk or a practice admin to move a session.');
+      }
       if (!slot || !slot.isActive || slot.startsAt <= new Date()) {
         throw new BadRequestException('That time is no longer open. Choose another.');
       }
