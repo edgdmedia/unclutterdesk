@@ -13,6 +13,24 @@ type SlotView = {
   id: string; startsAt: string; endsAt: string; isActive: boolean;
   formats: Format[]; location: { id: string; name: string } | null; customised: boolean; booked: boolean;
 };
+type TimeOff = {
+  id: string;
+  startsOn: string;
+  endsOn: string;
+  note: string | null;
+};
+
+type TimeOffView = TimeOff & {
+  bookings: Array<{
+    id: string;
+    startsAt: string;
+    endsAt: string;
+    clientName: string;
+    serviceTitle: string;
+    status: string;
+  }>;
+};
+
 type Payload = {
   cancellationHours: number;
   sessionLengthMinutes: number;
@@ -20,6 +38,7 @@ type Payload = {
   locations: Array<{ id: string; name: string; city: string }>;
   weeklyTimes: WeeklyTime[];
   slots: SlotView[];
+  timeOff: TimeOff[];
 };
 
 const DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
@@ -126,7 +145,7 @@ export function AvailabilitySettingsPage() {
   const toast = useToast();
   const [searchParams, setSearchParams] = useSearchParams();
   const initialTab = (searchParams.get('tab') === 'upcoming' ? 'upcoming' : 'weekly') as 'weekly' | 'upcoming';
-  const [tab, setTab] = useState<typeof initialTab>(initialTab);
+  const [tab, setTab] = useState<'weekly' | 'upcoming' | 'timeoff'>(initialTab as 'weekly' | 'upcoming' | 'timeoff');
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -141,6 +160,7 @@ export function AvailabilitySettingsPage() {
   const [gapMinutes, setGapMinutes] = useState(10);
   const [cancellationHours, setCancellationHours] = useState(24);
   const [openChooser, setOpenChooser] = useState<string | null>(null);
+  const [timeOff, setTimeOff] = useState<TimeOffView[]>([]);
 
   // Sync tab to URL
   React.useEffect(() => {
@@ -156,6 +176,7 @@ export function AvailabilitySettingsPage() {
     setSessionLengthMinutes(payload.sessionLengthMinutes ?? 50);
     setGapMinutes(payload.gapMinutes ?? 10);
     setCancellationHours(payload.cancellationHours ?? 24);
+    setTimeOff([]); // will be fetched separately
     const length = payload.sessionLengthMinutes ?? 50;
     const nextDays = Object.fromEntries(DAY_KEYS.map((k) => [k, { on: false, windows: [] as Window[] }])) as Record<DayKey, { on: boolean; windows: Window[] }>;
     const nextTimes: Record<string, { formats: Format[]; locationId: string | null }> = {};
@@ -178,6 +199,27 @@ export function AvailabilitySettingsPage() {
       .then((payload) => { if (!cancelled) apply(payload); })
       .catch((err) => !cancelled && setError(err instanceof Error ? err.message : 'Unable to load availability'))
       .finally(() => !cancelled && setLoading(false));
+    return () => { cancelled = true; };
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    api.get<{ timeOff: TimeOff[]; bookings: Array<{ id: string; startsAt: string; endsAt: string; clientName: string; serviceTitle: string; status: string }> }>('/v1/consult/therapist/time-off')
+      .then((result) => {
+        if (!cancelled) {
+          const enriched = result.timeOff.map((t) => ({
+            ...t,
+            bookings: result.bookings.filter((b) => {
+              const slotDay = new Date(b.startsAt).toISOString().slice(0, 10);
+              return slotDay >= t.startsOn && slotDay <= t.endsOn;
+            }),
+          }));
+          setTimeOff(enriched);
+        }
+      })
+      .catch(() => {
+        // Time off is optional
+      });
     return () => { cancelled = true; };
   }, []);
 
@@ -285,9 +327,13 @@ export function AvailabilitySettingsPage() {
 
   const tabActions = (
     <SegmentedControl
-      options={['Weekly hours', 'Upcoming times']}
-      value={tab === 'upcoming' ? 'Upcoming times' : 'Weekly hours'}
-      onChange={(t: string) => setTab(t === 'Upcoming times' ? 'upcoming' : 'weekly')}
+      options={['Weekly hours', 'Upcoming times', 'Time off']}
+      value={tab === 'upcoming' ? 'Upcoming times' : tab === 'timeoff' ? 'Time off' : 'Weekly hours'}
+      onChange={(t: string) => {
+        if (t === 'Upcoming times') setTab('upcoming');
+        else if (t === 'Time off') setTab('timeoff');
+        else setTab('weekly');
+      }}
       className="h-[40px] p-1 bg-[#EEF2F7] rounded-[14px] inline-flex gap-1 border border-[#E2E8F0] shrink-0"
     />
   );
@@ -374,6 +420,81 @@ export function AvailabilitySettingsPage() {
                   ) : null}
                 </div>
               ))}
+            </Card>
+          ) : tab === 'timeoff' ? (
+            <Card padding="p-5" className="space-y-4">
+              <Eyebrow>TIME OFF</Eyebrow>
+              <p className="text-[12.5px] text-[#64748B]">Mark days you are away. Those days close to booking; existing sessions are listed so you can move them.</p>
+              
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                <input type="date" className="h-[42px] rounded-[13px] border border-[#E2E8F0] bg-[#F8FAFC] px-3 text-[13.5px] font-semibold" id="timeoff-start" />
+                <input type="date" className="h-[42px] rounded-[13px] border border-[#E2E8F0] bg-[#F8FAFC] px-3 text-[13.5px] font-semibold" id="timeoff-end" />
+                <input type="text" placeholder="Optional note" className="h-[42px] rounded-[13px] border border-[#E2E8F0] bg-[#F8FAFC] px-3 text-[13.5px] font-semibold" id="timeoff-note" />
+              </div>
+              <Button className="h-[42px]" onClick={() => {
+                const start = (document.getElementById('timeoff-start') as HTMLInputElement).value;
+                const end = (document.getElementById('timeoff-end') as HTMLInputElement).value || start;
+                const note = (document.getElementById('timeoff-note') as HTMLInputElement).value || null;
+                if (!start) { toast.error('Choose the first day'); return; }
+                api.post('/v1/consult/therapist/time-off', { startsOn: start, endsOn: end, note }).then(() => {
+                  toast.success('Time off added. Open times closed for those days.');
+                  // Refresh
+                  api.get<{ timeOff: TimeOff[]; bookings: any[] }>('/v1/consult/therapist/time-off').then((result) => {
+                    const enriched = result.timeOff.map((t) => ({
+                      ...t,
+                      bookings: result.bookings.filter((b: any) => {
+                        const slotDay = new Date(b.startsAt).toISOString().slice(0, 10);
+                        return slotDay >= t.startsOn && slotDay <= t.endsOn;
+                      }),
+                    }));
+                    setTimeOff(enriched);
+                  });
+                }).catch((err) => toast.error(err instanceof Error ? err.message : 'Could not add time off'));
+              }}><Plus className="h-4 w-4" />Add time off</Button>
+
+              <div className="space-y-3">
+                {timeOff.map((t) => (
+                  <div key={t.id} className="border border-[#F1F5F9] rounded-[14px] p-4">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <div className="text-[14px] font-bold text-[#0F172A]">{t.startsOn} {t.startsOn !== t.endsOn ? `– ${t.endsOn}` : ''}{t.note ? ` · ${t.note}` : ''}</div>
+                        <div className="text-[12px] text-[#64748B]">{t.bookings.length} existing session{t.bookings.length !== 1 ? 's' : ''}</div>
+                      </div>
+                      <Button variant="ghost" className="text-[12px] text-[#DC2626]" onClick={() => {
+                        if (!confirm('Remove this time off? Open times will be regenerated.')) return;
+                        api.delete(`/v1/consult/therapist/time-off/${t.id}`).then(() => {
+                          toast.success('Time off removed');
+                          api.get<{ timeOff: TimeOff[]; bookings: any[] }>('/v1/consult/therapist/time-off').then((result) => {
+                            const enriched = result.timeOff.map((t) => ({
+                              ...t,
+                              bookings: result.bookings.filter((b: any) => {
+                                const slotDay = new Date(b.startsAt).toISOString().slice(0, 10);
+                                return slotDay >= t.startsOn && slotDay <= t.endsOn;
+                              }),
+                            }));
+                            setTimeOff(enriched);
+                          });
+                        }).catch((err) => toast.error(err instanceof Error ? err.message : 'Could not remove'));
+                      }}>Remove</Button>
+                    </div>
+                    {t.bookings.length > 0 && (
+                      <div className="mt-3 space-y-1.5">
+                        {t.bookings.map((b) => (
+                          <div key={b.id} className="flex items-center justify-between text-[12px] bg-[#FEF3C7] border border-[#FDE68A] rounded-[10px] px-3 py-2">
+                            <span><span className="font-bold">{b.clientName}</span> · {b.serviceTitle} · {new Date(b.startsAt).toLocaleString('en-GB', { dateStyle: 'short', timeStyle: 'short' })}</span>
+                            <button className="text-[#0F3A53] underline font-bold cursor-pointer" onClick={() => {
+                              window.open(`/dashboard/sessions/${b.id}`, '_blank');
+                            }}>Move</button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                ))}
+                {timeOff.length === 0 && (
+                  <div className="text-[13px] text-[#64748B]">No time off scheduled.</div>
+                )}
+              </div>
             </Card>
           ) : (
             <Card padding="p-5" className="space-y-2">
