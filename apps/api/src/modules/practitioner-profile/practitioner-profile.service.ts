@@ -16,7 +16,7 @@ import {
   type ProfileSnapshot,
   type SectionKey,
 } from './completeness';
-import { isLayoutKey, isThemeKey } from './themes';
+import { isLayoutKey, isThemeKey, normaliseThemeKey } from './themes';
 import { PRACTITIONER_KINDS, PRACTITIONER_KIND_LABELS } from './kinds';
 import { PROFILE_PUBLIC_ORIGIN, tenantWebOrigin } from '../../common/origins';
 import { normaliseSocialLinks, readSocialLinks } from './social-links';
@@ -367,8 +367,9 @@ export class PractitionerProfileService {
     const data: Prisma.PractitionerProfileUpdateInput = {};
 
     if ('themeKey' in input) {
-      if (!isThemeKey(input.themeKey)) throw new BadRequestException('Unknown theme');
-      data.themeKey = input.themeKey;
+      const themeKey = normaliseThemeKey(input.themeKey);
+      if (!isThemeKey(themeKey)) throw new BadRequestException('Unknown theme');
+      data.themeKey = themeKey;
     }
     if ('layoutKey' in input) {
       if (!isLayoutKey(input.layoutKey)) throw new BadRequestException('Unknown layout');

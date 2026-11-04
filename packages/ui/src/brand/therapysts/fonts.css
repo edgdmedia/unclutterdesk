@@ -1,0 +1,19 @@
+/*
+ * The Therapysts design system's typefaces, self-hosted (SIL Open Font
+ * License; CSP font-src 'self'). Fraunces for headings and names, Figtree
+ * for everything else.
+ */
+@font-face {
+  font-family: 'Fraunces';
+  src: url('./fonts/Fraunces-Variable.woff2') format('woff2');
+  font-weight: 100 900;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Figtree';
+  src: url('./fonts/Figtree-Variable.woff2') format('woff2');
+  font-weight: 300 900;
+  font-style: normal;
+  font-display: swap;
+}

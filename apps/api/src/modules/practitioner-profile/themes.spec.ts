@@ -14,3 +14,11 @@ describe('THEME_PALETTES', () => {
     expect(colors).toEqual(THEME_PALETTES[key]);
   });
 });
+
+describe('the clinical palette became crisp', () => {
+  it('accepts the old key for one release, as crisp', async () => {
+    const { normaliseThemeKey, themePalette, THEME_PALETTES } = await import('./themes');
+    expect(normaliseThemeKey('clinical')).toBe('crisp');
+    expect(themePalette('clinical')).toEqual(THEME_PALETTES.crisp);
+  });
+});
