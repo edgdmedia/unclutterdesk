@@ -91,8 +91,8 @@ export function PublicReviewFormPage() {
   const isDisabled = !form || !fullName.trim() || !email.trim();
 
   return (
-    <div className="min-h-screen bg-[#FCFDFE] text-[#0F172A] font-outfit flex justify-center px-6 py-10">
-      <div className="w-full max-w-[860px] rounded-[32px] border border-[#E2E8F0] bg-white shadow-[0_24px_70px_rgba(15,23,42,.08)] overflow-hidden">
+    <div className="min-h-screen bg-[var(--desk-surface-alt)] text-[var(--desk-text)] font-outfit flex justify-center px-6 py-10">
+      <div className="w-full max-w-[860px] rounded-[32px] border border-[var(--desk-border)] bg-white shadow-[0_24px_70px_rgba(15,23,42,.08)] overflow-hidden">
         <div
           className="border-b px-8 py-8"
           style={{
@@ -100,7 +100,7 @@ export function PublicReviewFormPage() {
             borderColor: `${primaryColor}33`,
           }}
         >
-          <Link to="/book" className="inline-flex items-center gap-2 text-xs font-bold text-[#475569] hover:text-[#0F172A]">
+          <Link to="/book" className="inline-flex items-center gap-2 text-xs font-bold text-[var(--desk-text-body)] hover:text-[var(--desk-text)]">
             <ArrowLeft className="h-4 w-4" />
             <span>Back to practice page</span>
           </Link>
@@ -110,25 +110,25 @@ export function PublicReviewFormPage() {
             </div>
             <div>
               <div className="text-[11px] font-black uppercase tracking-[0.18em]" style={{ color: primaryColor }}>PUBLIC REVIEW</div>
-              <h1 className="mt-1 text-[28px] font-extrabold tracking-[-0.03em] text-[#0F172A]">Share your experience with the practice</h1>
+              <h1 className="mt-1 text-[28px] font-extrabold tracking-[-0.03em] text-[var(--desk-text)]">Share your experience with the practice</h1>
             </div>
           </div>
         </div>
 
         <div className="px-8 py-8">
           {loading ? (
-            <div className="rounded-[18px] border border-[#E2E8F0] bg-[#F8FAFC] px-5 py-8 text-sm font-medium text-[#64748B]">Loading review form...</div>
+            <div className="rounded-[18px] border border-[var(--desk-border)] bg-[var(--desk-surface)] px-5 py-8 text-sm font-medium text-[var(--desk-text-muted)]">Loading review form...</div>
           ) : error ? (
             <div className="rounded-[18px] border border-rose-200 bg-rose-50 px-5 py-4 text-sm font-medium text-rose-700">{error}</div>
           ) : !form ? (
-            <div className="rounded-[18px] border border-dashed border-[#CBD5E1] bg-[#F8FAFC] px-5 py-8 text-sm font-medium text-[#64748B]">
+            <div className="rounded-[18px] border border-dashed border-[var(--desk-pine-200)] bg-[var(--desk-surface)] px-5 py-8 text-sm font-medium text-[var(--desk-text-muted)]">
               This practice has not published a review form yet.
             </div>
           ) : submitted ? (
             <div className="rounded-[24px] border border-emerald-200 bg-emerald-50 px-6 py-8 text-center">
               <CheckCircle2 className="mx-auto h-10 w-10 text-emerald-600" />
-              <h2 className="mt-4 text-[22px] font-bold text-[#0F172A]">Thank you for your feedback</h2>
-              <p className="mt-2 text-sm font-medium text-[#475569]">
+              <h2 className="mt-4 text-[22px] font-bold text-[var(--desk-text)]">Thank you for your feedback</h2>
+              <p className="mt-2 text-sm font-medium text-[var(--desk-text-body)]">
                 Your review has been submitted. If this practice requires approval, it will appear on the landing page once approved.
               </p>
               <Link
@@ -142,36 +142,36 @@ export function PublicReviewFormPage() {
           ) : (
             <div className="space-y-6">
               <div>
-                <h2 className="text-[22px] font-bold tracking-[-0.02em] text-[#0F172A]">{form.title}</h2>
-                <p className="mt-2 text-sm font-medium text-[#64748B]">{form.description || 'Tell this practice what stood out about your experience.'}</p>
+                <h2 className="text-[22px] font-bold tracking-[-0.02em] text-[var(--desk-text)]">{form.title}</h2>
+                <p className="mt-2 text-sm font-medium text-[var(--desk-text-muted)]">{form.description || 'Tell this practice what stood out about your experience.'}</p>
               </div>
 
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-1.5">
-                  <label className="text-[11.5px] font-bold text-[#475569]">Full name</label>
+                  <label className="text-[11.5px] font-bold text-[var(--desk-text-body)]">Full name</label>
                   <input
                     type="text"
                     value={fullName}
                     onChange={(event) => setFullName(event.target.value)}
-                    className="w-full h-[46px] px-3.5 rounded-[14px] bg-[#F8FAFC] border border-[#E2E8F0] text-[14px] font-medium text-[#0F172A] outline-none focus:bg-white focus:border-[#94A3B8]"
+                    className="w-full h-[46px] px-3.5 rounded-[14px] bg-[var(--desk-surface)] border border-[var(--desk-border)] text-[14px] font-medium text-[var(--desk-text)] outline-none focus:bg-white focus:border-[var(--desk-border-strong)]"
                   />
                 </div>
                 <div className="space-y-1.5">
-                  <label className="text-[11.5px] font-bold text-[#475569]">Email address</label>
+                  <label className="text-[11.5px] font-bold text-[var(--desk-text-body)]">Email address</label>
                   <input
                     type="email"
                     value={email}
                     onChange={(event) => setEmail(event.target.value)}
-                    className="w-full h-[46px] px-3.5 rounded-[14px] bg-[#F8FAFC] border border-[#E2E8F0] text-[14px] font-medium text-[#0F172A] outline-none focus:bg-white focus:border-[#94A3B8]"
+                    className="w-full h-[46px] px-3.5 rounded-[14px] bg-[var(--desk-surface)] border border-[var(--desk-border)] text-[14px] font-medium text-[var(--desk-text)] outline-none focus:bg-white focus:border-[var(--desk-border-strong)]"
                   />
                 </div>
               </div>
 
               <div className="space-y-4">
                 {form.schemaJson.map((field, fieldIndex) => (
-                  <div key={field.id} className="rounded-[20px] border border-[#E2E8F0] bg-[#F8FAFC] px-5 py-5">
-                    <div className="text-[10px] font-black uppercase tracking-[0.14em] text-[#94A3B8]">Question {fieldIndex + 1}</div>
-                    <label className="mt-2 block text-[15px] font-bold text-[#0F172A]">{field.label}</label>
+                  <div key={field.id} className="rounded-[20px] border border-[var(--desk-border)] bg-[var(--desk-surface)] px-5 py-5">
+                    <div className="text-[10px] font-black uppercase tracking-[0.14em] text-[var(--desk-text-subtle)]">Question {fieldIndex + 1}</div>
+                    <label className="mt-2 block text-[15px] font-bold text-[var(--desk-text)]">{field.label}</label>
 
                     {(field.type === 'scale' || field.type === 'LIKERT') && (
                       <div className="mt-4 grid grid-cols-5 gap-2">
@@ -180,7 +180,7 @@ export function PublicReviewFormPage() {
                             key={option}
                             type="button"
                             onClick={() => setAnswer(field.id, option)}
-                            className={`h-[44px] rounded-[14px] border text-sm font-bold ${answers[field.id] === option ? 'border-[#0F3A53] bg-[#0F3A53] text-white' : 'border-[#E2E8F0] bg-white text-[#0F172A]'}`}
+                            className={`h-[44px] rounded-[14px] border text-sm font-bold ${answers[field.id] === option ? 'border-[var(--desk-pine-600)] bg-[var(--desk-pine-600)] text-white' : 'border-[var(--desk-border)] bg-white text-[var(--desk-text)]'}`}
                           >
                             {option}
                           </button>
@@ -193,7 +193,7 @@ export function PublicReviewFormPage() {
                         rows={5}
                         value={typeof answers[field.id] === 'string' ? answers[field.id] : ''}
                         onChange={(event) => setAnswer(field.id, event.target.value)}
-                        className="mt-4 w-full rounded-[16px] border border-[#E2E8F0] bg-white px-4 py-3 text-sm font-medium text-[#0F172A] outline-none"
+                        className="mt-4 w-full rounded-[16px] border border-[var(--desk-border)] bg-white px-4 py-3 text-sm font-medium text-[var(--desk-text)] outline-none"
                       />
                     )}
 
@@ -202,7 +202,7 @@ export function PublicReviewFormPage() {
                         type="text"
                         value={typeof answers[field.id] === 'string' ? answers[field.id] : ''}
                         onChange={(event) => setAnswer(field.id, event.target.value)}
-                        className="mt-4 w-full h-[46px] rounded-[14px] border border-[#E2E8F0] bg-white px-4 text-sm font-medium text-[#0F172A] outline-none"
+                        className="mt-4 w-full h-[46px] rounded-[14px] border border-[var(--desk-border)] bg-white px-4 text-sm font-medium text-[var(--desk-text)] outline-none"
                       />
                     )}
 
@@ -213,7 +213,7 @@ export function PublicReviewFormPage() {
                             key={option}
                             type="button"
                             onClick={() => setAnswer(field.id, option)}
-                            className={`h-[44px] rounded-[14px] border px-4 text-left text-sm font-bold ${answers[field.id] === option ? 'border-[#0F3A53] bg-[#EFF6FB] text-[#0F3A53]' : 'border-[#E2E8F0] bg-white text-[#0F172A]'}`}
+                            className={`h-[44px] rounded-[14px] border px-4 text-left text-sm font-bold ${answers[field.id] === option ? 'border-[var(--desk-pine-600)] bg-[var(--desk-pine-100)] text-[var(--desk-pine-600)]' : 'border-[var(--desk-border)] bg-white text-[var(--desk-text)]'}`}
                           >
                             {option}
                           </button>
@@ -234,7 +234,7 @@ export function PublicReviewFormPage() {
                                 const next = selected ? values.filter((value) => value !== option) : [...values, option];
                                 setAnswer(field.id, next);
                               }}
-                              className={`h-[44px] rounded-[14px] border px-4 text-left text-sm font-bold ${selected ? 'border-[#0F3A53] bg-[#EFF6FB] text-[#0F3A53]' : 'border-[#E2E8F0] bg-white text-[#0F172A]'}`}
+                              className={`h-[44px] rounded-[14px] border px-4 text-left text-sm font-bold ${selected ? 'border-[var(--desk-pine-600)] bg-[var(--desk-pine-100)] text-[var(--desk-pine-600)]' : 'border-[var(--desk-border)] bg-white text-[var(--desk-text)]'}`}
                             >
                               {option}
                             </button>

@@ -204,21 +204,21 @@ export function TeamSettingsPage({ staff, onRefresh }: TeamSettingsPageProps) {
     <div className="flex items-center gap-3 min-w-0">
       <div className={`h-[40px] w-[40px] rounded-[13px] font-extrabold text-[13.5px] flex items-center justify-center border shrink-0 ${
         m.role === 'OWNER'
-          ? 'bg-gradient-to-br from-[#1B5375] to-[#0F3A53] text-[#E3B341] border-[#E3B341]/30'
-          : 'bg-[#F1F5F9] text-[#0F3A53] border-slate-200'
+          ? 'bg-gradient-to-br from-[var(--desk-pine-500)] to-[var(--desk-pine-600)] text-[var(--ds-sky)] border-[var(--desk-pending-border)]/30'
+          : 'bg-[var(--desk-surface-muted)] text-[var(--desk-pine-600)] border-slate-200'
       }`}>
         {m.initials}
       </div>
       <div className="min-w-0">
         <div className="flex flex-wrap items-center gap-2">
-          <h3 className="text-[14px] font-bold text-[#0F172A] leading-tight truncate">{m.name}</h3>
+          <h3 className="text-[14px] font-bold text-[var(--desk-text)] leading-tight truncate">{m.name}</h3>
           {m.pending && (
             <span className="text-[9px] font-black uppercase text-amber-700 bg-amber-50 px-2 py-0.5 rounded-full border border-amber-200">
               {m.invitedAt ? `INVITED ${formatDate(m.invitedAt)}` : 'INVITE PENDING'}
             </span>
           )}
         </div>
-        <p className="text-[11.5px] text-[#64748B] font-medium truncate">{m.title}</p>
+        <p className="text-[11.5px] text-[var(--desk-text-muted)] font-medium truncate">{m.title}</p>
       </div>
     </div>
   );
@@ -238,7 +238,7 @@ export function TeamSettingsPage({ staff, onRefresh }: TeamSettingsPageProps) {
         onClick={() => toggleStaffStatus(m)}
         disabled={m.role === 'OWNER' || statusPendingId !== null}
         className={`w-[40px] h-[22px] rounded-full p-[2px] transition-colors block ${
-          m.status === 'Active' ? 'bg-[#15803D]' : 'bg-[#E2E8F0]'
+          m.status === 'Active' ? 'bg-[var(--desk-active)]' : 'bg-[var(--desk-border)]'
         } ${m.role === 'OWNER' || statusPendingId !== null ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
       >
         <div className={`w-[18px] h-[18px] rounded-full bg-white shadow-xs transition-transform ${m.status === 'Active' ? 'translate-x-[18px]' : 'translate-x-0'}`} />
@@ -262,7 +262,7 @@ export function TeamSettingsPage({ staff, onRefresh }: TeamSettingsPageProps) {
     { key: 'member', header: 'Member', cell: memberCell, sort: byText((m) => m.name), className: 'w-full max-w-0' },
     { key: 'status', header: 'Status', cell: statusCell },
     { key: 'role', header: 'Role', priority: 'md', cell: roleCell, sort: byText((m) => m.role) },
-    { key: 'email', header: 'Email', priority: 'lg', cell: (m) => <span className="text-[13px] font-medium text-[#475569]">{m.email}</span>, sort: byText((m) => m.email) },
+    { key: 'email', header: 'Email', priority: 'lg', cell: (m) => <span className="text-[13px] font-medium text-[var(--desk-text-body)]">{m.email}</span>, sort: byText((m) => m.email) },
   ];
 
   return (
@@ -287,7 +287,7 @@ export function TeamSettingsPage({ staff, onRefresh }: TeamSettingsPageProps) {
       {/* Claimed a Group Clinic plan and a ten-seat limit to every practice,
           including one on the free plan that cannot invite anyone. The count
           is the part that was true. */}
-      <p className="text-xs text-[#64748B] font-medium -mt-1">
+      <p className="text-xs text-[var(--desk-text-muted)] font-medium -mt-1">
         {memberCount} {memberCount === 1 ? 'team member' : 'team members'}
         {pendingCount > 0 && `, ${pendingCount} invited`}
       </p>
@@ -302,13 +302,13 @@ export function TeamSettingsPage({ staff, onRefresh }: TeamSettingsPageProps) {
         {rosterNotice && (
           <div
             role="status"
-            className="rounded-[16px] border border-[#A7F3D0] bg-[#ECFDF5] px-4 py-3 text-sm font-medium text-[#047857]"
+            className="rounded-[16px] border border-[var(--desk-active-border)] bg-[var(--desk-active-bg)] px-4 py-3 text-sm font-medium text-[var(--desk-active)]"
           >
             {rosterNotice}
           </div>
         )}
         {/* Staff Table */}
-        <Card padding="p-0" className="border border-[#E2E8F0] relative bg-white">
+        <Card padding="p-0" className="border border-[var(--desk-border)] relative bg-white">
           <ResponsiveTable<StaffMember>
             caption="Team members"
             rows={staff}
@@ -321,7 +321,7 @@ export function TeamSettingsPage({ staff, onRefresh }: TeamSettingsPageProps) {
                 <button
                   onClick={() => setActiveMenuId(activeMenuId === m.id ? null : m.id)}
                   aria-label={`Actions for ${m.name}`}
-                  className="h-8 w-8 rounded-[9px] hover:bg-[#F1F5F9] text-[#64748B] flex items-center justify-center ml-auto cursor-pointer"
+                  className="h-8 w-8 rounded-[9px] hover:bg-[var(--desk-surface-muted)] text-[var(--desk-text-muted)] flex items-center justify-center ml-auto cursor-pointer"
                 >
                   <MoreHorizontal className="h-4 w-4" />
                 </button>
@@ -382,21 +382,21 @@ export function TeamSettingsPage({ staff, onRefresh }: TeamSettingsPageProps) {
 
       {/* Invite Staff Member Modal */}
       {inviteModalOpen && (
-        <div className="fixed inset-0 bg-[#0F172A]/50 backdrop-blur-xs flex items-center justify-center p-6 z-50">
+        <div className="fixed inset-0 bg-[var(--desk-sidebar)]/50 backdrop-blur-xs flex items-center justify-center p-6 z-50">
           <div className="w-full max-w-[490px] bg-white rounded-[26px] p-[28px_30px_26px] shadow-[0_30px_90px_rgba(15,23,42,.4)] space-y-6 relative border border-slate-100">
             <button
               onClick={closeInviteModal}
-              className="absolute top-6 right-6 h-8 w-8 rounded-full bg-[#F1F5F9] text-[#64748B] hover:bg-slate-200 flex items-center justify-center cursor-pointer"
+              className="absolute top-6 right-6 h-8 w-8 rounded-full bg-[var(--desk-surface-muted)] text-[var(--desk-text-muted)] hover:bg-slate-200 flex items-center justify-center cursor-pointer"
             >
               <X className="h-4 w-4" />
             </button>
 
             <div>
               <Eyebrow className="mb-1">TEAM MANAGEMENT</Eyebrow>
-              <h2 className="text-[21px] font-bold text-[#0F172A]">Invite a staff member</h2>
+              <h2 className="text-[21px] font-bold text-[var(--desk-text)]">Invite a staff member</h2>
               {/* Said they would get an email. The invite endpoint sends none —
                   it mints a claim link and returns it. */}
-              <p className="text-xs text-[#64748B] font-medium mt-1">
+              <p className="text-xs text-[var(--desk-text-muted)] font-medium mt-1">
                 You&apos;ll get a claim link to send them. It sets their own password and expires in
                 seven days.
               </p>
@@ -404,23 +404,23 @@ export function TeamSettingsPage({ staff, onRefresh }: TeamSettingsPageProps) {
 
             <form onSubmit={handleSendInvite} className="space-y-4">
               <div className="space-y-1.5">
-                <label className="text-[11.5px] font-bold text-[#475569]">Work email address</label>
+                <label className="text-[11.5px] font-bold text-[var(--desk-text-body)]">Work email address</label>
                 <input
                   type="email"
                   required
                   placeholder="name@yourpractice.ng"
                   value={inviteEmail}
                   onChange={(e) => setInviteEmail(e.target.value)}
-                  className="w-full h-[46px] px-3.5 rounded-[14px] bg-[#F8FAFC] border border-[#E2E8F0] text-[14px] font-medium text-[#0F172A] outline-none"
+                  className="w-full h-[46px] px-3.5 rounded-[14px] bg-[var(--desk-surface)] border border-[var(--desk-border)] text-[14px] font-medium text-[var(--desk-text)] outline-none"
                 />
               </div>
 
               <div className="space-y-1.5">
-                <label className="text-[11.5px] font-bold text-[#475569]">Role</label>
+                <label className="text-[11.5px] font-bold text-[var(--desk-text-body)]">Role</label>
                 <select
                   value={inviteRole}
                   onChange={(e) => setInviteRole(e.target.value as any)}
-                  className="w-full h-[46px] px-3.5 rounded-[14px] bg-[#F8FAFC] border border-[#E2E8F0] text-[13.5px] font-bold text-[#0F172A] outline-none"
+                  className="w-full h-[46px] px-3.5 rounded-[14px] bg-[var(--desk-surface)] border border-[var(--desk-border)] text-[13.5px] font-bold text-[var(--desk-text)] outline-none"
                 >
                   <option value="THERAPIST">Therapist — sees only their own clients</option>
                   <option value="RECEPTIONIST">Receptionist — books and reschedules, no notes</option>
@@ -428,7 +428,7 @@ export function TeamSettingsPage({ staff, onRefresh }: TeamSettingsPageProps) {
                 </select>
               </div>
 
-              <div className="p-3.5 rounded-[16px] bg-[#EFF6FB] border border-[#0F3A53]/10 flex items-start gap-2.5 text-xs text-[#0F3A53]">
+              <div className="p-3.5 rounded-[16px] bg-[var(--desk-pine-100)] border border-[var(--desk-pine-600)]/10 flex items-start gap-2.5 text-xs text-[var(--desk-pine-600)]">
                 <Info className="h-4 w-4 shrink-0 mt-0.5" />
                 <p className="font-medium leading-relaxed">
                   Therapists can only open the clinical files of clients assigned to them. You can change this later.
@@ -441,16 +441,16 @@ export function TeamSettingsPage({ staff, onRefresh }: TeamSettingsPageProps) {
                     <Check className="h-3.5 w-3.5" /> {inviteSuccess}
                   </div>
                   {inviteUrl && (
-                    <div className="rounded-[12px] border border-slate-200 bg-[#F8FAFC] p-3 space-y-2">
-                      <p className="text-[11px] font-bold text-[#475569] flex items-center gap-1.5">
+                    <div className="rounded-[12px] border border-slate-200 bg-[var(--desk-surface)] p-3 space-y-2">
+                      <p className="text-[11px] font-bold text-[var(--desk-text-body)] flex items-center gap-1.5">
                         <Mail className="h-3.5 w-3.5" />
                         Send them this link
                       </p>
-                      <p className="text-[11px] font-mono text-[#0F172A] break-all">{inviteUrl}</p>
+                      <p className="text-[11px] font-mono text-[var(--desk-text)] break-all">{inviteUrl}</p>
                       <button
                         type="button"
                         onClick={() => navigator.clipboard.writeText(inviteUrl)}
-                        className="h-8 px-3 rounded-[10px] bg-white border border-[#E2E8F0] text-[11.5px] font-bold text-[#0F3A53] hover:bg-[#F1F5F9] cursor-pointer"
+                        className="h-8 px-3 rounded-[10px] bg-white border border-[var(--desk-border)] text-[11.5px] font-bold text-[var(--desk-pine-600)] hover:bg-[var(--desk-surface-muted)] cursor-pointer"
                       >
                         Copy link
                       </button>
@@ -471,7 +471,7 @@ export function TeamSettingsPage({ staff, onRefresh }: TeamSettingsPageProps) {
                 <button
                   type="button"
                   onClick={closeInviteModal}
-                  className="flex-1 h-[46px] rounded-[14px] bg-[#F1F5F9] text-[#475569] font-bold text-xs hover:bg-[#E2E8F0] cursor-pointer"
+                  className="flex-1 h-[46px] rounded-[14px] bg-[var(--desk-surface-muted)] text-[var(--desk-text-body)] font-bold text-xs hover:bg-[var(--desk-border)] cursor-pointer"
                 >
                   {inviteSuccess ? 'Done' : 'Cancel'}
                 </button>

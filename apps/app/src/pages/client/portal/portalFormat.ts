@@ -1,10 +1,10 @@
 import type { Payment } from './PortalDataContext';
 
 export const PAYMENT_STATES: Record<string, { label: string; cls: string }> = {
-  PAID: { label: 'Paid', cls: 'bg-[#ECFDF5] text-[#059669]' },
-  PENDING_PAYMENT: { label: 'Awaiting payment', cls: 'bg-[#FFFBEB] text-[#B45309]' },
-  CANCELLED: { label: 'Cancelled', cls: 'bg-[#F1F5F9] text-[#64748B]' },
-  FREE: { label: 'No charge', cls: 'bg-[#F1F5F9] text-[#64748B]' },
+  PAID: { label: 'Paid', cls: 'bg-[var(--desk-active-bg)] text-[var(--desk-active)]' },
+  PENDING_PAYMENT: { label: 'Awaiting payment', cls: 'bg-[var(--desk-pending-bg)] text-[var(--desk-pending)]' },
+  CANCELLED: { label: 'Cancelled', cls: 'bg-[var(--desk-surface-muted)] text-[var(--desk-text-muted)]' },
+  FREE: { label: 'No charge', cls: 'bg-[var(--desk-surface-muted)] text-[var(--desk-text-muted)]' },
 };
 
 /**

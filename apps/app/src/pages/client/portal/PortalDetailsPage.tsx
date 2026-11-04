@@ -19,8 +19,8 @@ export function PortalDetailsPage() {
     <Page header={<PageHeader eyebrow={brand.name} title="My details" />}>
       <Card padding="p-5" className="space-y-1">
         <Eyebrow>ACCOUNT</Eyebrow>
-        <div className="text-[14px] font-bold text-[#0F172A]">{profile ? `${profile.firstName ?? ''} ${profile.lastName ?? ''}`.trim() || profile.email : '—'}</div>
-        <div className="text-[13px] text-[#64748B] font-medium">{profile?.email ?? '—'}</div>
+        <div className="text-[14px] font-bold text-[var(--desk-text)]">{profile ? `${profile.firstName ?? ''} ${profile.lastName ?? ''}`.trim() || profile.email : '—'}</div>
+        <div className="text-[13px] text-[var(--desk-text-muted)] font-medium">{profile?.email ?? '—'}</div>
       </Card>
 
       <Card padding="p-5" className="space-y-4">
@@ -32,11 +32,11 @@ export function PortalDetailsPage() {
             { label: 'Language', value: 'English (UK)', note: 'More languages coming soon.' },
           ].map((pref) => (
             <div key={pref.label}>
-              <label className="block text-[11.5px] font-bold text-[#475569] mb-1.5">{pref.label}</label>
-              <select className="h-[46px] w-full px-[14px] rounded-[14px] bg-[#F8FAFC] border border-[#E2E8F0] text-sm font-medium text-[#0F172A] outline-none" disabled value={pref.value}>
+              <label className="block text-[11.5px] font-bold text-[var(--desk-text-body)] mb-1.5">{pref.label}</label>
+              <select className="h-[46px] w-full px-[14px] rounded-[14px] bg-[var(--desk-surface)] border border-[var(--desk-border)] text-sm font-medium text-[var(--desk-text)] outline-none" disabled value={pref.value}>
                 <option value={pref.value}>{pref.value}</option>
               </select>
-              <p className="text-[10.5px] text-[#94A3B8] mt-1.5 font-medium">{pref.note}</p>
+              <p className="text-[10.5px] text-[var(--desk-text-subtle)] mt-1.5 font-medium">{pref.note}</p>
             </div>
           ))}
         </div>
@@ -46,7 +46,7 @@ export function PortalDetailsPage() {
         <button
           type="button"
           onClick={handleSignOut}
-          className="h-[44px] px-5 rounded-[14px] border border-[#E2E8F0] text-[13.5px] font-bold text-[#B42318] hover:bg-rose-50 flex items-center gap-2 cursor-pointer"
+          className="h-[44px] px-5 rounded-[14px] border border-[var(--desk-border)] text-[13.5px] font-bold text-[var(--desk-danger)] hover:bg-rose-50 flex items-center gap-2 cursor-pointer"
         >
           <LogOut className="h-4 w-4" /> Sign out
         </button>

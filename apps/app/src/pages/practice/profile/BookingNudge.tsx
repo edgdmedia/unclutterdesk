@@ -65,14 +65,14 @@ export function BookingNudge({ published }: { published: boolean }) {
   return (
     <section
       aria-labelledby="booking-nudge-title"
-      className="rounded-[24px] overflow-hidden border border-[#B6D8CC] bg-white shadow-[0_12px_32px_rgba(15,23,42,0.06)]"
+      className="rounded-[24px] overflow-hidden border border-[var(--desk-pine-200)] bg-white shadow-[0_12px_32px_rgba(15,23,42,0.06)]"
     >
-      <div className="bg-[#0F172A] text-white px-6 py-6 md:px-8 md:py-7 flex flex-col gap-2">
-        <span className="text-[9px] font-black tracking-[0.22em] uppercase text-[#7DB8A5]">Your profile is live · Next step</span>
+      <div className="bg-[var(--desk-sidebar)] text-white px-6 py-6 md:px-8 md:py-7 flex flex-col gap-2">
+        <span className="text-[9px] font-black tracking-[0.22em] uppercase text-[var(--desk-pine-300)]">Your profile is live · Next step</span>
         <h2 id="booking-nudge-title" className="text-[24px] md:text-[28px] font-extrabold tracking-[-0.03em] leading-tight">
           Turn profile visits into booked, paid sessions
         </h2>
-        <p className="text-[14.5px] leading-relaxed text-[#CBD5E1] max-w-[640px]">
+        <p className="text-[14.5px] leading-relaxed text-[var(--desk-pine-200)] max-w-[640px]">
           Right now clients can read about you, then have to find a way to reach you. Switch on booking and they can choose a time, pay and
           fill in their intake form without leaving your page. Everything below is already set up and waiting.
         </p>
@@ -81,28 +81,28 @@ export function BookingNudge({ published }: { published: boolean }) {
       <div className="px-6 py-6 md:px-8 grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-5">
         {GAINS.map(({ icon: Icon, title, body }) => (
           <div key={title} className="flex gap-3">
-            <span className="h-10 w-10 shrink-0 rounded-[12px] bg-[#DDEDE6] text-[#24614F] flex items-center justify-center" aria-hidden>
+            <span className="h-10 w-10 shrink-0 rounded-[12px] bg-[var(--desk-pine-100)] text-[var(--desk-pine-600)] flex items-center justify-center" aria-hidden>
               <Icon size={18} />
             </span>
             <div>
-              <h3 className="text-[14.5px] font-bold text-[#0F172A]">{title}</h3>
-              <p className="mt-0.5 text-[13px] leading-relaxed text-[#475569]">{body}</p>
+              <h3 className="text-[14.5px] font-bold text-[var(--desk-text)]">{title}</h3>
+              <p className="mt-0.5 text-[13px] leading-relaxed text-[var(--desk-text-body)]">{body}</p>
             </div>
           </div>
         ))}
       </div>
 
-      <div className="mx-6 md:mx-8 mb-6 rounded-[18px] bg-[#F0F7F4] px-5 py-4 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+      <div className="mx-6 md:mx-8 mb-6 rounded-[18px] bg-[var(--desk-pine-050)] px-5 py-4 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
         <div>
-          <p className="text-[13px] font-bold text-[#143A2F]">About 5 minutes to set up</p>
-          <ol className="mt-1 flex flex-wrap gap-x-4 gap-y-1 text-[13px] text-[#334155]">
+          <p className="text-[13px] font-bold text-[var(--desk-pine-800)]">About 5 minutes to set up</p>
+          <ol className="mt-1 flex flex-wrap gap-x-4 gap-y-1 text-[13px] text-[var(--desk-text-body)]">
             {STEPS.map((s, i) => (
               <li key={s}>
-                <span className="font-bold text-[#24614F]">{i + 1}.</span> {s}
+                <span className="font-bold text-[var(--desk-pine-600)]">{i + 1}.</span> {s}
               </li>
             ))}
           </ol>
-          {planLine && <p className="mt-2 text-[12.5px] text-[#475569]">{planLine}</p>}
+          {planLine && <p className="mt-2 text-[12.5px] text-[var(--desk-text-body)]">{planLine}</p>}
         </div>
         <div className="flex flex-wrap gap-2 shrink-0">
           <Button onClick={() => void start()} disabled={busy}>{busy ? 'Switching on…' : 'Set up booking'}</Button>

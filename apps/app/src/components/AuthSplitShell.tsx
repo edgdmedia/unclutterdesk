@@ -55,7 +55,7 @@ export function AuthSplitShell({
   return (
     <div className="min-h-screen flex bg-white font-outfit">
       {/* Left slate panel */}
-      <div className="hidden lg:flex w-[600px] flex-none bg-[#0F172A] px-12 py-11 flex-col relative overflow-hidden">
+      <div className="hidden lg:flex w-[600px] flex-none bg-[var(--desk-sidebar)] px-12 py-11 flex-col relative overflow-hidden">
         {MOTIFS[variant].map((c, i) => (
           <div
             key={i}
@@ -81,11 +81,11 @@ export function AuthSplitShell({
         </div>
 
         <div className="mt-auto pt-10 relative z-[2]">
-          <div className="w-9 h-[3px] rounded bg-[#E3B341] mb-6" />
+          <div className="w-9 h-[3px] rounded bg-[var(--ds-sky)] mb-6" />
           <h2 className="text-[42px] font-bold leading-[1.12] tracking-[-0.04em] text-white max-w-[430px]">
             {headline}
           </h2>
-          <p className="mt-5 text-[15.5px] text-[#94A3B8] leading-[1.7] max-w-[410px]">{tagline}</p>
+          <p className="mt-5 text-[15.5px] text-[var(--desk-text-subtle)] leading-[1.7] max-w-[410px]">{tagline}</p>
 
           {stats && stats.length > 0 && (
             <div className="mt-[38px] flex gap-[26px]">
@@ -93,10 +93,10 @@ export function AuthSplitShell({
                 <React.Fragment key={s.label}>
                   {i > 0 && <div className="w-px bg-white/[0.12]" />}
                   <div>
-                    <div className="text-[24px] font-extrabold tracking-[-0.03em] text-[#E3B341]">
+                    <div className="text-[24px] font-extrabold tracking-[-0.03em] text-[var(--ds-sky)]">
                       {s.value}
                     </div>
-                    <div className="text-xs text-[#64748B]">{s.label}</div>
+                    <div className="text-xs text-[var(--desk-text-muted)]">{s.label}</div>
                   </div>
                 </React.Fragment>
               ))}
@@ -107,17 +107,17 @@ export function AuthSplitShell({
             <div className="mt-[34px] flex flex-col gap-[14px]">
               {bullets.map((b) => (
                 <div key={b} className="flex items-center gap-3">
-                  <span className="h-7 w-7 flex-none rounded-[9px] bg-[#E3B341]/15 text-[#E3B341] flex items-center justify-center">
+                  <span className="h-7 w-7 flex-none rounded-[9px] bg-[var(--ds-sky)]/15 text-[var(--ds-sky)] flex items-center justify-center">
                     <Check className="h-3.5 w-3.5" strokeWidth={2.6} />
                   </span>
-                  <span className="text-sm text-[#CBD5E1]">{b}</span>
+                  <span className="text-sm text-[var(--desk-pine-200)]">{b}</span>
                 </div>
               ))}
             </div>
           )}
         </div>
 
-        <div className="mt-11 text-xs text-[#64748B] relative z-[2]">{footer}</div>
+        <div className="mt-11 text-xs text-[var(--desk-text-muted)] relative z-[2]">{footer}</div>
       </div>
 
       {/* Right form panel */}

@@ -41,13 +41,13 @@ export function PortalHomePage() {
           <>
             {comingUp.length ? (
               <Card padding="p-5" className="space-y-2">
-                <span className="text-[9px] font-black tracking-[0.22em] uppercase text-[#94A3B8] block">COMING UP</span>
+                <span className="text-[9px] font-black tracking-[0.22em] uppercase text-[var(--desk-text-subtle)] block">COMING UP</span>
                 {comingUp.map((s) => (
-                  <button key={s.id} type="button" onClick={() => navigate('/portal/sessions')} className="w-full flex items-center gap-3 py-2 border-t border-[#F1F5F9] first:border-t-0 text-left cursor-pointer">
+                  <button key={s.id} type="button" onClick={() => navigate('/portal/sessions')} className="w-full flex items-center gap-3 py-2 border-t border-[var(--desk-border-soft)] first:border-t-0 text-left cursor-pointer">
                     <DateTile startsAt={s.startsAt} />
                     <span className="min-w-0">
-                      <span className="block text-[13.5px] font-bold text-[#0F172A] truncate">{s.serviceTitle}</span>
-                      <span className="block text-[12px] text-[#64748B]">{formatTimeRange(s.startsAt, s.endsAt)}</span>
+                      <span className="block text-[13.5px] font-bold text-[var(--desk-text)] truncate">{s.serviceTitle}</span>
+                      <span className="block text-[12px] text-[var(--desk-text-muted)]">{formatTimeRange(s.startsAt, s.endsAt)}</span>
                     </span>
                   </button>
                 ))}
@@ -58,8 +58,8 @@ export function PortalHomePage() {
                 <button type="button" onClick={() => navigate('/portal/forms')} className="w-full text-left flex items-center gap-3 cursor-pointer">
                   <span className="h-10 w-10 rounded-full flex items-center justify-center text-white shrink-0" style={{ backgroundColor: primary }}><ClipboardList className="h-5 w-5" /></span>
                   <span className="min-w-0 flex-1">
-                    <span className="block text-[13.5px] font-bold text-[#0F172A]">{formsTodo} {formsTodo === 1 ? 'form' : 'forms'} to do</span>
-                    <span className="block text-[12px] text-[#64748B]">Your practitioner is waiting for them.</span>
+                    <span className="block text-[13.5px] font-bold text-[var(--desk-text)]">{formsTodo} {formsTodo === 1 ? 'form' : 'forms'} to do</span>
+                    <span className="block text-[12px] text-[var(--desk-text-muted)]">Your practitioner is waiting for them.</span>
                   </span>
                   <ChevronRight className="h-4 w-4 shrink-0" style={{ color: primary }} aria-hidden="true" />
                 </button>
@@ -72,7 +72,7 @@ export function PortalHomePage() {
           .filter((s) => s.status === 'PENDING_PAYMENT' && s.manualPayment)
           .map((s) => (
             <div key={s.id} className="space-y-2">
-              <p className="text-[13px] font-semibold text-[#475569]">
+              <p className="text-[13px] font-semibold text-[var(--desk-text-body)]">
                 {s.serviceTitle} on {formatDay(s.startsAt)} with {s.therapistName}
               </p>
               <TransferDetails payment={s.manualPayment!} bookingId={s.id} email={profile?.email ?? ''} color={primary} />
@@ -122,14 +122,14 @@ export function PortalHomePage() {
         </Grid>
 
         {loading ? (
-          <div className="rounded-[24px] border border-[#E2E8F0] bg-white px-6 py-10 text-sm font-medium text-[#64748B]">Loading your sessions...</div>
+          <div className="rounded-[24px] border border-[var(--desk-border)] bg-white px-6 py-10 text-sm font-medium text-[var(--desk-text-muted)]">Loading your sessions...</div>
         ) : nextSession ? (
           <div className="rounded-[24px] p-[26px_28px] flex items-center gap-6 shadow-[0_14px_40px_rgba(15,58,83,0.22)] flex-wrap" style={{ background: `linear-gradient(135deg,${primary},#1B5375)` }}>
             <DateTile startsAt={nextSession.startsAt} size="lg" />
             <div className="flex-1 min-w-0">
-              <span className="text-[9px] font-black tracking-[0.22em] uppercase text-[#E3B341] block">YOUR NEXT SESSION</span>
+              <span className="text-[9px] font-black tracking-[0.22em] uppercase text-[var(--ds-sky)] block">YOUR NEXT SESSION</span>
               <h2 className="mt-1 text-[22px] font-bold tracking-[-0.02em] text-white">{formatTimeRange(nextSession.startsAt, nextSession.endsAt)}</h2>
-              <p className="mt-1 text-[13.5px] font-medium text-[#CBD5E1]">{nextSession.serviceTitle} · with {nextSession.therapistName}</p>
+              <p className="mt-1 text-[13.5px] font-medium text-[var(--desk-pine-200)]">{nextSession.serviceTitle} · with {nextSession.therapistName}</p>
             </div>
             <div className="flex gap-3 shrink-0 flex-wrap w-full sm:w-auto justify-start">
               <a
@@ -154,9 +154,9 @@ export function PortalHomePage() {
             </div>
           </div>
         ) : (
-          <div className="rounded-[24px] border border-[#E2E8F0] bg-white px-6 py-10 flex flex-col items-start gap-4">
-            <p className="text-[15px] font-bold text-[#0F172A]">You have no sessions booked yet</p>
-            <p className="text-[13.5px] text-[#64748B] -mt-2">Choose a time that suits you; payment, where it applies, is handled while you book.</p>
+          <div className="rounded-[24px] border border-[var(--desk-border)] bg-white px-6 py-10 flex flex-col items-start gap-4">
+            <p className="text-[15px] font-bold text-[var(--desk-text)]">You have no sessions booked yet</p>
+            <p className="text-[13.5px] text-[var(--desk-text-muted)] -mt-2">Choose a time that suits you; payment, where it applies, is handled while you book.</p>
             <BookSessionButton label="Book your first session" />
           </div>
         )}
@@ -166,14 +166,14 @@ export function PortalHomePage() {
             key={a.id}
             type="button"
             onClick={() => navigate(`/portal/assessments/${a.id}`)}
-            className="text-left rounded-[18px] border border-[#E2E8F0] bg-white p-4 flex items-center gap-3 shadow-sm hover:border-[#CBD5E1] cursor-pointer w-full"
+            className="text-left rounded-[18px] border border-[var(--desk-border)] bg-white p-4 flex items-center gap-3 shadow-sm hover:border-[var(--desk-pine-200)] cursor-pointer w-full"
           >
             <div className="w-10 h-10 rounded-full flex items-center justify-center text-white shrink-0" style={{ backgroundColor: primary }}>
               <ClipboardList className="w-5 h-5" />
             </div>
             <div className="flex-1 min-w-0">
-              <h3 className="text-[14.5px] font-bold text-[#0F172A]">Your practitioner sent you {a.shortName}</h3>
-              <p className="text-[13px] text-[#64748B] mt-0.5 truncate">
+              <h3 className="text-[14.5px] font-bold text-[var(--desk-text)]">Your practitioner sent you {a.shortName}</h3>
+              <p className="text-[13px] text-[var(--desk-text-muted)] mt-0.5 truncate">
                 {a.message ? `“${a.message}”` : `${a.measures} · about ${a.estimatedMinutes} minutes`}
               </p>
             </div>

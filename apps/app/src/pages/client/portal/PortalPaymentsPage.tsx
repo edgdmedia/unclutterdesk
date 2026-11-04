@@ -32,44 +32,44 @@ export function PortalPaymentsPage() {
         {error ? (
           <div className="rounded-[18px] border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-medium text-rose-700">{error}</div>
         ) : !payments ? (
-          <div className="rounded-[22px] border border-[#E2E8F0] bg-white px-5 py-10 text-sm font-medium text-[#64748B]">Loading your payments...</div>
+          <div className="rounded-[22px] border border-[var(--desk-border)] bg-white px-5 py-10 text-sm font-medium text-[var(--desk-text-muted)]">Loading your payments...</div>
         ) : (
           <>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div className="rounded-[20px] border border-[#E2E8F0] bg-white p-[18px_20px]">
-                <div className="text-[9px] font-black tracking-[0.18em] uppercase text-[#94A3B8]">TOTAL PAID</div>
-                <div className="mt-1.5 text-[24px] font-bold tracking-[-0.02em] text-[#0F172A]">{formatMoney(payments.totalPaidKobo)}</div>
+              <div className="rounded-[20px] border border-[var(--desk-border)] bg-white p-[18px_20px]">
+                <div className="text-[9px] font-black tracking-[0.18em] uppercase text-[var(--desk-text-subtle)]">TOTAL PAID</div>
+                <div className="mt-1.5 text-[24px] font-bold tracking-[-0.02em] text-[var(--desk-text)]">{formatMoney(payments.totalPaidKobo)}</div>
               </div>
-              <div className="rounded-[20px] border border-[#E2E8F0] bg-white p-[18px_20px]">
-                <div className="text-[9px] font-black tracking-[0.18em] uppercase text-[#94A3B8]">OUTSTANDING</div>
-                <div className={`mt-1.5 text-[24px] font-bold tracking-[-0.02em] ${payments.outstandingKobo === '0' ? 'text-[#0F172A]' : 'text-[#B45309]'}`}>
+              <div className="rounded-[20px] border border-[var(--desk-border)] bg-white p-[18px_20px]">
+                <div className="text-[9px] font-black tracking-[0.18em] uppercase text-[var(--desk-text-subtle)]">OUTSTANDING</div>
+                <div className={`mt-1.5 text-[24px] font-bold tracking-[-0.02em] ${payments.outstandingKobo === '0' ? 'text-[var(--desk-text)]' : 'text-[var(--desk-pending)]'}`}>
                   {formatMoney(payments.outstandingKobo)}
                 </div>
               </div>
             </div>
 
-            <div className="bg-white rounded-[22px] border border-[#E2E8F0] overflow-hidden">
+            <div className="bg-white rounded-[22px] border border-[var(--desk-border)] overflow-hidden">
               {payments.payments.length === 0 ? (
-                <div className="px-5 py-10 text-sm font-medium text-[#64748B]">No payments yet. Anything you are charged will show up here.</div>
+                <div className="px-5 py-10 text-sm font-medium text-[var(--desk-text-muted)]">No payments yet. Anything you are charged will show up here.</div>
               ) : (
                 payments.payments.map((payment, index) => {
                   const state = paymentState(payment);
                   return (
-                    <div key={payment.bookingId} className={`flex flex-wrap items-center gap-x-4 gap-y-1 px-5 py-[16px] ${index > 0 ? 'border-t border-[#F1F5F9]' : ''}`}>
+                    <div key={payment.bookingId} className={`flex flex-wrap items-center gap-x-4 gap-y-1 px-5 py-[16px] ${index > 0 ? 'border-t border-[var(--desk-border-soft)]' : ''}`}>
                       <div className="flex-1 min-w-[180px]">
-                        <div className="text-[14px] font-bold text-[#0F172A]">{payment.serviceTitle}</div>
-                        <div className="text-[12px] text-[#64748B] font-medium">
+                        <div className="text-[14px] font-bold text-[var(--desk-text)]">{payment.serviceTitle}</div>
+                        <div className="text-[12px] text-[var(--desk-text-muted)] font-medium">
                           Session {formatDay(payment.sessionAt)}
                           {payment.discountCode ? ` · ${payment.discountCode} applied` : ''}
                         </div>
                         {payment.reference ? (
-                          <div className="text-[10.5px] text-[#94A3B8] font-medium mt-0.5 break-all">Ref {payment.reference}</div>
+                          <div className="text-[10.5px] text-[var(--desk-text-subtle)] font-medium mt-0.5 break-all">Ref {payment.reference}</div>
                         ) : null}
                       </div>
                       <span className={`h-[22px] px-2.5 rounded-full text-[9.5px] font-black tracking-[0.06em] uppercase flex items-center ${state.cls}`}>{state.label}</span>
                       <div className="text-right min-w-[92px]">
-                        <div className="text-[13.5px] font-extrabold text-[#0F172A]">{formatMoney(payment.amountKobo)}</div>
-                        <div className="text-[11px] text-[#94A3B8] font-medium">{payment.paidAt ? formatDay(payment.paidAt) : '—'}</div>
+                        <div className="text-[13.5px] font-extrabold text-[var(--desk-text)]">{formatMoney(payment.amountKobo)}</div>
+                        <div className="text-[11px] text-[var(--desk-text-subtle)] font-medium">{payment.paidAt ? formatDay(payment.paidAt) : '—'}</div>
                       </div>
                     </div>
                   );
@@ -77,7 +77,7 @@ export function PortalPaymentsPage() {
               )}
             </div>
 
-            <p className="text-[11.5px] text-[#94A3B8] leading-[1.6]">
+            <p className="text-[11.5px] text-[var(--desk-text-subtle)] leading-[1.6]">
               Amounts are what you were charged at the time of booking. For a formal receipt, contact the practice.
             </p>
           </>

@@ -13,25 +13,25 @@ export interface StatusBadgeProps {
 }
 
 const TONES: Record<StatusTone, string> = {
-  ok: 'bg-[#ECFDF5] text-[#059669] border-[#A7F3D0]',
-  info: 'bg-[#EFF6FF] text-[#1D4ED8] border-[#BFDBFE]',
-  warn: 'bg-[#FFFBEB] text-[#B45309] border-[#FDE68A]',
-  danger: 'bg-[#FFF1F2] text-[#E11D48] border-[#FECDD3]',
-  muted: 'bg-[#F1F5F9] text-[#64748B] border-[#E2E8F0]',
+  ok: 'bg-[var(--desk-active-bg)] text-[var(--desk-active)] border-[var(--desk-active-border)]',
+  info: 'bg-[var(--desk-info-bg)] text-[var(--desk-info)] border-[var(--desk-info-border)]',
+  warn: 'bg-[var(--desk-pending-bg)] text-[var(--desk-pending)] border-[var(--desk-pending-border)]',
+  danger: 'bg-[var(--desk-danger-bg)] text-[var(--desk-danger)] border-[var(--desk-danger-border)]',
+  muted: 'bg-[var(--desk-surface-muted)] text-[var(--desk-text-muted)] border-[var(--desk-border)]',
 };
 
 export function StatusBadge({ status, tone, className = '' }: StatusBadgeProps) {
   const normalized = status.toLowerCase();
 
-  let styles = 'bg-[#F1F5F9] text-[#64748B] border-[#E2E8F0]';
+  let styles = 'bg-[var(--desk-surface-muted)] text-[var(--desk-text-muted)] border-[var(--desk-border)]';
   if (tone) {
     styles = TONES[tone];
   } else if (normalized.includes('confirmed') || normalized.includes('active')) {
-    styles = 'bg-[#ECFDF5] text-[#059669] border-[#A7F3D0]';
+    styles = 'bg-[var(--desk-active-bg)] text-[var(--desk-active)] border-[var(--desk-active-border)]';
   } else if (normalized.includes('pending') || normalized.includes('intake')) {
-    styles = 'bg-[#FFFBEB] text-[#B45309] border-[#FDE68A]';
+    styles = 'bg-[var(--desk-pending-bg)] text-[var(--desk-pending)] border-[var(--desk-pending-border)]';
   } else if (normalized.includes('danger') || normalized.includes('cancelled')) {
-    styles = 'bg-[#FFF1F2] text-[#E11D48] border-[#FECDD3]';
+    styles = 'bg-[var(--desk-danger-bg)] text-[var(--desk-danger)] border-[var(--desk-danger-border)]';
   }
 
   return (

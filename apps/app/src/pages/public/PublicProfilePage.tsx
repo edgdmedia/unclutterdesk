@@ -137,7 +137,7 @@ export function PublicProfilePage() {
 
   if (loading) {
     return (
-      <div className="flex-1 flex items-center justify-center text-[14px] font-medium text-[#94A3B8]">
+      <div className="flex-1 flex items-center justify-center text-[14px] font-medium text-[var(--desk-text-subtle)]">
         Loading practice profile...
       </div>
     );
@@ -153,7 +153,7 @@ export function PublicProfilePage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#F8FAFC] flex flex-col font-sans">
+    <div className="min-h-screen bg-[var(--desk-surface)] flex flex-col font-sans">
       <PublicProfilePreview {...previewProps!} interactive={true} />
     </div>
   );

@@ -39,8 +39,8 @@ function nairaToKobo(value: string): string {
 }
 
 const inputCls =
-  'w-full h-[44px] px-3.5 rounded-[14px] bg-[#F8FAFC] border border-[#E2E8F0] text-[13px] font-medium text-[#0F172A] outline-none focus:border-[#94A3B8]';
-const labelCls = 'text-[11.5px] font-bold text-[#475569]';
+  'w-full h-[44px] px-3.5 rounded-[14px] bg-[var(--desk-surface)] border border-[var(--desk-border)] text-[13px] font-medium text-[var(--desk-text)] outline-none focus:border-[var(--desk-border-strong)]';
+const labelCls = 'text-[11.5px] font-bold text-[var(--desk-text-body)]';
 
 /**
  * Services & pricing. Until this page existed, services could only be created
@@ -158,7 +158,7 @@ export function ServicesSettingsPage() {
         />
       }
     >
-      <p className="text-xs text-[#64748B] font-medium">What clients can book, how long it takes, and what it costs.</p>
+      <p className="text-xs text-[var(--desk-text-muted)] font-medium">What clients can book, how long it takes, and what it costs.</p>
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 md:gap-6 items-start">
         <div className="lg:col-span-7 space-y-3">
@@ -169,11 +169,11 @@ export function ServicesSettingsPage() {
           ) : null}
 
           {loading ? (
-            <Card padding="p-[22px]"><p className="text-sm font-medium text-[#64748B]">Loading services…</p></Card>
+            <Card padding="p-[22px]"><p className="text-sm font-medium text-[var(--desk-text-muted)]">Loading services…</p></Card>
           ) : services.length === 0 ? (
             <Card padding="p-[22px]">
-              <p className="text-sm font-semibold text-[#0F172A]">No services yet</p>
-              <p className="mt-1 text-xs text-[#64748B]">Add a service so clients have something to book.</p>
+              <p className="text-sm font-semibold text-[var(--desk-text)]">No services yet</p>
+              <p className="mt-1 text-xs text-[var(--desk-text-muted)]">Add a service so clients have something to book.</p>
             </Card>
           ) : (
             services.map((service) => (
@@ -181,17 +181,17 @@ export function ServicesSettingsPage() {
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0">
                     <div className="flex items-center gap-2 flex-wrap">
-                      <span className="text-[14px] font-bold text-[#0F172A]">{service.title}</span>
+                      <span className="text-[14px] font-bold text-[var(--desk-text)]">{service.title}</span>
                       {!service.isActive && (
-                        <span className="text-[10px] font-bold uppercase tracking-[0.06em] text-[#64748B] bg-[#F1F5F9] rounded-full px-2 py-0.5">
+                        <span className="text-[10px] font-bold uppercase tracking-[0.06em] text-[var(--desk-text-muted)] bg-[var(--desk-surface-muted)] rounded-full px-2 py-0.5">
                           Not bookable
                         </span>
                       )}
                     </div>
                     {service.description ? (
-                      <p className="mt-1 text-xs text-[#64748B] leading-relaxed">{service.description}</p>
+                      <p className="mt-1 text-xs text-[var(--desk-text-muted)] leading-relaxed">{service.description}</p>
                     ) : null}
-                    <div className="mt-2 flex items-center gap-3 text-xs font-semibold text-[#475569]">
+                    <div className="mt-2 flex items-center gap-3 text-xs font-semibold text-[var(--desk-text-body)]">
                       <span className="inline-flex items-center gap-1"><Clock className="h-3.5 w-3.5" />{service.durationMinutes} min</span>
                       {service.formats?.filter((f) => f.isActive).length
                         ? service.formats.filter((f) => f.isActive).map((f) => (
@@ -207,7 +207,7 @@ export function ServicesSettingsPage() {
                       type="button"
                       onClick={() => edit(service)}
                       aria-label={`Edit ${service.title}`}
-                      className="h-9 w-9 rounded-[10px] border border-[#E2E8F0] bg-white text-[#475569] flex items-center justify-center hover:bg-[#F8FAFC] cursor-pointer"
+                      className="h-9 w-9 rounded-[10px] border border-[var(--desk-border)] bg-white text-[var(--desk-text-body)] flex items-center justify-center hover:bg-[var(--desk-surface)] cursor-pointer"
                     >
                       <Pencil className="h-4 w-4" />
                     </button>
@@ -216,7 +216,7 @@ export function ServicesSettingsPage() {
                       onClick={() => void setActive(service, !service.isActive)}
                       aria-label={service.isActive ? `Stop offering ${service.title}` : `Offer ${service.title} again`}
                       title={service.isActive ? 'Stop offering' : 'Offer again'}
-                      className="h-9 w-9 rounded-[10px] border border-[#E2E8F0] bg-white text-[#475569] flex items-center justify-center hover:bg-[#F8FAFC] cursor-pointer"
+                      className="h-9 w-9 rounded-[10px] border border-[var(--desk-border)] bg-white text-[var(--desk-text-body)] flex items-center justify-center hover:bg-[var(--desk-surface)] cursor-pointer"
                     >
                       {service.isActive ? <PowerOff className="h-4 w-4" /> : <Power className="h-4 w-4" />}
                     </button>
@@ -237,8 +237,8 @@ export function ServicesSettingsPage() {
                   <input id="service-title" required value={draft.title} onChange={(e) => setDraft({ ...draft, title: e.target.value })} placeholder="Individual Therapy" className={inputCls} />
                 </div>
                 <div className="space-y-1.5">
-                  <label htmlFor="service-description" className={labelCls}>Description <span className="font-normal text-[#94A3B8]">(optional)</span></label>
-                  <textarea id="service-description" rows={3} value={draft.description} onChange={(e) => setDraft({ ...draft, description: e.target.value })} className="w-full p-3.5 rounded-[14px] bg-[#F8FAFC] border border-[#E2E8F0] text-[13px] font-medium text-[#0F172A] outline-none focus:border-[#94A3B8] resize-none" />
+                  <label htmlFor="service-description" className={labelCls}>Description <span className="font-normal text-[var(--desk-text-subtle)]">(optional)</span></label>
+                  <textarea id="service-description" rows={3} value={draft.description} onChange={(e) => setDraft({ ...draft, description: e.target.value })} className="w-full p-3.5 rounded-[14px] bg-[var(--desk-surface)] border border-[var(--desk-border)] text-[13px] font-medium text-[var(--desk-text)] outline-none focus:border-[var(--desk-border-strong)] resize-none" />
                 </div>
                 <div className="grid grid-cols-2 gap-3">
                   <div className="space-y-1.5">
@@ -247,11 +247,11 @@ export function ServicesSettingsPage() {
                   </div>
                   <div className="space-y-1.5">
                     <span className={labelCls}>Format</span>
-                    <label className="flex items-center gap-2 text-[13px] font-semibold text-[#0F172A] cursor-pointer">
+                    <label className="flex items-center gap-2 text-[13px] font-semibold text-[var(--desk-text)] cursor-pointer">
                       <input type="checkbox" checked={draft.onlineOn} onChange={(e) => setDraft({ ...draft, onlineOn: e.target.checked })} aria-label="Online" />
                       Online
                     </label>
-                    <label className="flex items-center gap-2 text-[13px] font-semibold text-[#0F172A] cursor-pointer">
+                    <label className="flex items-center gap-2 text-[13px] font-semibold text-[var(--desk-text)] cursor-pointer">
                       <input type="checkbox" checked={draft.inPersonOn} onChange={(e) => setDraft({ ...draft, inPersonOn: e.target.checked })} aria-label="In person" />
                       In person
                     </label>
@@ -268,7 +268,7 @@ export function ServicesSettingsPage() {
                   </div>
                 </div>
                 {draft.inPersonOn ? (
-                  <label className="flex items-center gap-2 text-[12.5px] font-semibold text-[#475569] cursor-pointer">
+                  <label className="flex items-center gap-2 text-[12.5px] font-semibold text-[var(--desk-text-body)] cursor-pointer">
                     <input type="checkbox" checked={draft.samePrice} onChange={(e) => setDraft({ ...draft, samePrice: e.target.checked })} aria-label="Same price for both" />
                     Same price for both
                   </label>
@@ -277,7 +277,7 @@ export function ServicesSettingsPage() {
                   <button type="submit" disabled={saving} className="h-[42px] px-[15px] rounded-[13px] text-white text-[13px] font-semibold cursor-pointer disabled:opacity-60" style={{ backgroundColor: primaryColor }}>
                     {saving ? 'Saving…' : draft.id ? 'Save changes' : 'Create service'}
                   </button>
-                  <button type="button" onClick={() => setDraft(null)} className="h-[42px] px-[15px] rounded-[13px] border border-[#E2E8F0] bg-white text-[13px] font-semibold text-[#475569] cursor-pointer">
+                  <button type="button" onClick={() => setDraft(null)} className="h-[42px] px-[15px] rounded-[13px] border border-[var(--desk-border)] bg-white text-[13px] font-semibold text-[var(--desk-text-body)] cursor-pointer">
                     Cancel
                   </button>
                 </div>
@@ -285,7 +285,7 @@ export function ServicesSettingsPage() {
             </Card>
           ) : (
             <Card padding="p-[22px]">
-              <p className="text-xs text-[#64748B] leading-relaxed">
+              <p className="text-xs text-[var(--desk-text-muted)] leading-relaxed">
                 Changing a price only affects new bookings. Services you stop offering disappear from your
                 booking page but stay on the bookings already made with them.
               </p>

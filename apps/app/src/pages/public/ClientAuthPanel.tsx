@@ -5,8 +5,8 @@ import { api } from '../../utils/apiClient';
 import { useAuth } from '../../context/AuthContext';
 
 const field =
-  'w-full h-12 px-3.5 rounded-[14px] bg-[#F8FAFC] border border-[#E2E8F0] text-[14.5px] text-[#0F172A] outline-none transition-[background,border-color,box-shadow] duration-150 focus:bg-white focus:border-[#94A3B8] focus:shadow-[0_0_0_3px_var(--brand-ring)]';
-const label = 'flex flex-col gap-1.5 text-[12.5px] font-semibold text-[#475569]';
+  'w-full h-12 px-3.5 rounded-[14px] bg-[var(--desk-surface)] border border-[var(--desk-border)] text-[14.5px] text-[var(--desk-text)] outline-none transition-[background,border-color,box-shadow] duration-150 focus:bg-white focus:border-[var(--desk-border-strong)] focus:shadow-[0_0_0_3px_var(--brand-ring)]';
+const label = 'flex flex-col gap-1.5 text-[12.5px] font-semibold text-[var(--desk-text-body)]';
 
 /**
  * The gate at checkout: a client signs in or creates an account at this
@@ -47,21 +47,21 @@ export function ClientAuthPanel({ onDone, initialMode = 'create' }: { onDone: ()
 
   return (
     <form onSubmit={submit} className="flex flex-col gap-4">
-      <div className="h-10 p-1 bg-[#F1F5F9] rounded-[14px] flex gap-0.5">
+      <div className="h-10 p-1 bg-[var(--desk-surface-muted)] rounded-[14px] flex gap-0.5">
         {(['create', 'signin'] as const).map((m) => (
           <button
             key={m}
             type="button"
             aria-pressed={mode === m}
             onClick={() => { setMode(m); setError(null); }}
-            className={`flex-1 rounded-[11px] text-[13px] font-bold cursor-pointer transition-colors duration-150 ${mode === m ? 'bg-white text-[#0F172A] shadow-[0_1px_2px_rgba(15,23,42,.08)]' : 'text-[#64748B]'}`}
+            className={`flex-1 rounded-[11px] text-[13px] font-bold cursor-pointer transition-colors duration-150 ${mode === m ? 'bg-white text-[var(--desk-text)] shadow-[0_1px_2px_rgba(15,23,42,.08)]' : 'text-[var(--desk-text-muted)]'}`}
           >
             {m === 'create' ? 'Create account' : 'Sign in'}
           </button>
         ))}
       </div>
-      <p className="flex gap-2 text-[13px] leading-[1.5] text-[#475569]">
-        <ShieldCheck className="h-4 w-4 text-[#16A34A] shrink-0 mt-0.5" aria-hidden="true" />
+      <p className="flex gap-2 text-[13px] leading-[1.5] text-[var(--desk-text-body)]">
+        <ShieldCheck className="h-4 w-4 text-[var(--desk-active)] shrink-0 mt-0.5" aria-hidden="true" />
         One Unclutter Desk account works with every practice. Each practice sees only its own records with you.
       </p>
       {mode === 'create' ? (
@@ -85,12 +85,12 @@ export function ClientAuthPanel({ onDone, initialMode = 'create' }: { onDone: ()
       <label className={label}>Password
         <input className={field} type="password" required minLength={8} value={password} onChange={(e) => setPassword(e.target.value)} autoComplete={mode === 'create' ? 'new-password' : 'current-password'} />
       </label>
-      {error ? <p role="alert" className="text-[12.5px] font-medium text-[#E11D48]">{error}</p> : null}
+      {error ? <p role="alert" className="text-[12.5px] font-medium text-[var(--desk-danger)]">{error}</p> : null}
       <Button type="submit" variant="primary" size="xl" fullWidth disabled={busy}>
         {busy ? 'One moment…' : mode === 'create' ? 'Create account and continue' : 'Sign in and continue'}
       </Button>
       {mode === 'signin' ? (
-        <p className="text-[12.5px] text-[#64748B]">
+        <p className="text-[12.5px] text-[var(--desk-text-muted)]">
           Forgotten it? <a href="/forgot-password" className="font-bold underline">Reset your password</a>
         </p>
       ) : null}

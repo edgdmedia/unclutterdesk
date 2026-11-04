@@ -14,9 +14,9 @@ export function ExternalRedirect({ to }: { to: string }) {
   }, [to]);
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-[#F8FAFC] px-6">
-      <p className="text-sm font-medium text-[#64748B]">
-        Opening <a href={to} className="font-bold text-[#0F3A53] underline">{to}</a>…
+    <div className="min-h-screen flex items-center justify-center bg-[var(--desk-surface)] px-6">
+      <p className="text-sm font-medium text-[var(--desk-text-muted)]">
+        Opening <a href={to} className="font-bold text-[var(--desk-pine-600)] underline">{to}</a>…
       </p>
     </div>
   );

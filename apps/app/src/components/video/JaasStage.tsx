@@ -25,7 +25,7 @@ export function JaasStage({ appId, roomName, jwt, renderBar }: { appId: string; 
 
   return (
     <div className="flex h-full min-h-0 flex-col gap-4">
-      <div className="relative flex-1 min-h-[320px] overflow-hidden rounded-[22px] border border-white/[0.06] bg-[#0B1220]">
+      <div className="relative flex-1 min-h-[320px] overflow-hidden rounded-[22px] border border-white/[0.06] bg-[var(--desk-sidebar)]">
         <JaaSMeeting
           appId={appId}
           roomName={roomName}

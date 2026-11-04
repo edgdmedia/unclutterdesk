@@ -128,27 +128,27 @@ export function StaffBookingDialog({
   }
 
   const radio = (checked: boolean) =>
-    `flex items-start gap-2 p-2.5 rounded-[12px] border cursor-pointer ${checked ? 'border-[#0F3A53] bg-[#F0F7FB]' : 'border-[#E2E8F0]'}`;
+    `flex items-start gap-2 p-2.5 rounded-[12px] border cursor-pointer ${checked ? 'border-[var(--desk-pine-600)] bg-[var(--desk-surface-alt)]' : 'border-[var(--desk-border)]'}`;
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-[#0F172A]/60 p-4" role="dialog" aria-modal="true" aria-labelledby="staff-booking-title">
+    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-[var(--desk-sidebar)]/60 p-4" role="dialog" aria-modal="true" aria-labelledby="staff-booking-title">
       <form onSubmit={submit} className="w-full max-w-[520px] max-h-[90vh] overflow-y-auto rounded-[20px] bg-white p-6 shadow-2xl space-y-5">
         <div className="flex items-start justify-between gap-3">
           <div className="flex items-center gap-2">
-            <CalendarPlus className="h-5 w-5 text-[#0F3A53]" />
-            <h2 id="staff-booking-title" className="text-[16px] font-bold text-[#0F172A]">
+            <CalendarPlus className="h-5 w-5 text-[var(--desk-pine-600)]" />
+            <h2 id="staff-booking-title" className="text-[16px] font-bold text-[var(--desk-text)]">
               {client ? `Book a session for ${client.name}` : 'New booking'}
             </h2>
           </div>
-          <button type="button" onClick={onClose} aria-label="Close" className="h-7 w-7 inline-flex items-center justify-center rounded-[8px] text-[#64748B] hover:bg-[#F1F5F9] cursor-pointer">
+          <button type="button" onClick={onClose} aria-label="Close" className="h-7 w-7 inline-flex items-center justify-center rounded-[8px] text-[var(--desk-text-muted)] hover:bg-[var(--desk-surface-muted)] cursor-pointer">
             <X className="h-4 w-4" />
           </button>
         </div>
 
         {!client && (
-          <label className="block text-[12px] font-semibold text-[#334155]">
+          <label className="block text-[12px] font-semibold text-[var(--desk-text-body)]">
             Client
-            <select className="mt-1 w-full h-[40px] px-3 rounded-[12px] border border-[#E2E8F0] text-[13px]" value={clientId} onChange={(e) => setClientId(e.target.value)}>
+            <select className="mt-1 w-full h-[40px] px-3 rounded-[12px] border border-[var(--desk-border)] text-[13px]" value={clientId} onChange={(e) => setClientId(e.target.value)}>
               <option value="">Choose a client</option>
               {clients.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
             </select>
@@ -156,11 +156,11 @@ export function StaffBookingDialog({
         )}
 
         <fieldset className="space-y-2">
-          <legend className="text-[12px] font-semibold text-[#334155] mb-1">Service</legend>
+          <legend className="text-[12px] font-semibold text-[var(--desk-text-body)] mb-1">Service</legend>
           {services.map((s) => (
             <label key={s.id} className={radio(serviceId === s.id)}>
               <input type="radio" name="service" checked={serviceId === s.id} onChange={() => setServiceId(s.id)} aria-label={`${s.title}, ${s.durationMinutes} minutes, ${naira(s.priceKobo)}`} />
-              <span className="text-[13px] text-[#0F172A]">{s.title} · {s.durationMinutes} min · {naira(s.priceKobo)}</span>
+              <span className="text-[13px] text-[var(--desk-text)]">{s.title} · {s.durationMinutes} min · {naira(s.priceKobo)}</span>
             </label>
           ))}
         </fieldset>
@@ -172,16 +172,16 @@ export function StaffBookingDialog({
         ) : null}
 
         {!isTherapist && staff && (staff.length > 1 || (staff.length === 1 && staff[0].id !== String(profile?.id ?? ''))) && (
-          <label className="block text-[12px] font-semibold text-[#334155]">
+          <label className="block text-[12px] font-semibold text-[var(--desk-text-body)]">
             Practitioner
-            <select aria-label="Practitioner" className="mt-1 w-full h-[40px] px-3 rounded-[12px] border border-[#E2E8F0] text-[13px]" value={providerId} onChange={(e) => setProviderId(e.target.value)}>
+            <select aria-label="Practitioner" className="mt-1 w-full h-[40px] px-3 rounded-[12px] border border-[var(--desk-border)] text-[13px]" value={providerId} onChange={(e) => setProviderId(e.target.value)}>
               {staff.map((m) => <option key={m.id} value={m.id}>{m.name}</option>)}
             </select>
           </label>
         )}
 
         <fieldset className="space-y-2">
-          <legend className="text-[12px] font-semibold text-[#334155] mb-1">Time</legend>
+          <legend className="text-[12px] font-semibold text-[var(--desk-text-body)] mb-1">Time</legend>
           <div className="flex gap-2">
             <label className={radio(mode === 'slot')}><input type="radio" name="mode" checked={mode === 'slot'} onChange={() => { setMode('slot'); }} aria-label="Open slots" /><span className="text-[13px]">Open slots</span></label>
             <label className={radio(mode === 'custom')}><input type="radio" name="mode" checked={mode === 'custom'} onChange={() => { setMode('custom'); setFormat((f) => f || 'ONLINE'); }} aria-label="Custom time" /><span className="text-[13px]">Custom time</span></label>
@@ -197,13 +197,13 @@ export function StaffBookingDialog({
                     </label>
                   ))}
                 </div>
-              ) : <p className="text-[12px] text-[#64748B]">No open slots. Use a custom time.</p>
-            ) : <p className="text-[12px] text-[#64748B]">Choose a service first.</p>
+              ) : <p className="text-[12px] text-[var(--desk-text-muted)]">No open slots. Use a custom time.</p>
+            ) : <p className="text-[12px] text-[var(--desk-text-muted)]">Choose a service first.</p>
           ) : (
-            <label className="block text-[12px] font-semibold text-[#334155]">
+            <label className="block text-[12px] font-semibold text-[var(--desk-text-body)]">
               Date and time
-              <input type="datetime-local" aria-label="Date and time" className="mt-1 w-full h-[40px] px-3 rounded-[12px] border border-[#E2E8F0] text-[13px]" value={customAt} onChange={(e) => setCustomAt(e.target.value)} />
-              <span className="block mt-1 text-[11.5px] font-normal text-[#64748B]">
+              <input type="datetime-local" aria-label="Date and time" className="mt-1 w-full h-[40px] px-3 rounded-[12px] border border-[var(--desk-border)] text-[13px]" value={customAt} onChange={(e) => setCustomAt(e.target.value)} />
+              <span className="block mt-1 text-[11.5px] font-normal text-[var(--desk-text-muted)]">
                 This can fall outside working hours. Any open slot it overlaps is closed.
                 {service ? ` The session runs for ${service.durationMinutes} minutes.` : ''}
               </span>
@@ -213,7 +213,7 @@ export function StaffBookingDialog({
 
         {(mode === 'custom' || slotFormats.length > 1) ? (
           <fieldset className="space-y-2">
-            <legend className="text-[12px] font-semibold text-[#334155] mb-1">Format</legend>
+            <legend className="text-[12px] font-semibold text-[var(--desk-text-body)] mb-1">Format</legend>
             {(['ONLINE', 'IN_PERSON'] as const).filter((f) => mode === 'custom' || slotFormats.includes(f)).map((f) => (
               <label key={f} className={radio(format === f)}>
                 <input type="radio" name="format" checked={format === f} onChange={() => setFormat(f)} aria-label={f === 'ONLINE' ? 'Online' : 'In person'} />
@@ -221,9 +221,9 @@ export function StaffBookingDialog({
               </label>
             ))}
             {format === 'IN_PERSON' && mode === 'custom' ? (
-              <label className="block text-[12px] font-semibold text-[#334155]">
+              <label className="block text-[12px] font-semibold text-[var(--desk-text-body)]">
                 Location
-                <select className="mt-1 w-full h-[40px] px-3 rounded-[12px] border border-[#E2E8F0] text-[13px]" value={locationId} onChange={(e) => setLocationId(e.target.value)} aria-label="Location">
+                <select className="mt-1 w-full h-[40px] px-3 rounded-[12px] border border-[var(--desk-border)] text-[13px]" value={locationId} onChange={(e) => setLocationId(e.target.value)} aria-label="Location">
                   <option value="">Choose a location…</option>
                   {locations.map((l) => <option key={l.id} value={l.id}>{l.name}, {l.city}</option>)}
                 </select>
@@ -233,33 +233,33 @@ export function StaffBookingDialog({
         ) : null}
 
         <fieldset className="space-y-2">
-          <legend className="text-[12px] font-semibold text-[#334155] mb-1">Payment</legend>
+          <legend className="text-[12px] font-semibold text-[var(--desk-text-body)] mb-1">Payment</legend>
           {payments.map((p) => (
             <label key={p.value} className={radio(payment === p.value)}>
               <input type="radio" name="payment" checked={payment === p.value} onChange={() => setPayment(p.value)} aria-label={p.label} />
-              <span><span className="block text-[13px] font-semibold text-[#0F172A]">{p.label}</span><span className="block text-[11.5px] text-[#64748B]">{p.hint}</span></span>
+              <span><span className="block text-[13px] font-semibold text-[var(--desk-text)]">{p.label}</span><span className="block text-[11.5px] text-[var(--desk-text-muted)]">{p.hint}</span></span>
             </label>
           ))}
           {payment === 'PAID' && (
-            <label className="block text-[12px] font-semibold text-[#334155]">
+            <label className="block text-[12px] font-semibold text-[var(--desk-text-body)]">
               Amount received (₦)
-              <input type="number" min="0" step="0.01" placeholder={service ? String(Number(service.priceKobo) / 100) : ''} className="mt-1 w-full h-[40px] px-3 rounded-[12px] border border-[#E2E8F0] text-[13px]" value={amount} onChange={(e) => setAmount(e.target.value)} />
+              <input type="number" min="0" step="0.01" placeholder={service ? String(Number(service.priceKobo) / 100) : ''} className="mt-1 w-full h-[40px] px-3 rounded-[12px] border border-[var(--desk-border)] text-[13px]" value={amount} onChange={(e) => setAmount(e.target.value)} />
             </label>
           )}
         </fieldset>
 
-        <label className="block text-[12px] font-semibold text-[#334155]">
+        <label className="block text-[12px] font-semibold text-[var(--desk-text-body)]">
           Note (optional)
-          <textarea rows={2} className="mt-1 w-full px-3 py-2 rounded-[12px] border border-[#E2E8F0] text-[13px]" value={note} onChange={(e) => setNote(e.target.value)} />
+          <textarea rows={2} className="mt-1 w-full px-3 py-2 rounded-[12px] border border-[var(--desk-border)] text-[13px]" value={note} onChange={(e) => setNote(e.target.value)} />
         </label>
 
-        <label className="flex items-center gap-2 text-[12.5px] text-[#334155]">
+        <label className="flex items-center gap-2 text-[12.5px] text-[var(--desk-text-body)]">
           <input type="checkbox" checked={notifyClient} onChange={(e) => setNotifyClient(e.target.checked)} />
           Email the client
         </label>
 
         {error ? <p className="text-[12px] font-medium text-rose-700">{error}</p> : null}
-        <button type="submit" disabled={busy || !ready} className="w-full h-[42px] rounded-[12px] bg-[#0F3A53] text-white text-[13px] font-bold inline-flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50">
+        <button type="submit" disabled={busy || !ready} className="w-full h-[42px] rounded-[12px] bg-[var(--desk-pine-600)] text-white text-[13px] font-bold inline-flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50">
           {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
           Book session
         </button>

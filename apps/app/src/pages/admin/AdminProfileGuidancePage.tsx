@@ -57,17 +57,17 @@ export function AdminProfileGuidancePage() {
   return (
     <div className="flex-1 min-w-0 px-4 md:px-[32px] py-[28px] max-w-[1000px] w-full">
       <Eyebrow>Platform console</Eyebrow>
-      <h1 className="mt-1 text-[26px] font-bold tracking-[-0.03em] text-[#0F172A]">Profile guidance</h1>
-      <p className="mt-1 max-w-[760px] text-[13.5px] text-[#64748B]">
+      <h1 className="mt-1 text-[26px] font-bold tracking-[-0.03em] text-[var(--desk-text)]">Profile guidance</h1>
+      <p className="mt-1 max-w-[760px] text-[13.5px] text-[var(--desk-text-muted)]">
         The short advice shown beside each section of every profile. It is shared by all templates, so keep it useful for any practitioner.
         Every save is recorded in the admin audit log.
       </p>
       <ProfileContentTabs />
 
       {isLoading ? (
-        <Card className="mt-5 p-[22px]"><p className="text-sm text-[#64748B]">Loading guidance…</p></Card>
+        <Card className="mt-5 p-[22px]"><p className="text-sm text-[var(--desk-text-muted)]">Loading guidance…</p></Card>
       ) : loadError ? (
-        <Card className="mt-5 p-[22px]"><p className="text-sm text-[#B91C1C]">Could not load guidance. Please refresh.</p></Card>
+        <Card className="mt-5 p-[22px]"><p className="text-sm text-[var(--desk-danger)]">Could not load guidance. Please refresh.</p></Card>
       ) : (
         <div className="mt-5 space-y-5">
           <Card className="p-[22px] space-y-5">
@@ -80,14 +80,14 @@ export function AdminProfileGuidancePage() {
                   maxLength={600}
                   onChange={(e: any) => setGuidance((current) => ({ ...current, [section]: e.target.value }))}
                 />
-                <p className="mt-1 text-right text-[11px] text-[#94A3B8]">{(guidance[section] ?? '').length}/600</p>
+                <p className="mt-1 text-right text-[11px] text-[var(--desk-text-subtle)]">{(guidance[section] ?? '').length}/600</p>
               </div>
             ))}
           </Card>
 
           <Card className="p-[22px] space-y-2">
-            <label className="text-[11.5px] font-bold text-[#475569]">Reason for change</label>
-            <p className="text-[12px] text-[#64748B]">Optional.</p>
+            <label className="text-[11.5px] font-bold text-[var(--desk-text-body)]">Reason for change</label>
+            <p className="text-[12px] text-[var(--desk-text-muted)]">Optional.</p>
             <Textarea
               value={reason}
               rows={2}
@@ -97,10 +97,10 @@ export function AdminProfileGuidancePage() {
             />
           </Card>
 
-          {error ? <p role="alert" className="text-[13px] font-semibold text-[#B91C1C]">{error}</p> : null}
+          {error ? <p role="alert" className="text-[13px] font-semibold text-[var(--desk-danger)]">{error}</p> : null}
 
           <div className="flex flex-wrap items-center justify-end gap-3">
-            {blank.length ? <p className="text-[12.5px] text-[#B45309]">{blank.length} section{blank.length === 1 ? '' : 's'} still blank</p> : null}
+            {blank.length ? <p className="text-[12.5px] text-[var(--desk-pending)]">{blank.length} section{blank.length === 1 ? '' : 's'} still blank</p> : null}
             <Button onClick={save} disabled={saving || !dirty}>
               {saving ? 'Saving…' : dirty ? 'Save guidance' : 'Saved'}
             </Button>

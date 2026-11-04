@@ -226,14 +226,14 @@ function PracticeToday(props: DashboardPageProps) {
             </>
           }
           secondaryActions={
-            <div data-tour="booking-link" className="flex h-[44px] min-w-0 bg-[#F1F5F9] border border-[#E2E8F0] rounded-[14px] px-3.5 items-center gap-2.5">
-              <Link2 className="h-4 w-4 text-[#64748B] shrink-0" />
+            <div data-tour="booking-link" className="flex h-[44px] min-w-0 bg-[var(--desk-surface-muted)] border border-[var(--desk-border)] rounded-[14px] px-3.5 items-center gap-2.5">
+              <Link2 className="h-4 w-4 text-[var(--desk-text-muted)] shrink-0" />
               <input
                 type="text"
                 readOnly
                 aria-label="Booking link"
                 value={bookingUrl}
-                className="w-[238px] max-w-full min-w-0 bg-transparent text-[13px] font-medium text-[#334155] select-all outline-none"
+                className="w-[238px] max-w-full min-w-0 bg-transparent text-[13px] font-medium text-[var(--desk-text-body)] select-all outline-none"
               />
             </div>
           }
@@ -283,10 +283,10 @@ function PracticeToday(props: DashboardPageProps) {
 
           {/* Practice Setup Onboarding Banner */}
           {needsOnboarding && (
-            <div className="p-5 rounded-2xl bg-gradient-to-r from-[#0F3A53] to-[#1E293B] text-white shadow-md border border-[#E3B341]/30 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+            <div className="p-5 rounded-2xl bg-gradient-to-r from-[var(--desk-pine-600)] to-[var(--desk-sidebar-hover)] text-white shadow-md border border-[var(--desk-pending-border)]/30 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
               <div>
                 <div className="flex items-center gap-2 mb-1">
-                  <Sparkles className="h-5 w-5 text-[#E3B341]" />
+                  <Sparkles className="h-5 w-5 text-[var(--ds-sky)]" />
                   <h3 className="font-bold text-[16px] text-white">Complete your practice onboarding setup</h3>
                 </div>
                 <p className="text-[13px] text-slate-300 mb-2">
@@ -307,7 +307,7 @@ function PracticeToday(props: DashboardPageProps) {
               <div className="flex flex-wrap items-center gap-2 shrink-0">
                 <button
                   onClick={() => navigate('/onboarding')}
-                  className="h-9 px-4 rounded-xl bg-[#E3B341] text-[#0F172A] text-xs font-bold hover:bg-[#F0C558] transition-colors shadow-sm flex items-center gap-1.5 cursor-pointer"
+                  className="h-9 px-4 rounded-xl bg-[var(--ds-sky)] text-[var(--desk-text)] text-xs font-bold hover:bg-[var(--desk-pending-dot)] transition-colors shadow-sm flex items-center gap-1.5 cursor-pointer"
                 >
                   <Sparkles className="h-3.5 w-3.5" />
                   <span>Launch 3-Step Wizard</span>
@@ -328,7 +328,7 @@ function PracticeToday(props: DashboardPageProps) {
               <div>
                 <span className="os-eyebrow block mb-1">REVENUE THIS MONTH</span>
                 <div className="flex flex-wrap items-baseline gap-x-3 gap-y-2">
-                  <span className="text-[32px] md:text-[40px] font-extrabold tracking-[-0.04em] text-[#0F172A] leading-none">
+                  <span className="text-[32px] md:text-[40px] font-extrabold tracking-[-0.04em] text-[var(--desk-text)] leading-none">
                     ₦{summary.revenueThisMonthNaira.toLocaleString()}
                   </span>
                   {/*
@@ -341,8 +341,8 @@ function PracticeToday(props: DashboardPageProps) {
                     <span
                       className={`h-6 px-3 rounded-full text-xs font-bold flex items-center gap-1 border ${
                         changePercent >= 0
-                          ? 'bg-[#ECFDF5] border-[#A7F3D0] text-[#059669]'
-                          : 'bg-[#FEF2F2] border-[#FECACA] text-[#B91C1C]'
+                          ? 'bg-[var(--desk-active-bg)] border-[var(--desk-active-border)] text-[var(--desk-active)]'
+                          : 'bg-[var(--desk-danger-bg)] border-[var(--desk-danger-border)] text-[var(--desk-danger)]'
                       }`}
                     >
                       <TrendingUp
@@ -359,7 +359,7 @@ function PracticeToday(props: DashboardPageProps) {
                     </span>
                   )}
                 </div>
-                <p className="text-[13px] text-[#64748B] font-medium mt-1">
+                <p className="text-[13px] text-[var(--desk-text-muted)] font-medium mt-1">
                   {new Date().toLocaleString('en-US', { month: 'long', year: 'numeric' })}
                 </p>
               </div>
@@ -372,7 +372,7 @@ function PracticeToday(props: DashboardPageProps) {
             </div>
 
             {/* 12-Month Revenue Bars */}
-            <div className="h-[96px] flex items-end gap-[10px] pt-4 border-t border-[#E2E8F0]">
+            <div className="h-[96px] flex items-end gap-[10px] pt-4 border-t border-[var(--desk-border)]">
               {monthlyBars.map((b, i) => (
                 <div
                   key={b.month}
@@ -387,7 +387,7 @@ function PracticeToday(props: DashboardPageProps) {
                         i === monthlyBars.length - 1 ? primaryColor : `${primaryColor}4D`,
                     }}
                   />
-                  <span className="text-[10.5px] font-semibold text-[#94A3B8]">{b.label}</span>
+                  <span className="text-[10.5px] font-semibold text-[var(--desk-text-subtle)]">{b.label}</span>
                 </div>
               ))}
             </div>
@@ -398,13 +398,13 @@ function PracticeToday(props: DashboardPageProps) {
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
               <div>
                 <span className="os-eyebrow block">UPCOMING</span>
-                <h2 className="text-[17px] font-bold text-[#0F172A] tracking-[-0.02em]">Client sessions scheduled</h2>
+                <h2 className="text-[17px] font-bold text-[var(--desk-text)] tracking-[-0.02em]">Client sessions scheduled</h2>
               </div>
               <Link
                 to="/dashboard/sessions"
-                className="h-[32px] px-3 rounded-[10px] bg-[#F1F5F9] text-[#475569] text-[12.5px] font-bold flex items-center gap-1.5 hover:bg-[#E2E8F0]"
+                className="h-[32px] px-3 rounded-[10px] bg-[var(--desk-surface-muted)] text-[var(--desk-text-body)] text-[12.5px] font-bold flex items-center gap-1.5 hover:bg-[var(--desk-border)]"
               >
-                <Calendar className="h-3.5 w-3.5 text-[#64748B]" aria-hidden />
+                <Calendar className="h-3.5 w-3.5 text-[var(--desk-text-muted)]" aria-hidden />
                 <span>All sessions</span>
               </Link>
             </div>
@@ -417,38 +417,38 @@ function PracticeToday(props: DashboardPageProps) {
                 return (
                 <div
                   key={s.id}
-                  className="relative p-[14px_16px] rounded-[18px] border border-[#E2E8F0] flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4 hover:shadow-[0_8px_24px_rgba(15,23,42,.08)] hover:-translate-y-[1px] transition-all bg-white min-w-0"
+                  className="relative p-[14px_16px] rounded-[18px] border border-[var(--desk-border)] flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4 hover:shadow-[0_8px_24px_rgba(15,23,42,.08)] hover:-translate-y-[1px] transition-all bg-white min-w-0"
                 >
                   <div className="flex items-center gap-4 min-w-0">
                     <div className="w-[64px] shrink-0 text-center">
-                      <span className="text-[10.5px] font-bold uppercase tracking-wide text-[#64748B] block">{fmt.day(s.startsAt, now)}</span>
-                      <span className="text-[14px] font-extrabold text-[#0F172A] block leading-tight">{fmt.time(s.startsAt)}</span>
-                      <span className="text-[10.5px] font-semibold text-[#94A3B8]">{fmt.time(s.endsAt)}</span>
+                      <span className="text-[10.5px] font-bold uppercase tracking-wide text-[var(--desk-text-muted)] block">{fmt.day(s.startsAt, now)}</span>
+                      <span className="text-[14px] font-extrabold text-[var(--desk-text)] block leading-tight">{fmt.time(s.startsAt)}</span>
+                      <span className="text-[10.5px] font-semibold text-[var(--desk-text-subtle)]">{fmt.time(s.endsAt)}</span>
                     </div>
 
-                    <div className="hidden sm:block h-[34px] w-[1px] bg-[#E2E8F0]" />
+                    <div className="hidden sm:block h-[34px] w-[1px] bg-[var(--desk-border)]" />
 
-                    <div className="h-[38px] w-[38px] rounded-[12px] bg-[#0F3A53]/10 text-[#0F3A53] font-extrabold flex items-center justify-center text-sm shrink-0" aria-hidden>
+                    <div className="h-[38px] w-[38px] rounded-[12px] bg-[var(--desk-pine-600)]/10 text-[var(--desk-pine-600)] font-extrabold flex items-center justify-center text-sm shrink-0" aria-hidden>
                       {s.title.split(' ').map(n => n[0]).join('').slice(0, 2)}
                     </div>
 
                     <div className="min-w-0">
                       {/* The whole card opens the session; the buttons sit above this link. */}
-                      <Link to={`/dashboard/sessions/${s.id}`} className="text-[14.5px] font-bold text-[#0F172A] leading-snug hover:underline after:absolute after:inset-0 after:rounded-[18px] after:content-['']">
+                      <Link to={`/dashboard/sessions/${s.id}`} className="text-[14.5px] font-bold text-[var(--desk-text)] leading-snug hover:underline after:absolute after:inset-0 after:rounded-[18px] after:content-['']">
                         {s.title}
                       </Link>
-                      <p className="text-[12px] text-[#64748B] font-medium">{s.type} · {online ? 'Online' : 'In person'}</p>
+                      <p className="text-[12px] text-[var(--desk-text-muted)] font-medium">{s.type} · {online ? 'Online' : 'In person'}</p>
                     </div>
                   </div>
 
                   <div className="relative z-10 flex items-center gap-2">
-                    <span className={`px-2.5 py-1 rounded-full text-[11px] font-bold border ${badge.tone === 'live' ? 'bg-[#EFF6FF] text-[#1D4ED8] border-[#BFDBFE]' : badge.tone === 'wait' ? 'bg-[#FFFBEB] text-[#B45309] border-[#FDE68A]' : 'bg-[#ECFDF5] text-[#059669] border-[#A7F3D0]'}`}>
+                    <span className={`px-2.5 py-1 rounded-full text-[11px] font-bold border ${badge.tone === 'live' ? 'bg-[var(--desk-info-bg)] text-[var(--desk-info)] border-[var(--desk-info-border)]' : badge.tone === 'wait' ? 'bg-[var(--desk-pending-bg)] text-[var(--desk-pending)] border-[var(--desk-pending-border)]' : 'bg-[var(--desk-active-bg)] text-[var(--desk-active)] border-[var(--desk-active-border)]'}`}>
                       {badge.label}
                     </span>
 
                     <button
                       onClick={() => navigate(`/session/${s.id}/prep`)}
-                      className="h-[34px] px-3 rounded-[11px] bg-[#F1F5F9] text-[#475569] text-xs font-bold hover:bg-[#E2E8F0] flex items-center gap-1.5 cursor-pointer">
+                      className="h-[34px] px-3 rounded-[11px] bg-[var(--desk-surface-muted)] text-[var(--desk-text-body)] text-xs font-bold hover:bg-[var(--desk-border)] flex items-center gap-1.5 cursor-pointer">
                       <FileText className="h-3.5 w-3.5" />
                       <span>Prep</span>
                     </button>
@@ -459,8 +459,8 @@ function PracticeToday(props: DashboardPageProps) {
                         endsAt={s.endsAt}
                         to={`/session/${s.id}`}
                         label="Start session"
-                        className="h-[34px] px-3 rounded-[11px] text-white text-xs font-bold flex items-center gap-1.5 cursor-pointer bg-[#0F3A53]"
-                        waitingClassName="h-[34px] px-3 rounded-[11px] bg-[#E2E8F0] text-[#64748B] text-xs font-bold flex items-center gap-1.5 cursor-not-allowed"
+                        className="h-[34px] px-3 rounded-[11px] text-white text-xs font-bold flex items-center gap-1.5 cursor-pointer bg-[var(--desk-pine-600)]"
+                        waitingClassName="h-[34px] px-3 rounded-[11px] bg-[var(--desk-border)] text-[var(--desk-text-muted)] text-xs font-bold flex items-center gap-1.5 cursor-not-allowed"
                       />
                     ) : null}
                   </div>
@@ -473,7 +473,7 @@ function PracticeToday(props: DashboardPageProps) {
                 </div>
               )}
               {moreUpcoming > 0 && (
-                <Link to="/dashboard/sessions" className="block text-center pt-1 text-[12.5px] font-bold text-[#0F3A53] hover:underline">
+                <Link to="/dashboard/sessions" className="block text-center pt-1 text-[12.5px] font-bold text-[var(--desk-pine-600)] hover:underline">
                   {moreUpcoming} more upcoming · See all sessions
                 </Link>
               )}
@@ -489,18 +489,18 @@ function PracticeToday(props: DashboardPageProps) {
           <div className="os-card p-[22px]">
             <span className="os-eyebrow block mb-3">PROFILE PHOTO</span>
             <div className="flex items-center gap-4 mb-4">
-              <div className="relative h-[76px] w-[76px] rounded-[24px] bg-[#0F3A53]/10 text-[#0F3A53] font-extrabold flex items-center justify-center text-[24px] ring-3 ring-[#0F3A53]/20 shrink-0">
+              <div className="relative h-[76px] w-[76px] rounded-[24px] bg-[var(--desk-pine-600)]/10 text-[var(--desk-pine-600)] font-extrabold flex items-center justify-center text-[24px] ring-3 ring-[var(--desk-pine-600)]/20 shrink-0">
                 {profileAvatar ? (
                   <img src={profileAvatar} alt="Preview" className="h-full w-full object-cover rounded-[24px]" />
                 ) : (
                   profileName.split(' ').map((part) => part.charAt(0)).join('').slice(0, 2).toUpperCase()
                 )}
-                <span className="absolute -bottom-1 -right-1 h-6 w-6 rounded-full bg-[#10B981] border-[3px] border-white" />
+                <span className="absolute -bottom-1 -right-1 h-6 w-6 rounded-full bg-[var(--desk-active-dot)] border-[3px] border-white" />
               </div>
               <div className="space-y-1">
-                <h3 className="text-[15px] font-bold text-[#0F172A] leading-tight">{profileName}</h3>
-                <p className="text-[12.5px] text-[#64748B] font-medium">{profileTitle}</p>
-                <p className="text-[11.5px] text-[#94A3B8] font-medium">PNG, JPG or WebP</p>
+                <h3 className="text-[15px] font-bold text-[var(--desk-text)] leading-tight">{profileName}</h3>
+                <p className="text-[12.5px] text-[var(--desk-text-muted)] font-medium">{profileTitle}</p>
+                <p className="text-[11.5px] text-[var(--desk-text-subtle)] font-medium">PNG, JPG or WebP</p>
               </div>
             </div>
 
@@ -520,8 +520,8 @@ function PracticeToday(props: DashboardPageProps) {
               <div>
                 <span className="os-eyebrow block">PRACTICE STATUS</span>
                 <div className="flex items-center gap-2 mt-0.5">
-                  <span className={`h-2 w-2 rounded-full ${practiceActive ? 'bg-[#10B981]' : 'bg-[#64748B]'}`} />
-                  <span className="text-[16px] font-bold text-[#0F172A]">
+                  <span className={`h-2 w-2 rounded-full ${practiceActive ? 'bg-[var(--desk-active-dot)]' : 'bg-[var(--desk-text-muted)]'}`} />
+                  <span className="text-[16px] font-bold text-[var(--desk-text)]">
                     {practiceActive ? 'Active Practice' : 'Inactive Practice'}
                   </span>
                 </div>
@@ -535,7 +535,7 @@ function PracticeToday(props: DashboardPageProps) {
                   props.setTenantStatus?.(nextActive ? 'ACTIVE' : 'PAUSED');
                 }}
                 className={`w-[60px] h-[34px] rounded-full p-[3px] transition-colors duration-200 cursor-pointer ${
-                  practiceActive ? 'bg-[#10B981]' : 'bg-[#CBD5E1]'
+                  practiceActive ? 'bg-[var(--desk-active-dot)]' : 'bg-[var(--desk-pine-200)]'
                 }`}
               >
                 <div
@@ -545,7 +545,7 @@ function PracticeToday(props: DashboardPageProps) {
                 />
               </button>
             </div>
-            <p className="text-[12px] text-[#64748B] font-medium leading-relaxed max-w-[220px]">
+            <p className="text-[12px] text-[var(--desk-text-muted)] font-medium leading-relaxed max-w-[220px]">
               {practiceActive
                 ? 'Your booking page is live and accepting new client bookings.'
                 : 'Your booking page is hidden. Existing sessions are unaffected.'}
@@ -558,17 +558,17 @@ function PracticeToday(props: DashboardPageProps) {
           <div className="os-card p-[20px_22px] flex items-center justify-between gap-3">
             <div>
               <span className="os-eyebrow block">PRACTICE BRANDING</span>
-              <h4 className="text-[14px] font-bold text-[#0F172A] mt-0.5">Colors & Custom Domain</h4>
-              <p className="text-[12px] text-[#64748B] font-medium mt-0.5">
+              <h4 className="text-[14px] font-bold text-[var(--desk-text)] mt-0.5">Colors & Custom Domain</h4>
+              <p className="text-[12px] text-[var(--desk-text-muted)] font-medium mt-0.5">
                 Manage your brand palette, logo, and white-label CNAME.
               </p>
             </div>
             <button
               onClick={() => navigate('/dashboard/settings/brand')}
-              className="h-9 px-3.5 rounded-[12px] bg-[#F1F5F9] text-[#0F172A] text-xs font-bold hover:bg-[#E2E8F0] transition-colors shrink-0 flex items-center gap-1 cursor-pointer"
+              className="h-9 px-3.5 rounded-[12px] bg-[var(--desk-surface-muted)] text-[var(--desk-text)] text-xs font-bold hover:bg-[var(--desk-border)] transition-colors shrink-0 flex items-center gap-1 cursor-pointer"
             >
               <span>Settings</span>
-              <ArrowRight className="h-3.5 w-3.5 text-[#64748B]" />
+              <ArrowRight className="h-3.5 w-3.5 text-[var(--desk-text-muted)]" />
             </button>
           </div>
           ) : null}

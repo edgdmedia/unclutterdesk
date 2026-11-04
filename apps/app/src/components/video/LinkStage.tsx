@@ -13,7 +13,7 @@ export function LinkStage({ url, provider, renderBar }: { url: string; provider:
           <button
             type="button"
             onClick={() => window.open(url, '_blank', 'noopener')}
-            className="inline-flex h-[44px] items-center gap-2 rounded-[14px] bg-[#E3B341] px-5 text-[13px] font-bold text-[#0F172A] cursor-pointer"
+            className="inline-flex h-[44px] items-center gap-2 rounded-[14px] bg-[var(--ds-sky)] px-5 text-[13px] font-bold text-[var(--desk-text)] cursor-pointer"
           >
             <ExternalLink className="h-4 w-4" />
             Open video call

@@ -22,7 +22,7 @@ type FormTemplate = {
 type Category = 'all' | 'intake' | 'assessment' | 'feedback' | 'consent' | 'review';
 
 const TYPE_META: Record<string, { icon: typeof FileText; sub: string; iconBg: string }> = {
-  INTAKE: { icon: FileText, sub: 'DEFAULT', iconBg: 'bg-[#0F3A53]/10 text-[#0F3A53]' },
+  INTAKE: { icon: FileText, sub: 'DEFAULT', iconBg: 'bg-[var(--desk-pine-600)]/10 text-[var(--desk-pine-600)]' },
   ASSESSMENT: { icon: Activity, sub: 'SCORED', iconBg: 'bg-amber-100 text-amber-800' },
   FEEDBACK: { icon: MessageSquare, sub: '1-5 SCALE', iconBg: 'bg-emerald-100 text-emerald-800' },
   CONSENT: { icon: ShieldCheck, sub: 'SIGNATURE', iconBg: 'bg-purple-100 text-purple-800' },
@@ -100,10 +100,10 @@ export function FormsManagerPage() {
         />
       }
     >
-      <p className="text-xs text-[#64748B] font-medium">Real forms from your practice library. Review forms publish to your landing page.</p>
+      <p className="text-xs text-[var(--desk-text-muted)] font-medium">Real forms from your practice library. Review forms publish to your landing page.</p>
 
       <div className="space-y-6">
-        <div className="h-[38px] p-1 bg-[#EEF2F7] rounded-[14px] inline-flex gap-1 border border-[#E2E8F0]">
+        <div className="h-[38px] p-1 bg-[var(--desk-surface-muted)] rounded-[14px] inline-flex gap-1 border border-[var(--desk-border)]">
           {[
             { id: 'all', label: 'ALL' },
             { id: 'intake', label: 'INTAKE' },
@@ -117,8 +117,8 @@ export function FormsManagerPage() {
               onClick={() => setActiveCategory(category.id as Category)}
               className={`px-4 rounded-[10px] text-[11px] font-black tracking-wider uppercase transition-all cursor-pointer ${
                 activeCategory === category.id
-                  ? 'bg-[#0F3A53] text-white shadow-md'
-                  : 'text-[#64748B] hover:text-[#0F172A]'
+                  ? 'bg-[var(--desk-pine-600)] text-white shadow-md'
+                  : 'text-[var(--desk-text-muted)] hover:text-[var(--desk-text)]'
               }`}
             >
               {category.label}
@@ -133,11 +133,11 @@ export function FormsManagerPage() {
         ) : null}
 
         {loading ? (
-          <div className="rounded-[24px] border border-[#E2E8F0] bg-white px-6 py-10 text-sm font-medium text-[#64748B]">
+          <div className="rounded-[24px] border border-[var(--desk-border)] bg-white px-6 py-10 text-sm font-medium text-[var(--desk-text-muted)]">
             Loading practice forms...
           </div>
         ) : filteredTemplates.length === 0 ? (
-          <div className="rounded-[24px] border border-dashed border-[#CBD5E1] bg-white px-6 py-10 text-sm font-medium text-[#64748B]">
+          <div className="rounded-[24px] border border-dashed border-[var(--desk-pine-200)] bg-white px-6 py-10 text-sm font-medium text-[var(--desk-text-muted)]">
             No forms in this category yet.
           </div>
         ) : (
@@ -152,7 +152,7 @@ export function FormsManagerPage() {
                 <div
                   key={template.id}
                   className={`p-[22px] rounded-[24px] bg-white border flex flex-col justify-between space-y-4 shadow-xs ${
-                    isSystemTemplate ? 'border-2 border-[#E3B341] shadow-md' : template.isDefault ? 'border-2 border-[#E3B341] shadow-md' : 'border-[#E2E8F0]'
+                    isSystemTemplate ? 'border-2 border-[var(--desk-pending-border)] shadow-md' : template.isDefault ? 'border-2 border-[var(--desk-pending-border)] shadow-md' : 'border-[var(--desk-border)]'
                   }`}
                 >
                   <div className="space-y-3">
@@ -161,43 +161,43 @@ export function FormsManagerPage() {
                         <Icon className="h-5 w-5" />
                       </div>
                       <div className="flex items-center gap-1.5">
-                        <span className="h-5 px-2 rounded-full bg-[#F1F5F9] text-[#475569] text-[9px] font-black uppercase tracking-wider">
+                        <span className="h-5 px-2 rounded-full bg-[var(--desk-surface-muted)] text-[var(--desk-text-body)] text-[9px] font-black uppercase tracking-wider">
                           {template.targetType}
                         </span>
                         {isSystemTemplate ? (
-                          <span className="h-5 px-2 rounded-full bg-[#FEF3C7] text-[#92400E] text-[9px] font-black uppercase tracking-wider border border-[#E3B341]/40">
+                          <span className="h-5 px-2 rounded-full bg-[var(--desk-pending-bg)] text-[var(--desk-pending)] text-[9px] font-black uppercase tracking-wider border border-[var(--desk-pending-border)]/40">
                             System template
                           </span>
                         ) : null}
-                        <span className="h-5 px-2 rounded-full bg-[#0F3A53]/10 text-[#0F3A53] text-[9px] font-black uppercase tracking-wider">
+                        <span className="h-5 px-2 rounded-full bg-[var(--desk-pine-600)]/10 text-[var(--desk-pine-600)] text-[9px] font-black uppercase tracking-wider">
                           {isSystemTemplate ? template.systemKey?.replace(/_/g, '-') : template.targetType === 'REVIEW' ? template.reviewPublicationMode : meta.sub}
                         </span>
                       </div>
                     </div>
 
                     <div>
-                      <h3 className="text-[15.5px] font-bold text-[#0F172A]">{template.title}</h3>
-                      <p className="text-[13px] text-[#475569] leading-relaxed mt-1 font-medium">
+                      <h3 className="text-[15.5px] font-bold text-[var(--desk-text)]">{template.title}</h3>
+                      <p className="text-[13px] text-[var(--desk-text-body)] leading-relaxed mt-1 font-medium">
                         {template.description || 'No description added yet.'}
                       </p>
                       {isSystemTemplate ? (
-                        <p className="text-[11.5px] text-[#92400E] font-semibold mt-2">
+                        <p className="text-[11.5px] text-[var(--desk-pending)] font-semibold mt-2">
                           Built-in scored assessment. Schema is locked to preserve scoring accuracy.
                         </p>
                       ) : null}
                     </div>
 
-                    <div className="flex items-center gap-3 text-xs font-bold text-[#0F172A] pt-2 border-t border-[#F1F5F9]">
+                    <div className="flex items-center gap-3 text-xs font-bold text-[var(--desk-text)] pt-2 border-t border-[var(--desk-border-soft)]">
                       <span>{questionCount} question{questionCount === 1 ? '' : 's'}</span>
                       <span>·</span>
                       <span>{template.isActive ? 'Live' : 'Paused'}</span>
                     </div>
                   </div>
 
-                  <div className="pt-3 border-t border-[#F1F5F9] flex items-center justify-between gap-3">
+                  <div className="pt-3 border-t border-[var(--desk-border-soft)] flex items-center justify-between gap-3">
                     <Link
                       to={`/dashboard/settings/forms/${template.id}`}
-                      className="h-9 px-3 rounded-[12px] bg-[#F1F5F9] text-[#0F172A] text-xs font-bold hover:bg-slate-200 inline-flex items-center gap-1.5"
+                      className="h-9 px-3 rounded-[12px] bg-[var(--desk-surface-muted)] text-[var(--desk-text)] text-xs font-bold hover:bg-slate-200 inline-flex items-center gap-1.5"
                     >
                       <Edit2 className="h-3.5 w-3.5" />
                       <span>{isSystemTemplate ? 'View template' : 'Edit schema'}</span>
@@ -208,7 +208,7 @@ export function FormsManagerPage() {
                       disabled={togglingId === template.id}
                       onClick={() => void toggleFormActive(template)}
                       className={`w-[40px] h-[22px] rounded-full p-[2px] cursor-pointer transition-colors disabled:opacity-60 ${
-                        template.isActive ? 'bg-[#15803D]' : 'bg-[#E2E8F0]'
+                        template.isActive ? 'bg-[var(--desk-active)]' : 'bg-[var(--desk-border)]'
                       }`}
                     >
                       <div
@@ -224,13 +224,13 @@ export function FormsManagerPage() {
 
             <Link
           to="/dashboard/settings/forms/new"
-              className="p-[22px] rounded-[24px] border-2 border-dashed border-[#CBD5E1] bg-[#F8FAFC] hover:bg-[#F1F5F9] flex flex-col items-center justify-center text-center space-y-2 cursor-pointer min-h-[260px] transition-colors"
+              className="p-[22px] rounded-[24px] border-2 border-dashed border-[var(--desk-pine-200)] bg-[var(--desk-surface)] hover:bg-[var(--desk-surface-muted)] flex flex-col items-center justify-center text-center space-y-2 cursor-pointer min-h-[260px] transition-colors"
             >
-              <div className="h-10 w-10 rounded-full bg-white text-[#0F3A53] font-bold flex items-center justify-center shadow-xs">
+              <div className="h-10 w-10 rounded-full bg-white text-[var(--desk-pine-600)] font-bold flex items-center justify-center shadow-xs">
                 <Plus className="h-5 w-5" />
               </div>
-              <h3 className="text-[15px] font-bold text-[#0F172A]">Create a custom form</h3>
-              <p className="text-xs text-[#64748B] font-medium max-w-[200px]">
+              <h3 className="text-[15px] font-bold text-[var(--desk-text)]">Create a custom form</h3>
+              <p className="text-xs text-[var(--desk-text-muted)] font-medium max-w-[200px]">
                 Build intake questionnaires, scored assessments, consent flows, or public review forms.
               </p>
             </Link>

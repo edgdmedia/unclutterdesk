@@ -248,27 +248,27 @@ export function PaletteSwatches({
 
 /** A small structural sketch of each layout, in neutral greys. */
 function LayoutThumb({ layout }: { layout: ProfileLayoutKey }) {
-  const bar = (w: string, h = 5, bg = '#CBD5E1'): CSSProperties => ({ width: w, height: h, borderRadius: 999, background: bg });
+  const bar = (w: string, h = 5, bg: string = 'var(--desk-pine-200)'): CSSProperties => ({ width: w, height: h, borderRadius: 999, background: bg });
   return (
     <span aria-hidden className="h-[64px] rounded-[10px] bg-[var(--desk-surface-muted)] overflow-hidden flex flex-col p-1.5 gap-1">
       {layout === 'classic' && (
         <span className="flex flex-col items-center gap-1 pt-1">
-          <span className="h-[18px] w-[18px] rounded-full" style={{ background: '#94A3B8' }} />
-          <span style={bar('50%', 5, '#64748B')} />
+          <span className="h-[18px] w-[18px] rounded-full bg-[var(--desk-text-subtle)]" />
+          <span style={bar('50%', 5, 'var(--desk-text-muted)')} />
           <span style={bar('70%')} />
-          <span style={bar('80%', 7, '#94A3B8')} />
+          <span style={bar('80%', 7, 'var(--desk-text-subtle)')} />
         </span>
       )}
       {layout === 'editorial' && (
         <>
-          <span className="h-[26px] -mx-1.5 -mt-1.5" style={{ background: '#CBD5E1' }} />
-          <span style={bar('60%', 6, '#64748B')} />
-          <span style={bar('85%', 4, '#94A3B8')} />
+          <span className="h-[26px] -mx-1.5 -mt-1.5 bg-[var(--desk-pine-200)]" />
+          <span style={bar('60%', 6, 'var(--desk-text-muted)')} />
+          <span style={bar('85%', 4, 'var(--desk-text-subtle)')} />
         </>
       )}
       {layout === 'compact' && (
         <>
-          <span className="flex items-center gap-1"><span className="h-[14px] w-[14px] rounded-[4px]" style={{ background: '#94A3B8' }} /><span style={bar('45%', 5, '#64748B')} /></span>
+          <span className="flex items-center gap-1"><span className="h-[14px] w-[14px] rounded-[4px] bg-[var(--desk-text-subtle)]" /><span style={bar('45%', 5, 'var(--desk-text-muted)')} /></span>
           <span className="h-[10px] rounded-[4px] bg-[var(--desk-surface)]" />
           <span className="h-[10px] rounded-[4px] bg-[var(--desk-surface)]" />
           <span className="h-[10px] rounded-[4px] bg-[var(--desk-surface)]" />
@@ -276,7 +276,7 @@ function LayoutThumb({ layout }: { layout: ProfileLayoutKey }) {
       )}
       {layout === 'split' && (
         <span className="flex gap-1 h-full">
-          <span className="flex-1 flex flex-col gap-1"><span style={bar('80%', 6, '#64748B')} /><span style={bar('100%')} /><span style={bar('90%')} /></span>
+          <span className="flex-1 flex flex-col gap-1"><span style={bar('80%', 6, 'var(--desk-text-muted)')} /><span style={bar('100%')} /><span style={bar('90%')} /></span>
           <span className="w-[38%] rounded-[5px] bg-[var(--desk-surface)]" />
         </span>
       )}
@@ -314,7 +314,7 @@ function ProfilePreview({
   const line = headline || 'Your headline appears here.';
 
   return (
-    <div className="mx-auto w-[240px] overflow-hidden rounded-[26px] border-[6px] border-[#0F172A]" style={{ background: c.background, color: c.text }}>
+    <div className="mx-auto w-[240px] overflow-hidden rounded-[26px] border-[6px] border-[var(--desk-text)]" style={{ background: c.background, color: c.text }}>
       <div className="h-[330px] overflow-hidden">
         {layout === 'classic' && (
           <div className="flex flex-col items-center gap-1.5 px-4 py-5 text-center" style={{ background: c.surface }}>
@@ -443,7 +443,6 @@ export function AppearancePicker({
           onPick={(change) => onChange(change)}
         />
       </div>
-
       <ScaledPreview
         width={1180}
         minHeight={400}

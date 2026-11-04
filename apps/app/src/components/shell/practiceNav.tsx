@@ -141,7 +141,7 @@ function PlanTag({ tier }: { tier: string }) {
   return (
     <span
       title={`Part of the ${tier} plan`}
-      className="h-[16px] px-1.5 rounded-[4px] text-[8.5px] font-extrabold flex items-center justify-center uppercase tracking-wider bg-[#1E293B] text-[#94A3B8] border border-white/5"
+      className="h-[16px] px-1.5 rounded-[4px] text-[8.5px] font-extrabold flex items-center justify-center uppercase tracking-wider bg-[var(--desk-sidebar-hover)] text-[var(--desk-text-subtle)] border border-white/5"
     >
       {tier}
     </span>

@@ -63,27 +63,27 @@ export function PermissionsDialog({
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#0F172A]/60 p-4" role="dialog" aria-modal="true" aria-label={`Permissions for ${member.name}`}>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-[var(--desk-sidebar)]/60 p-4" role="dialog" aria-modal="true" aria-label={`Permissions for ${member.name}`}>
       <div className="w-full max-w-[520px] max-h-[90vh] overflow-y-auto rounded-[20px] bg-white p-6 shadow-2xl space-y-4">
         <div className="flex items-start justify-between gap-3">
           <div>
-            <h2 className="text-[16px] font-bold text-[#0F172A]">Permissions — {member.name}</h2>
-            <p className="text-[12px] text-[#64748B]">
+            <h2 className="text-[16px] font-bold text-[var(--desk-text)]">Permissions — {member.name}</h2>
+            <p className="text-[12px] text-[var(--desk-text-muted)]">
               Ticks here add to what the <span className="font-bold">{member.role.toLowerCase()}</span> role already gives. Nothing removes it.
             </p>
           </div>
-          <button type="button" onClick={onClose} aria-label="Close" className="h-7 w-7 inline-flex items-center justify-center rounded-[8px] text-[#64748B] hover:bg-[#F1F5F9] cursor-pointer">
+          <button type="button" onClick={onClose} aria-label="Close" className="h-7 w-7 inline-flex items-center justify-center rounded-[8px] text-[var(--desk-text-muted)] hover:bg-[var(--desk-surface-muted)] cursor-pointer">
             <X className="h-4 w-4" />
           </button>
         </div>
 
         {groups.map((g) => (
           <fieldset key={g} className="space-y-1.5">
-            <legend className="text-[10.5px] font-black tracking-[0.14em] uppercase text-[#64748B] mb-1">{g}</legend>
+            <legend className="text-[10.5px] font-black tracking-[0.14em] uppercase text-[var(--desk-text-muted)] mb-1">{g}</legend>
             {CATALOG.filter((c) => c.group === g).map((c) => {
               const fromRole = base.has(c.key);
               return (
-                <label key={c.key} className={`flex items-start gap-2.5 p-2.5 rounded-[12px] border ${fromRole ? 'border-[#E2E8F0] bg-[#F8FAFC] opacity-70' : 'border-[#E2E8F0] cursor-pointer'}`}>
+                <label key={c.key} className={`flex items-start gap-2.5 p-2.5 rounded-[12px] border ${fromRole ? 'border-[var(--desk-border)] bg-[var(--desk-surface)] opacity-70' : 'border-[var(--desk-border)] cursor-pointer'}`}>
                   <input
                     type="checkbox"
                     aria-label={c.label}
@@ -94,11 +94,11 @@ export function PermissionsDialog({
                     className="mt-0.5"
                   />
                   <span className="min-w-0">
-                    <span className="block text-[12.5px] font-bold text-[#0F172A]">
+                    <span className="block text-[12.5px] font-bold text-[var(--desk-text)]">
                       {c.label}
-                      {fromRole ? <span className="ml-1.5 text-[10px] font-black uppercase text-[#64748B]">from role</span> : null}
+                      {fromRole ? <span className="ml-1.5 text-[10px] font-black uppercase text-[var(--desk-text-muted)]">from role</span> : null}
                     </span>
-                    <span className="block text-[11.5px] text-[#64748B]">{c.hint}</span>
+                    <span className="block text-[11.5px] text-[var(--desk-text-muted)]">{c.hint}</span>
                   </span>
                 </label>
               );
@@ -111,7 +111,7 @@ export function PermissionsDialog({
           type="button"
           onClick={save}
           disabled={busy}
-          className="w-full h-[42px] rounded-[12px] bg-[#0F3A53] text-white text-[13px] font-bold cursor-pointer disabled:opacity-50"
+          className="w-full h-[42px] rounded-[12px] bg-[var(--desk-pine-600)] text-white text-[13px] font-bold cursor-pointer disabled:opacity-50"
         >
           {busy ? 'Saving…' : 'Save permissions'}
         </button>

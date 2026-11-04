@@ -169,6 +169,6 @@ describe('the Payments page', () => {
   it('shows the outstanding total in warning colour', async () => {
     openPayments();
     const owed = await screen.findByText('OUTSTANDING');
-    expect(owed.parentElement?.querySelector('.text-\\[\\#B45309\\]')).toBeTruthy();
+    expect(owed.parentElement?.querySelector('.text-\\[var\\(--desk-pending\\)\\]')).toBeTruthy();
   });
 });
