@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { ConsultController } from './consult.controller';
 import { ConsultService } from './consult.service';
 import { ConsultCron } from './consult.cron';
+import { SessionReminderService } from './session-reminders.service';
 import { ManualPaymentService } from './manual-payment.service';
 import { StaffBookingService } from './staff-booking.service';
 import { SessionDirectoryService } from './session-directory.service';
@@ -15,7 +16,7 @@ import { PractitionerProfileModule } from '../practitioner-profile/practitioner-
 @Module({
   imports: [NotificationsModule, DiscountModule, BillingModule, CalendarModule, PractitionerProfileModule],
   controllers: [ConsultController],
-  providers: [ConsultService, ConsultCron, ManualPaymentService, StaffBookingService, SessionDirectoryService, PrismaService],
+  providers: [ConsultService, ConsultCron, SessionReminderService, ManualPaymentService, StaffBookingService, SessionDirectoryService, PrismaService],
   exports: [ConsultService],
 })
 export class ConsultModule {}
