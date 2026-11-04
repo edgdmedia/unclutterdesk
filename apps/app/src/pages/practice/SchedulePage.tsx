@@ -85,6 +85,25 @@ export function SchedulePage({ sessions, setSessions, clients, tenantSlug, onRef
     };
   }, []);
 
+  // Days the therapist is away. They show as grey blocks and close to booking.
+  const [timeOff, setTimeOff] = useState<Array<{ id: string; startsOn: string; endsOn: string; note: string | null }>>([]);
+  useEffect(() => {
+    let live = true;
+    api
+      .get<{ timeOff?: Array<{ id: string; startsOn: string; endsOn: string; note: string | null }> }>('/v1/consult/therapist/time-off')
+      .then((r) => live && setTimeOff(r.timeOff ?? []))
+      .catch(() => undefined);
+    return () => {
+      live = false;
+    };
+  }, []);
+
+  /** The time-off period covering this date, if any. */
+  const awayOn = (day: Date) => {
+    const key = localDateInput(day);
+    return timeOff.find((t) => key >= t.startsOn && key <= t.endsOn) ?? null;
+  };
+
   // Helper: Get Monday of the week
   const getStartOfWeek = (d: Date) => {
     const date = new Date(d);
@@ -163,6 +182,10 @@ export function SchedulePage({ sessions, setSessions, clients, tenantSlug, onRef
 
   // Handle cell click
   const handleCellClick = (date: Date, hour: number) => {
+    if (awayOn(date)) {
+      toast.info('You are away that day. Remove the time off to add hours.');
+      return;
+    }
     setFormDate(localDateInput(date));
     setFormTime(`${hour.toString().padStart(2, '0')}:00`);
     setFormDuration(weekly.sessionLengthMinutes);
@@ -354,6 +377,7 @@ export function SchedulePage({ sessions, setSessions, clients, tenantSlug, onRef
             {/* Day Columns */}
             {activeDays.map((day, dayIdx) => {
               const dayEvents = sessions.filter((s) => isSameDay(new Date(s.startsAt), day));
+              const away = awayOn(day);
 
               return (
                 <div key={dayIdx} className="border-r border-[#E2E8F0] last:border-r-0 relative flex flex-col">
@@ -363,6 +387,11 @@ export function SchedulePage({ sessions, setSessions, clients, tenantSlug, onRef
                       {day.toLocaleDateString('en-US', { weekday: 'short' }).toUpperCase()}
                     </span>
                     <span className="text-[15px] font-bold text-[#0F172A] leading-none">{day.getDate()}</span>
+                    {away ? (
+                      <span className="mt-0.5 inline-block rounded-full bg-slate-200 px-1.5 text-[8.5px] font-black uppercase tracking-[0.08em] text-slate-600">
+                        Away
+                      </span>
+                    ) : null}
                   </div>
 
                   {/* Grid Canvas with Interactive Hourly Rows */}
@@ -377,6 +406,18 @@ export function SchedulePage({ sessions, setSessions, clients, tenantSlug, onRef
                         />
                       ))}
                     </div>
+
+                    {/* Time off: a grey block over the whole day */}
+                    {away ? (
+                      <div
+                        className="absolute inset-0 z-20 bg-slate-200/60 pointer-events-none flex items-start justify-center pt-2"
+                        aria-label={away.note ? `Away: ${away.note}` : 'Away'}
+                      >
+                        <span className="rounded-full bg-white/80 px-2 py-0.5 text-[10px] font-bold text-slate-600 shadow-sm">
+                          {away.note ?? 'Away'}
+                        </span>
+                      </div>
+                    ) : null}
 
                     {/* Scheduled Events overlay */}
                     {dayEvents.map((ev) => {
@@ -442,13 +483,18 @@ export function SchedulePage({ sessions, setSessions, clients, tenantSlug, onRef
               {monthGridDays.map((day, idx) => {
                 const dayEvents = sessions.filter((s) => isSameDay(new Date(s.startsAt), day));
                 const isCurrentMonth = day.getMonth() === currentDate.getMonth();
+                const away = awayOn(day);
 
                 return (
                   <div
                     key={idx}
                     onClick={() => handleCellClick(day, 9)}
                     className={`border-r border-b border-slate-100 p-2 flex flex-col gap-1 cursor-pointer transition-all min-h-[100px] ${
-                      isCurrentMonth ? 'bg-white' : 'bg-slate-50/50'
+                      away
+                        ? 'bg-slate-200/60'
+                        : isCurrentMonth
+                          ? 'bg-white'
+                          : 'bg-slate-50/50'
                     } hover:bg-slate-50`}
                   >
                     <span
@@ -458,6 +504,11 @@ export function SchedulePage({ sessions, setSessions, clients, tenantSlug, onRef
                     >
                       {day.getDate()}
                     </span>
+                    {away ? (
+                      <span className="self-start rounded-full bg-white/80 px-1.5 py-0.5 text-[9px] font-bold text-slate-600 shadow-sm">
+                        {away.note ?? 'Away'}
+                      </span>
+                    ) : null}
 
                     {/* Month events list */}
                     <div className="space-y-1 overflow-y-auto flex-1 max-h-[80px]">

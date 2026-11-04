@@ -52,10 +52,12 @@ const CLIENTS = [
   { id: 'c2', name: 'Client Two', email: 'c2@test.com', care: 'individual', initials: 'CT' },
 ];
 
-function renderSchedule(overrides: { sessions?: typeof MOCK_SESSIONS; weekly?: typeof WEEKLY } = {}) {
-  const { sessions = MOCK_SESSIONS, weekly = WEEKLY } = overrides;
+function renderSchedule(overrides: { sessions?: typeof MOCK_SESSIONS; weekly?: typeof WEEKLY; timeOff?: Array<{ id: string; startsOn: string; endsOn: string; note: string | null }> } = {}) {
+  const { sessions = MOCK_SESSIONS, weekly = WEEKLY, timeOff = [] } = overrides;
   apiGet.mockReset();
-  apiGet.mockResolvedValue(weekly);
+  apiGet.mockImplementation((url: string) =>
+    Promise.resolve(url.includes('time-off') ? { timeOff } : weekly),
+  );
   apiPost.mockReset();
   apiPost.mockResolvedValue({ id: 'new-slot' });
 
@@ -100,6 +102,25 @@ describe('SchedulePage', () => {
     renderSchedule();
     // Check for Saturday column header in the week view
     expect(await screen.findByText('SAT')).toBeTruthy();
+  });
+
+  it('shows a grey block for days the therapist is away', async () => {
+    renderSchedule({
+      timeOff: [{ id: 't1', startsOn: '2026-11-05', endsOn: '2026-11-05', note: 'Conference' }],
+    });
+    // Thursday 5 November is in the 2-8 November week.
+    expect(await screen.findByText('Conference')).toBeTruthy();
+    expect(screen.getByText('Away')).toBeTruthy();
+  });
+
+  it('does not open the add-slot form on a day away', async () => {
+    renderSchedule({
+      timeOff: [{ id: 't1', startsOn: '2026-11-05', endsOn: '2026-11-05', note: null }],
+    });
+    await screen.findAllByText('Away');
+    expect(apiGet).toHaveBeenCalledWith('/v1/consult/therapist/time-off');
+    // No slot dialog was opened by rendering the away day.
+    expect(screen.queryByRole('dialog')).toBeNull();
   });
 
   it('Add open time posts only startsAt and endsAt', async () => {
