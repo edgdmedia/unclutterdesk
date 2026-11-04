@@ -13,6 +13,10 @@ export interface Plan {
   staffRoles: string[];
   googleCalendarSync: boolean;
   profilePdf: boolean;
+  introVideo?: boolean;
+  customBrandColor?: boolean;
+  /** Scored assessments the plan includes (PHQ-9, GAD-7, …). */
+  assessments?: string[];
 }
 
 /** The plans from the API: the same tables that set the charge and the limits. No credentials are sent. */
@@ -24,26 +28,48 @@ export async function fetchPlans(config: ProfilesConfig, fetchImpl: typeof fetch
   return plans;
 }
 
-/** What each plan includes, in plain words, from its entitlements. Every plan includes the free profile. */
+const join = (xs: string[]) => (xs.length < 2 ? xs.join('') : `${xs.slice(0, -1).join(', ')} and ${xs[xs.length - 1]}`);
+
+/** What each plan includes, in plain words, from its entitlements. */
 export function planFeatures(plan: Plan): string[] {
   const roles = plan.staffRoles.map((r) => r.toLowerCase());
+  const staff = roles.filter((r) => r !== 'therapist').map((r) => (r === 'receptionist' ? 'reception' : r));
   return [
-    'Your therapist profile and link',
-    plan.monthlyBookingLimit === null ? 'Unlimited online bookings' : `Up to ${plan.monthlyBookingLimit} online bookings a month`,
-    plan.platformFeePercent > 0 ? `${plan.platformFeePercent}% fee on paid bookings` : 'No fee on bookings',
-    plan.bankTransferPayments ? 'Card and bank transfer payments' : 'Card payments through Paystack',
-    ...(plan.profilePdf ? ['Profile PDF to print or attach'] : []),
+    'Professional profile, link and QR code',
+    plan.monthlyBookingLimit === null ? 'Unlimited bookings' : `Up to ${plan.monthlyBookingLimit} bookings a month`,
+    plan.platformFeePercent > 0 ? `Paystack payments (${plan.platformFeePercent}% platform fee)` : '0% platform fee',
+    ...(plan.bankTransferPayments ? ['Bank transfer payments'] : []),
     ...(plan.googleCalendarSync ? ['Google Calendar sync'] : []),
+    ...(plan.profilePdf && plan.introVideo ? ['Profile PDF and intro video'] : plan.profilePdf ? ['Profile PDF'] : []),
+    ...(plan.customBrandColor ? ['Your own brand colour'] : []),
     ...(plan.customDomain ? ['Your own domain'] : []),
-    ...(roles.includes('therapist') ? ['A team of therapists'] : []),
-    ...(roles.length ? [`Logins for ${roles.filter((r) => r !== 'therapist').join(' and ')} staff`] : []),
+    `Notes, intake${plan.assessments?.length ? `, ${join(plan.assessments)}` : ''}`,
+    ...(staff.length ? [`${join(staff.map((r, i) => (i === 0 ? r[0].toUpperCase() + r.slice(1) : r)))} staff`] : []),
+    ...(roles.includes('therapist') ? ['Several therapists'] : []),
   ];
+}
+
+/**
+ * The home page's plan cards: the first plan lists everything; each plan
+ * after it says "Everything in <the one before>" and only what it adds.
+ * All from the plans' own data, so the cards follow any change to a plan.
+ */
+export function planHighlights(plans: Plan[]): string[][] {
+  return plans.map((plan, i) => {
+    const mine = planFeatures(plan);
+    if (i === 0) return mine;
+    const before = planFeatures(plans[i - 1]);
+    // Assessments: name only the ones this plan adds.
+    const added = (plan.assessments ?? []).filter((a) => !(plans[i - 1].assessments ?? []).includes(a));
+    const extra = mine.filter((f) => !before.includes(f) && !f.startsWith('Notes, intake'));
+    return [`Everything in ${plans[i - 1].name}`, ...extra, ...(added.length ? [join(added)] : [])];
+  });
 }
 
 /** One line under the plan name. */
 export const PLAN_BLURBS: Record<Plan['tier'], string> = {
-  FREE: 'A professional profile and online booking, free.',
-  STARTER: 'For a solo practitioner taking regular bookings.',
-  PRO: 'For a growing practice with its own brand and front desk.',
-  CLINIC: 'For a clinic with a team of therapists.',
+  FREE: 'Your profile, and booking when you want it.',
+  STARTER: 'For a practice that is getting busy.',
+  PRO: 'For a full, established practice.',
+  CLINIC: 'For a team of therapists.',
 };

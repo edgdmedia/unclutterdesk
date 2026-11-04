@@ -1,7 +1,7 @@
 /* ═══════════════════════════════════════════════
    UNCLUTTER DESK — TYPOGRAPHY
-   Values unchanged from the previous system.
-   Outfit throughout, weights 300–900.
+   Sizes unchanged. Figtree throughout (weights 300–900); Fraunces 560
+   for page titles via --font-head.
    ═══════════════════════════════════════════════ */
 
 :root {
