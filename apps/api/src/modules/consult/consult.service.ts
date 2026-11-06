@@ -1990,6 +1990,8 @@ export class ConsultService {
     if (status === 'CANCELLED') {
       // From a plan: paid already, so it goes back to "not scheduled".
       await returnPlanSessionOnCancel(this.prisma as any, tenantId, bookingId);
+      // A cancelled session's event comes out of Google Calendar.
+      await this.calendar.pushBookingToGoogle(bookingId).catch(() => undefined);
     }
 
     if (status === 'CANCELLED') {

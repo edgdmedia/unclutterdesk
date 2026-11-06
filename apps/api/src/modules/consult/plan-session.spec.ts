@@ -111,7 +111,7 @@ function make(over: { booking?: any; plan?: any; line?: any; ps?: any; slot?: an
   // The booking emails and calendar push are StaffBookingService's, tested there.
   (service as any).afterBooking = vi.fn().mockResolvedValue(undefined);
   (service as any).withinMonthlyLimit = vi.fn().mockResolvedValue(undefined);
-  return { service, prisma, tx, consult, notifications };
+  return { service, prisma, tx, consult, notifications, calendar };
 }
 
 describe('turning a booked session into "not scheduled"', () => {
@@ -149,6 +149,12 @@ describe('turning a booked session into "not scheduled"', () => {
     await service.unschedule(TENANT, DESK, 900n);
     expect(tx.planSession.create).not.toHaveBeenCalled();
     expect(tx.planSession.updateMany).toHaveBeenCalledWith({ where: { id: 50n, tenantId: TENANT, bookingId: 900n }, data: { status: 'PAID', bookingId: null } });
+  });
+
+  it("takes the freed session's event out of Google Calendar", async () => {
+    const { service, calendar } = make() as any;
+    await service.unschedule(TENANT, DESK, 900n);
+    expect(calendar.pushBookingToGoogle).toHaveBeenCalledWith(900n);
   });
 
   it('emails the client to choose a new time', async () => {

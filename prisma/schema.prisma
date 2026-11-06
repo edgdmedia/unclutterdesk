@@ -506,6 +506,12 @@ model ConsultBooking {
   videoRoomName               String?
   /// VID-01: which provider hosts this session's room, fixed when the room is first made.
   videoProvider               String?      @db.VarChar(20)
+  /// The Google Calendar event this session was pushed as, and whose calendar
+  /// it is in (the practitioner whose token made it). A push updates it rather
+  /// than adding another; a move to another practitioner moves it; a
+  /// cancellation removes it. Null until first pushed.
+  googleEventId               String?      @db.VarChar(1024)
+  googleEventOwnerProfileId   BigInt?
   /// What happened, for staff. Seen by clinical roles only.
   internalSummary             String?      @db.Text
   /// The recap written for the client; emailed on request, never automatically.

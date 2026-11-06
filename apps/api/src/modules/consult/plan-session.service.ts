@@ -97,6 +97,8 @@ export class PlanSessionService extends StaffBookingService {
       return ps.id as bigint;
     });
 
+    // Its time is freed: the event comes out of Google Calendar until a new time is chosen.
+    await this.calendar.pushBookingToGoogle(b.id).catch(() => undefined);
     await this.emailUnscheduled(tenantId, b).catch((err) =>
       this.logger.warn(`Could not email the client about unscheduled booking ${b.id}: ${(err as Error).message}`),
     );

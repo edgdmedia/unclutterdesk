@@ -202,6 +202,8 @@ export class SessionDirectoryService {
         data: { isActive: true },
       });
     }
+    // A cancelled session's event comes out of Google Calendar.
+    if (status === 'CANCELLED') await this.calendar?.pushBookingToGoogle(b.id).catch(() => undefined);
     return { id: b.id.toString(), status };
   }
 
@@ -486,6 +488,8 @@ export class SessionDirectoryService {
     });
 
     const { clientProfileId, upcoming, ...out } = result;
+    // The event takes the new title and length (the same event, so the same Meet link).
+    await this.calendar?.pushBookingToGoogle(bookingId).catch(() => undefined);
     if (upcoming) {
       await this.emailServiceChange(tenantId, clientProfileId, out).catch(() => undefined);
     }
