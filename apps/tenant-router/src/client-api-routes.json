@@ -28,6 +28,7 @@
     "GET /v1/consult/public/services",
     "GET /v1/consult/public/availability",
     "GET /v1/consult/public/payment-options",
+    "GET /v1/consult/public/review-invite",
     "POST /v1/consult/public/bookings",
     "POST /v1/consult/public/bookings/:bookingId/confirm-payment",
     "POST /v1/consult/public/bookings/:bookingId/transfer-sent",
@@ -40,6 +41,9 @@
     "GET /v1/consult/portal/payments",
     "GET /v1/consult/portal/bookings/:bookingId/reschedule-options",
     "POST /v1/consult/portal/bookings/:bookingId/reschedule",
+    "GET /v1/consult/portal/plan-sessions",
+    "GET /v1/consult/portal/plan-sessions/:id/options",
+    "POST /v1/consult/portal/plan-sessions/:id/schedule",
     "GET /v1/calendar/bookings/:bookingId/ical",
 
     "GET /v1/intake/public/forms",

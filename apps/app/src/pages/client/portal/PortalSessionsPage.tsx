@@ -5,6 +5,7 @@ import { Page, PageHeader, SegmentedControl, useBrand } from '@unclutterdesk/ui'
 import { RescheduleDialog } from '../../../components/RescheduleDialog';
 import { usePortalData } from './PortalDataContext';
 import { PortalSessionCard } from './PortalSessionCard';
+import { ToSchedulePanel } from './ToSchedulePanel';
 import { BookSessionButton } from './BookSessionButton';
 import { DateTile } from './DateTile';
 import { formatTimeRange } from './portalFormat';
@@ -35,6 +36,7 @@ export function PortalSessionsPage() {
           />
         }
       >
+        {view === 'upcoming' ? <ToSchedulePanel onBooked={() => void reload()} /> : null}
         <div className="bg-white rounded-[22px] border border-[var(--desk-border)] overflow-hidden divide-y divide-[var(--desk-border-soft)]">
           {(view === 'upcoming' ? portal.upcoming : portal.past).length === 0 ? (
             <div className="px-5 py-10 text-sm font-medium text-[var(--desk-text-muted)]">

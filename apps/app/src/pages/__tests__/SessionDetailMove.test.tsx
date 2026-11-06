@@ -210,3 +210,33 @@ describe('asking for a review', () => {
     expect(await screen.findByText(/Set up a review form/)).toBeTruthy();
   });
 });
+
+// §11.2: the fourth of four sessions waits until the client knows when she is free.
+describe('leaving a session for the client to schedule', () => {
+  it('frees the time from Edit session, keeping the payment', async () => {
+    const session: Record<string, unknown> = { ...DETAIL };
+    renderPage(session);
+    apiPost.mockImplementation(async () => {
+      Object.assign(session, { status: 'CANCELLED', unscheduledAt: '2026-11-06T12:00:00.000Z' });
+      return { planSessionId: '50' };
+    });
+    fireEvent.click(await screen.findByRole('button', { name: /Edit session/ }));
+    fireEvent.click(await screen.findByRole('radio', { name: 'Client chooses later' }));
+    expect(screen.getByText(/stays paid/)).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: 'Let Ada Ola choose' }));
+    await waitFor(() => expect(apiPost).toHaveBeenCalledWith('/v1/consult/practice/sessions/900/unschedule', {}));
+    expect(await screen.findByText(/Left for Ada Ola to schedule/)).toBeTruthy();
+  });
+
+  it('is not offered for an unpaid session, which is cancelled instead', async () => {
+    renderPage({ ...DETAIL, status: 'PENDING_PAYMENT' });
+    fireEvent.click(await screen.findByRole('button', { name: /Edit session/ }));
+    await screen.findByRole('radio', { name: 'Custom time' });
+    expect(screen.queryByRole('radio', { name: 'Client chooses later' })).toBeNull();
+  });
+
+  it('a session booked from it says it was paid earlier', async () => {
+    renderPage({ ...DETAIL, paymentMethod: 'PLAN', amountKobo: '0' });
+    expect(await screen.findByText('Paid on an earlier booking')).toBeTruthy();
+  });
+});

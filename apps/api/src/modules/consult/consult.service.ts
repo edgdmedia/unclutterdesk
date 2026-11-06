@@ -18,6 +18,7 @@ import { slotsFromPattern, timesInHours, type WeeklyTime } from './hours';
 import { BookingNotifier } from '../notifications/booking-notifier.service';
 import { BookingPaymentSettler } from '../billing/booking-payment-settler.service';
 import { onlineHoldExpiry } from './online-hold';
+import { returnPlanSessionOnCancel } from './plan-session-rules';
 import { assertWithinMonthlyLimit, monthlyLimitReached } from './booking-limits';
 import { PLAN_SELECT } from '../entitlements/entitlements';
 import { PersonFactsService } from '../practitioner-profile/person-facts.service';
@@ -2009,6 +2010,11 @@ export class ConsultService {
         availability: true,
       },
     });
+
+    if (status === 'CANCELLED') {
+      // From a plan: paid already, so it goes back to "not scheduled".
+      await returnPlanSessionOnCancel(this.prisma as any, tenantId, bookingId);
+    }
 
     if (status === 'CANCELLED') {
       await this.notifier?.notifyStaff(bookingId, 'cancelled').catch(() => undefined);

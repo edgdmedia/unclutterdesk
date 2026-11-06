@@ -469,15 +469,15 @@ model ConsultAvailability {
 }
 
 model ConsultBooking {
-  id                          BigInt    @id @default(autoincrement())
+  id                          BigInt       @id @default(autoincrement())
   tenantId                    BigInt
   serviceId                   BigInt
   availabilityId              BigInt
   clientProfileId             BigInt
-  status                      String    @default("PENDING_PAYMENT") // "PENDING_PAYMENT", "CONFIRMED", "COMPLETED", "CANCELLED"
+  status                      String       @default("PENDING_PAYMENT") // "PENDING_PAYMENT", "CONFIRMED", "COMPLETED", "CANCELLED"
   /// "PAYSTACK" (paid online), "MANUAL" (bank transfer or paid at the practice,
   /// confirmed by staff), or "NONE" (the practice waived the fee).
-  paymentMethod               String    @default("PAYSTACK") @db.VarChar(20)
+  paymentMethod               String       @default("PAYSTACK") @db.VarChar(20)
   /// An unpaid booking holds its slot until this time, then is released:
   /// 35 minutes for an online checkout (BKG-09), longer for a transfer or a staff link.
   holdExpiresAt               DateTime?
@@ -492,7 +492,7 @@ model ConsultBooking {
   paymentConfirmedByProfileId BigInt?
   /// Set when staff made the booking for the client; null when the client booked.
   createdByProfileId          BigInt?
-  paymentRef                  String?   @unique
+  paymentRef                  String?      @unique
   paidAt                      DateTime?
   // What was actually charged, after any discount. The service price is not a
   // substitute: it moves when the practice reprices, and it is simply wrong for
@@ -500,29 +500,34 @@ model ConsultBooking {
   amountKobo                  BigInt?
   discountCodeUsed            String?
   /// SET-06: what was bought - 'ONLINE' or 'IN_PERSON'. Old rows read as online.
-  format                      String    @default("ONLINE") @db.VarChar(20)
+  format                      String       @default("ONLINE") @db.VarChar(20)
   locationId                  BigInt?
   notes                       String?
   videoRoomName               String?
   /// VID-01: which provider hosts this session's room, fixed when the room is first made.
-  videoProvider               String?   @db.VarChar(20)
+  videoProvider               String?      @db.VarChar(20)
   /// What happened, for staff. Seen by clinical roles only.
-  internalSummary             String?   @db.Text
+  internalSummary             String?      @db.Text
   /// The recap written for the client; emailed on request, never automatically.
-  clientRecap                 String?   @db.Text
+  clientRecap                 String?      @db.Text
   clientRecapSentAt           DateTime?
   /// When staff emailed the client a review request for this session. Never
   /// automatic (therapy ethics: no pressure on a client still in care); once
   /// per session.
   reviewRequestedAt           DateTime?
+  /// When staff turned this booked session into a not-yet-scheduled plan
+  /// session (§11.2): the time was given back and the client chooses a new
+  /// one. The booking stays as the record of the payment; status CANCELLED.
+  unscheduledAt               DateTime?
+  planSession                 PlanSession? @relation("PlanSessionBooking")
   /// After staff changed the service to a dearer one: what is still owed on top
   /// of amountKobo. 'DUE' until the desk records it paid (it is then added to
   /// amountKobo) or waives it.
   balanceKobo                 BigInt?
-  balanceStatus               String?   @db.VarChar(10)
+  balanceStatus               String?      @db.VarChar(10)
   balanceSettledAt            DateTime?
   balanceSettledByProfileId   BigInt?
-  createdAt                   DateTime  @default(now())
+  createdAt                   DateTime     @default(now())
   updatedAt                   DateTime?
 
   tenant          Tenant                    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
@@ -1244,4 +1249,78 @@ model ProfileReport {
 
   @@index([status, createdAt])
   @@index([profileId])
+}
+
+/// §11.2 session plans: a client's paid sessions with one practitioner, some
+/// with times chosen later. First piece (6 Nov 2026): not-yet-scheduled
+/// sessions made by turning a booked session back into "not scheduled".
+/// Recommendations, buying plans online with the pay-ahead discount, and
+/// refunds come later; the shape below is the spec's so they fit.
+model SessionPlan {
+  id                 BigInt   @id @default(autoincrement())
+  tenantId           BigInt
+  clientProfileId    BigInt
+  providerProfileId  BigInt
+  /// "RECOMMENDED", "ACTIVE", "COMPLETED", "CANCELLED"
+  status             String   @default("ACTIVE") @db.VarChar(20)
+  createdByProfileId BigInt?
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  lines    SessionPlanLine[]
+  sessions PlanSession[]
+
+  @@index([tenantId, clientProfileId, providerProfileId, status])
+}
+
+/// One service on a plan, with its count. The service lives on the line, not
+/// the plan, so mixing services later needs no reshaping.
+model SessionPlanLine {
+  id              BigInt   @id @default(autoincrement())
+  planId          BigInt
+  serviceId       BigInt
+  count           Int
+  unitPriceKobo   BigInt?
+  discountPercent Int      @default(0)
+  createdAt       DateTime @default(now())
+
+  plan     SessionPlan   @relation(fields: [planId], references: [id], onDelete: Cascade)
+  sessions PlanSession[]
+
+  @@index([planId])
+}
+
+/// One paid session of a plan. bookingId is null while it is not scheduled.
+/// PAID -> SCHEDULED -> COMPLETED, or REFUNDED.
+///
+/// Money stays on the booking it was paid on: a session made by unscheduling
+/// a booking records that booking in paidOnBookingId, and revenue, refunds
+/// and the client's payments keep reading it there. The booking a time is
+/// later chosen for carries no second charge (paymentMethod "PLAN").
+model PlanSession {
+  id                 BigInt    @id @default(autoincrement())
+  tenantId           BigInt
+  planId             BigInt
+  lineId             BigInt
+  clientProfileId    BigInt
+  providerProfileId  BigInt
+  serviceId          BigInt
+  format             String    @default("ONLINE") @db.VarChar(20)
+  locationId         BigInt?
+  status             String    @default("PAID") @db.VarChar(20)
+  paymentMethod      String    @db.VarChar(20)
+  amountKobo         BigInt    @default(0)
+  paidAt             DateTime?
+  paidOnBookingId    BigInt?
+  bookingId          BigInt?   @unique
+  createdByProfileId BigInt?
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
+
+  plan    SessionPlan     @relation(fields: [planId], references: [id], onDelete: Cascade)
+  line    SessionPlanLine @relation(fields: [lineId], references: [id], onDelete: Cascade)
+  booking ConsultBooking? @relation("PlanSessionBooking", fields: [bookingId], references: [id], onDelete: SetNull)
+
+  @@index([tenantId, clientProfileId, status])
+  @@index([tenantId, providerProfileId, status])
 }

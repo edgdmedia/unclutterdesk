@@ -36,17 +36,40 @@ function formatMoment(iso: string): string {
  * period. The same call is also what tells us the session is too close to move,
  * which is why the refusal is rendered here rather than guessed in the portal.
  */
+/** A paid session with no time yet (§11.2): the same dialog books its first time. */
+export interface OpenPlanSession {
+  id: string;
+  serviceTitle: string;
+  provider: { name: string };
+}
+
 export function RescheduleDialog({
   bookingId,
+  planSession,
   primaryColor,
   onClose,
   onRescheduled,
 }: {
-  bookingId: string;
+  /** Move this booked session… */
+  bookingId?: string;
+  /** …or choose the first time for this not-yet-scheduled one. */
+  planSession?: OpenPlanSession;
   primaryColor: string;
   onClose: () => void;
   onRescheduled: () => void;
 }) {
+  const choosing = Boolean(planSession);
+  // Both answer with the times the booking itself will accept.
+  const load = (): Promise<Options> =>
+    planSession
+      ? api.get<Slot[]>(`/v1/consult/portal/plan-sessions/${planSession.id}/options`).then((slots) => ({
+          bookingId: '',
+          serviceTitle: planSession.serviceTitle,
+          currentStartsAt: '',
+          noticeHours: 0,
+          slots: slots ?? [],
+        }))
+      : api.get<Options>(`/v1/consult/portal/bookings/${bookingId}/reschedule-options`);
   const toast = useToast();
   const [options, setOptions] = useState<Options | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -56,8 +79,7 @@ export function RescheduleDialog({
 
   useEffect(() => {
     let cancelled = false;
-    api
-      .get<Options>(`/v1/consult/portal/bookings/${bookingId}/reschedule-options`)
+    load()
       .then((data) => {
         if (!cancelled) setOptions(data);
       })
@@ -71,7 +93,7 @@ export function RescheduleDialog({
     return () => {
       cancelled = true;
     };
-  }, [bookingId]);
+  }, [bookingId, planSession?.id]);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -86,20 +108,20 @@ export function RescheduleDialog({
     setSaving(true);
     setSubmitError(null);
     try {
-      await api.post(`/v1/consult/portal/bookings/${bookingId}/reschedule`, {
-        availabilityId: selected,
-      });
+      await api.post(
+        planSession ? `/v1/consult/portal/plan-sessions/${planSession.id}/schedule` : `/v1/consult/portal/bookings/${bookingId}/reschedule`,
+        { availabilityId: selected },
+      );
       onRescheduled();
-      toast.success('Session rescheduled');
+      toast.success(choosing ? 'Session booked' : 'Session rescheduled');
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Could not reschedule the session');
+      toast.error(err instanceof Error ? err.message : choosing ? 'Could not book that time' : 'Could not reschedule the session');
       // Most often the slot went while the client was choosing. Reload the
       // list so they are not staring at a time that is already gone.
       setSubmitError(err instanceof Error ? err.message : 'We could not move your session.');
       setSaving(false);
       setSelected(null);
-      api
-        .get<Options>(`/v1/consult/portal/bookings/${bookingId}/reschedule-options`)
+      load()
         .then(setOptions)
         .catch(() => undefined);
     }
@@ -109,7 +131,7 @@ export function RescheduleDialog({
     <div
       role="dialog"
       aria-modal="true"
-      aria-label="Move this session"
+      aria-label={choosing ? 'Choose a time' : 'Move this session'}
       className="fixed inset-0 z-50 flex items-center justify-center bg-[rgba(15,23,42,0.45)] p-4"
       onClick={(e) => {
         if (e.target === e.currentTarget) onClose();
@@ -119,9 +141,13 @@ export function RescheduleDialog({
         <div className="flex items-start gap-3 p-[22px_24px_16px] border-b border-[var(--desk-border-soft)]">
           <div className="flex-1 min-w-0">
             <h2 className="text-[17px] font-bold tracking-[-0.02em] text-[var(--desk-text)]">
-              Move this session
+              {choosing ? 'Choose a time' : 'Move this session'}
             </h2>
-            {options ? (
+            {planSession ? (
+              <p className="mt-1 text-[12.5px] text-[var(--desk-text-muted)] leading-[1.55]">
+                {planSession.serviceTitle} with {planSession.provider.name} · already paid
+              </p>
+            ) : options ? (
               <p className="mt-1 text-[12.5px] text-[var(--desk-text-muted)] leading-[1.55]">
                 {options.serviceTitle} · currently {formatMoment(options.currentStartsAt)}
               </p>
@@ -149,8 +175,9 @@ export function RescheduleDialog({
             </div>
           ) : options.slots.length === 0 ? (
             <p className="py-8 text-center text-[13px] text-[var(--desk-text-muted)] leading-[1.6]">
-              Your therapist has no other open times at the moment. Please contact the practice and
-              they will find one for you.
+              {choosing
+                ? 'Your therapist has no open times at the moment. Please contact the practice and they will find one for you.'
+                : 'Your therapist has no other open times at the moment. Please contact the practice and they will find one for you.'}
             </p>
           ) : (
             <SlotDayPicker
@@ -179,7 +206,7 @@ export function RescheduleDialog({
             onClick={onClose}
             className="h-[46px] flex-1 rounded-[14px] border border-[var(--desk-border)] text-[13.5px] font-bold text-[var(--desk-text-body)] cursor-pointer hover:bg-[var(--desk-surface)]"
           >
-            Keep current time
+            {choosing ? 'Not now' : 'Keep current time'}
           </button>
           <button
             type="button"
@@ -189,7 +216,7 @@ export function RescheduleDialog({
             style={{ backgroundColor: primaryColor }}
           >
             {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
-            {saving ? 'Moving…' : 'Move session'}
+            {saving ? (choosing ? 'Booking…' : 'Moving…') : choosing ? 'Book this time' : 'Move session'}
           </button>
         </div>
       </div>
