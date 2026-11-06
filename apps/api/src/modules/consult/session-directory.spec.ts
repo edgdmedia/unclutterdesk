@@ -261,6 +261,30 @@ describe('rescheduleByStaff', () => {
     expect(notifications.sendEmail).toHaveBeenCalledWith(expect.objectContaining({ to: 'ada@example.com', type: 'bookings.rescheduled' }));
   });
 
+  // The calendar invite must show the new time; with Meet, the link stays the event's.
+  it('updates the Google Calendar event, before emailing the client', async () => {
+    const t = tx();
+    const { prisma, notifications } = make();
+    const order: string[] = [];
+    const calendar = { pushBookingToGoogle: vi.fn(async () => { order.push('calendar'); }) };
+    notifications.sendEmail.mockImplementation(async () => { order.push('email'); return { success: true }; });
+    const service = new SessionDirectoryService(prisma, notifications, undefined, calendar as any);
+    prisma.$transaction = vi.fn(async (fn: any) => fn(t));
+    await service.rescheduleByStaff(TENANT, DESK, 900n, 301n);
+    expect(calendar.pushBookingToGoogle).toHaveBeenCalledWith(900n);
+    expect(order).toEqual(['calendar', 'email']);
+  });
+
+  it('still moves the session when the calendar update fails', async () => {
+    const t = tx();
+    const { prisma, notifications } = make();
+    const calendar = { pushBookingToGoogle: vi.fn().mockRejectedValue(new Error('google')) };
+    const service = new SessionDirectoryService(prisma, notifications, undefined, calendar as any);
+    prisma.$transaction = vi.fn(async (fn: any) => fn(t));
+    await expect(service.rescheduleByStaff(TENANT, DESK, 900n, 301n)).resolves.toMatchObject({ id: '900' });
+    expect(notifications.sendEmail).toHaveBeenCalled();
+  });
+
   it('still moves the session when the email fails', async () => {
     const t = tx();
     const { service, prisma, notifications } = make();

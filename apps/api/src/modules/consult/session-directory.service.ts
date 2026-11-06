@@ -3,6 +3,7 @@ import { isMeetLink, roomResetOnMove, staffRoomPath } from '../video/room-links'
 import { PrismaService } from '../../common/prisma/prisma.service';
 import { NotificationService } from '../notifications/notification.service';
 import { BookingNotifier } from '../notifications/booking-notifier.service';
+import { CalendarService } from '../calendar/calendar.service';
 import { chargedKobo } from '../../common/revenue';
 import { tenantWebOrigin } from '../../common/origins';
 import { formatNaira } from '../billing/subscription-plans';
@@ -49,6 +50,7 @@ export class SessionDirectoryService {
     private readonly prisma: PrismaService,
     private readonly notifications: NotificationService,
     @Optional() private readonly notifier?: BookingNotifier,
+    @Optional() private readonly calendar?: CalendarService,
   ) {}
 
   private include() {
@@ -261,7 +263,10 @@ export class SessionDirectoryService {
       });
       return { id: b.id.toString(), startsAt: slot.startsAt.toISOString() };
     });
-    // Best effort: the session has moved; a mail outage must not report failure.
+    // Best effort: the session has moved; neither outage may report failure.
+    // The calendar invite takes the new time first (a Meet link stays the
+    // event's), then the client is emailed.
+    await this.calendar?.pushBookingToGoogle(bookingId).catch(() => undefined);
     await this.emailMoved(tenantId, bookingId).catch(() => undefined);
     return moved;
   }
