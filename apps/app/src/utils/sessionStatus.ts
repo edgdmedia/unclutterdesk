@@ -6,8 +6,19 @@ import type { StatusTone } from '@unclutterdesk/ui';
  * is still to come, under way, or over. Used by the dashboard, the sessions
  * list, the session page and the client page so they always agree.
  */
-export function sessionStatus(status: string | null | undefined, startsAt: string | Date, endsAt: string | Date, now: Date = new Date(), timezone = 'Africa/Lagos'): { label: string; tone: StatusTone } {
+export interface SessionTiming {
+  status?: string | null;
+  startsAt: string | Date;
+  endsAt: string | Date;
+  /** Set when the session was left for the client to choose a new time. */
+  unscheduledAt?: string | null;
+}
+
+export function sessionStatus({ status, startsAt, endsAt, unscheduledAt }: SessionTiming, now: Date = new Date(), timezone = 'Africa/Lagos'): { label: string; tone: StatusTone } {
   const s = (status ?? '').toUpperCase();
+  // Stored as cancelled so its money stays traceable, but the session was
+  // moved to a time still to be chosen, like an open ticket: never called off.
+  if (unscheduledAt && (s === 'CANCELLED' || s === 'CANCELED')) return { label: 'Open', tone: 'info' };
   if (s === 'CANCELLED' || s === 'CANCELED') return { label: 'Cancelled', tone: 'danger' };
   if (s === 'COMPLETED') return { label: 'Completed', tone: 'muted' };
   if (s === 'NO_SHOW') return { label: 'No-show', tone: 'danger' };

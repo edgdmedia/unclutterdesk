@@ -1917,7 +1917,9 @@ export class ConsultService {
     const manualDetails = bookings.some((b) => b.paymentMethod === 'MANUAL' && b.status === 'PENDING_PAYMENT')
       ? await this.manualPayments.available(tenantId)
       : null;
-    const mapped = bookings.map((booking) => ({
+    // A session left for the client to schedule is not a session of its own:
+    // it is in "to schedule", and then at the time the client chooses.
+    const mapped = bookings.filter((booking) => !booking.unscheduledAt).map((booking) => ({
       id: booking.id.toString(),
       icalToken: CalendarService.icalToken(booking.id),
       serviceTitle: booking.service.title,

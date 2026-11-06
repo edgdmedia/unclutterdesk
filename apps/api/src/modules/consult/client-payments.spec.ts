@@ -40,8 +40,30 @@ describe("a client's payment history", () => {
       expect.objectContaining({ id: 'plan-50', bookingId: null, planSessionId: '50', serviceTitle: 'Individual Therapy', sessionAt: null, amountKobo: '3000000', paidAt: paid.toISOString(), status: 'CONFIRMED' }),
     ]);
     expect(r.totalPaidKobo).toBe('3000000');
-    // Only the money paid directly: one paid on a booking is that booking's row.
-    expect(prisma.planSession.findMany.mock.calls[0][0].where).toMatchObject({ tenantId: TENANT, clientProfileId: CLIENT, paidOnBookingId: null });
+    expect(prisma.planSession.findMany.mock.calls[0][0].where).toEqual({ tenantId: TENANT, clientProfileId: CLIENT });
+  });
+
+  // "Client chooses later" cancels the booking in the records; the money went with the session.
+  it('shows a payment carried to a session the client chooses a time for as paid, once', async () => {
+    const left = booking({ status: 'CANCELLED', unscheduledAt: new Date('2026-11-06T09:00:00Z') });
+    const carried = { id: 51n, serviceId: 2n, status: 'PAID', amountKobo: 3_500_000n, paidAt: paid, paymentMethod: 'PAYSTACK', paidOnBookingId: 900n, createdAt: paid, booking: null };
+    const r = await clientPaymentHistory(make([left], [carried]), TENANT, CLIENT);
+    expect(r.payments).toEqual([
+      expect.objectContaining({ id: 'booking-900', bookingId: '900', planSessionId: '51', status: 'CONFIRMED', sessionAt: null, amountKobo: '3500000', reference: 'ref-1' }),
+    ]);
+    expect(r.totalPaidKobo).toBe('3500000');
+  });
+
+  it('and with the new time once the client has chosen one', async () => {
+    const left = booking({ status: 'CANCELLED', unscheduledAt: new Date('2026-11-06T09:00:00Z') });
+    const carried = { id: 51n, serviceId: 2n, status: 'SCHEDULED', amountKobo: 3_500_000n, paidAt: paid, paymentMethod: 'PAYSTACK', paidOnBookingId: 900n, createdAt: paid, booking: { id: 905n, availability: { startsAt: new Date('2026-11-25T10:00:00Z') } } };
+    const r = await clientPaymentHistory(make([left], [carried]), TENANT, CLIENT);
+    expect(r.payments).toEqual([expect.objectContaining({ id: 'booking-900', bookingId: '905', sessionAt: '2026-11-25T10:00:00.000Z', status: 'CONFIRMED' })]);
+  });
+
+  it('a session really cancelled still reads as cancelled', async () => {
+    const r = await clientPaymentHistory(make([booking({ status: 'CANCELLED' })], []), TENANT, CLIENT);
+    expect(r.payments[0]).toMatchObject({ status: 'CANCELLED', bookingId: '900' });
   });
 
   it('shows the time once one is chosen', async () => {
