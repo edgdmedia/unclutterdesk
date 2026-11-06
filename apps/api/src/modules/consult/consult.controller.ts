@@ -4,6 +4,7 @@ import { ConsultService } from './consult.service';
 import { ManualPaymentService } from './manual-payment.service';
 import { StaffBookingService, StaffBookingInput, StaffSeveralInput } from './staff-booking.service';
 import { SessionDirectoryService } from './session-directory.service';
+import { ReviewRequestService } from './review-request.service';
 import { BadRequestException } from '@nestjs/common';
 import { effectivePermissions } from '../../common/permissions';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
@@ -20,6 +21,7 @@ export class ConsultController {
     private readonly manualPayments: ManualPaymentService,
     private readonly staffBookings: StaffBookingService,
     private readonly sessions: SessionDirectoryService,
+    private readonly reviewRequests: ReviewRequestService,
   ) {}
 
   /** Who the session routes act as: the guard already loaded role and grants. */
@@ -147,6 +149,13 @@ export class ConsultController {
   updateService(@Req() req: any, @Param('id') id: string, @Body() dto: any) {
     if (!/^\d+$/.test(id)) throw new NotFoundException('That service could not be found.');
     return this.consultService.updateService(authenticatedTenantId(req), BigInt(id), dto);
+  }
+
+  @Get('public/review-invite')
+  @ApiOperation({ summary: 'What a review request link names: the client and the session' })
+  getReviewInvite(@Req() req: TenantRequest, @Query('booking') booking?: string, @Query('t') token?: string) {
+    if (!req.tenantId || !/^\d+$/.test(String(booking ?? ''))) throw new NotFoundException('This review link is not valid.');
+    return this.reviewRequests.invite(req.tenantId, BigInt(String(booking)), token);
   }
 
   @Get('public/availability')
@@ -406,6 +415,16 @@ export class ConsultController {
     const s = String(dto?.status ?? '');
     if (!['CONFIRMED', 'COMPLETED', 'CANCELLED'].includes(s)) throw new BadRequestException('Choose a status.');
     return this.sessions.setStatus(authenticatedTenantId(req), this.actor(req), BigInt(bookingId), s as 'CONFIRMED' | 'COMPLETED' | 'CANCELLED');
+  }
+
+  @Permissions('sessions.edit', 'clinical.record')
+  @Post('practice/sessions/:bookingId/review-request')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @ApiBearerAuth('access-token')
+  @ApiOperation({ summary: 'Email the client a signed link to the review form, for one completed session' })
+  requestReview(@Req() req: any, @Param('bookingId') bookingId: string) {
+    if (!/^\d+$/.test(bookingId)) throw new NotFoundException('Session not found');
+    return this.reviewRequests.send(authenticatedTenantId(req), this.actor(req), BigInt(bookingId));
   }
 
   @Permissions('sessions.edit', 'clinical.record')

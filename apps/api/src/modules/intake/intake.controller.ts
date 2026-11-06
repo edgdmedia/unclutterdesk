@@ -158,6 +158,8 @@ export class IntakeController {
     if (!req.tenantId) throw new NotFoundException(
         'This practice could not be found. Check the web address, or ask the practice for their booking link.',
       );
+    // From a review request link: the signed link, not the form, says who it is.
+    if (dto?.inviteToken) return this.intakeService.submitReviewByInvite(req.tenantId, dto);
     return this.intakeService.submitIntakeAnswers(req.tenantId, dto);
   }
 

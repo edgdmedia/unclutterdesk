@@ -161,6 +161,7 @@ export class SessionDirectoryService {
       internalSummary: b.internalSummary,
       clientRecap: b.clientRecap,
       clientRecapSentAt: b.clientRecapSentAt ? b.clientRecapSentAt.toISOString() : null,
+      reviewRequestedAt: b.reviewRequestedAt ? b.reviewRequestedAt.toISOString() : null,
       can: {
         edit: actor.viewAll === true,
         summary: actor.clinical === true,
