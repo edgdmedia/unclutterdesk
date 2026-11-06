@@ -4,9 +4,9 @@ import { Route, Routes } from 'react-router-dom';
 import { cleanup, fireEvent, renderWithApp, screen, waitFor } from '../../test/renderWithApp';
 
 /**
- * A client is tied up and asks for another time. Staff move the session from
- * the session page: to one of the practitioner's open times, or to a time
- * they type in when the client asks for one the weekly hours don't offer.
+ * A client is tied up and asks for another time. Staff change it from Edit
+ * session on the session page: to one of the practitioner's open times, or to
+ * a time they type in when the client asks for one the weekly hours don't offer.
  */
 const apiGet = vi.fn();
 const apiPatch = vi.fn();
@@ -61,17 +61,17 @@ function renderPage(detail: Record<string, unknown> = DETAIL) {
   );
 }
 
-describe('moving a booked session', () => {
+describe('editing when a booked session is', () => {
   it("offers the practitioner's open times for this service and format, without the current one", async () => {
     renderPage();
-    fireEvent.click(await screen.findByRole('button', { name: /Move session/ }));
+    fireEvent.click(await screen.findByRole('button', { name: /Edit session/ }));
     await waitFor(() =>
       expect(apiGet).toHaveBeenCalledWith(
         '/v1/consult/public/availability?providerProfileId=6&serviceId=2&format=ONLINE',
         expect.anything(),
       ),
     );
-    expect(await screen.findByRole('dialog', { name: /Move Ada Ola's session/ })).toBeTruthy();
+    expect(await screen.findByRole('dialog', { name: /Edit Ada Ola's session/ })).toBeTruthy();
     expect(await screen.findByTestId('slot-301')).toBeTruthy();
     // The session's own time is not a place to move it to.
     expect(screen.queryByTestId('slot-300')).toBeNull();
@@ -80,7 +80,7 @@ describe('moving a booked session', () => {
   it('moves to an open time', async () => {
     renderPage();
     apiPost.mockResolvedValue({ id: '900', startsAt: SLOTS[1].startsAt });
-    fireEvent.click(await screen.findByRole('button', { name: /Move session/ }));
+    fireEvent.click(await screen.findByRole('button', { name: /Edit session/ }));
     fireEvent.click((await screen.findByTestId('slot-301')).querySelector('input')!);
     fireEvent.click(screen.getByRole('button', { name: /^Move to/ }));
     await waitFor(() => expect(apiPost).toHaveBeenCalledWith('/v1/consult/practice/sessions/900/reschedule', { availabilityId: '301' }));
@@ -90,7 +90,7 @@ describe('moving a booked session', () => {
   it('moves to a time staff type in', async () => {
     renderPage();
     apiPost.mockResolvedValue({ id: '900', startsAt: later.toISOString() });
-    fireEvent.click(await screen.findByRole('button', { name: /Move session/ }));
+    fireEvent.click(await screen.findByRole('button', { name: /Edit session/ }));
     fireEvent.click(await screen.findByRole('radio', { name: 'Custom time' }));
     fireEvent.change(screen.getByLabelText('Date and time'), { target: { value: '2030-01-15T14:30' } });
     expect(screen.getByText(/runs for 50 minutes/)).toBeTruthy();
@@ -103,47 +103,73 @@ describe('moving a booked session', () => {
   it("shows the API's reason when the time can't be used", async () => {
     renderPage();
     apiPost.mockRejectedValue(new Error('Segun Ade already has a session from 14:00 to 15:00. Choose another time.'));
-    fireEvent.click(await screen.findByRole('button', { name: /Move session/ }));
+    fireEvent.click(await screen.findByRole('button', { name: /Edit session/ }));
     fireEvent.click(await screen.findByRole('radio', { name: 'Custom time' }));
     fireEvent.change(screen.getByLabelText('Date and time'), { target: { value: '2030-01-15T14:30' } });
     fireEvent.click(screen.getByRole('button', { name: /^Move to/ }));
     expect(await screen.findByText(/already has a session from 14:00/)).toBeTruthy();
   });
 
-  it('a completed or cancelled session cannot be moved', async () => {
-    for (const status of ['COMPLETED', 'CANCELLED']) {
-      renderPage({ ...DETAIL, status });
-      await screen.findByRole('heading', { name: 'Ada Ola' });
-      expect(screen.queryByRole('button', { name: /Move session/ })).toBeNull();
-      cleanup();
-    }
+  it('a cancelled session cannot be edited', async () => {
+    renderPage({ ...DETAIL, status: 'CANCELLED' });
+    await screen.findByRole('heading', { name: 'Ada Ola' });
+    expect(screen.queryByRole('button', { name: /Edit session/ })).toBeNull();
+  });
+
+  it('a completed session keeps its time; only its service can change', async () => {
+    renderPage({ ...DETAIL, status: 'COMPLETED' });
+    fireEvent.click(await screen.findByRole('button', { name: /Edit session/ }));
+    await screen.findByRole('dialog', { name: /Edit Ada Ola's session/ });
+    expect(screen.queryByRole('tab', { name: 'When' })).toBeNull();
+    expect(screen.queryByRole('radio', { name: 'Custom time' })).toBeNull();
+  });
+
+  // The client was tied up at the time: the session passed without happening.
+  it('a session whose time has passed, not completed, can still move', async () => {
+    const past = new Date(Date.now() - 3 * 3_600_000);
+    renderPage({ ...DETAIL, startsAt: past.toISOString(), endsAt: new Date(past.getTime() + 50 * 60_000).toISOString() });
+    fireEvent.click(await screen.findByRole('button', { name: /Edit session/ }));
+    expect(await screen.findByRole('radio', { name: 'Custom time' })).toBeTruthy();
   });
 });
 
-// After the session the room is closed; the note is still to write. The page
-// links to the client's notes for this session (see ClientDetailSessionNote).
-describe("the session's note, once it has started", () => {
-  const past = new Date(Date.now() - 2 * 3_600_000);
+// After a call in Google Meet the room is never reopened: the note is
+// written on the session page, hours later, in the same editor as the room.
+describe("the session's note on the session page", () => {
+  const past = new Date(Date.now() - 5 * 3_600_000);
   const ended = { ...DETAIL, status: 'COMPLETED', startsAt: past.toISOString(), endsAt: new Date(past.getTime() + 50 * 60_000).toISOString(), can: { edit: true, summary: true, markPaid: false } };
 
-  it('links to write it when there is none', async () => {
+  it('is there to write when none has been started, and saves against the session', async () => {
     renderPage(ended);
-    const link = await screen.findByRole('link', { name: /Write note/ });
-    expect(link.getAttribute('href')).toBe('/dashboard/clients/40?tab=notes&booking=900');
+    const s = await screen.findByLabelText('Subjective');
+    apiPost.mockResolvedValue({ id: '7', isLocked: false });
+    fireEvent.change(s, { target: { value: 'Sleeps better' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Save note' }));
+    await waitFor(() => expect(apiPost).toHaveBeenCalledWith('/v1/notes', expect.objectContaining({ bookingId: '900', clientProfileId: '40', subjective: 'Sleeps better' })));
   });
 
-  it('links to finish a draft', async () => {
-    renderPage({ ...ended, note: { id: '7', status: 'DRAFT' } });
-    expect(await screen.findByRole('link', { name: /Finish note/ })).toBeTruthy();
+  it('carries on a draft', async () => {
+    renderPage({ ...ended, note: { id: '7', status: 'DRAFT', subjective: 'Sleeps better', objective: '', assessment: '', plan: 'Breathing' } });
+    expect(((await screen.findByLabelText('Plan')) as HTMLTextAreaElement).value).toBe('Breathing');
+    expect(((screen.getByLabelText('Subjective')) as HTMLTextAreaElement).disabled).toBe(false);
   });
 
-  it('offers nothing once the note is signed, or before the session', async () => {
-    renderPage({ ...ended, note: { id: '7', status: 'COMPLETED' } });
+  it('signs and locks it', async () => {
+    renderPage({ ...ended, note: { id: '7', status: 'DRAFT', subjective: 'x', objective: 'x', assessment: 'x', plan: 'x' } });
+    apiPost.mockResolvedValue({ id: '7', isLocked: false });
+    apiPatch.mockResolvedValue({ id: '7', isLocked: true });
+    fireEvent.click(await screen.findByRole('button', { name: /Sign & lock/ }));
+    await waitFor(() => expect(apiPatch).toHaveBeenCalledWith('/v1/notes/7/lock', {}));
+  });
+
+  it('shows a signed note read-only', async () => {
+    renderPage({ ...ended, note: { id: '7', status: 'COMPLETED', subjective: 'Sleeps better', objective: '', assessment: '', plan: '' } });
+    expect(((await screen.findByLabelText('Subjective')) as HTMLTextAreaElement).disabled).toBe(true);
+  });
+
+  it('is not shown to the desk', async () => {
+    renderPage({ ...ended, can: { edit: true, summary: false, markPaid: true } });
     await screen.findByRole('heading', { name: 'Ada Ola' });
-    expect(screen.queryByRole('link', { name: /(Write|Finish) note/ })).toBeNull();
-    cleanup();
-    renderPage({ ...DETAIL, can: { edit: true, summary: true, markPaid: false } });
-    await screen.findByRole('heading', { name: 'Ada Ola' });
-    expect(screen.queryByRole('link', { name: /(Write|Finish) note/ })).toBeNull();
+    expect(screen.queryByLabelText('Subjective')).toBeNull();
   });
 });

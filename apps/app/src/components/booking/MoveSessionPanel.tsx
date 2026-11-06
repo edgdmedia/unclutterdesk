@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { CalendarClock, Loader2, X } from 'lucide-react';
+import { Loader2 } from 'lucide-react';
 import { api, TENANT_SLUG } from '../../utils/apiClient';
 import { useAuth } from '../../context/AuthContext';
 import { formatWhen } from '../../utils/displayFormat';
@@ -17,19 +17,17 @@ export interface MoveSession {
 }
 
 /**
- * Staff move a session to another time: one of the practitioner's open times,
+ * The When part of Edit session. Staff move a session to another time: one of the practitioner's open times,
  * or a time they type in when the client asks for one the weekly hours don't
  * offer. The open times are the ones the booking page would offer for this
  * service and format, so a move never lands where the booking could not.
  * The API emails the client the new time.
  */
-export function MoveSessionDialog({
+export function MoveSessionPanel({
   session,
-  onClose,
   onMoved,
 }: {
   session: MoveSession;
-  onClose: () => void;
   onMoved: (r: { startsAt: string }) => void;
 }) {
   const { profile } = useAuth();
@@ -79,20 +77,7 @@ export function MoveSessionDialog({
     `flex items-start gap-2 p-2.5 rounded-[12px] border cursor-pointer ${checked ? 'border-[var(--desk-pine-600)] bg-[var(--desk-surface-alt)]' : 'border-[var(--desk-border)]'}`;
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-[var(--desk-sidebar)]/60 p-4" role="dialog" aria-modal="true" aria-labelledby="move-session-title">
-      <form onSubmit={submit} className="w-full max-w-[520px] max-h-[90vh] overflow-y-auto rounded-[20px] bg-white p-6 shadow-2xl space-y-5">
-        <div className="flex items-start justify-between gap-3">
-          <div className="flex items-center gap-2">
-            <CalendarClock className="h-5 w-5 text-[var(--desk-pine-600)]" />
-            <h2 id="move-session-title" className="text-[16px] font-bold text-[var(--desk-text)]">
-              Move {session.client.name}'s session
-            </h2>
-          </div>
-          <button type="button" onClick={onClose} aria-label="Close" className="h-7 w-7 inline-flex items-center justify-center rounded-[8px] text-[var(--desk-text-muted)] hover:bg-[var(--desk-surface-muted)] cursor-pointer">
-            <X className="h-4 w-4" />
-          </button>
-        </div>
-
+    <form onSubmit={submit} className="space-y-5">
         <p className="text-[12.5px] text-[var(--desk-text-body)]">
           {session.serviceTitle} with {session.provider.name}, now {formatWhen(session.startsAt, 'long')}.
         </p>
@@ -130,7 +115,6 @@ export function MoveSessionDialog({
           {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
           {chosen ? `Move to ${formatWhen(chosen, 'short')}` : 'Move to…'}
         </button>
-      </form>
-    </div>
+    </form>
   );
 }

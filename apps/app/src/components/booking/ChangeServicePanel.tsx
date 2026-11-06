@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Loader2, Repeat, X } from 'lucide-react';
+import { Loader2 } from 'lucide-react';
 import { api, TENANT_SLUG } from '../../utils/apiClient';
 import { useAuth } from '../../context/AuthContext';
 import { activeDisplayPrefs, formatTime } from '../../utils/displayFormat';
@@ -43,12 +43,12 @@ export function priceIn(s: Service, format: Format): bigint | null {
 }
 
 /**
- * Change what a session was booked as (plan 2026-11-04-change-session-service):
+ * The Service part of Edit session. Change what a session was booked as (plan 2026-11-04-change-session-service):
  * the client booked Consultation and meant Individual Session. The preview is
  * the API's rule: an unpaid booking takes the new price; a paid one keeps what
  * was paid and owes the difference, for the desk to collect or waive.
  */
-export function ChangeServiceDialog({
+export function ChangeServicePanel({
   session,
   onClose,
   onChanged,
@@ -113,18 +113,7 @@ export function ChangeServiceDialog({
     `flex items-start gap-2 p-2.5 rounded-[12px] border cursor-pointer ${checked ? 'border-[var(--desk-pine-600)] bg-[var(--desk-surface-alt)]' : 'border-[var(--desk-border)]'}`;
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-[var(--desk-sidebar)]/60 p-4" role="dialog" aria-modal="true" aria-labelledby="change-service-title">
-      <form onSubmit={submit} className="w-full max-w-[480px] max-h-[90vh] overflow-y-auto rounded-[20px] bg-white p-6 shadow-2xl space-y-5">
-        <div className="flex items-start justify-between gap-3">
-          <div className="flex items-center gap-2">
-            <Repeat className="h-5 w-5 text-[var(--desk-pine-600)]" />
-            <h2 id="change-service-title" className="text-[16px] font-bold text-[var(--desk-text)]">Change service</h2>
-          </div>
-          <button type="button" onClick={onClose} aria-label="Close" className="h-7 w-7 inline-flex items-center justify-center rounded-[8px] text-[var(--desk-text-muted)] hover:bg-[var(--desk-surface-muted)] cursor-pointer">
-            <X className="h-4 w-4" />
-          </button>
-        </div>
-
+    <form onSubmit={submit} className="space-y-5">
         <p className="text-[13px] text-[var(--desk-text-body)]">
           Booked as <span className="font-bold text-[var(--desk-text)]">{session.serviceTitle}</span>. The client is emailed the change.
         </p>
@@ -182,7 +171,6 @@ export function ChangeServiceDialog({
             {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : null} Change service
           </button>
         </div>
-      </form>
-    </div>
+    </form>
   );
 }

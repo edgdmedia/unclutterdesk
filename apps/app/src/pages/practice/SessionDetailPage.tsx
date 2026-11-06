@@ -1,11 +1,11 @@
 import { useEffect, useState } from 'react';
 import { JoinButton } from '../../components/video/JoinButton';
-import { Link, useParams } from 'react-router-dom';
-import { CalendarClock, CalendarRange, CheckCircle2, Download, FileText, Loader2, Repeat, Video } from 'lucide-react';
+import { Link, useLocation, useParams } from 'react-router-dom';
+import { CalendarClock, CheckCircle2, Download, FileText, Loader2, PencilLine } from 'lucide-react';
 import { Card, Eyebrow, Page, PageHeader, StatTile, StatusBadge, useToast } from '@unclutterdesk/ui';
 import { PaymentChip } from '../../components/booking/PaymentChip';
-import { ChangeServiceDialog } from '../../components/booking/ChangeServiceDialog';
-import { MoveSessionDialog } from '../../components/booking/MoveSessionDialog';
+import { EditSessionDialog } from '../../components/booking/EditSessionDialog';
+import { SessionNoteEditor } from '../../components/notes/SessionNoteEditor';
 import { api } from '../../utils/apiClient';
 import type { SessionRow } from './SessionsPage';
 import { activeDisplayPrefs, formatWhen } from '../../utils/displayFormat';
@@ -17,7 +17,8 @@ interface SessionDetail extends SessionRow {
   videoRoomLink: string | null;
   format?: string;
   location?: { id: string; name: string; city: string } | null;
-  note: { id: string; status: 'DRAFT' | 'COMPLETED' } | null;
+  /** The text comes only to staff who may write notes (can.summary). */
+  note: { id: string; status: 'DRAFT' | 'COMPLETED'; subjective?: string; objective?: string; assessment?: string; plan?: string } | null;
   internalSummary: string | null;
   clientRecap: string | null;
   clientRecapSentAt: string | null;
@@ -34,14 +35,14 @@ const longWhen = (iso: string) => formatWhen(iso, 'long');
 
 export function SessionDetailPage() {
   const { id } = useParams();
+  const { hash } = useLocation();
   const toast = useToast();
   const [d, setD] = useState<SessionDetail | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [internal, setInternal] = useState('');
   const [recap, setRecap] = useState('');
   const [busy, setBusy] = useState(false);
-  const [changing, setChanging] = useState(false);
-  const [moving, setMoving] = useState(false);
+  const [editing, setEditing] = useState(false);
   // BKG-06: whether the client's default forms are in yet.
   const [forms, setForms] = useState<{ intake: boolean; confidentiality: boolean } | null>(null);
 
@@ -63,6 +64,13 @@ export function SessionDetailPage() {
       )
       .catch(() => setForms(null));
   }, [id]);
+
+  // `#note` (the "Write SOAP note" prompt, the note-pending reminder): the page
+  // loads after the browser looks for the anchor, so scroll once it is there.
+  const loaded = d !== null;
+  useEffect(() => {
+    if (loaded && hash === '#note') document.getElementById('note')?.scrollIntoView?.({ block: 'start' });
+  }, [loaded, hash]);
 
   async function act(fn: () => Promise<unknown>, ok: string) {
     setBusy(true);
@@ -112,12 +120,6 @@ export function SessionDetailPage() {
                   waitingClassName="h-[40px] px-4 rounded-[12px] bg-[var(--desk-border)] text-[var(--desk-text-muted)] text-[12.5px] font-bold inline-flex items-center gap-2 cursor-not-allowed"
                 />
               ) : null}
-              {d.can.summary && d.status !== 'CANCELLED' && new Date(d.startsAt) <= new Date() && d.note?.status !== 'COMPLETED' ? (
-                // After the session the room is closed; the note is written in the client's notes, tied to this session.
-                <Link to={`/dashboard/clients/${d.client.id}?tab=notes&booking=${d.id}`} className="h-[40px] px-4 rounded-[12px] bg-[var(--desk-pine-600)] text-white text-[12.5px] font-bold inline-flex items-center gap-2 cursor-pointer">
-                  <FileText className="h-4 w-4" /> {d.note ? 'Finish note' : 'Write note'}
-                </Link>
-              ) : null}
               <Link to={`/session/${d.id}/prep`} className="h-[40px] px-4 rounded-[12px] bg-white border border-[var(--desk-pine-200)] text-[var(--desk-text)] text-[12.5px] font-bold inline-flex items-center gap-2 cursor-pointer">
                 <FileText className="h-4 w-4" /> Session prep
               </Link>
@@ -136,14 +138,9 @@ export function SessionDetailPage() {
                     <Download className="h-4 w-4" /> Mark as paid
                   </button>
                 ) : null}
-                {d.status !== 'CANCELLED' && d.status !== 'COMPLETED' ? (
-                  <button type="button" disabled={busy} onClick={() => setMoving(true)} className="h-[40px] px-4 rounded-[12px] bg-white border border-[var(--desk-pine-200)] text-[var(--desk-text)] text-xs font-bold inline-flex items-center gap-1.5 cursor-pointer disabled:opacity-50">
-                    <CalendarRange className="h-4 w-4" /> Move session
-                  </button>
-                ) : null}
                 {d.status !== 'CANCELLED' ? (
-                  <button type="button" disabled={busy} onClick={() => setChanging(true)} className="h-[40px] px-4 rounded-[12px] bg-white border border-[var(--desk-pine-200)] text-[var(--desk-text)] text-xs font-bold inline-flex items-center gap-1.5 cursor-pointer disabled:opacity-50">
-                    <Repeat className="h-4 w-4" /> Change service
+                  <button type="button" disabled={busy} onClick={() => setEditing(true)} className="h-[40px] px-4 rounded-[12px] bg-white border border-[var(--desk-pine-200)] text-[var(--desk-text)] text-xs font-bold inline-flex items-center gap-1.5 cursor-pointer disabled:opacity-50">
+                    <PencilLine className="h-4 w-4" /> Edit session
                   </button>
                 ) : null}
                 {d.status !== 'CANCELLED' && d.status !== 'COMPLETED' ? (
@@ -215,12 +212,17 @@ export function SessionDetailPage() {
         <p className="text-[12.5px] text-[var(--desk-text-muted)]">A balance of {naira(d.balanceKobo)} was waived.</p>
       ) : null}
 
-      {changing ? (
-        <ChangeServiceDialog
+      {editing ? (
+        <EditSessionDialog
           session={d}
-          onClose={() => setChanging(false)}
-          onChanged={(r) => {
-            setChanging(false);
+          onClose={() => setEditing(false)}
+          onMoved={(r) => {
+            setEditing(false);
+            toast.success(`Session moved to ${longWhen(r.startsAt)}. The client has been emailed.`);
+            void api.get<SessionDetail>(`/v1/consult/practice/sessions/${id}`).then(setD).catch(() => undefined);
+          }}
+          onServiceChanged={(r) => {
+            setEditing(false);
             const owed = r.balanceKobo ? ` ${naira(r.balanceKobo)} is still owed.` : '';
             const over = r.overpaidKobo !== '0' ? ` The client paid ${naira(r.overpaidKobo)} more than the new price.` : '';
             toast.success(`Now ${r.serviceTitle}.${owed}${over}`);
@@ -229,16 +231,12 @@ export function SessionDetailPage() {
         />
       ) : null}
 
-      {moving ? (
-        <MoveSessionDialog
-          session={d}
-          onClose={() => setMoving(false)}
-          onMoved={(r) => {
-            setMoving(false);
-            toast.success(`Session moved to ${longWhen(r.startsAt)}. The client has been emailed.`);
-            void api.get<SessionDetail>(`/v1/consult/practice/sessions/${id}`).then(setD).catch(() => undefined);
-          }}
-        />
+      {d.can.summary && d.status !== 'CANCELLED' ? (
+        // The session's note lives here as well as in the room: after a call in
+        // Google Meet the room is never reopened, and the note is written later.
+        <Card padding="p-[22px]" className="space-y-3" id="note">
+          <SessionNoteEditor key={d.id} bookingId={d.id} clientProfileId={d.client.id} note={d.note ? { ...d.note, isLocked: d.note.status === 'COMPLETED' } : null} />
+        </Card>
       ) : null}
 
       {d.can.summary ? (

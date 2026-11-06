@@ -1,19 +1,11 @@
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { Lock, ShieldCheck, FileText } from 'lucide-react';
+import { ShieldCheck, FileText } from 'lucide-react';
 import { api } from '../../utils/apiClient';
-import { useToast } from '@unclutterdesk/ui';
 import { VideoStage } from '../../components/video/VideoStage';
+import { SessionNoteEditor, type SessionNoteValue } from '../../components/notes/SessionNoteEditor';
 
-type RoomNote = {
-  id: string;
-  subjective?: string | null;
-  objective?: string | null;
-  assessment?: string | null;
-  plan?: string | null;
-  isLocked: boolean;
-  createdAt: string;
-};
+type RoomNote = SessionNoteValue & { id: string; isLocked: boolean; createdAt: string };
 
 type RoomPayload = {
   booking: {
@@ -36,7 +28,6 @@ type RoomPayload = {
 };
 
 export function TelehealthVideoRoomPage() {
-  const toast = useToast();
   const navigate = useNavigate();
   const { id } = useParams<{ id: string }>();
   const [drawerOpen, setDrawerOpen] = useState(true);
@@ -44,16 +35,6 @@ export function TelehealthVideoRoomPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [payload, setPayload] = useState<RoomPayload | null>(null);
-  const [noteLocked, setNoteLocked] = useState(false);
-  const [noteId, setNoteId] = useState<string | null>(null);
-  const [saveState, setSaveState] = useState<'idle' | 'dirty' | 'saving' | 'saved' | 'error'>('idle');
-  const [lastSavedAt, setLastSavedAt] = useState<string | null>(null);
-  const [subjective, setSubjective] = useState('');
-  const [objective, setObjective] = useState('');
-  const [assessment, setAssessment] = useState('');
-  const [plan, setPlan] = useState('');
-  const [hydrated, setHydrated] = useState(false);
-
   useEffect(() => {
     if (!id) return;
     let cancelled = false;
@@ -63,15 +44,6 @@ export function TelehealthVideoRoomPage() {
         const data = await api.get<RoomPayload>(`/v1/consult/therapist/bookings/${id}/prep`);
         if (cancelled) return;
         setPayload(data);
-        setNoteId(data.sessionNote?.id || null);
-        setNoteLocked(Boolean(data.sessionNote?.isLocked));
-        setSubjective(data.sessionNote?.subjective || '');
-        setObjective(data.sessionNote?.objective || '');
-        setAssessment(data.sessionNote?.assessment || '');
-        setPlan(data.sessionNote?.plan || '');
-        setSaveState('idle');
-        setLastSavedAt(null);
-        setHydrated(true);
       } catch (err) {
         if (!cancelled) setError(err instanceof Error ? err.message : 'Unable to load telehealth room');
       } finally {
@@ -81,57 +53,6 @@ export function TelehealthVideoRoomPage() {
     void loadRoom();
     return () => { cancelled = true; };
   }, [id]);
-
-  async function saveNote() {
-    if (!payload || noteLocked) return null;
-    setSaveState('saving');
-    try {
-      const saved = await api.post<{ id: string; isLocked: boolean; subjective?: string; objective?: string; assessment?: string; plan?: string }>('/v1/notes', {
-        bookingId: payload.booking.id,
-        clientProfileId: payload.booking.clientProfileId,
-        subjective,
-        objective,
-        assessment,
-        plan,
-      });
-      setNoteId(saved.id);
-      setNoteLocked(saved.isLocked);
-      setLastSavedAt(new Date().toISOString());
-      setSaveState('saved');
-      return saved;
-    } catch (error) {
-      setSaveState('error');
-      throw error;
-    }
-  }
-
-  async function lockNote() {
-    const saved = await saveNote();
-    const targetNoteId = saved?.id || noteId;
-    if (targetNoteId) {
-      await api.patch(`/v1/notes/${targetNoteId}/lock`, {});
-      setNoteLocked(true);
-      setSaveState('saved');
-      toast.success('Note locked');
-    }
-  }
-
-  useEffect(() => {
-    if (!payload || noteLocked || !hydrated) return;
-    setSaveState((current) => (current === 'idle' || current === 'saved' ? 'dirty' : current));
-  }, [subjective, objective, assessment, plan, payload, noteLocked, hydrated]);
-
-  useEffect(() => {
-    if (!payload || noteLocked || saveState !== 'dirty') return;
-
-    const timeout = window.setTimeout(() => {
-      void saveNote().catch(() => {
-        // saveNote already updates the visible error state
-      });
-    }, 2500);
-
-    return () => window.clearTimeout(timeout);
-  }, [payload, noteLocked, saveState, subjective, objective, assessment, plan]);
 
   return (
     <div className="min-h-screen bg-[var(--desk-sidebar)] text-white font-outfit flex flex-col justify-between p-6 relative">
@@ -158,26 +79,22 @@ export function TelehealthVideoRoomPage() {
 
             {drawerOpen ? (
               <div className="col-span-12 lg:col-span-4 bg-[var(--desk-surface)] text-[var(--desk-text)] rounded-[24px] border border-[var(--desk-border)] p-5 flex flex-col justify-between space-y-4 shadow-2xl">
-                <div className="space-y-4 flex-1 overflow-y-auto pr-1">
-                  <div className="flex items-center justify-between border-b border-[var(--desk-border)] pb-3"><div><span className="os-eyebrow block">LIVE DOCUMENTATION</span><h3 className="text-[17px] font-bold text-[var(--desk-text)]">SOAP Notes</h3></div><div className="flex items-center gap-3"><div className="flex items-center gap-2 text-[11px] font-bold">{saveState === 'saving' ? <span className="text-[var(--desk-pending)]">Saving...</span> : null}{saveState === 'saved' ? <span className="text-[var(--desk-active)]">Saved{lastSavedAt ? ` · ${new Intl.DateTimeFormat('en-GB', { hour: '2-digit', minute: '2-digit', second: '2-digit' }).format(new Date(lastSavedAt))}` : ''}</span> : null}{saveState === 'error' ? <span className="text-[var(--desk-danger)]">Autosave failed</span> : null}{noteLocked ? <span className="text-[var(--desk-text-body)]">Locked</span> : null}</div><button onClick={() => setDrawerOpen(false)} className="h-8 w-8 rounded-full bg-[var(--desk-surface-muted)] hover:bg-slate-200 text-[var(--desk-text-muted)] flex items-center justify-center font-bold text-xs cursor-pointer">✕</button></div></div>
+                <div className="flex-1 overflow-y-auto pr-1 space-y-4">
                   {payload.submissions.length > 0 ? <div className="p-3 rounded-[14px] bg-[var(--desk-pine-100)] border border-[var(--desk-info-border)] text-xs font-medium text-[var(--desk-pine-600)]">{payload.submissions[0].formTitle} received · {payload.submissions[0].answers.length} answers available</div> : null}
-                  {[{ chip: 'S', title: 'Subjective', val: subjective, setVal: setSubjective }, { chip: 'O', title: 'Objective', val: objective, setVal: setObjective }, { chip: 'A', title: 'Assessment', val: assessment, setVal: setAssessment }, { chip: 'P', title: 'Plan', val: plan, setVal: setPlan }].map((section) => (
-                    <div key={section.chip} className="p-3.5 rounded-[18px] bg-white border border-[var(--desk-border)] space-y-2 shadow-xs">
-                      <div className="flex items-center gap-2"><span className="h-6 w-6 rounded-[8px] bg-[var(--desk-pine-600)] text-[var(--ds-sky)] font-black text-xs flex items-center justify-center">{section.chip}</span><span className="text-[12.5px] font-bold text-[var(--desk-text)] tracking-tight">{section.title}</span></div>
-                      <textarea rows={2} disabled={noteLocked} value={section.val} onChange={(e) => section.setVal(e.target.value)} className="w-full text-[13px] text-[var(--desk-text-body)] font-medium leading-relaxed bg-transparent border-none outline-none resize-none disabled:opacity-75" />
-                    </div>
-                  ))}
-                </div>
-                <div className="pt-3 border-t border-[var(--desk-border)] flex items-center justify-between gap-2">
-                  <button onClick={() => void saveNote()} disabled={noteLocked} className="h-9 px-3 rounded-[12px] bg-[var(--desk-surface-muted)] text-[var(--desk-text)] text-xs font-bold hover:bg-slate-200 cursor-pointer disabled:opacity-50">Save note</button>
-                  <button onClick={() => void lockNote()} disabled={noteLocked} className="h-9 px-4 rounded-[12px] text-xs font-bold flex items-center gap-1.5 cursor-pointer disabled:opacity-50 text-white" style={{ backgroundColor: '#0F3A53' }}><Lock className="h-3.5 w-3.5" /><span>{noteLocked ? 'Locked' : 'Sign & lock'}</span></button>
+                  <SessionNoteEditor
+                    bookingId={payload.booking.id}
+                    clientProfileId={payload.booking.clientProfileId}
+                    note={payload.sessionNote ?? null}
+                    eyebrow="LIVE DOCUMENTATION"
+                    onClose={() => setDrawerOpen(false)}
+                  />
                 </div>
               </div>
             ) : null}
           </main>
 
 
-          {showEndModal ? <div className="fixed inset-0 bg-black/70 backdrop-blur-xs flex items-center justify-center p-6 z-50"><div className="w-full max-w-[440px] bg-[var(--desk-sidebar-hover)] text-white rounded-[24px] p-6 shadow-2xl space-y-4 border border-slate-700"><h3 className="text-lg font-bold">End this session?</h3><p className="text-xs text-slate-300 mt-1">This ends the call and takes you back to the client record. Your notes are saved.</p><div className="flex items-center gap-3 pt-2"><button onClick={() => setShowEndModal(false)} className="flex-1 h-11 rounded-[14px] bg-slate-800 text-slate-300 font-bold text-xs hover:bg-slate-700">Cancel</button><button onClick={() => navigate('/dashboard/clients')} className="flex-1 h-11 rounded-[14px] bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs cursor-pointer">End session</button></div></div></div> : null}
+          {showEndModal ? <div className="fixed inset-0 bg-black/70 backdrop-blur-xs flex items-center justify-center p-6 z-50"><div className="w-full max-w-[440px] bg-[var(--desk-sidebar-hover)] text-white rounded-[24px] p-6 shadow-2xl space-y-4 border border-slate-700"><h3 className="text-lg font-bold">End this session?</h3><p className="text-xs text-slate-300 mt-1">This ends the call and takes you to the session page, where you can finish and sign the note.</p><div className="flex items-center gap-3 pt-2"><button onClick={() => setShowEndModal(false)} className="flex-1 h-11 rounded-[14px] bg-slate-800 text-slate-300 font-bold text-xs hover:bg-slate-700">Cancel</button><button onClick={() => navigate(`/dashboard/sessions/${payload.booking.id}`)} className="flex-1 h-11 rounded-[14px] bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs cursor-pointer">End session</button></div></div></div> : null}
         </>
       )}
     </div>
