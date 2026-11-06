@@ -1437,6 +1437,15 @@ export class ConsultService {
       );
     }
 
+    // A free or fully discounted booking is confirmed already: its calendar
+    // event first, since with Google Meet that push makes the Meet link the
+    // confirmation email carries (a paid one gets both when payment settles).
+    if (result.status === 'CONFIRMED') {
+      await this.calendar
+        .pushBookingToGoogle(BigInt(result.bookingId))
+        .catch((err) => this.logger.warn(`Could not add booking ${result.bookingId} to Google Calendar: ${(err as Error).message}`));
+    }
+
     // After commit, and never failing the booking. One service owns the
     // booking messages: while money is due the client gets the pay link and
     // never the join link; a free or waived booking is confirmed straight away.
