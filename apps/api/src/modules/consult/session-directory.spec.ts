@@ -104,6 +104,18 @@ describe('getSession', () => {
     const d = await service.getSession(TENANT, { profileId: ACTOR, viewAll: false, clinical: true, desk: false }, 900n);
     expect(d.can).toEqual({ edit: false, summary: true, markPaid: false });
   });
+  // The note is written on the session page after a call held in Google Meet,
+  // so the page carries its text — but only to someone who may write notes.
+  it("gives clinical staff the session's note to carry on writing", async () => {
+    const { service } = make({ note: { id: 3n, isLocked: false, subjective: 'Sleeps better', objective: null, assessment: null, plan: 'Breathing' } });
+    const d = await service.getSession(TENANT, { profileId: ACTOR, viewAll: false, clinical: true }, 900n);
+    expect(d.note).toEqual({ id: '3', status: 'DRAFT', subjective: 'Sleeps better', objective: '', assessment: '', plan: 'Breathing' });
+  });
+  it("never gives the note's text to the desk", async () => {
+    const { service } = make({ note: { id: 3n, isLocked: false, subjective: 'Sleeps better', objective: null, assessment: null, plan: null } });
+    const d = await service.getSession(TENANT, DESK, 900n);
+    expect(d.note).toEqual({ id: '3', status: 'DRAFT' });
+  });
   it('links an online session to its room in the app', async () => {
     const { service } = make();
     const d = await service.getSession(TENANT, DESK, 900n);

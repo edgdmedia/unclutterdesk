@@ -707,10 +707,10 @@ export function SchedulePage({ sessions, setSessions, clients, tenantSlug, onRef
                 <span>Cancel Session</span>
               </button>
               <button
-                onClick={() => setShowDetailModal(false)}
+                onClick={() => navigate(`/dashboard/sessions/${selectedEvent.id}`)}
                 className="flex-1 h-11 rounded-[14px] bg-slate-100 text-slate-700 font-bold text-xs hover:bg-slate-200 cursor-pointer"
               >
-                Close Details
+                Open session
               </button>
               {selectedEvent.status !== 'COMPLETED' ? (
                 <button
@@ -761,9 +761,7 @@ export function SchedulePage({ sessions, setSessions, clients, tenantSlug, onRef
               </button>
               <button
                 onClick={() => {
-                  if (sessionCompleteEvent.clientId) {
-                    navigate(`/dashboard/clients/${sessionCompleteEvent.clientId}?tab=notes&booking=${sessionCompleteEvent.id}`);
-                  }
+                  navigate(`/dashboard/sessions/${sessionCompleteEvent.id}#note`);
                   setSessionCompleteEvent(null);
                 }}
                 className="h-11 rounded-[14px] text-white font-bold text-xs shadow-sm hover:brightness-110 transition-all cursor-pointer"

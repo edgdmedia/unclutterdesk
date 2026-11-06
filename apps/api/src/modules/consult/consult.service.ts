@@ -2026,7 +2026,7 @@ export class ConsultService {
           type: 'consult.soap_reminder',
           title: 'Session complete — note pending',
           message: `Write your SOAP note for ${clientName}'s session to complete the record.`,
-          link: `/dashboard/clients/${updated.client.id}?tab=notes&booking=${bookingId}`,
+          link: `/dashboard/sessions/${bookingId}#note`,
           preferenceCategory: 'reminders',
         });
       }

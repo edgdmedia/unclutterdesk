@@ -8,6 +8,7 @@ import { tenantWebOrigin } from '../../common/origins';
 import { formatNaira } from '../billing/subscription-plans';
 import { priceFor, type Format } from './formats';
 import { isUnpaid, moneyAfterServiceChange } from './service-change';
+import { decryptNoteFields } from '../../common/field-encryption';
 
 export interface SessionActor {
   profileId: bigint;
@@ -18,6 +19,12 @@ export interface SessionActor {
 
 const name = (p: { firstName?: string | null; lastName?: string | null } | null | undefined, fallback = 'Client') =>
   `${p?.firstName ?? ''} ${p?.lastName ?? ''}`.trim() || fallback;
+
+/** A note's four SOAP fields in plain text (they are stored encrypted). */
+function soapText(note: { subjective?: string | null; objective?: string | null; assessment?: string | null; plan?: string | null }) {
+  const plain = decryptNoteFields(note);
+  return { subjective: plain.subjective ?? '', objective: plain.objective ?? '', assessment: plain.assessment ?? '', plan: plain.plan ?? '' };
+}
 
 /** The Lagos calendar date of a moment, as the UTC midnight a DATE column stores. */
 function lagosDay(moment: Date): Date {
@@ -50,7 +57,7 @@ export class SessionDirectoryService {
       service: { select: { id: true, title: true, durationMinutes: true } },
       availability: { include: { therapist: { select: { profile: { select: { firstName: true, lastName: true } } } } } },
       location: { select: { id: true, name: true, city: true } },
-      clinicalNotes: { select: { id: true, isLocked: true }, take: 1, orderBy: { createdAt: 'desc' as const } },
+      clinicalNotes: { select: { id: true, isLocked: true, subjective: true, objective: true, assessment: true, plan: true }, take: 1, orderBy: { createdAt: 'desc' as const } },
     };
   }
 
@@ -142,7 +149,15 @@ export class SessionDirectoryService {
       clientPhone: b.client.phone,
       // VID-01: online sessions open their room in the app, or the therapist's Google Meet.
       videoRoomLink: b.format === 'IN_PERSON' ? null : isMeetLink(b.videoRoomName) ? b.videoRoomName : staffRoomPath(b.id),
-      note: note ? { id: note.id.toString(), status: note.isLocked ? 'COMPLETED' : 'DRAFT' } : null,
+      note: note
+        ? {
+            id: note.id.toString(),
+            status: note.isLocked ? 'COMPLETED' : 'DRAFT',
+            // The text, decrypted, only for someone who may write notes: the
+            // session page is where a note is finished after a Meet call.
+            ...(actor.clinical ? soapText(note) : {}),
+          }
+        : null,
       internalSummary: b.internalSummary,
       clientRecap: b.clientRecap,
       clientRecapSentAt: b.clientRecapSentAt ? b.clientRecapSentAt.toISOString() : null,
@@ -174,7 +189,8 @@ export class SessionDirectoryService {
       await this.notifier?.notifyStaff(b.id, 'cancelled').catch(() => undefined);
       // The time goes back on the shelf, as the expiry cron does.
       await this.prisma.consultAvailability.updateMany({
-        where: { id: b.availabilityId, tenantId },
+        // Not a time staff made by hand for this booking: it may be outside working hours.
+        where: { id: b.availabilityId, tenantId, createdForBooking: false },
         data: { isActive: true },
       });
     }
