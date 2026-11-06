@@ -22,12 +22,13 @@ function makeService() {
     tenant: { findUnique: vi.fn().mockResolvedValue({ subscriptionTier: 'STARTER', subscriptionStatus: 'active', complimentaryUntil: null }) },
   };
   const service = new CalendarService(prisma);
-  // Stand in for Google's token exchange.
-  (service as any).oauth2Client = {
+  // Stand in for Google's token exchange (the network): each use gets this client.
+  const google = {
     generateAuthUrl: (opts: any) => `https://accounts.google.com/o/oauth2/auth?state=${opts.state}`,
     getToken: vi.fn().mockResolvedValue({ tokens: { refresh_token: 'rt_attacker_or_owner' } }),
   };
-  return { service, prisma };
+  (service as any).oauthClient = vi.fn().mockResolvedValue(google);
+  return { service, prisma, google };
 }
 
 async function issueState(service: CalendarService, tenant = '1', profile = '9') {
@@ -133,7 +134,7 @@ describe('Google OAuth state', () => {
 
     it('exchanges the code only after the state is validated', async () => {
       await service.handleCallback('code', '1_9').catch(() => undefined);
-      expect((service as any).oauth2Client.getToken).not.toHaveBeenCalled();
+      expect((await (service as any).oauthClient()).getToken).not.toHaveBeenCalled();
     });
 
     it('a practitioner who is not in the state tenant', async () => {

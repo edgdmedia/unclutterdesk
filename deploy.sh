@@ -184,17 +184,25 @@ fi
 # pm2 reload returns before the process has proved it can boot, so a crash on
 # startup would otherwise look like a successful deploy. Wait for the health
 # endpoint to answer.
-echo "🩺 Waiting for the API to report healthy..."
-for attempt in $(seq 1 15); do
-    if curl -fsS "http://127.0.0.1:${PORT:-3050}/health" >/dev/null 2>&1; then
-        echo "   ✓ API healthy after ${attempt} attempt(s)"
+#
+# The window is 2 minutes. A normal boot takes about 18-25 seconds (8-12 of
+# the old 15 tries), so the old 30-second window failed the 6 Nov 2026 release
+# when the API came up healthy a moment after it gave up. A crash still fails
+# the deploy: it never answers, however long we wait.
+HEALTH_TRIES=60
+echo "🩺 Waiting for the API to report healthy (up to $((HEALTH_TRIES * 2))s)..."
+HEALTH_START=$(date +%s)
+for attempt in $(seq 1 "$HEALTH_TRIES"); do
+    if curl -fsS --max-time 5 "http://127.0.0.1:${PORT:-3050}/health" >/dev/null 2>&1; then
+        echo "   ✓ API healthy after $(( $(date +%s) - HEALTH_START ))s (${attempt} attempt(s))"
         # Persist the definition so a reboot does not resurrect an older one.
         pm2 save || true
         break
     fi
-    if [ "$attempt" = "15" ]; then
-        echo "❌ API did not become healthy. Recent logs:"
-        pm2 logs unclutterdesk-api --lines 40 --nostream --err || true
+    if [ "$attempt" = "$HEALTH_TRIES" ]; then
+        echo "❌ API did not become healthy within $(( $(date +%s) - HEALTH_START ))s. Recent logs:"
+        # Both streams: Nest's startup errors and its "started" line go to stdout.
+        pm2 logs unclutterdesk-api --lines 60 --nostream || true
         exit 1
     fi
     sleep 2

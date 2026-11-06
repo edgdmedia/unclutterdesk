@@ -107,3 +107,16 @@ describe('CalendarService.generateIcal', () => {
     });
   });
 });
+
+// One shared client once had each push set its practitioner's credentials on
+// it, so overlapping pushes could act with another practitioner's token.
+describe('Google credentials', () => {
+  it('a new OAuth client for each use, with only its own refresh token', async () => {
+    const service = new CalendarService({} as any);
+    const a = await (service as any).oauthClient('rt-a');
+    const b = await (service as any).oauthClient('rt-b');
+    expect(a).not.toBe(b);
+    expect(a.credentials.refresh_token).toBe('rt-a');
+    expect(b.credentials.refresh_token).toBe('rt-b');
+  });
+});
