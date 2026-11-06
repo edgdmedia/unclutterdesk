@@ -11,7 +11,7 @@ export interface SessionRow {
   startsAt: string;
   endsAt: string;
   status: string;
-  /** Left for the client to choose a new time (shown as rescheduled). */
+  /** Left for the client to choose a new time (shown as Open). */
   unscheduledAt?: string | null;
   paymentMethod: string;
   amountKobo: string | null;

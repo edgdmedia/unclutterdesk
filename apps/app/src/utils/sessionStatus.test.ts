@@ -24,9 +24,9 @@ describe('session status in plain words', () => {
   });
 
   // "Client chooses later" cancels the booking in the records, but nothing was called off.
-  it('says a session left for the client to choose a time was rescheduled, not cancelled', () => {
-    expect(sessionStatus(row('CANCELLED', '2026-11-06T09:00:00Z', { unscheduledAt: '2026-11-04T08:00:00Z' }), now)).toEqual({ label: 'Rescheduled', tone: 'info' });
-    expect(sessionStatus(row('CANCELLED', '2026-11-03T09:00:00Z', { unscheduledAt: '2026-11-02T08:00:00Z' }), now).label).toBe('Rescheduled');
+  it('says a session left for the client to choose a time is open, not cancelled', () => {
+    expect(sessionStatus(row('CANCELLED', '2026-11-06T09:00:00Z', { unscheduledAt: '2026-11-04T08:00:00Z' }), now)).toEqual({ label: 'Open', tone: 'info' });
+    expect(sessionStatus(row('CANCELLED', '2026-11-03T09:00:00Z', { unscheduledAt: '2026-11-02T08:00:00Z' }), now).label).toBe('Open');
   });
 
   it('works out "today" in the practice time zone, not UTC', () => {

@@ -17,8 +17,8 @@ export interface SessionTiming {
 export function sessionStatus({ status, startsAt, endsAt, unscheduledAt }: SessionTiming, now: Date = new Date(), timezone = 'Africa/Lagos'): { label: string; tone: StatusTone } {
   const s = (status ?? '').toUpperCase();
   // Stored as cancelled so its money stays traceable, but the session was
-  // moved to a time still to be chosen: it was never called off.
-  if (unscheduledAt && (s === 'CANCELLED' || s === 'CANCELED')) return { label: 'Rescheduled', tone: 'info' };
+  // moved to a time still to be chosen, like an open ticket: never called off.
+  if (unscheduledAt && (s === 'CANCELLED' || s === 'CANCELED')) return { label: 'Open', tone: 'info' };
   if (s === 'CANCELLED' || s === 'CANCELED') return { label: 'Cancelled', tone: 'danger' };
   if (s === 'COMPLETED') return { label: 'Completed', tone: 'muted' };
   if (s === 'NO_SHOW') return { label: 'No-show', tone: 'danger' };
