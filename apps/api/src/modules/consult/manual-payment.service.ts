@@ -183,10 +183,11 @@ export class ManualPaymentService {
     }
     const b = await this.loadBooking(bookingId);
     if (b) {
-      // The same confirmed email as every other path — with the join link,
-      // which a transfer hold must never have received before this moment.
-      await this.notifier.confirmed(bookingId).catch(() => undefined);
+      // Calendar first: with Google Meet the push makes the Meet link, and the
+      // confirmed email (the same as every other path) must carry it — a link
+      // a transfer hold must never have received before this moment.
       await this.calendar.pushBookingToGoogle(bookingId).catch(() => undefined);
+      await this.notifier.confirmed(bookingId).catch(() => undefined);
     }
     return { id: bookingId.toString(), status: 'CONFIRMED' };
   }
