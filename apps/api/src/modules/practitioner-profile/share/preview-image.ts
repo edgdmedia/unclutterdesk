@@ -1,8 +1,9 @@
 import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
-import { Resvg } from '@resvg/resvg-js';
-import satori from 'satori';
-import sharp from 'sharp';
+import type { Resvg as ResvgType } from '@resvg/resvg-js';
+import type satoriType from 'satori';
+import type sharpType from 'sharp';
+import { lazyModule } from '../../../common/lazy-module';
 import { themePalette, type ThemePalette } from '../themes';
 
 /**
@@ -148,9 +149,16 @@ function card(input: PreviewInput): Node {
  * the format most uploads arrive in). Unreadable bytes give null, so the card
  * falls back to initials rather than failing.
  */
+// Loaded on first use, not at startup (common/lazy-module.ts): together
+// about 1.5 s of a fast machine's boot, for an image few requests need.
+const loadSharp = lazyModule<typeof sharpType>(() => import('sharp'));
+const loadSatori = lazyModule<typeof satoriType>(() => import('satori'));
+const loadResvg = lazyModule<typeof ResvgType>(() => import('@resvg/resvg-js'), (m) => m.Resvg);
+
 export async function normalisePhoto(photo: Buffer | null): Promise<Buffer | null> {
   if (!photo?.length) return null;
   try {
+    const sharp = await loadSharp();
     return await sharp(photo).rotate().resize(640, 640, { fit: 'cover' }).jpeg({ quality: 85 }).toBuffer();
   } catch {
     return null;
@@ -160,6 +168,7 @@ export async function normalisePhoto(photo: Buffer | null): Promise<Buffer | nul
 /** Render the card to PNG bytes. */
 export async function renderPreviewPng(raw: PreviewInput): Promise<Buffer> {
   const input = { ...raw, photo: await normalisePhoto(raw.photo) };
+  const [satori, Resvg] = await Promise.all([loadSatori(), loadResvg()]);
   const svg = await satori(card(input) as any, { width: PREVIEW_WIDTH, height: PREVIEW_HEIGHT, fonts: loadFonts() });
   return Buffer.from(new Resvg(svg, { fitTo: { mode: 'width', value: PREVIEW_WIDTH } }).render().asPng());
 }

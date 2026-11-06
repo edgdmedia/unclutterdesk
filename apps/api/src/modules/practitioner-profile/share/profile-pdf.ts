@@ -1,5 +1,5 @@
-import * as pdfkit from 'pdfkit';
 import type PDFKit from 'pdfkit';
+import { lazyModule } from '../../../common/lazy-module';
 import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { themePalette } from '../themes';
@@ -18,10 +18,9 @@ function fonts() {
   return fontData;
 }
 
-// pdfkit is CommonJS (module.exports = PDFDocument). The build has no
-// default-import interop, so resolve the constructor either way; a plain
-// default import compiled to "pdfkit_1.default", which is undefined.
-const PDFDocument = ((pdfkit as any).default ?? pdfkit) as typeof PDFKit;
+// pdfkit is CommonJS (module.exports = PDFDocument); lazyModule resolves the
+// constructor either way. Loaded on first use, not at startup.
+const loadPdfKit = lazyModule<typeof PDFKit>(() => import('pdfkit'));
 
 /** Everything the one-page profile sheet needs (§6.10). Text is plain; values are escaped by the PDF layer. */
 export interface ProfilePdfInput {
@@ -67,8 +66,9 @@ function fitText(doc: PDFKit.PDFDocument, text: string, width: number, maxHeight
  * qualifications and specialties a client needs, and a QR code with the
  * profile's address. The Therapysts faces (embedded from the font packages, no downloads) and plain text only.
  */
-export function renderProfilePdf(input: ProfilePdfInput): Promise<Buffer> {
+export async function renderProfilePdf(input: ProfilePdfInput): Promise<Buffer> {
   const theme = themePalette(input.themeKey, input.brandColor);
+  const PDFDocument = await loadPdfKit();
   const doc = new PDFDocument({ size: 'A4', margin: 48, info: { Title: `${input.name} — profile` } });
   const f = fonts();
   doc.registerFont('Name', f.name);
