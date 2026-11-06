@@ -55,11 +55,11 @@ export function PortalPaymentsPage() {
                 payments.payments.map((payment, index) => {
                   const state = paymentState(payment);
                   return (
-                    <div key={payment.bookingId} className={`flex flex-wrap items-center gap-x-4 gap-y-1 px-5 py-[16px] ${index > 0 ? 'border-t border-[var(--desk-border-soft)]' : ''}`}>
+                    <div key={payment.id} className={`flex flex-wrap items-center gap-x-4 gap-y-1 px-5 py-[16px] ${index > 0 ? 'border-t border-[var(--desk-border-soft)]' : ''}`}>
                       <div className="flex-1 min-w-[180px]">
                         <div className="text-[14px] font-bold text-[var(--desk-text)]">{payment.serviceTitle}</div>
                         <div className="text-[12px] text-[var(--desk-text-muted)] font-medium">
-                          Session {formatDay(payment.sessionAt)}
+                          {payment.sessionAt ? `Session ${formatDay(payment.sessionAt)}` : 'Paid ahead · not scheduled yet'}
                           {payment.discountCode ? ` · ${payment.discountCode} applied` : ''}
                         </div>
                         {payment.reference ? (

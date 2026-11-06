@@ -11,6 +11,7 @@ import { priceFor, type Format } from './formats';
 import { isUnpaid, moneyAfterServiceChange } from './service-change';
 import { decryptNoteFields } from '../../common/field-encryption';
 import { returnPlanSessionOnCancel } from './plan-session-rules';
+import { clientPaymentHistory } from './client-payments';
 
 export interface SessionActor {
   profileId: bigint;
@@ -608,25 +609,7 @@ export class SessionDirectoryService {
 
   /** The client's billing history, for the desk: same rows the portal shows. */
   async clientPayments(tenantId: bigint, clientProfileId: bigint) {
-    const bookings = await this.prisma.consultBooking.findMany({
-      where: { tenantId, clientProfileId },
-      include: { service: { select: { title: true, priceKobo: true } }, availability: { select: { startsAt: true } } },
-      orderBy: { createdAt: 'desc' },
-      take: 200,
-    });
-    const payments = bookings.map((booking: any) => ({
-      bookingId: booking.id.toString(),
-      serviceTitle: booking.service.title,
-      sessionAt: booking.availability.startsAt.toISOString(),
-      amountKobo: chargedKobo(booking).toString(),
-      discountCode: booking.discountCodeUsed,
-      status: booking.status,
-      paidAt: booking.paidAt ? booking.paidAt.toISOString() : null,
-      reference: booking.paymentRef,
-      bookedAt: booking.createdAt.toISOString(),
-    }));
-    const paidKobo = payments.filter((p: any) => p.paidAt).reduce((t: bigint, p: any) => t + BigInt(p.amountKobo), 0n);
-    const outstandingKobo = payments.filter((p: any) => p.status === 'PENDING_PAYMENT').reduce((t: bigint, p: any) => t + BigInt(p.amountKobo), 0n);
-    return { payments, totalPaidKobo: paidKobo.toString(), outstandingKobo: outstandingKobo.toString() };
+    return clientPaymentHistory(this.prisma, tenantId, clientProfileId);
   }
+
 }

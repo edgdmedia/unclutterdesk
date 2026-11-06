@@ -28,9 +28,14 @@ export type PortalPayload = {
 };
 
 export type Payment = {
-  bookingId: string;
+  /** Unique across bookings and sessions paid with no time yet: booking-<id> or plan-<id>. */
+  id: string;
+  /** Null for a session paid for but not scheduled yet (§11.2). */
+  bookingId: string | null;
+  planSessionId?: string | null;
   serviceTitle: string;
-  sessionAt: string;
+  /** Null until a time is chosen. */
+  sessionAt: string | null;
   amountKobo: string;
   discountCode: string | null;
   status: string;

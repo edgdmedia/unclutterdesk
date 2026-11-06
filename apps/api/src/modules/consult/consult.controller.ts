@@ -5,7 +5,7 @@ import { ManualPaymentService } from './manual-payment.service';
 import { StaffBookingService, StaffBookingInput, StaffSeveralInput } from './staff-booking.service';
 import { SessionDirectoryService } from './session-directory.service';
 import { ReviewRequestService } from './review-request.service';
-import { PlanSessionService } from './plan-session.service';
+import { PlanSessionService, type AddPlanSessionsInput } from './plan-session.service';
 import { BadRequestException } from '@nestjs/common';
 import { effectivePermissions } from '../../common/permissions';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
@@ -359,6 +359,15 @@ export class ConsultController {
   markPaid(@Req() req: any, @Param('bookingId') bookingId: string) {
     if (!/^\d+$/.test(bookingId)) throw new NotFoundException('Booking not found');
     return this.manualPayments.markPaid(authenticatedTenantId(req), authenticatedProfileId(req), BigInt(bookingId));
+  }
+
+  @Permissions('practice.staff')
+  @Post('practice/plan-sessions')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @ApiBearerAuth('access-token')
+  @ApiOperation({ summary: 'Add sessions paid at the practice (or at no charge) with no time yet; the client chooses the times (§11.2)' })
+  addPlanSessions(@Req() req: any, @Body() dto: AddPlanSessionsInput) {
+    return this.planSessions.addPaid(authenticatedTenantId(req), authenticatedProfileId(req), dto);
   }
 
   @Permissions('practice.staff')

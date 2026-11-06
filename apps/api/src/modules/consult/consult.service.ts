@@ -8,7 +8,8 @@ import { DiscountService } from '../discount/discount.service';
 import { BillingService } from '../billing/billing.service';
 import { PaystackService } from '../billing/paystack.service';
 import { CalendarService } from '../calendar/calendar.service';
-import { changePercent, chargedKobo, revenueByMonth, startOfMonth } from '../../common/revenue';
+import { changePercent, chargedKobo, DIRECT_PLAN_PAYMENT, revenueByMonth, startOfMonth } from '../../common/revenue';
+import { clientPaymentHistory } from './client-payments';
 import { tenantWebOrigin } from '../../common/origins';
 import { decryptNoteFields } from '../../common/field-encryption';
 import { cleanImageUrl } from '../tenant/tenant.service';
@@ -1652,45 +1653,11 @@ export class ConsultService {
    * when the practice reprices and is simply wrong for a discounted booking.
    */
   async getClientPayments(tenantId: bigint, clientProfileId: bigint) {
-    const bookings = await this.prisma.consultBooking.findMany({
-      // Scoped to the client in the session. This is billing history, so it must
-      // never be addressable by anything the caller supplies.
-      where: { tenantId, clientProfileId },
-      include: {
-        service: { select: { title: true, priceKobo: true } },
-        availability: { select: { startsAt: true } },
-      },
-      orderBy: { createdAt: 'desc' },
-      take: 200,
-    });
-
-    const payments = bookings.map((booking) => ({
-      bookingId: booking.id.toString(),
-      serviceTitle: booking.service.title,
-      sessionAt: booking.availability.startsAt.toISOString(),
-      amountKobo: chargedKobo(booking).toString(),
-      discountCode: booking.discountCodeUsed,
-      status: booking.status,
-      paidAt: booking.paidAt ? booking.paidAt.toISOString() : null,
-      // Enough of the Paystack reference to match against a bank statement
-      // without printing the whole thing back over the wire.
-      reference: booking.paymentRef,
-      bookedAt: booking.createdAt.toISOString(),
-    }));
-
-    const paidKobo = payments
-      .filter((p) => p.paidAt)
-      .reduce((total, p) => total + BigInt(p.amountKobo), 0n);
-    const outstandingKobo = payments
-      .filter((p) => p.status === 'PENDING_PAYMENT')
-      .reduce((total, p) => total + BigInt(p.amountKobo), 0n);
-
-    return {
-      payments,
-      totalPaidKobo: paidKobo.toString(),
-      outstandingKobo: outstandingKobo.toString(),
-    };
+    // Scoped to the client in the session. This is billing history, so it must
+    // never be addressable by anything the caller supplies.
+    return clientPaymentHistory(this.prisma, tenantId, clientProfileId);
   }
+
 
   /**
    * The booking a client is allowed to move, with the reason if they are not.
@@ -2157,14 +2124,23 @@ export class ConsultService {
     const seriesStart = startOfMonth(now, 11);
 
     const [paidBookings, upcomingBookings, totalClientsCount, activeRosterCount, availabilityCount, serviceCount, payoutCount] = await Promise.all([
-      this.prisma.consultBooking.findMany({
-        where: { tenantId, paidAt: { gte: seriesStart } },
-        select: {
-          amountKobo: true,
-          paidAt: true,
-          service: { select: { priceKobo: true } },
-        },
-      }),
+      this.prisma.consultBooking
+        .findMany({
+          where: { tenantId, paidAt: { gte: seriesStart } },
+          select: {
+            amountKobo: true,
+            paidAt: true,
+            service: { select: { priceKobo: true } },
+          },
+        })
+        // §11.2: sessions paid at the practice with no booking are revenue too.
+        .then(async (rows) => [
+          ...rows,
+          ...(await this.prisma.planSession.findMany({
+            where: { tenantId, ...DIRECT_PLAN_PAYMENT, paidAt: { gte: seriesStart } },
+            select: { amountKobo: true, paidAt: true },
+          })),
+        ]),
       this.prisma.consultBooking.findMany({
         where: {
           tenantId,

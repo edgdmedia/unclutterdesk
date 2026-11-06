@@ -119,6 +119,10 @@ export class DataExportService {
         take: 500,
       }),
     ]);
+    const prepaid = await this.prisma.planSession.findMany({
+      where: { tenantId, clientProfileId },
+      orderBy: { createdAt: 'asc' },
+    });
 
     this.logger.log(
       `Client data export: profile ${clientProfileId} in tenant ${tenantId}, by ${actorProfileId}`,
@@ -145,6 +149,21 @@ export class DataExportService {
         emailVerified: client.emailVerified,
         registeredAt: client.createdAt.toISOString(),
       },
+
+      // §11.2: sessions paid for with their own record (paid at the practice,
+      // or freed from a booking), and the booking each became once scheduled.
+      prepaidSessions: prepaid.map((ps: any) => ({
+        planSessionId: ps.id.toString(),
+        serviceId: ps.serviceId.toString(),
+        status: ps.status,
+        format: ps.format,
+        paymentMethod: ps.paymentMethod,
+        amountKobo: ps.amountKobo.toString(),
+        paidAt: ps.paidAt ? ps.paidAt.toISOString() : null,
+        paidOnBookingId: ps.paidOnBookingId ? ps.paidOnBookingId.toString() : null,
+        bookingId: ps.bookingId ? ps.bookingId.toString() : null,
+        createdAt: ps.createdAt.toISOString(),
+      })),
 
       appointments: bookings.map((booking) => ({
         bookingId: booking.id.toString(),

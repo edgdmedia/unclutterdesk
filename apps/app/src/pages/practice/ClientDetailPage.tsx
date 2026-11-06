@@ -23,7 +23,8 @@ interface ClientDetailPageProps {
 }
 
 interface PaymentRow {
-  bookingId: string; serviceTitle: string; sessionAt: string; amountKobo: string;
+  /** booking-<id> or plan-<id>: a session paid with no time yet has no booking (§11.2). */
+  id: string; bookingId: string | null; serviceTitle: string; sessionAt: string | null; amountKobo: string;
   discountCode: string | null; status: string; paidAt: string | null; reference: string | null; bookedAt: string;
 }
 
@@ -48,7 +49,17 @@ const SESSION_COLUMNS: Column<SessionRow>[] = [
 ];
 
 const PAYMENT_COLUMNS: Column<PaymentRow>[] = [
-  { key: 'service', header: 'Session', cell: (p) => <span className="font-bold text-[var(--desk-text)]">{p.serviceTitle}</span>, className: 'w-full max-w-0' },
+  {
+    key: 'service',
+    header: 'Session',
+    cell: (p) => (
+      <span className="min-w-0">
+        <span className="block font-bold text-[var(--desk-text)] truncate">{p.serviceTitle}</span>
+        <span className="block text-[11.5px] text-[var(--desk-text-subtle)] truncate">{p.sessionAt ? sessionWhen(p.sessionAt) : 'Paid ahead · not scheduled yet'}</span>
+      </span>
+    ),
+    className: 'w-full max-w-0',
+  },
   { key: 'amount', header: 'Amount', align: 'end', cell: (p) => `₦${(Number(p.amountKobo) / 100).toLocaleString('en-NG')}` },
   { key: 'paid', header: 'Paid on', priority: 'md', cell: (p) => (p.paidAt ? new Date(p.paidAt).toLocaleDateString('en-GB') : '—') },
   { key: 'ref', header: 'Reference', priority: 'lg', cell: (p) => <span className="text-[11.5px] text-[var(--desk-text-muted)]">{p.reference ?? '—'}</span> },
@@ -378,7 +389,7 @@ export function ClientDetailPage({ clients, setClients, canViewPayments }: Clien
                 <ResponsiveTable<PaymentRow>
                   caption={`Payments for ${client.name}`}
                   rows={clientPayments?.payments ?? []}
-                  rowKey={(p) => p.bookingId}
+                  rowKey={(p) => p.id}
                   columns={PAYMENT_COLUMNS}
                   state={clientPayments ? 'ready' : 'loading'}
                   empty="No payments yet."
