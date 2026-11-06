@@ -1,10 +1,9 @@
-import * as pdfkit from 'pdfkit';
 import type PDFKit from 'pdfkit';
+import { lazyModule } from '../../common/lazy-module';
 
-// pdfkit is CommonJS (module.exports = PDFDocument). The build has no
-// default-import interop, so resolve the constructor either way; a plain
-// default import compiled to "pdfkit_1.default", which is undefined.
-const PDFDocument = ((pdfkit as any).default ?? pdfkit) as typeof PDFKit;
+// pdfkit is CommonJS (module.exports = PDFDocument); lazyModule resolves the
+// constructor either way. Loaded on first use, not at startup.
+const loadPdfKit = lazyModule<typeof PDFKit>(() => import('pdfkit'));
 import { CATEGORY_LABEL, HOURS_CATEGORIES, HoursRow, hoursText, initialsOf, isHoursCategory, isoDate, totalsOf } from './hours-format';
 
 export interface HoursPdfHeader {
@@ -25,7 +24,8 @@ const RULE = '#E2E8F0';
  * for the practitioner and supervisor to sign. Client names are initials
  * unless fullNames is set, because the document leaves the clinic.
  */
-export function hoursPdf(rows: HoursRow[], header: HoursPdfHeader, { fullNames = false }: { fullNames?: boolean } = {}): Promise<Buffer> {
+export async function hoursPdf(rows: HoursRow[], header: HoursPdfHeader, { fullNames = false }: { fullNames?: boolean } = {}): Promise<Buffer> {
+  const PDFDocument = await loadPdfKit();
   const doc = new PDFDocument({ size: 'A4', margin: 48, info: { Title: `Hours log: ${header.practitionerName}` } });
   const chunks: Buffer[] = [];
   doc.on('data', (c: Buffer) => chunks.push(c));

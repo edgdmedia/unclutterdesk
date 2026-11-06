@@ -1,0 +1,17 @@
+{
+  // The production build: the app, not its tests. Nest's build reads this
+  // file when it exists. Without it the build compiled all ~160 spec files
+  // (and vitest's types) into dist, which nearly doubled what the server
+  // compiles on every deploy and pushed the build past 1 GB of memory.
+  //
+  // rootDir stays "./" so the output keeps its path, dist/src/main.js, which
+  // ecosystem.config.js runs. `pnpm typecheck` still checks everything,
+  // specs included, through tsconfig.json.
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "rootDir": "./",
+    "tsBuildInfoFile": "./dist/tsconfig.build.tsbuildinfo"
+  },
+  "include": ["src/**/*.ts"],
+  "exclude": ["node_modules", "dist", "src/**/*.spec.ts", "src/test-support/**", "vitest.config.ts"]
+}

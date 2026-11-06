@@ -1,31 +1,46 @@
 import { Injectable, Logger, BadRequestException, NotFoundException } from '@nestjs/common';
 import { createHmac, timingSafeEqual, randomBytes, randomUUID, createHash } from 'crypto';
 import { JWT_SECRET } from '../../common/auth.config';
-import { google } from 'googleapis';
+import type { auth as authNs } from '@googleapis/calendar';
+type OAuth2Client = InstanceType<typeof authNs.OAuth2>;
 import { PrismaService } from '../../common/prisma/prisma.service';
+import { lazyModule } from '../../common/lazy-module';
 import { apiOrigin, ICAL_UID_DOMAIN, tenantWebOrigin } from '../../common/origins';
 import { joinLinkFor } from '../video/room-links';
 import { PLAN_SELECT, practiceEntitlements, requiredTierFor } from '../entitlements/entitlements';
 import { EntitlementError } from '../entitlements/entitlement.error';
 
+/**
+ * Google Calendar's own client, @googleapis/calendar, not the whole
+ * `googleapis` (every Google API): that package took ~0.7 s to load and its
+ * types alone pushed the build past 2 GB of memory, which made deploys on the
+ * production server slow (see common/lazy-module.ts). Loaded on first use.
+ */
+const loadGoogle = lazyModule<typeof import('@googleapis/calendar')>(() => import('@googleapis/calendar'), (m) => (m?.calendar ? m : m.default));
+
 @Injectable()
 export class CalendarService {
   private readonly logger = new Logger(CalendarService.name);
-  private oauth2Client;
 
   constructor(private readonly prisma: PrismaService) {
     // Must match an "Authorized redirect URI" on the Google OAuth client
     // exactly, or Google refuses with redirect_uri_mismatch. Logged at start
     // so the value to register is never a guess.
-    const redirectUri = CalendarService.redirectUri();
-    this.oauth2Client = new google.auth.OAuth2(
-      process.env.GOOGLE_CLIENT_ID,
-      process.env.GOOGLE_CLIENT_SECRET,
-      redirectUri,
-    );
     if (process.env.GOOGLE_CLIENT_ID) {
-      this.logger.log(`Google Calendar OAuth redirect URI: ${redirectUri}`);
+      this.logger.log(`Google Calendar OAuth redirect URI: ${CalendarService.redirectUri()}`);
     }
+  }
+
+  /**
+   * A new OAuth client for each use. One shared client had each push call
+   * setCredentials on it, so two pushes for different practitioners at once
+   * could send one practitioner's event with the other's credentials.
+   */
+  private async oauthClient(refreshToken?: string): Promise<OAuth2Client> {
+    const google = await loadGoogle();
+    const client = new google.auth.OAuth2(process.env.GOOGLE_CLIENT_ID, process.env.GOOGLE_CLIENT_SECRET, CalendarService.redirectUri());
+    if (refreshToken) client.setCredentials({ refresh_token: refreshToken });
+    return client;
   }
 
   static redirectUri(): string {
@@ -85,7 +100,7 @@ export class CalendarService {
       JSON.stringify({ t: tenantId, p: profileId, n: nonce, e: expiresAt.getTime() }),
     ).toString('base64url');
 
-    return this.oauth2Client.generateAuthUrl({
+    return (await this.oauthClient()).generateAuthUrl({
       access_type: 'offline',
       prompt: 'consent', // Force to get refresh token
       scope: ['https://www.googleapis.com/auth/calendar.events'],
@@ -132,7 +147,7 @@ export class CalendarService {
 
     let tokens;
     try {
-      ({ tokens } = await this.oauth2Client.getToken(code));
+      ({ tokens } = await (await this.oauthClient()).getToken(code));
     } catch (error) {
       this.logger.error('Failed to get Google OAuth tokens', error as Error);
       throw new BadRequestException('Failed to authenticate with Google');
@@ -184,8 +199,8 @@ export class CalendarService {
     if (!refreshToken) return;
 
     try {
-      this.oauth2Client.setCredentials({ refresh_token: refreshToken });
-      const calendar = google.calendar({ version: 'v3', auth: this.oauth2Client });
+      const google = await loadGoogle();
+      const calendar = google.calendar({ version: 'v3', auth: await this.oauthClient(refreshToken) });
 
       const clientName = `${booking.client.firstName || ''} ${booking.client.lastName || ''}`.trim() || booking.client.email;
 
