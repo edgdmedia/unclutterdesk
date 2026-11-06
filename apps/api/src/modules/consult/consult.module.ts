@@ -7,6 +7,7 @@ import { ManualPaymentService } from './manual-payment.service';
 import { StaffBookingService } from './staff-booking.service';
 import { SessionDirectoryService } from './session-directory.service';
 import { ReviewRequestService } from './review-request.service';
+import { PlanSessionService } from './plan-session.service';
 import { PrismaService } from '../../common/prisma/prisma.service';
 import { NotificationsModule } from '../notifications/notification.module';
 import { DiscountModule } from '../discount/discount.module';
@@ -17,7 +18,7 @@ import { PractitionerProfileModule } from '../practitioner-profile/practitioner-
 @Module({
   imports: [NotificationsModule, DiscountModule, BillingModule, CalendarModule, PractitionerProfileModule],
   controllers: [ConsultController],
-  providers: [ConsultService, ConsultCron, SessionReminderService, ManualPaymentService, StaffBookingService, SessionDirectoryService, ReviewRequestService, PrismaService],
+  providers: [ConsultService, ConsultCron, SessionReminderService, ManualPaymentService, StaffBookingService, SessionDirectoryService, ReviewRequestService, PlanSessionService, PrismaService],
   exports: [ConsultService],
 })
 export class ConsultModule {}

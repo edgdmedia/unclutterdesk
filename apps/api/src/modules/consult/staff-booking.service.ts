@@ -29,7 +29,8 @@ export interface StaffBookingInput {
 export interface StaffBookingResult {
   bookingId: string;
   status: 'PENDING_PAYMENT' | 'CONFIRMED';
-  paymentMethod: 'PAYSTACK' | 'MANUAL' | 'NONE';
+  /** PLAN: a not-yet-scheduled session given a time; it was paid on an earlier booking. */
+  paymentMethod: 'PAYSTACK' | 'MANUAL' | 'NONE' | 'PLAN';
   amountKobo: string;
   startsAt: string;
   endsAt: string;
@@ -382,7 +383,7 @@ export class StaffBookingService {
     const timeZone = practitioner.timezone || 'Africa/Lagos';
     const client = sessions[0].r.clientName;
     const paid = (r: StaffBookingResult) =>
-      r.status === 'PENDING_PAYMENT' ? 'waiting for payment' : r.paymentMethod === 'NONE' ? 'no charge' : r.paymentMethod === 'MANUAL' ? 'marked as paid' : 'paid';
+      r.status === 'PENDING_PAYMENT' ? 'waiting for payment' : r.paymentMethod === 'NONE' ? 'no charge' : r.paymentMethod === 'MANUAL' ? 'marked as paid' : r.paymentMethod === 'PLAN' ? 'paid earlier' : 'paid';
     const lines = sessions.map(({ b, r }) => `• ${this.when(r.startsAt, timeZone)} (${paid(r)})\n  ${this.whereLine(b)}`).join('\n');
     const n = sessions.length;
     await this.notifications.sendEmail({

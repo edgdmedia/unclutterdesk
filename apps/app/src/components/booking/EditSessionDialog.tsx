@@ -16,12 +16,15 @@ export function EditSessionDialog({
   onClose,
   onMoved,
   onServiceChanged,
+  onLeftForClient,
 }: {
   session: MoveSession & ChangeServiceSession;
   initial?: EditSessionPart;
   onClose: () => void;
   onMoved: (r: { startsAt: string }) => void;
   onServiceChanged: (r: ChangeServiceResult) => void;
+  /** "Client chooses later": the time was freed; the client picks a new one. */
+  onLeftForClient?: () => void;
 }) {
   // A completed session keeps its time; its service can still be put right.
   // One whose time has passed without happening (the client was tied up) can
@@ -66,7 +69,13 @@ export function EditSessionDialog({
 
         <div role="tabpanel">
           {part === 'when' ? (
-            <MoveSessionPanel session={session} onMoved={onMoved} />
+            <MoveSessionPanel
+              session={session}
+              onMoved={onMoved}
+              // Only a paid (or free) booked session: an unpaid one is cancelled instead.
+              allowLater={session.status === 'CONFIRMED'}
+              onLeftForClient={onLeftForClient}
+            />
           ) : (
             <ChangeServicePanel session={session} onClose={onClose} onChanged={onServiceChanged} />
           )}

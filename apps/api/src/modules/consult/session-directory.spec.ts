@@ -142,8 +142,18 @@ describe('setStatus', () => {
     const { service, prisma } = make();
     prisma.consultBooking.updateMany = vi.fn().mockResolvedValue({ count: 1 });
     prisma.consultAvailability = { updateMany: vi.fn().mockResolvedValue({ count: 1 }) };
+    prisma.planSession = { updateMany: vi.fn().mockResolvedValue({ count: 0 }) };
     await service.setStatus(TENANT, DESK, 900n, 'CANCELLED');
     expect(prisma.consultAvailability.updateMany).toHaveBeenCalled();
+  });
+  // Paid already on an earlier booking: cancelling its time must not lose it.
+  it('cancelling a session from a plan puts it back to not scheduled', async () => {
+    const { service, prisma } = make();
+    prisma.consultBooking.updateMany = vi.fn().mockResolvedValue({ count: 1 });
+    prisma.consultAvailability = { updateMany: vi.fn().mockResolvedValue({ count: 1 }) };
+    prisma.planSession = { updateMany: vi.fn().mockResolvedValue({ count: 1 }) };
+    await service.setStatus(TENANT, DESK, 900n, 'CANCELLED');
+    expect(prisma.planSession.updateMany).toHaveBeenCalledWith({ where: { tenantId: TENANT, bookingId: 900n, status: 'SCHEDULED' }, data: { status: 'PAID', bookingId: null } });
   });
 });
 

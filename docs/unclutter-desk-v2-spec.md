@@ -1163,6 +1163,8 @@ A short first session to decide whether to continue: for example 30 minutes for 
 
 ### 11.2 Session plans: several sessions, times chosen later (agreed 3 Nov 2026)
 
+> **Built so far (6 Nov 2026): not-yet-scheduled sessions.** Staff turn a booked, paid (or free) session into "not scheduled" from Edit session → When → *Client chooses later*. The time is freed, and the booking is cancelled but kept as the record of the payment (`unscheduledAt`). A `PlanSession` records the payment in `paidOnBookingId`. The client chooses a time under **To schedule** in the portal, and staff can choose one (open or custom) on the client page. Either way it is booked straight away as an ordinary booking with `paymentMethod: PLAN`, so it is never charged twice. Cancelling such a booking puts the session back to not scheduled. **Still to build:** recommending a plan, buying a plan online with the pay-ahead discount, staff adding sessions paid at the practice with no time (this needs revenue to read `PlanSession`), refunds, and "Session n of m".
+
 A client pays for several sessions now and picks each time when they know it. The client sees **sessions**, not credits or a balance.
 
 **Flow**

@@ -9,6 +9,7 @@ import { formatNaira } from '../billing/subscription-plans';
 import { priceFor, type Format } from './formats';
 import { isUnpaid, moneyAfterServiceChange } from './service-change';
 import { decryptNoteFields } from '../../common/field-encryption';
+import { returnPlanSessionOnCancel } from './plan-session-rules';
 
 export interface SessionActor {
   profileId: bigint;
@@ -162,6 +163,7 @@ export class SessionDirectoryService {
       clientRecap: b.clientRecap,
       clientRecapSentAt: b.clientRecapSentAt ? b.clientRecapSentAt.toISOString() : null,
       reviewRequestedAt: b.reviewRequestedAt ? b.reviewRequestedAt.toISOString() : null,
+      unscheduledAt: b.unscheduledAt ? b.unscheduledAt.toISOString() : null,
       can: {
         edit: actor.viewAll === true,
         summary: actor.clinical === true,
@@ -187,6 +189,8 @@ export class SessionDirectoryService {
     }
     await this.prisma.consultBooking.updateMany({ where: { id: b.id, tenantId }, data: { status } });
     if (status === 'CANCELLED') {
+      // From a plan: paid already, so it goes back to "not scheduled".
+      await returnPlanSessionOnCancel(this.prisma as any, tenantId, b.id);
       await this.notifier?.notifyStaff(b.id, 'cancelled').catch(() => undefined);
       // The time goes back on the shelf, as the expiry cron does.
       await this.prisma.consultAvailability.updateMany({

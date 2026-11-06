@@ -5,6 +5,7 @@ import { Card, Grid, MetricTile, Page, PageHeader, useBrand, useToast } from '@u
 import { api, API_BASE } from '../../../utils/apiClient';
 import { useAuth } from '../../../context/AuthContext';
 import { RescheduleDialog } from '../../../components/RescheduleDialog';
+import { ToSchedulePanel } from './ToSchedulePanel';
 import { JoinButton } from '../../../components/video/JoinButton';
 import { TransferDetails } from '../../../components/payments/TransferDetails';
 import { usePortalData, type PortalSession } from './PortalDataContext';
@@ -68,6 +69,7 @@ export function PortalHomePage() {
           </>
         }
       >
+        <ToSchedulePanel onBooked={() => void reload()} />
         {portal.upcoming
           .filter((s) => s.status === 'PENDING_PAYMENT' && s.manualPayment)
           .map((s) => (

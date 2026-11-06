@@ -8,6 +8,7 @@ import type { Client } from '../../App';
 import { ClientAssessmentsPanel } from '../../components/ClientAssessmentsPanel';
 import { EmergencyContactCard } from '../../components/clients/EmergencyContactCard';
 import { StaffBookingDialog } from '../../components/booking/StaffBookingDialog';
+import { NotScheduledCard } from '../../components/booking/NotScheduledCard';
 import { RouterLink } from '../../components/shell/RouterLink';
 import { PaymentChip } from '../../components/booking/PaymentChip';
 import type { SessionRow } from './SessionsPage';
@@ -285,6 +286,13 @@ export function ClientDetailPage({ clients, setClients, canViewPayments }: Clien
             />
           </Grid>
         </Card>
+
+        <NotScheduledCard
+          client={{ id: client.id, name: client.name }}
+          onScheduled={() => {
+            api.get<SessionRow[]>(`/v1/consult/practice/clients/${client.id}/sessions`).then(setClientSessions).catch(() => undefined);
+          }}
+        />
 
         {/* Workspace Tabs */}
         <div className="space-y-4">

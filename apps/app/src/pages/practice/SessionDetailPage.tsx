@@ -24,6 +24,8 @@ interface SessionDetail extends SessionRow {
   clientRecapSentAt: string | null;
   /** When the client was emailed a review request for this session; once per session. */
   reviewRequestedAt?: string | null;
+  /** Left for the client to schedule (§11.2): this booking was freed, its payment kept. */
+  unscheduledAt?: string | null;
   can: { edit: boolean; summary: boolean; markPaid: boolean };
   serviceId?: string | null;
   durationMinutes?: number | null;
@@ -162,13 +164,20 @@ export function SessionDetailPage() {
         {d.bookedBy ? <span className="text-[11.5px] text-[var(--desk-text-muted)]">Booked by {d.bookedBy}</span> : null}
       </div>
 
+      {d.unscheduledAt ? (
+        <div role="status" className="rounded-[14px] border border-[var(--desk-border)] bg-[var(--desk-surface)] px-4 py-3 text-[13px] text-[var(--desk-text-body)]">
+          Left for {d.client.name} to schedule on {new Date(d.unscheduledAt).toLocaleDateString('en-GB')}. The payment stays here; the new time is on{' '}
+          <Link to={`/dashboard/clients/${d.client.id}`} className="font-bold text-[var(--desk-pine-600)] underline">their client page</Link> once chosen.
+        </div>
+      ) : null}
+
       <Card padding="p-[22px]" className="space-y-4">
         <Eyebrow>THE SESSION</Eyebrow>
         <div className="grid grid-cols-1 @min-[640px]/page:grid-cols-2 gap-3">
           <StatTile variant="inset" size="sm" label="WHEN" value={longWhen(d.startsAt)} />
           <StatTile variant="inset" size="sm" label="SERVICE" value={d.serviceTitle} />
           <StatTile variant="inset" size="sm" label="PRACTITIONER" value={d.provider.name} />
-          <StatTile variant="inset" size="sm" label="PAID" value={`${d.paymentMethod === 'NONE' ? 'No charge' : naira(d.amountKobo)}`} />
+          <StatTile variant="inset" size="sm" label="PAID" value={d.paymentMethod === 'NONE' ? 'No charge' : d.paymentMethod === 'PLAN' ? 'Paid on an earlier booking' : naira(d.amountKobo)} />
           <StatTile variant="inset" size="sm" label="FORMAT" value={d.format === 'IN_PERSON' && d.location ? `In person · ${d.location.name}` : d.format === 'IN_PERSON' ? 'In person' : 'Online'} />
         </div>
         <p className="text-[12.5px] text-[var(--desk-text-muted)]">
@@ -242,6 +251,11 @@ export function SessionDetailPage() {
           onMoved={(r) => {
             setEditing(false);
             toast.success(`Session moved to ${longWhen(r.startsAt)}. The client has been emailed.`);
+            void api.get<SessionDetail>(`/v1/consult/practice/sessions/${id}`).then(setD).catch(() => undefined);
+          }}
+          onLeftForClient={() => {
+            setEditing(false);
+            toast.success(`${d.client.name} has been emailed to choose a new time. The session stays paid.`);
             void api.get<SessionDetail>(`/v1/consult/practice/sessions/${id}`).then(setD).catch(() => undefined);
           }}
           onServiceChanged={(r) => {
