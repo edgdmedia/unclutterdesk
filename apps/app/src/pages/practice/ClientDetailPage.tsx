@@ -44,7 +44,7 @@ const SESSION_COLUMNS: Column<SessionRow>[] = [
     className: 'w-full max-w-0',
   },
   { key: 'provider', header: 'Practitioner', priority: 'md', cell: (r) => <span className="truncate">{r.provider.name}</span> },
-  { key: 'status', header: 'Status', priority: 'md', cell: (r) => { const st = sessionStatus(r.status, r.startsAt, r.endsAt, new Date(), activeDisplayPrefs().timezone); return <StatusBadge status={st.label} tone={st.tone} />; } },
+  { key: 'status', header: 'Status', priority: 'md', cell: (r) => { const st = sessionStatus(r, new Date(), activeDisplayPrefs().timezone); return <StatusBadge status={st.label} tone={st.tone} />; } },
   { key: 'payment', header: 'Payment', priority: 'lg', cell: (r) => <PaymentChip status={r.status} paymentMethod={r.paymentMethod} holdExpiresAt={r.holdExpiresAt} /> },
 ];
 

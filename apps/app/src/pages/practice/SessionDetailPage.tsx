@@ -159,7 +159,7 @@ export function SessionDetailPage() {
       }
     >
       <div className="flex flex-wrap items-center gap-3">
-        {(() => { const st = sessionStatus(d.status, d.startsAt, d.endsAt, new Date(), activeDisplayPrefs().timezone); return <StatusBadge status={st.label} tone={st.tone} />; })()}
+        {(() => { const st = sessionStatus(d, new Date(), activeDisplayPrefs().timezone); return <StatusBadge status={st.label} tone={st.tone} />; })()}
         <PaymentChip status={d.status} paymentMethod={d.paymentMethod} holdExpiresAt={d.holdExpiresAt} />
         {d.bookedBy ? <span className="text-[11.5px] text-[var(--desk-text-muted)]">Booked by {d.bookedBy}</span> : null}
       </div>

@@ -19,6 +19,6 @@ export function upcomingSessions(events: CalendarEvent[], now: Date, limit = UPC
 
 /** What a session's badge says right now: the same words as everywhere else (utils/sessionStatus). */
 export function sessionBadge(e: CalendarEvent, now: Date, timezone?: string): { label: string; tone: 'live' | 'ok' | 'wait' } {
-  const st = sessionStatus(e.status, e.startsAt, e.endsAt, now, timezone);
+  const st = sessionStatus(e, now, timezone);
   return { label: st.label, tone: st.tone === 'info' ? 'live' : st.tone === 'warn' || st.tone === 'danger' ? 'wait' : 'ok' };
 }

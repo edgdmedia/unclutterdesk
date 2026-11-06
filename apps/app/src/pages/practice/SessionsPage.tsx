@@ -11,6 +11,8 @@ export interface SessionRow {
   startsAt: string;
   endsAt: string;
   status: string;
+  /** Left for the client to choose a new time (shown as rescheduled). */
+  unscheduledAt?: string | null;
   paymentMethod: string;
   amountKobo: string | null;
   holdExpiresAt: string | null;
@@ -61,7 +63,7 @@ export function SessionsPage({ can }: { can: { viewAll: boolean } }) {
     },
     { key: 'when', header: 'When', sort: (a, b) => a.startsAt.localeCompare(b.startsAt), cell: (r) => <span className="whitespace-nowrap">{when(r.startsAt)}</span> },
     ...(can.viewAll ? [{ key: 'provider', header: 'Practitioner', priority: 'md' as const, cell: (r: SessionRow) => <span className="truncate">{r.provider.name}</span> }] : []),
-    { key: 'status', header: 'Status', priority: 'md', cell: (r) => { const st = sessionStatus(r.status, r.startsAt, r.endsAt, new Date(), activeDisplayPrefs().timezone); return <StatusBadge status={st.label} tone={st.tone} />; } },
+    { key: 'status', header: 'Status', priority: 'md', cell: (r) => { const st = sessionStatus(r, new Date(), activeDisplayPrefs().timezone); return <StatusBadge status={st.label} tone={st.tone} />; } },
     { key: 'payment', header: 'Payment', priority: 'lg', cell: (r) => <PaymentChip status={r.status} paymentMethod={r.paymentMethod} holdExpiresAt={r.holdExpiresAt} /> },
   ];
 

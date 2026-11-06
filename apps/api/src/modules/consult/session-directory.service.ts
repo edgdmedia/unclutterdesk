@@ -71,6 +71,9 @@ export class SessionDirectoryService {
       startsAt: b.availability.startsAt.toISOString(),
       endsAt: b.availability.endsAt.toISOString(),
       status: b.status as string,
+      // Left for the client to choose a new time: cancelled in the records
+      // (its money stays traceable), but moved, not called off.
+      unscheduledAt: b.unscheduledAt ? b.unscheduledAt.toISOString() : null,
       paymentMethod: b.paymentMethod as string,
       amountKobo: b.amountKobo !== null && b.amountKobo !== undefined ? String(b.amountKobo) : null,
       holdExpiresAt: b.holdExpiresAt ? b.holdExpiresAt.toISOString() : null,
@@ -166,7 +169,6 @@ export class SessionDirectoryService {
       clientRecap: b.clientRecap,
       clientRecapSentAt: b.clientRecapSentAt ? b.clientRecapSentAt.toISOString() : null,
       reviewRequestedAt: b.reviewRequestedAt ? b.reviewRequestedAt.toISOString() : null,
-      unscheduledAt: b.unscheduledAt ? b.unscheduledAt.toISOString() : null,
       can: {
         edit: actor.viewAll === true,
         summary: actor.clinical === true,

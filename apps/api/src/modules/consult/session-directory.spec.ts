@@ -86,6 +86,14 @@ describe('listSessions', () => {
     const rows = await service.listSessions(TENANT, DESK, {});
     expect(rows[0].bookedBy).toBe('Frank Desk');
   });
+
+  // So the lists can say "Rescheduled": the record is cancelled, the session was moved.
+  it('says when a session was left for the client to choose a new time', async () => {
+    const left = make({ booking: { status: 'CANCELLED', unscheduledAt: new Date('2026-11-06T09:00:00Z') } });
+    expect((await left.service.listSessions(TENANT, DESK, {}))[0]).toMatchObject({ status: 'CANCELLED', unscheduledAt: '2026-11-06T09:00:00.000Z' });
+    const booked = make();
+    expect((await booked.service.listSessions(TENANT, DESK, {}))[0].unscheduledAt).toBeNull();
+  });
 });
 
 describe('getSession', () => {
