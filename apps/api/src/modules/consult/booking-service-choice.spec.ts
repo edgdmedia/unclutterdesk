@@ -59,16 +59,17 @@ function makeService({
   };
   const notifications = { notify: vi.fn(), sendEmail: vi.fn().mockResolvedValue({ success: true }) };
   const notifier = new BookingNotifier(prisma as any, notifications as any);
+  const calendar = { pushBookingToGoogle: vi.fn().mockResolvedValue(undefined) };
   const service = new ConsultService(
     prisma,
     notifications as any,
     { validateDiscount: vi.fn() } as any,
     { calculateSplitPayout: vi.fn() } as any,
     {} as any,
-    { pushBookingToGoogle: vi.fn() } as any, {} as any,
+    calendar as any, {} as any,
     notifier,
   );
-  return { service, prisma, tx, notifications };
+  return { service, prisma, tx, notifications, calendar };
 }
 
 const dto = { availabilityId: '3', serviceId: '4', email: 'ada@example.com', firstName: 'Ada', lastName: 'Obi' };
@@ -141,5 +142,19 @@ describe('the booking confirmation email', () => {
     expect(email.to).toBe('ada@example.com');
     expect(email.actionLabel).toBe('Join session (opens 15 minutes before)');
     expect(email.link).toMatch(/^https?:\/\//);
+  });
+
+  // A free or fully discounted booking confirms at once. With Google Meet the
+  // calendar push makes the Meet link, so it comes before the email — it was
+  // never made at all, so the email had the app's room link and the practice
+  // calendar had no event.
+  it('a free booking gets its calendar event (and Meet link) before the email', async () => {
+    const { service, notifications, calendar } = makeService();
+    const order: string[] = [];
+    calendar.pushBookingToGoogle.mockImplementation(async () => { order.push('calendar'); });
+    notifications.sendEmail.mockImplementation(async (m: any) => { if (m.type === 'bookings.confirmed') order.push('email'); return { success: true }; });
+    await service.createBooking(TENANT, 5n, dto as any).catch(() => undefined);
+    expect(calendar.pushBookingToGoogle).toHaveBeenCalledWith(100n);
+    expect(order).toEqual(['calendar', 'email']);
   });
 });

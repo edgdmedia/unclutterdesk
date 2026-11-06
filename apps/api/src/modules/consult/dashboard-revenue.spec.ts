@@ -19,8 +19,9 @@ function paid(amountKobo: bigint | null, when: Date, priceKobo = 800000n) {
   return { amountKobo, paidAt: when, service: { priceKobo } };
 }
 
-function makeService(bookings: unknown[]) {
+function makeService(bookings: unknown[], planSessions: unknown[] = []) {
   const prisma: any = {
+    planSession: { findMany: vi.fn().mockResolvedValue(planSessions) },
     consultBooking: {
       findMany: vi
         .fn()
@@ -89,6 +90,14 @@ describe('what this month earned', () => {
       revenueThisMonthNaira: 7500,
       revenueThisMonthKobo: '750000',
     });
+  });
+
+  // §11.2: sessions paid at the practice with no time yet have no booking.
+  it('counts sessions paid at the practice with no booking, once', async () => {
+    const { service, prisma } = makeService([paid(450000n, new Date(2026, 8, 2))], [{ amountKobo: 300000n, paidAt: new Date(2026, 8, 10) }]);
+    await expect(service.getDashboardSummary(TENANT)).resolves.toMatchObject({ revenueThisMonthKobo: '750000' });
+    // Only those paid directly: one paid on a booking is that booking's money.
+    expect(prisma.planSession.findMany.mock.calls[0][0].where).toMatchObject({ tenantId: TENANT, paidOnBookingId: null });
   });
 
   it('leaves last month out of this month', async () => {

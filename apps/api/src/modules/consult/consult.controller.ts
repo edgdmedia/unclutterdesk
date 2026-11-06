@@ -4,6 +4,8 @@ import { ConsultService } from './consult.service';
 import { ManualPaymentService } from './manual-payment.service';
 import { StaffBookingService, StaffBookingInput, StaffSeveralInput } from './staff-booking.service';
 import { SessionDirectoryService } from './session-directory.service';
+import { ReviewRequestService } from './review-request.service';
+import { PlanSessionService, type AddPlanSessionsInput } from './plan-session.service';
 import { BadRequestException } from '@nestjs/common';
 import { effectivePermissions } from '../../common/permissions';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
@@ -20,6 +22,8 @@ export class ConsultController {
     private readonly manualPayments: ManualPaymentService,
     private readonly staffBookings: StaffBookingService,
     private readonly sessions: SessionDirectoryService,
+    private readonly reviewRequests: ReviewRequestService,
+    private readonly planSessions: PlanSessionService,
   ) {}
 
   /** Who the session routes act as: the guard already loaded role and grants. */
@@ -147,6 +151,13 @@ export class ConsultController {
   updateService(@Req() req: any, @Param('id') id: string, @Body() dto: any) {
     if (!/^\d+$/.test(id)) throw new NotFoundException('That service could not be found.');
     return this.consultService.updateService(authenticatedTenantId(req), BigInt(id), dto);
+  }
+
+  @Get('public/review-invite')
+  @ApiOperation({ summary: 'What a review request link names: the client and the session' })
+  getReviewInvite(@Req() req: TenantRequest, @Query('booking') booking?: string, @Query('t') token?: string) {
+    if (!req.tenantId || !/^\d+$/.test(String(booking ?? ''))) throw new NotFoundException('This review link is not valid.');
+    return this.reviewRequests.invite(req.tenantId, BigInt(String(booking)), token);
   }
 
   @Get('public/availability')
@@ -351,6 +362,15 @@ export class ConsultController {
   }
 
   @Permissions('practice.staff')
+  @Post('practice/plan-sessions')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @ApiBearerAuth('access-token')
+  @ApiOperation({ summary: 'Add sessions paid at the practice (or at no charge) with no time yet; the client chooses the times (§11.2)' })
+  addPlanSessions(@Req() req: any, @Body() dto: AddPlanSessionsInput) {
+    return this.planSessions.addPaid(authenticatedTenantId(req), authenticatedProfileId(req), dto);
+  }
+
+  @Permissions('practice.staff')
   @Post('practice/bookings')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @ApiBearerAuth('access-token')
@@ -409,15 +429,27 @@ export class ConsultController {
   }
 
   @Permissions('sessions.edit', 'clinical.record')
+  @Post('practice/sessions/:bookingId/review-request')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @ApiBearerAuth('access-token')
+  @ApiOperation({ summary: 'Email the client a signed link to the review form, for one completed session' })
+  requestReview(@Req() req: any, @Param('bookingId') bookingId: string) {
+    if (!/^\d+$/.test(bookingId)) throw new NotFoundException('Session not found');
+    return this.reviewRequests.send(authenticatedTenantId(req), this.actor(req), BigInt(bookingId));
+  }
+
+  @Permissions('sessions.edit', 'clinical.record')
   @Post('practice/sessions/:bookingId/reschedule')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @ApiBearerAuth('access-token')
-  @ApiOperation({ summary: 'Move a session to another open slot' })
-  rescheduleSession(@Req() req: any, @Param('bookingId') bookingId: string, @Body() dto: { availabilityId?: string }) {
-    if (!/^\d+$/.test(bookingId) || !/^\d+$/.test(String(dto?.availabilityId ?? ''))) {
-      throw new NotFoundException('Session not found');
+  @ApiOperation({ summary: 'Move a session to another open slot, or to a time staff choose' })
+  rescheduleSession(@Req() req: any, @Param('bookingId') bookingId: string, @Body() dto: { availabilityId?: string; startsAt?: string }) {
+    if (!/^\d+$/.test(bookingId)) throw new NotFoundException('Session not found');
+    if (dto?.startsAt) {
+      return this.sessions.rescheduleByStaff(authenticatedTenantId(req), this.actor(req), BigInt(bookingId), { startsAt: new Date(String(dto.startsAt)) });
     }
-    return this.sessions.rescheduleByStaff(authenticatedTenantId(req), this.actor(req), BigInt(bookingId), BigInt(dto.availabilityId));
+    if (!/^\d+$/.test(String(dto?.availabilityId ?? ''))) throw new BadRequestException('Choose a time.');
+    return this.sessions.rescheduleByStaff(authenticatedTenantId(req), this.actor(req), BigInt(bookingId), BigInt(dto.availabilityId!));
   }
 
   @Permissions('sessions.edit', 'clinical.record')
@@ -477,6 +509,42 @@ export class ConsultController {
   sendSessionRecap(@Req() req: any, @Param('bookingId') bookingId: string) {
     if (!/^\d+$/.test(bookingId)) throw new NotFoundException('Session not found');
     return this.sessions.sendRecap(authenticatedTenantId(req), this.actor(req), BigInt(bookingId));
+  }
+
+  @Permissions('sessions.edit', 'clinical.record')
+  @Post('practice/sessions/:bookingId/unschedule')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @ApiBearerAuth('access-token')
+  @ApiOperation({ summary: 'Free a booked session’s time; the client chooses a new one (§11.2). The payment stays on this booking.' })
+  unscheduleSession(@Req() req: any, @Param('bookingId') bookingId: string) {
+    if (!/^\d+$/.test(bookingId)) throw new NotFoundException('Session not found');
+    return this.planSessions.unschedule(authenticatedTenantId(req), this.actor(req), BigInt(bookingId));
+  }
+
+  @Permissions('practice.staff')
+  @Get('practice/clients/:profileId/plan-sessions')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @ApiBearerAuth('access-token')
+  @ApiOperation({ summary: 'One client’s paid sessions with no time yet' })
+  clientPlanSessions(@Req() req: any, @Param('profileId') profileId: string) {
+    if (!/^\d+$/.test(profileId)) throw new NotFoundException('Client not found');
+    return this.planSessions.listForClient(authenticatedTenantId(req), BigInt(profileId), this.actor(req));
+  }
+
+  @Permissions('sessions.edit', 'clinical.record')
+  @Post('practice/plan-sessions/:id/schedule')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @ApiBearerAuth('access-token')
+  @ApiOperation({ summary: 'Choose the time for a client’s not-yet-scheduled session: an open time or a custom one' })
+  schedulePlanSession(@Req() req: any, @Param('id') id: string, @Body() dto: { availabilityId?: string; startsAt?: string }) {
+    if (!/^\d+$/.test(id)) throw new NotFoundException('That session is not waiting for a time.');
+    const time = /^\d+$/.test(String(dto?.availabilityId ?? ''))
+      ? { availabilityId: BigInt(String(dto.availabilityId)) }
+      : dto?.startsAt
+        ? { startsAt: new Date(String(dto.startsAt)) }
+        : null;
+    if (!time) throw new BadRequestException('Choose a time.');
+    return this.planSessions.scheduleByStaff(authenticatedTenantId(req), this.actor(req), BigInt(id), time);
   }
 
   @Permissions('practice.staff')
@@ -559,6 +627,36 @@ export class ConsultController {
       authenticatedProfileId(req),
       BigInt(bookingId),
     );
+  }
+
+  @Permissions('any.authenticated')
+  @Get('portal/plan-sessions')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @ApiBearerAuth('access-token')
+  @ApiOperation({ summary: 'The signed-in client’s paid sessions with no time yet' })
+  portalPlanSessions(@Req() req: any) {
+    return this.planSessions.listForClient(authenticatedTenantId(req), authenticatedProfileId(req));
+  }
+
+  @Permissions('any.authenticated')
+  @Get('portal/plan-sessions/:id/options')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @ApiBearerAuth('access-token')
+  @ApiOperation({ summary: 'Open times the signed-in client may choose for a not-yet-scheduled session' })
+  portalPlanSessionOptions(@Req() req: any, @Param('id') id: string) {
+    if (!/^\d+$/.test(id)) throw new NotFoundException('That session is not waiting for a time.');
+    return this.planSessions.optionsForClient(authenticatedTenantId(req), authenticatedProfileId(req), BigInt(id));
+  }
+
+  @Permissions('any.authenticated')
+  @Post('portal/plan-sessions/:id/schedule')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @ApiBearerAuth('access-token')
+  @ApiOperation({ summary: 'The signed-in client books a time for a session already paid for' })
+  portalSchedulePlanSession(@Req() req: any, @Param('id') id: string, @Body() dto: { availabilityId?: string }) {
+    if (!/^\d+$/.test(id)) throw new NotFoundException('That session is not waiting for a time.');
+    if (!/^\d+$/.test(String(dto?.availabilityId ?? ''))) throw new BadRequestException('Choose a time.');
+    return this.planSessions.scheduleByClient(authenticatedTenantId(req), authenticatedProfileId(req), BigInt(id), BigInt(String(dto.availabilityId)));
   }
 
   @Permissions('any.authenticated')

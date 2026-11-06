@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { Link, useParams } from 'react-router-dom';
+import React, { useState, useEffect, useRef } from 'react';
+import { Link, useParams, useSearchParams } from 'react-router-dom';
 import { Download, ChevronRight, FileText, Printer, Lock, Plus, X, Loader2, CalendarPlus } from 'lucide-react';
 import { Eyebrow, Card, StatusBadge, Button, useToast, Page, PageHeader, Grid, StatTile, ResponsiveTable, type Column } from '@unclutterdesk/ui';
 import { useBrand } from '@unclutterdesk/ui';
@@ -8,6 +8,7 @@ import type { Client } from '../../App';
 import { ClientAssessmentsPanel } from '../../components/ClientAssessmentsPanel';
 import { EmergencyContactCard } from '../../components/clients/EmergencyContactCard';
 import { StaffBookingDialog } from '../../components/booking/StaffBookingDialog';
+import { NotScheduledCard } from '../../components/booking/NotScheduledCard';
 import { RouterLink } from '../../components/shell/RouterLink';
 import { PaymentChip } from '../../components/booking/PaymentChip';
 import type { SessionRow } from './SessionsPage';
@@ -22,7 +23,8 @@ interface ClientDetailPageProps {
 }
 
 interface PaymentRow {
-  bookingId: string; serviceTitle: string; sessionAt: string; amountKobo: string;
+  /** booking-<id> or plan-<id>: a session paid with no time yet has no booking (§11.2). */
+  id: string; bookingId: string | null; serviceTitle: string; sessionAt: string | null; amountKobo: string;
   discountCode: string | null; status: string; paidAt: string | null; reference: string | null; bookedAt: string;
 }
 
@@ -47,7 +49,17 @@ const SESSION_COLUMNS: Column<SessionRow>[] = [
 ];
 
 const PAYMENT_COLUMNS: Column<PaymentRow>[] = [
-  { key: 'service', header: 'Session', cell: (p) => <span className="font-bold text-[var(--desk-text)]">{p.serviceTitle}</span>, className: 'w-full max-w-0' },
+  {
+    key: 'service',
+    header: 'Session',
+    cell: (p) => (
+      <span className="min-w-0">
+        <span className="block font-bold text-[var(--desk-text)] truncate">{p.serviceTitle}</span>
+        <span className="block text-[11.5px] text-[var(--desk-text-subtle)] truncate">{p.sessionAt ? sessionWhen(p.sessionAt) : 'Paid ahead · not scheduled yet'}</span>
+      </span>
+    ),
+    className: 'w-full max-w-0',
+  },
   { key: 'amount', header: 'Amount', align: 'end', cell: (p) => `₦${(Number(p.amountKobo) / 100).toLocaleString('en-NG')}` },
   { key: 'paid', header: 'Paid on', priority: 'md', cell: (p) => (p.paidAt ? new Date(p.paidAt).toLocaleDateString('en-GB') : '—') },
   { key: 'ref', header: 'Reference', priority: 'lg', cell: (p) => <span className="text-[11.5px] text-[var(--desk-text-muted)]">{p.reference ?? '—'}</span> },
@@ -63,7 +75,13 @@ export function ClientDetailPage({ clients, setClients, canViewPayments }: Clien
   const propClient = clients.find((c) => c.id === id) || clients[0];
   const [client, setClient] = useState<Client>(propClient);
 
-  const [activeTab, setActiveTab] = useState<'history' | 'notes' | 'intake' | 'assessments' | 'payments'>('history');
+  // `?tab=notes&booking=<id>`: where "Write SOAP note" and the note-pending
+  // reminder land after a session, to write that session's note.
+  const [searchParams] = useSearchParams();
+  const forBooking = searchParams.get('booking');
+  const [activeTab, setActiveTab] = useState<'history' | 'notes' | 'intake' | 'assessments' | 'payments'>(
+    searchParams.get('tab') === 'notes' || forBooking ? 'notes' : 'history',
+  );
   const [clientSessions, setClientSessions] = useState<SessionRow[]>([]);
   const [clientPayments, setClientPayments] = useState<{ payments: PaymentRow[]; totalPaidKobo: string; outstandingKobo: string } | null>(null);
   const [selectedNoteId, setSelectedNoteId] = useState<string | null>(
@@ -80,6 +98,9 @@ export function ClientDetailPage({ clients, setClients, canViewPayments }: Clien
   const [isSavingNote, setIsSavingNote] = useState(false);
   const [noteError, setNoteError] = useState<string | null>(null);
   const [showBooking, setShowBooking] = useState(false);
+  /** The session the note in the modal is for, when it was opened for one. */
+  const [noteBookingId, setNoteBookingId] = useState<string | null>(null);
+  const openedForBooking = useRef(false);
 
   // Fetch fresh client data with live notes from API
   useEffect(() => {
@@ -90,6 +111,10 @@ export function ClientDetailPage({ clients, setClients, canViewPayments }: Clien
         setClient(fresh);
         if (fresh.notes.length > 0 && !selectedNoteId) {
           setSelectedNoteId(fresh.notes[0].id);
+        }
+        if (forBooking && !openedForBooking.current) {
+          openedForBooking.current = true;
+          openSessionNote(fresh, forBooking);
         }
       })
       .catch(() => {
@@ -109,6 +134,23 @@ export function ClientDetailPage({ clients, setClients, canViewPayments }: Clien
       .catch(() => setClientPayments({ payments: [], totalPaidKobo: '0', outstandingKobo: '0' }));
   }, [id, canViewPayments]);
 
+  /**
+   * A signed note for the session is shown; a draft reopens to carry on; with
+   * none, a new note opens. Either way the save is tied to the session.
+   */
+  function openSessionNote(c: Client, bookingId: string) {
+    const existing = c.notes.find((n) => n.bookingId === bookingId);
+    if (existing) setSelectedNoteId(existing.id);
+    if (existing?.status === 'COMPLETED') return;
+    setNoteBookingId(bookingId);
+    setNoteTitle(`Individual Therapy Session #${c.notes.length + (existing ? 0 : 1)}`);
+    setNoteSubjective(existing?.subjective ?? '');
+    setNoteObjective(existing?.objective ?? '');
+    setNoteAssessment(existing?.assessment ?? '');
+    setNotePlan(existing?.plan ?? '');
+    setShowNewNoteModal(true);
+  }
+
   const selectedNote = client.notes.find((n) => n.id === selectedNoteId) || client.notes[0];
 
   const handlePrintPDF = () => {
@@ -126,6 +168,7 @@ export function ClientDetailPage({ clients, setClients, canViewPayments }: Clien
         '/v1/notes',
         {
           clientProfileId: client.id,
+          bookingId: noteBookingId ?? undefined,
           subjective: noteSubjective || undefined,
           objective: noteObjective || undefined,
           assessment: noteAssessment || undefined,
@@ -136,6 +179,7 @@ export function ClientDetailPage({ clients, setClients, canViewPayments }: Clien
       const now = new Date();
       const newNote = {
         id: saved.id,
+        bookingId: noteBookingId,
         date: now.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }),
         time: now.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }),
         title: noteTitle || `Session Note`,
@@ -147,24 +191,21 @@ export function ClientDetailPage({ clients, setClients, canViewPayments }: Clien
         plan: saved.plan || '',
       };
 
+      // A session's draft saved again is the same note, not another one.
+      const withNote = <T extends { notes: Client['notes']; sessions: string }>(c: T): T =>
+        c.notes.some((n) => n.id === newNote.id)
+          ? { ...c, notes: c.notes.map((n) => (n.id === newNote.id ? newNote : n)) }
+          : { ...c, notes: [newNote, ...c.notes], sessions: (parseInt(c.sessions || '0') + 1).toString() };
+
       // Update local client state
-      setClient((prev) => ({
-        ...prev,
-        notes: [newNote, ...prev.notes],
-        sessions: (parseInt(prev.sessions || '0') + 1).toString(),
-      }));
+      setClient((prev) => withNote(prev));
 
       // Also propagate to parent so the list page stays consistent
-      setClients((all) =>
-        all.map((c) =>
-          c.id === client.id
-            ? { ...c, notes: [newNote, ...c.notes], sessions: (parseInt(c.sessions || '0') + 1).toString() }
-            : c,
-        ),
-      );
+      setClients((all) => all.map((c) => (c.id === client.id ? withNote(c) : c)));
 
       setSelectedNoteId(newNote.id);
       setShowNewNoteModal(false);
+      setNoteBookingId(null);
       setNoteSubjective('');
       setNoteObjective('');
       setNoteAssessment('');
@@ -202,6 +243,7 @@ export function ClientDetailPage({ clients, setClients, canViewPayments }: Clien
               </button>
               <button
                 onClick={() => {
+                  setNoteBookingId(null);
                   setNoteTitle(`Individual Therapy Session #${client.notes.length + 1}`);
                   setShowNewNoteModal(true);
                 }}
@@ -255,6 +297,13 @@ export function ClientDetailPage({ clients, setClients, canViewPayments }: Clien
             />
           </Grid>
         </Card>
+
+        <NotScheduledCard
+          client={{ id: client.id, name: client.name }}
+          onScheduled={() => {
+            api.get<SessionRow[]>(`/v1/consult/practice/clients/${client.id}/sessions`).then(setClientSessions).catch(() => undefined);
+          }}
+        />
 
         {/* Workspace Tabs */}
         <div className="space-y-4">
@@ -340,7 +389,7 @@ export function ClientDetailPage({ clients, setClients, canViewPayments }: Clien
                 <ResponsiveTable<PaymentRow>
                   caption={`Payments for ${client.name}`}
                   rows={clientPayments?.payments ?? []}
-                  rowKey={(p) => p.bookingId}
+                  rowKey={(p) => p.id}
                   columns={PAYMENT_COLUMNS}
                   state={clientPayments ? 'ready' : 'loading'}
                   empty="No payments yet."

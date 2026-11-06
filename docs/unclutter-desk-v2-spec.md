@@ -1163,6 +1163,8 @@ A short first session to decide whether to continue: for example 30 minutes for 
 
 ### 11.2 Session plans: several sessions, times chosen later (agreed 3 Nov 2026)
 
+> **Built so far (6 Nov 2026): not-yet-scheduled sessions.** Staff turn a booked, paid (or free) session into "not scheduled" from Edit session → When → *Client chooses later*. The time is freed, and the booking is cancelled but kept as the record of the payment (`unscheduledAt`). A `PlanSession` records the payment in `paidOnBookingId`. The client chooses a time under **To schedule** in the portal, and staff can choose one (open or custom) on the client page. Either way it is booked straight away as an ordinary booking with `paymentMethod: PLAN`, so it is never charged twice. Cancelling such a booking puts the session back to not scheduled. **Also built (6 Nov 2026): sessions paid at the practice with no time.** In **Book a session → Client chooses later**, staff add 1–12 sessions marked paid (desk or admin only) or at no charge. The money's only record is the `PlanSession` (`paymentMethod: MANUAL`, `paidAt`), so revenue (the dashboard and platform admin), the client's payments (one shared `clientPaymentHistory`) and the data export read plan sessions paid directly (`DIRECT_PLAN_PAYMENT`: `paidOnBookingId` null). Each naira is counted once. **Still to build:** recommending a plan, buying a plan online with the pay-ahead discount, refunds (including cancelling a prepaid session that was never scheduled), and "Session n of m".
+
 A client pays for several sessions now and picks each time when they know it. The client sees **sessions**, not credits or a balance.
 
 **Flow**

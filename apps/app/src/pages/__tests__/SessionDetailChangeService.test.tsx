@@ -66,7 +66,8 @@ function renderPage(detail: Record<string, unknown> = DETAIL) {
 describe('changing the service of a booked session', () => {
   it('lists only other services offered in the session format, and previews the time and balance', async () => {
     renderPage();
-    fireEvent.click(await screen.findByRole('button', { name: /Change service/ }));
+    fireEvent.click(await screen.findByRole('button', { name: /Edit session/ }));
+    fireEvent.click(await screen.findByRole('tab', { name: 'Service' }));
     const option = await screen.findByRole('radio', { name: /Individual Session, 60 minutes, ₦35,000/ });
     expect(screen.queryByRole('radio', { name: /^Consultation/ })).toBeNull();
     expect(screen.queryByRole('radio', { name: /Couples/ })).toBeNull();
@@ -79,7 +80,8 @@ describe('changing the service of a booked session', () => {
   it('saves the change and shows the balance to settle', async () => {
     const { setDetail } = renderPage();
     apiPatch.mockResolvedValue({ serviceTitle: 'Individual Session', endsAt: DETAIL.endsAt, balanceKobo: '2500000', overpaidKobo: '0' });
-    fireEvent.click(await screen.findByRole('button', { name: /Change service/ }));
+    fireEvent.click(await screen.findByRole('button', { name: /Edit session/ }));
+    fireEvent.click(await screen.findByRole('tab', { name: 'Service' }));
     fireEvent.click(await screen.findByRole('radio', { name: /Individual Session/ }));
     setDetail({ ...DETAIL, serviceId: '3', serviceTitle: 'Individual Session', balanceKobo: '2500000', balanceStatus: 'DUE' });
     fireEvent.click(screen.getAllByRole('button', { name: /Change service/ }).at(-1)!);
@@ -90,7 +92,8 @@ describe('changing the service of a booked session', () => {
 
   it('an unpaid booking previews the new amount to pay, with no balance', async () => {
     renderPage({ ...DETAIL, status: 'PENDING_PAYMENT' });
-    fireEvent.click(await screen.findByRole('button', { name: /Change service/ }));
+    fireEvent.click(await screen.findByRole('button', { name: /Edit session/ }));
+    fireEvent.click(await screen.findByRole('tab', { name: 'Service' }));
     fireEvent.click(await screen.findByRole('radio', { name: /Individual Session/ }));
     expect(screen.getByText(/the amount to pay becomes/)).toBeTruthy();
     expect(screen.queryByText(/Balance/)).toBeNull();
@@ -108,6 +111,6 @@ describe('changing the service of a booked session', () => {
   it('a cancelled session offers no change', async () => {
     renderPage({ ...DETAIL, status: 'CANCELLED' });
     await screen.findByRole('heading', { name: 'Ada Ola' });
-    expect(screen.queryByRole('button', { name: /Change service/ })).toBeNull();
+    expect(screen.queryByRole('button', { name: /Edit session/ })).toBeNull();
   });
 });

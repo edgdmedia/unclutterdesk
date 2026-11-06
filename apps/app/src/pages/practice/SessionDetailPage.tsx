@@ -1,10 +1,11 @@
 import { useEffect, useState } from 'react';
 import { JoinButton } from '../../components/video/JoinButton';
-import { Link, useParams } from 'react-router-dom';
-import { CalendarClock, CheckCircle2, Download, FileText, Loader2, Repeat, Video } from 'lucide-react';
+import { Link, useLocation, useParams } from 'react-router-dom';
+import { CalendarClock, CheckCircle2, Download, FileText, Loader2, PencilLine, Star } from 'lucide-react';
 import { Card, Eyebrow, Page, PageHeader, StatTile, StatusBadge, useToast } from '@unclutterdesk/ui';
 import { PaymentChip } from '../../components/booking/PaymentChip';
-import { ChangeServiceDialog } from '../../components/booking/ChangeServiceDialog';
+import { EditSessionDialog } from '../../components/booking/EditSessionDialog';
+import { SessionNoteEditor } from '../../components/notes/SessionNoteEditor';
 import { api } from '../../utils/apiClient';
 import type { SessionRow } from './SessionsPage';
 import { activeDisplayPrefs, formatWhen } from '../../utils/displayFormat';
@@ -16,10 +17,15 @@ interface SessionDetail extends SessionRow {
   videoRoomLink: string | null;
   format?: string;
   location?: { id: string; name: string; city: string } | null;
-  note: { id: string; status: 'DRAFT' | 'COMPLETED' } | null;
+  /** The text comes only to staff who may write notes (can.summary). */
+  note: { id: string; status: 'DRAFT' | 'COMPLETED'; subjective?: string; objective?: string; assessment?: string; plan?: string } | null;
   internalSummary: string | null;
   clientRecap: string | null;
   clientRecapSentAt: string | null;
+  /** When the client was emailed a review request for this session; once per session. */
+  reviewRequestedAt?: string | null;
+  /** Left for the client to schedule (§11.2): this booking was freed, its payment kept. */
+  unscheduledAt?: string | null;
   can: { edit: boolean; summary: boolean; markPaid: boolean };
   serviceId?: string | null;
   durationMinutes?: number | null;
@@ -33,13 +39,14 @@ const longWhen = (iso: string) => formatWhen(iso, 'long');
 
 export function SessionDetailPage() {
   const { id } = useParams();
+  const { hash } = useLocation();
   const toast = useToast();
   const [d, setD] = useState<SessionDetail | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [internal, setInternal] = useState('');
   const [recap, setRecap] = useState('');
   const [busy, setBusy] = useState(false);
-  const [changing, setChanging] = useState(false);
+  const [editing, setEditing] = useState(false);
   // BKG-06: whether the client's default forms are in yet.
   const [forms, setForms] = useState<{ intake: boolean; confidentiality: boolean } | null>(null);
 
@@ -61,6 +68,13 @@ export function SessionDetailPage() {
       )
       .catch(() => setForms(null));
   }, [id]);
+
+  // `#note` (the "Write SOAP note" prompt, the note-pending reminder): the page
+  // loads after the browser looks for the anchor, so scroll once it is there.
+  const loaded = d !== null;
+  useEffect(() => {
+    if (loaded && hash === '#note') document.getElementById('note')?.scrollIntoView?.({ block: 'start' });
+  }, [loaded, hash]);
 
   async function act(fn: () => Promise<unknown>, ok: string) {
     setBusy(true);
@@ -129,8 +143,8 @@ export function SessionDetailPage() {
                   </button>
                 ) : null}
                 {d.status !== 'CANCELLED' ? (
-                  <button type="button" disabled={busy} onClick={() => setChanging(true)} className="h-[40px] px-4 rounded-[12px] bg-white border border-[var(--desk-pine-200)] text-[var(--desk-text)] text-xs font-bold inline-flex items-center gap-1.5 cursor-pointer disabled:opacity-50">
-                    <Repeat className="h-4 w-4" /> Change service
+                  <button type="button" disabled={busy} onClick={() => setEditing(true)} className="h-[40px] px-4 rounded-[12px] bg-white border border-[var(--desk-pine-200)] text-[var(--desk-text)] text-xs font-bold inline-flex items-center gap-1.5 cursor-pointer disabled:opacity-50">
+                    <PencilLine className="h-4 w-4" /> Edit session
                   </button>
                 ) : null}
                 {d.status !== 'CANCELLED' && d.status !== 'COMPLETED' ? (
@@ -150,13 +164,20 @@ export function SessionDetailPage() {
         {d.bookedBy ? <span className="text-[11.5px] text-[var(--desk-text-muted)]">Booked by {d.bookedBy}</span> : null}
       </div>
 
+      {d.unscheduledAt ? (
+        <div role="status" className="rounded-[14px] border border-[var(--desk-border)] bg-[var(--desk-surface)] px-4 py-3 text-[13px] text-[var(--desk-text-body)]">
+          Left for {d.client.name} to schedule on {new Date(d.unscheduledAt).toLocaleDateString('en-GB')}. The payment stays here; the new time is on{' '}
+          <Link to={`/dashboard/clients/${d.client.id}`} className="font-bold text-[var(--desk-pine-600)] underline">their client page</Link> once chosen.
+        </div>
+      ) : null}
+
       <Card padding="p-[22px]" className="space-y-4">
         <Eyebrow>THE SESSION</Eyebrow>
         <div className="grid grid-cols-1 @min-[640px]/page:grid-cols-2 gap-3">
           <StatTile variant="inset" size="sm" label="WHEN" value={longWhen(d.startsAt)} />
           <StatTile variant="inset" size="sm" label="SERVICE" value={d.serviceTitle} />
           <StatTile variant="inset" size="sm" label="PRACTITIONER" value={d.provider.name} />
-          <StatTile variant="inset" size="sm" label="PAID" value={`${d.paymentMethod === 'NONE' ? 'No charge' : naira(d.amountKobo)}`} />
+          <StatTile variant="inset" size="sm" label="PAID" value={d.paymentMethod === 'NONE' ? 'No charge' : d.paymentMethod === 'PLAN' ? 'Paid on an earlier booking' : naira(d.amountKobo)} />
           <StatTile variant="inset" size="sm" label="FORMAT" value={d.format === 'IN_PERSON' && d.location ? `In person · ${d.location.name}` : d.format === 'IN_PERSON' ? 'In person' : 'Online'} />
         </div>
         <p className="text-[12.5px] text-[var(--desk-text-muted)]">
@@ -168,6 +189,27 @@ export function SessionDetailPage() {
           <p className="text-[12.5px] font-medium text-[var(--desk-text-body)] inline-flex items-center gap-1.5">
             <CalendarClock className="h-4 w-4" /> Note {d.note.status === 'COMPLETED' ? 'signed' : 'in draft'}
           </p>
+        ) : null}
+        {d.status === 'COMPLETED' && (d.can.edit || d.can.summary) ? (
+          // Never automatic: many therapy ethics codes caution against asking a
+          // client still in care for a testimonial, so this is the practitioner's call.
+          d.reviewRequestedAt ? (
+            <p className="text-[12.5px] font-medium text-[var(--desk-text-body)] inline-flex items-center gap-1.5">
+              <Star className="h-4 w-4" /> Review requested {new Date(d.reviewRequestedAt).toLocaleDateString('en-GB')}
+            </p>
+          ) : (
+            <div className="flex flex-wrap items-center gap-3">
+              <button
+                type="button"
+                disabled={busy}
+                onClick={() => void act(() => api.post(`/v1/consult/practice/sessions/${d.id}/review-request`, {}), `Review request emailed to ${d.client.name}`)}
+                className="h-[36px] px-3 rounded-[10px] bg-white border border-[var(--desk-pine-200)] text-[var(--desk-text)] text-[12px] font-bold inline-flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+              >
+                <Star className="h-4 w-4" /> Ask for a review
+              </button>
+              <span className="text-[11.5px] text-[var(--desk-text-muted)]">Emails {d.client.name} a link to your review form. Asked once per session.</span>
+            </div>
+          )
         ) : null}
         {forms ? (
           <p className="text-[12.5px] font-medium text-[var(--desk-text-body)] inline-flex items-center gap-2">
@@ -202,18 +244,36 @@ export function SessionDetailPage() {
         <p className="text-[12.5px] text-[var(--desk-text-muted)]">A balance of {naira(d.balanceKobo)} was waived.</p>
       ) : null}
 
-      {changing ? (
-        <ChangeServiceDialog
+      {editing ? (
+        <EditSessionDialog
           session={d}
-          onClose={() => setChanging(false)}
-          onChanged={(r) => {
-            setChanging(false);
+          onClose={() => setEditing(false)}
+          onMoved={(r) => {
+            setEditing(false);
+            toast.success(`Session moved to ${longWhen(r.startsAt)}. The client has been emailed.`);
+            void api.get<SessionDetail>(`/v1/consult/practice/sessions/${id}`).then(setD).catch(() => undefined);
+          }}
+          onLeftForClient={() => {
+            setEditing(false);
+            toast.success(`${d.client.name} has been emailed to choose a new time. The session stays paid.`);
+            void api.get<SessionDetail>(`/v1/consult/practice/sessions/${id}`).then(setD).catch(() => undefined);
+          }}
+          onServiceChanged={(r) => {
+            setEditing(false);
             const owed = r.balanceKobo ? ` ${naira(r.balanceKobo)} is still owed.` : '';
             const over = r.overpaidKobo !== '0' ? ` The client paid ${naira(r.overpaidKobo)} more than the new price.` : '';
             toast.success(`Now ${r.serviceTitle}.${owed}${over}`);
             void api.get<SessionDetail>(`/v1/consult/practice/sessions/${id}`).then(setD).catch(() => undefined);
           }}
         />
+      ) : null}
+
+      {d.can.summary && d.status !== 'CANCELLED' ? (
+        // The session's note lives here as well as in the room: after a call in
+        // Google Meet the room is never reopened, and the note is written later.
+        <Card padding="p-[22px]" className="space-y-3" id="note">
+          <SessionNoteEditor key={d.id} bookingId={d.id} clientProfileId={d.client.id} note={d.note ? { ...d.note, isLocked: d.note.status === 'COMPLETED' } : null} />
+        </Card>
       ) : null}
 
       {d.can.summary ? (

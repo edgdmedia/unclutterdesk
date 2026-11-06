@@ -76,7 +76,8 @@ describe('TelehealthVideoRoomPage autosave', () => {
         status: 'CONFIRMED',
         videoRoomLink: 'https://meet.jit.si/test-room',
       },
-      latestNote: {
+      latestNote: null,
+      sessionNote: {
         id: 'note-1',
         subjective: 'Existing',
         objective: '',
@@ -101,6 +102,45 @@ describe('TelehealthVideoRoomPage autosave', () => {
     await new Promise((resolve) => setTimeout(resolve, 3000));
 
     expect(postMock).not.toHaveBeenCalled();
+  });
+
+  // The client's last session's note is prep, not this session's record. It
+  // once filled and locked this editor, so a practitioner who had signed last
+  // week's note could not write today's.
+  test("a locked note from the last session neither fills nor locks this session's note", async () => {
+    getMock.mockResolvedValueOnce({
+      booking: {
+        id: '42',
+        clientProfileId: '7',
+        clientName: 'Ada Okafor',
+        clientEmail: 'ada@example.com',
+        startsAt: new Date().toISOString(),
+        endsAt: new Date(Date.now() + 50 * 60 * 1000).toISOString(),
+        serviceTitle: 'Therapy Session',
+        status: 'CONFIRMED',
+        videoRoomLink: 'https://meet.jit.si/test-room',
+      },
+      latestNote: { id: 'note-0', subjective: 'Last week', objective: '', assessment: '', plan: '', isLocked: true, createdAt: new Date().toISOString() },
+      sessionNote: null,
+      submissions: [],
+    });
+
+    render(
+      <MemoryRouter initialEntries={['/session/42']}>
+        <Routes>
+          <Route path="/session/:id" element={<TelehealthVideoRoomPage />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    await screen.findByText('SOAP Notes');
+    const subjectiveField = screen.getAllByRole('textbox')[0] as HTMLTextAreaElement;
+    expect(subjectiveField.value).toBe('');
+    expect(subjectiveField.disabled).toBe(false);
+    expect(screen.queryByText('Locked')).toBeNull();
+
+    fireEvent.change(subjectiveField, { target: { value: 'Today: sleep better.' } });
+    await waitFor(() => expect(postMock).toHaveBeenCalledWith('/v1/notes', expect.objectContaining({ bookingId: '42', subjective: 'Today: sleep better.' })), { timeout: 3500 });
   });
 
   test('shows autosave failure when save request rejects', async () => {

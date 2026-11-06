@@ -85,6 +85,23 @@ describe('confirming a transfer', () => {
     expect(notifier.confirmed).toHaveBeenCalledWith(100n);
   });
 
+  // With Google Meet the calendar push makes the Meet link; the email must carry it.
+  it('makes the calendar event before the confirmation email', async () => {
+    const { prisma, notifier, calendar, service } = manualService();
+    prisma.consultBooking.findUnique.mockResolvedValue({
+      id: 100n, tenantId: TENANT, clientProfileId: 5n, amountKobo: 2_500_000n,
+      tenant: { name: 'Calm', slug: 'calm', manualPaymentDetails: DETAILS },
+      service: { title: 'Therapy', priceKobo: 2_500_000n },
+      availability: { startsAt: new Date('2026-10-02T10:00:00Z') },
+      client: { firstName: 'Ada', lastName: null, email: 'ada@example.com' },
+    });
+    const order: string[] = [];
+    calendar.pushBookingToGoogle.mockImplementation(async () => { order.push('calendar'); });
+    notifier.confirmed.mockImplementation(async () => { order.push('email'); });
+    await service.markPaid(TENANT, 9n, 100n);
+    expect(order).toEqual(['calendar', 'email']);
+  });
+
   it('confirms through the same notifier whatever the payment was', async () => {
     const { prisma, notifier, service } = manualService();
     const booked = {

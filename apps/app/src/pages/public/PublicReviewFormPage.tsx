@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { ArrowLeft, CheckCircle2, Star } from 'lucide-react';
 import { useBrand } from '@unclutterdesk/ui';
 import { api } from '../../utils/apiClient';
@@ -20,7 +20,17 @@ type ReviewForm = {
   schemaJson: ReviewField[];
 };
 
+/** What a signed review request link names (GET public/review-invite). */
+type Invite = { firstName: string; practitionerName: string; serviceTitle: string; sessionAt: string; alreadyReviewed: boolean };
+
 export function PublicReviewFormPage() {
+  // From a review request email: `?booking=<id>&t=<signed>`. The link says who
+  // the client is and which session it was, so they are not asked again.
+  const [params] = useSearchParams();
+  const inviteBooking = params.get('booking');
+  const inviteToken = params.get('t');
+  const [invite, setInvite] = useState<Invite | null>(null);
+  const [inviteInvalid, setInviteInvalid] = useState(false);
   const brand = useBrand();
   const primaryColor = brand.primaryColor || '#0F3A53';
   const secondaryColor = brand.secondaryColor || '#E3B341';
@@ -41,8 +51,17 @@ export function PublicReviewFormPage() {
       setLoading(true);
       setError(null);
       try {
-        const forms = await api.get<ReviewForm[]>('/v1/intake/public/forms?targetType=REVIEW');
+        const [forms, found] = await Promise.all([
+          api.get<ReviewForm[]>('/v1/intake/public/forms?targetType=REVIEW'),
+          inviteBooking && inviteToken
+            ? api
+                .get<Invite>(`/v1/consult/public/review-invite?booking=${encodeURIComponent(inviteBooking)}&t=${encodeURIComponent(inviteToken)}`)
+                .catch(() => 'invalid' as const)
+            : Promise.resolve(null),
+        ]);
         if (cancelled) return;
+        if (found === 'invalid') setInviteInvalid(true);
+        else setInvite(found);
         const firstForm = forms[0] || null;
         setForm(firstForm);
         if (firstForm) {
@@ -63,7 +82,7 @@ export function PublicReviewFormPage() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [inviteBooking, inviteToken]);
 
   function setAnswer(fieldId: string, value: string | string[]) {
     setAnswers((current) => ({ ...current, [fieldId]: value }));
@@ -74,12 +93,12 @@ export function PublicReviewFormPage() {
     setSubmitting(true);
     setError(null);
     try {
-      await api.post('/v1/intake/public/submissions', {
-        formId: form.id,
-        clientName: fullName,
-        clientEmail: email,
-        answersJson: answers,
-      });
+      await api.post(
+        '/v1/intake/public/submissions',
+        invite
+          ? { formId: form.id, bookingId: inviteBooking, inviteToken, answersJson: answers }
+          : { formId: form.id, clientName: fullName, clientEmail: email, answersJson: answers },
+      );
       setSubmitted(true);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Unable to submit review');
@@ -88,7 +107,7 @@ export function PublicReviewFormPage() {
     }
   }
 
-  const isDisabled = !form || !fullName.trim() || !email.trim();
+  const isDisabled = !form || (!invite && (!fullName.trim() || !email.trim()));
 
   return (
     <div className="min-h-screen bg-[var(--desk-surface-alt)] text-[var(--desk-text)] font-outfit flex justify-center px-6 py-10">
@@ -124,12 +143,14 @@ export function PublicReviewFormPage() {
             <div className="rounded-[18px] border border-dashed border-[var(--desk-pine-200)] bg-[var(--desk-surface)] px-5 py-8 text-sm font-medium text-[var(--desk-text-muted)]">
               This practice has not published a review form yet.
             </div>
-          ) : submitted ? (
+          ) : submitted || invite?.alreadyReviewed ? (
             <div className="rounded-[24px] border border-emerald-200 bg-emerald-50 px-6 py-8 text-center">
               <CheckCircle2 className="mx-auto h-10 w-10 text-emerald-600" />
               <h2 className="mt-4 text-[22px] font-bold text-[var(--desk-text)]">Thank you for your feedback</h2>
               <p className="mt-2 text-sm font-medium text-[var(--desk-text-body)]">
-                Your review has been submitted. If this practice requires approval, it will appear on the landing page once approved.
+                {submitted
+                  ? 'Your review has been submitted. If this practice requires approval, it will appear on the landing page once approved.'
+                  : 'You have already sent a review for this session.'}
               </p>
               <Link
                 to="/book"
@@ -146,6 +167,18 @@ export function PublicReviewFormPage() {
                 <p className="mt-2 text-sm font-medium text-[var(--desk-text-muted)]">{form.description || 'Tell this practice what stood out about your experience.'}</p>
               </div>
 
+              {inviteInvalid ? (
+                <p className="rounded-[14px] border border-[var(--desk-pending-border)] bg-[var(--desk-pending-bg)] px-4 py-3 text-[13px] font-medium text-[var(--desk-text-body)]">
+                  This review link is not valid any more. You can still leave a review below.
+                </p>
+              ) : null}
+
+              {invite ? (
+                <p className="rounded-[14px] border border-[var(--desk-border)] bg-[var(--desk-surface)] px-4 py-3 text-[13px] font-medium text-[var(--desk-text-body)]">
+                  {invite.firstName ? `Hi ${invite.firstName}. ` : ''}This is about your {invite.serviceTitle} session with {invite.practitionerName} on{' '}
+                  {new Date(invite.sessionAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })}. Sharing a review is entirely up to you.
+                </p>
+              ) : (
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-1.5">
                   <label className="text-[11.5px] font-bold text-[var(--desk-text-body)]">Full name</label>
@@ -166,6 +199,7 @@ export function PublicReviewFormPage() {
                   />
                 </div>
               </div>
+              )}
 
               <div className="space-y-4">
                 {form.schemaJson.map((field, fieldIndex) => (

@@ -209,3 +209,50 @@ describe('booking several sessions at once', () => {
     await waitFor(() => expect(apiPost.mock.calls[0][0]).toBe('/v1/consult/practice/bookings'));
   });
 });
+
+// §11.2: the client pays the desk for several sessions and chooses the times later.
+describe('sessions paid at the practice, times chosen later', () => {
+  beforeEach(() => {
+    apiGet.mockReset().mockImplementation(staffOf([member('5', 'Jane')]));
+    apiPost.mockReset().mockResolvedValue({ count: 4, planSessionIds: ['50', '51', '52', '53'] });
+  });
+  afterEach(cleanup);
+
+  it('adds them paid, with no time, for the client to schedule', async () => {
+    role = 'OWNER';
+    const onBooked = vi.fn();
+    render(<StaffBookingDialog client={{ id: '40', name: 'Ada Ola' }} onClose={() => {}} onBooked={onBooked} />);
+    fireEvent.click(await screen.findByRole('radio', { name: /Therapy session/ }));
+    fireEvent.click(screen.getByRole('radio', { name: 'Client chooses later' }));
+    fireEvent.change(screen.getByLabelText('How many sessions'), { target: { value: '4' } });
+    // A payment link needs a time to hold: not offered here.
+    expect(screen.queryByRole('radio', { name: /Send a payment link/ })).toBeNull();
+    fireEvent.click(screen.getByRole('radio', { name: /Mark as paid/ }));
+    fireEvent.change(screen.getByLabelText('Amount received per session (₦)'), { target: { value: '25000' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Add 4 sessions to schedule later' }));
+    await waitFor(() => expect(apiPost).toHaveBeenCalledWith('/v1/consult/practice/plan-sessions', {
+      clientProfileId: '40', serviceId: '20', providerProfileId: '5', count: 4, format: 'ONLINE', locationId: undefined,
+      payment: 'PAID', amountKobo: '2500000', notifyClient: true,
+    }));
+    expect(onBooked).toHaveBeenCalledWith({ count: 4, planSessionIds: ['50', '51', '52', '53'] });
+  });
+
+  it('a therapist adds them at no charge', async () => {
+    role = 'THERAPIST';
+    render(<StaffBookingDialog client={{ id: '40', name: 'Ada Ola' }} onClose={() => {}} onBooked={() => {}} />);
+    fireEvent.click(await screen.findByRole('radio', { name: /Therapy session/ }));
+    fireEvent.click(screen.getByRole('radio', { name: 'Client chooses later' }));
+    expect((screen.getByRole('radio', { name: /No charge/ }) as HTMLInputElement).checked).toBe(true);
+    fireEvent.click(screen.getByRole('button', { name: 'Add session to schedule later' }));
+    await waitFor(() => expect(apiPost.mock.calls[0][1]).toMatchObject({ count: 1, payment: 'NONE' }));
+  });
+
+  it('needs a whole number from 1 to 12', async () => {
+    role = 'OWNER';
+    render(<StaffBookingDialog client={{ id: '40', name: 'Ada Ola' }} onClose={() => {}} onBooked={() => {}} />);
+    fireEvent.click(await screen.findByRole('radio', { name: /Therapy session/ }));
+    fireEvent.click(screen.getByRole('radio', { name: 'Client chooses later' }));
+    fireEvent.change(screen.getByLabelText('How many sessions'), { target: { value: '13' } });
+    expect((screen.getByRole('button', { name: /to schedule later/ }) as HTMLButtonElement).disabled).toBe(true);
+  });
+});

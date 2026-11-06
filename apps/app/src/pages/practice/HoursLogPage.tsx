@@ -21,6 +21,7 @@ interface HoursEntry {
   category: Category;
   source: 'BOOKING' | 'MANUAL';
   clientName: string | null;
+  clientProfileId?: string | null;
   notes: string | null;
   supervisorName: string | null;
 }
@@ -38,7 +39,7 @@ const hours = (minutes: number) => {
 const day = (iso: string) => new Date(iso).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
 const today = () => new Date().toISOString().slice(0, 10);
 
-const EMPTY_FORM = { date: today(), durationMinutes: 50, category: 'SUPERVISION' as Category, supervisorName: '', notes: '' };
+const EMPTY_FORM = { date: today(), durationMinutes: 50, category: 'SUPERVISION' as Category, clientProfileId: '', supervisorName: '', notes: '' };
 
 function Progress({ label, minutes, targetHours, color }: { label: string; minutes: number; targetHours: number | null | undefined; color: string }) {
   const pct = targetHours ? Math.min(100, (minutes / 60 / targetHours) * 100) : null;
@@ -74,6 +75,8 @@ export function HoursLogPage() {
   const [form, setForm] = useState(EMPTY_FORM);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  // Work done with a client outside a booking (a session by phone, a group) is logged against them.
+  const [clients, setClients] = useState<Array<{ id: string; name: string }>>([]);
   const [targetForm, setTargetForm] = useState({ label: '', totalTargetHours: '', supervisionTargetHours: '' });
   const [showTarget, setShowTarget] = useState(false);
   const [fullNames, setFullNames] = useState(false);
@@ -97,6 +100,9 @@ export function HoursLogPage() {
   useEffect(() => {
     void load();
   }, [load]);
+  useEffect(() => {
+    api.get<Array<{ id: string; name: string }>>('/v1/tenant/clients').then((r) => setClients(r ?? [])).catch(() => setClients([]));
+  }, []);
 
   const editing = editingId ? log?.entries.find((e) => e.id === editingId) ?? null : null;
   const isSessionEdit = editing?.source === 'BOOKING';
@@ -107,11 +113,11 @@ export function HoursLogPage() {
       if (editingId) {
         const body = isSessionEdit
           ? { category: form.category, notes: form.notes, supervisorName: form.supervisorName }
-          : { ...form, durationMinutes: Number(form.durationMinutes) };
+          : { ...form, durationMinutes: Number(form.durationMinutes), clientProfileId: form.clientProfileId || null };
         await api.patch(`/v1/hours/${editingId}`, body);
         toast.success('Entry updated');
       } else {
-        await api.post('/v1/hours', { ...form, durationMinutes: Number(form.durationMinutes) });
+        await api.post('/v1/hours', { ...form, durationMinutes: Number(form.durationMinutes), clientProfileId: form.clientProfileId || null });
         toast.success('Hours added');
       }
       setForm({ ...EMPTY_FORM, date: today() });
@@ -130,6 +136,7 @@ export function HoursLogPage() {
       date: entry.date.slice(0, 10),
       durationMinutes: entry.durationMinutes,
       category: entry.category,
+      clientProfileId: entry.clientProfileId ?? '',
       supervisorName: entry.supervisorName ?? '',
       notes: entry.notes ?? '',
     });
@@ -309,6 +316,15 @@ export function HoursLogPage() {
                 {CATEGORIES.map((c) => <option key={c} value={c}>{CATEGORY_LABEL[c]}</option>)}
               </select>
             </label>
+            {!isSessionEdit ? (
+              <label className="block space-y-1">
+                <span className="text-[11px] font-bold text-[var(--desk-text-body)]">Client (optional)</span>
+                <select aria-label="Client" value={form.clientProfileId} onChange={(e) => setForm((f) => ({ ...f, clientProfileId: e.target.value }))} className={inputClass}>
+                  <option value="">No client</option>
+                  {clients.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+                </select>
+              </label>
+            ) : null}
             <label className="block space-y-1">
               <span className="text-[11px] font-bold text-[var(--desk-text-body)]">Supervisor (optional)</span>
               <input value={form.supervisorName} onChange={(e) => setForm((f) => ({ ...f, supervisorName: e.target.value }))} className={inputClass} />

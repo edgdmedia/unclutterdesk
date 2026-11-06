@@ -57,6 +57,7 @@ function makeService({
           serviceId: 2n,
           isActive: true,
           startsAt: hoursFromNow(96),
+          endsAt: hoursFromNow(97),
         }
       : target;
 
@@ -87,10 +88,9 @@ function makeService({
     consultBooking: { findFirst: vi.fn().mockResolvedValue(bookingRow) },
     consultAvailability: {
       findFirst: vi.fn().mockResolvedValue(targetRow),
-      findMany: vi.fn().mockResolvedValue([
-        { id: NEW_SLOT, startsAt: hoursFromNow(96), endsAt: hoursFromNow(97), channel: 'VIDEO' },
-      ]),
+      findMany: vi.fn().mockResolvedValue([]),
     },
+    consultService: { findFirst: vi.fn().mockResolvedValue({ durationMinutes: 50, formats: [{ format: 'ONLINE', priceKobo: 2000000n, isActive: true }, { format: 'IN_PERSON', priceKobo: 2500000n, isActive: true }] }) },
     tenant: { findUnique: vi.fn().mockResolvedValue({ cancellationHours }) },
     timeOff: { findMany: vi.fn().mockResolvedValue([]) },
     $transaction: vi.fn(async (cb: any) => cb(tx)),
@@ -224,7 +224,7 @@ describe('rescheduling a booking', () => {
 
     it("refuses another practitioner's slot", async () => {
       const { service, tx } = makeService({
-        target: { id: NEW_SLOT, tenantId: TENANT, providerProfileId: 99n, serviceId: 2n, isActive: true, startsAt: hoursFromNow(96) },
+        target: { id: NEW_SLOT, tenantId: TENANT, providerProfileId: 99n, serviceId: 2n, isActive: true, startsAt: hoursFromNow(96), endsAt: hoursFromNow(97) },
       });
       await expect(move(service)).rejects.toThrow(BadRequestException);
       expect(tx.consultAvailability.updateMany).not.toHaveBeenCalled();
@@ -232,9 +232,34 @@ describe('rescheduling a booking', () => {
 
     it('refuses a slot open for a different service', async () => {
       const { service } = makeService({
-        target: { id: NEW_SLOT, tenantId: TENANT, providerProfileId: PROVIDER, serviceId: 77n, isActive: true, startsAt: hoursFromNow(96) },
+        target: { id: NEW_SLOT, tenantId: TENANT, providerProfileId: PROVIDER, serviceId: 77n, isActive: true, startsAt: hoursFromNow(96), endsAt: hoursFromNow(97) },
       });
       await expect(move(service)).rejects.toThrow(BadRequestException);
+    });
+
+    // Times made from the weekly hours are open to any service (serviceId null).
+    // Refusing them left clients with nothing they could move to.
+    it('accepts a time open to any service', async () => {
+      const { service } = makeService({
+        target: { id: NEW_SLOT, tenantId: TENANT, providerProfileId: PROVIDER, serviceId: null, isActive: true, startsAt: hoursFromNow(96), endsAt: hoursFromNow(97) },
+      });
+      await expect(move(service)).resolves.toMatchObject({ id: '100' });
+    });
+
+    it('refuses a time too short for the service', async () => {
+      const { service, tx } = makeService({
+        booking: {
+          id: BOOKING,
+          status: 'CONFIRMED',
+          availabilityId: OLD_SLOT,
+          serviceId: 2n,
+          availability: { providerProfileId: PROVIDER, startsAt: hoursFromNow(72) },
+          service: { title: 'Therapy', durationMinutes: 90 },
+        },
+        target: { id: NEW_SLOT, tenantId: TENANT, providerProfileId: PROVIDER, serviceId: null, isActive: true, startsAt: hoursFromNow(96), endsAt: hoursFromNow(97) },
+      });
+      await expect(move(service)).rejects.toThrow(BadRequestException);
+      expect(tx.consultAvailability.updateMany).not.toHaveBeenCalled();
     });
 
     it('refuses the slot it is already in', async () => {
@@ -350,32 +375,75 @@ describe('rescheduling a booking', () => {
 describe('the slots offered for a reschedule', () => {
   const options = (s: ConsultService) => s.getRescheduleOptions(TENANT, CLIENT, BOOKING);
 
-  it('offers only the same practitioner and the same service', async () => {
+  const openSlot = (id: bigint, startsAt: Date, extra: Record<string, unknown> = {}) => ({
+    id,
+    tenantId: TENANT,
+    providerProfileId: PROVIDER,
+    serviceId: null,
+    isActive: true,
+    startsAt,
+    endsAt: new Date(startsAt.getTime() + 60 * 60_000),
+    channel: 'VIDEO',
+    allowsOnline: true,
+    allowsInPerson: false,
+    locationId: null,
+    location: null,
+    therapist: { offersOnline: true, offersInPerson: false, workLocations: [], profile: { firstName: 'Tolu', lastName: 'A' } },
+    ...extra,
+  });
+
+  it("looks only at the same practitioner's open times, for this service or any service", async () => {
     const { service, prisma } = makeService();
     await options(service);
     expect(prisma.consultAvailability.findMany.mock.calls[0][0].where).toMatchObject({
       tenantId: TENANT,
       providerProfileId: PROVIDER,
-      serviceId: 2n,
       isActive: true,
+      OR: [{ serviceId: 2n }, { serviceId: null }],
     });
+  });
+
+  // The weekly hours make times open to any service. Offering only times
+  // pinned to this service left the list empty for every practice.
+  it('offers a time open to any service', async () => {
+    const { service, prisma } = makeService();
+    prisma.consultAvailability.findMany.mockResolvedValue([openSlot(NEW_SLOT, hoursFromNow(96))]);
+    const result = await options(service);
+    expect(result.slots.map((s: any) => s.id)).toEqual([NEW_SLOT.toString()]);
   });
 
   it('excludes the slot the session is already in', async () => {
     const { service, prisma } = makeService();
-    await options(service);
-    expect(prisma.consultAvailability.findMany.mock.calls[0][0].where.id).toEqual({
-      not: OLD_SLOT,
-    });
+    prisma.consultAvailability.findMany.mockResolvedValue([openSlot(OLD_SLOT, hoursFromNow(72)), openSlot(NEW_SLOT, hoursFromNow(96))]);
+    const result = await options(service);
+    expect(result.slots.map((s: any) => s.id)).toEqual([NEW_SLOT.toString()]);
   });
 
   // Offering a slot inside the notice window would show a time the reschedule
   // itself then refuses.
   it('offers nothing sooner than the notice period allows', async () => {
     const { service, prisma } = makeService({ cancellationHours: 48 });
-    await options(service);
-    const earliest = prisma.consultAvailability.findMany.mock.calls[0][0].where.startsAt.gte;
-    expect(earliest.getTime()).toBeGreaterThan(Date.now() + 47 * 3600000);
+    prisma.consultAvailability.findMany.mockResolvedValue([openSlot(10n, hoursFromNow(30)), openSlot(NEW_SLOT, hoursFromNow(96))]);
+    const result = await options(service);
+    expect(result.slots.map((s: any) => s.id)).toEqual([NEW_SLOT.toString()]);
+  });
+
+  it('offers nothing too short for the service', async () => {
+    const { service, prisma } = makeService();
+    prisma.consultService.findFirst.mockResolvedValue({ durationMinutes: 90, formats: [] });
+    prisma.consultAvailability.findMany.mockResolvedValue([openSlot(NEW_SLOT, hoursFromNow(96))]);
+    const result = await options(service);
+    expect(result.slots).toEqual([]);
+  });
+
+  it('offers only times in the format the client paid for', async () => {
+    const { service, prisma } = makeService();
+    prisma.consultAvailability.findMany.mockResolvedValue([
+      openSlot(NEW_SLOT, hoursFromNow(96)),
+      openSlot(11n, hoursFromNow(120), { allowsOnline: false, allowsInPerson: true, locationId: 7n, therapist: { offersOnline: true, offersInPerson: true, workLocations: [{ locationId: 7n }], profile: { firstName: 'Tolu', lastName: 'A' } } }),
+    ]);
+    const result = await options(service);
+    expect(result.slots.map((s: any) => s.id)).toEqual([NEW_SLOT.toString()]);
   });
 
   it('refuses to list options for a booking that is not theirs', async () => {
@@ -409,7 +477,7 @@ describe('rescheduling by format', () => {
         availability: { id: OLD_SLOT, providerProfileId: PROVIDER, startsAt: hoursFromNow(72) },
         service: { title: 'Therapy' },
       },
-      target: { id: NEW_SLOT, tenantId: TENANT, providerProfileId: PROVIDER, serviceId: 2n, isActive: true, startsAt: hoursFromNow(96), allowsOnline: true, allowsInPerson: false, locationId: null },
+      target: { id: NEW_SLOT, tenantId: TENANT, providerProfileId: PROVIDER, serviceId: 2n, isActive: true, startsAt: hoursFromNow(96), endsAt: hoursFromNow(97), allowsOnline: true, allowsInPerson: false, locationId: null },
     });
     await expect(service.rescheduleBooking(TENANT, CLIENT, BOOKING, NEW_SLOT)).rejects.toThrow("That time isn't available in person. Choose another.");
   });
@@ -422,7 +490,7 @@ describe('rescheduling by format', () => {
         availability: { id: OLD_SLOT, providerProfileId: PROVIDER, startsAt: hoursFromNow(72) },
         service: { title: 'Therapy' },
       },
-      target: { id: NEW_SLOT, tenantId: TENANT, providerProfileId: PROVIDER, serviceId: 2n, isActive: true, startsAt: hoursFromNow(96), allowsOnline: false, allowsInPerson: true, locationId: 6n },
+      target: { id: NEW_SLOT, tenantId: TENANT, providerProfileId: PROVIDER, serviceId: 2n, isActive: true, startsAt: hoursFromNow(96), endsAt: hoursFromNow(97), allowsOnline: false, allowsInPerson: true, locationId: 6n },
     });
     await service.rescheduleBooking(TENANT, CLIENT, BOOKING, NEW_SLOT);
     const moved = tx.consultBooking.updateMany.mock.calls[0][0].data;

@@ -1,5 +1,6 @@
 import { Injectable, BadRequestException, NotFoundException, Optional } from '@nestjs/common';
 import { BookingNotifier } from '../notifications/booking-notifier.service';
+import { reviewInviteTokenValid } from '../consult/review-invite';
 import { listPendingForms } from './default-forms';
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '../../common/prisma/prisma.service';
@@ -307,6 +308,41 @@ export class IntakeService {
   }) {
     const { clientProfileId: _ignored, ...rest } = dto as typeof dto & { clientProfileId?: unknown };
     return this.recordSubmission(tenantId, rest, null);
+  }
+
+  /**
+   * A review from a review request link: the signed link names the session,
+   * and so the client. The request's name and email are never used, so a link
+   * cannot file a review as someone else. One review per session.
+   */
+  async submitReviewByInvite(tenantId: bigint, dto: {
+    formId: string;
+    bookingId?: string;
+    inviteToken?: string;
+    answersJson: Record<string, any>;
+  }) {
+    const bookingId = /^\d+$/.test(String(dto.bookingId ?? '')) ? BigInt(String(dto.bookingId)) : null;
+    if (bookingId === null || !reviewInviteTokenValid(tenantId, bookingId, dto.inviteToken)) {
+      throw new NotFoundException('This review link is not valid.');
+    }
+    if (!/^\d+$/.test(String(dto.formId ?? ''))) throw new NotFoundException('Form not found');
+    const form = await this.prisma.universalForm.findFirst({ where: { id: BigInt(dto.formId), tenantId, targetType: 'REVIEW' } });
+    if (!form || form.targetType !== 'REVIEW') throw new NotFoundException('Form not found');
+    const booking = await this.prisma.consultBooking.findFirst({
+      where: { id: bookingId, tenantId },
+      select: { id: true, clientProfileId: true },
+    });
+    if (!booking) throw new NotFoundException('This review link is not valid.');
+    const already = await this.prisma.universalFormSubmission.findFirst({
+      where: { tenantId, bookingId, targetType: 'REVIEW' },
+      select: { id: true },
+    });
+    if (already) throw new BadRequestException('Thank you — a review for this session has already been sent.');
+    return this.recordSubmission(
+      tenantId,
+      { formId: dto.formId, bookingId: String(bookingId), answersJson: dto.answersJson },
+      booking.clientProfileId,
+    );
   }
 
   /** A signed-in client: who they are comes from the token, never the request. */

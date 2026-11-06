@@ -29,7 +29,8 @@ export interface StaffBookingInput {
 export interface StaffBookingResult {
   bookingId: string;
   status: 'PENDING_PAYMENT' | 'CONFIRMED';
-  paymentMethod: 'PAYSTACK' | 'MANUAL' | 'NONE';
+  /** PLAN: a not-yet-scheduled session given a time; it was paid on an earlier booking. */
+  paymentMethod: 'PAYSTACK' | 'MANUAL' | 'NONE' | 'PLAN';
   amountKobo: string;
   startsAt: string;
   endsAt: string;
@@ -274,101 +275,127 @@ export class StaffBookingService {
     });
 
     // After commit, and never failing the booking.
-    const notify = dto.notifyClient !== false;
-    const confirmed = results.filter((r) => r.status === 'CONFIRMED');
-    if (results.length > 1 && confirmed.length === results.length) {
-      // One email listing every session, not one per session.
-      for (const r of results) await this.calendar.pushBookingToGoogle(BigInt(r.bookingId)).catch(() => undefined);
-      if (notify) {
-        await this.emailSeveral(results).catch((err) =>
-          this.logger.warn(`Could not email the client about bookings ${results.map((r) => r.bookingId).join(', ')}: ${(err as Error).message}`),
-        );
-      }
-    } else {
-      for (const r of results) {
-        await this.afterCreate(BigInt(r.bookingId), r, notify).catch((err) =>
-          this.logger.warn(`After-booking steps failed for ${r.bookingId}: ${(err as Error).message}`),
-        );
-      }
-    }
+    await this.afterBooking(results, dto.notifyClient !== false).catch((err) =>
+      this.logger.warn(`After-booking steps failed for ${results.map((r) => r.bookingId).join(', ')}: ${(err as Error).message}`),
+    );
     return results;
   }
 
-  /** The client's one email for several confirmed sessions. */
-  protected async emailSeveral(results: StaffBookingResult[]): Promise<void> {
-    const first = await this.prisma.consultBooking.findFirst({
-      where: { id: BigInt(results[0].bookingId) },
-      include: { client: true, tenant: true },
+  /**
+   * Calendar first, then email: with Google Meet the push makes each
+   * session's Meet link, and the emails should carry it. The client gets one
+   * email (one per session while each needs its own payment link); the
+   * practitioner always gets a copy, so a session booked for them by the desk
+   * is never a surprise.
+   */
+  protected async afterBooking(results: StaffBookingResult[], notifyClient: boolean): Promise<void> {
+    for (const r of results) {
+      if (r.status === 'CONFIRMED') await this.calendar.pushBookingToGoogle(BigInt(r.bookingId)).catch(() => undefined);
+    }
+    const rows = await this.prisma.consultBooking.findMany({
+      where: { id: { in: results.map((r) => BigInt(r.bookingId)) } },
+      include: { client: true, tenant: true, location: true, availability: { include: { therapist: { include: { profile: true } } } } },
     });
-    if (!first) return;
-    const origin = tenantWebOrigin(first.tenant as any);
-    const timeZone = (first.client as { timezone?: string | null }).timezone || 'Africa/Lagos';
-    const fmt = new Intl.DateTimeFormat('en-GB', { weekday: 'long', day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit', timeZone });
-    const lines = results.map((r) => `• ${fmt.format(new Date(r.startsAt))}${r.format === 'IN_PERSON' ? ' (in person)' : ''}`).join('\n');
-    const r = results[0];
+    const byId = new Map(rows.map((b: any) => [b.id.toString(), b]));
+    const sessions = results.map((r) => ({ r, b: byId.get(r.bookingId) as any })).filter((x) => x.b);
+    if (!sessions.length) return;
+
+    if (notifyClient) {
+      try {
+        const allConfirmed = sessions.every((x) => x.r.status === 'CONFIRMED');
+        if (sessions.length > 1 && allConfirmed) await this.emailClientSeveral(sessions);
+        else for (const x of sessions) await this.emailClientOne(x.b, x.r);
+      } catch (err) {
+        this.logger.warn(`Could not email the client about bookings ${results.map((r) => r.bookingId).join(', ')}: ${(err as Error).message}`);
+      }
+    }
+    await this.emailPractitioner(sessions).catch((err) =>
+      this.logger.warn(`Could not email the practitioner about bookings ${results.map((r) => r.bookingId).join(', ')}: ${(err as Error).message}`),
+    );
+  }
+
+  /** How one session is reached: its join link (the Meet link once made), or its place. */
+  private whereLine(b: any): string {
+    if (b.format === 'IN_PERSON') return b.location ? `In person at ${b.location.name}, ${b.location.city}` : 'In person';
+    return `Join: ${joinLinkFor(tenantWebOrigin(b.tenant), b)}`;
+  }
+
+  private when(at: Date | string, timeZone: string): string {
+    return new Intl.DateTimeFormat('en-GB', { weekday: 'long', day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit', timeZone }).format(new Date(at));
+  }
+
+  private async emailClientOne(b: any, r: StaffBookingResult): Promise<void> {
+    const origin = tenantWebOrigin(b.tenant);
+    // The client reads this, so their own time zone, not the server's or the practice's.
+    const timeZone = b.client.timezone || 'Africa/Lagos';
+    const when = this.when(r.startsAt, timeZone);
+    if (r.status === 'PENDING_PAYMENT') {
+      const deadline = r.holdExpiresAt
+        ? new Intl.DateTimeFormat('en-GB', { day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit', timeZone }).format(new Date(r.holdExpiresAt))
+        : '';
+      await this.notifications.sendEmail({
+        to: b.client.email,
+        type: 'bookings.staff_payment_link',
+        title: `Pay for your session on ${when}`,
+        message: `${b.tenant.name} has booked your ${r.serviceTitle} with ${r.practitionerName} on ${when}. Please pay ${formatNaira(Number(r.amountKobo))} by ${deadline} to keep this time.`,
+        link: `${origin}/pay/${b.id}?t=${payLinkToken(b.id)}`,
+        actionLabel: 'Pay now',
+        tenantId: b.tenantId,
+        profileId: b.clientProfileId,
+      });
+      return;
+    }
+    await this.notifications.sendEmail({
+      to: b.client.email,
+      type: 'bookings.staff_confirmed',
+      title: 'Your session is booked',
+      message: `${b.tenant.name} has booked your ${r.serviceTitle} with ${r.practitionerName} on ${when}.\n${this.whereLine(b)}`,
+      link: `${origin}/portal`,
+      actionLabel: 'View my booking',
+      tenantId: b.tenantId,
+      profileId: b.clientProfileId,
+    });
+  }
+
+  /** The client's one email for several confirmed sessions, each with its own link. */
+  private async emailClientSeveral(sessions: Array<{ r: StaffBookingResult; b: any }>): Promise<void> {
+    const first = sessions[0].b;
+    const timeZone = first.client.timezone || 'Africa/Lagos';
+    const lines = sessions.map(({ b, r }) => `• ${this.when(r.startsAt, timeZone)}\n  ${this.whereLine(b)}`).join('\n');
+    const r = sessions[0].r;
     await this.notifications.sendEmail({
       to: first.client.email,
       type: 'bookings.staff_confirmed',
-      title: `Your ${results.length} sessions are booked`,
-      message: `${first.tenant.name} has booked ${results.length} sessions of ${r.serviceTitle} with ${r.practitionerName}:\n${lines}\n\nOnline sessions are joined from your portal.`,
-      link: `${origin}/portal`,
+      title: `Your ${sessions.length} sessions are booked`,
+      message: `${first.tenant.name} has booked ${sessions.length} sessions of ${r.serviceTitle} with ${r.practitionerName}:\n${lines}`,
+      link: `${tenantWebOrigin(first.tenant)}/portal`,
       actionLabel: 'View my bookings',
       tenantId: first.tenantId,
       profileId: first.clientProfileId,
     });
   }
 
-  /** Emails and calendar sync, after the transaction commits. */
-  protected async afterCreate(bookingId: bigint, r: StaffBookingResult, notifyClient: boolean): Promise<void> {
-    const b = await this.prisma.consultBooking.findFirst({
-      where: { id: bookingId },
-      include: { client: true, tenant: true },
+  /** The practitioner's copy: who, when, how to join, and whether it is paid. */
+  private async emailPractitioner(sessions: Array<{ r: StaffBookingResult; b: any }>): Promise<void> {
+    const first = sessions[0].b;
+    const practitioner = first.availability?.therapist?.profile;
+    if (!practitioner?.email) return;
+    const timeZone = practitioner.timezone || 'Africa/Lagos';
+    const client = sessions[0].r.clientName;
+    const paid = (r: StaffBookingResult) =>
+      r.status === 'PENDING_PAYMENT' ? 'waiting for payment' : r.paymentMethod === 'NONE' ? 'no charge' : r.paymentMethod === 'MANUAL' ? 'marked as paid' : r.paymentMethod === 'PLAN' ? 'paid earlier' : 'paid';
+    const lines = sessions.map(({ b, r }) => `• ${this.when(r.startsAt, timeZone)} (${paid(r)})\n  ${this.whereLine(b)}`).join('\n');
+    const n = sessions.length;
+    await this.notifications.sendEmail({
+      to: practitioner.email,
+      type: 'bookings.staff_booked_copy',
+      title: n > 1 ? `${n} sessions booked with ${client}` : `Session booked with ${client}`,
+      message: `${n > 1 ? `${n} sessions` : 'A session'} of ${sessions[0].r.serviceTitle} with ${client}:\n${lines}`,
+      link: `${tenantWebOrigin(first.tenant)}/dashboard/sessions/${first.id}`,
+      actionLabel: n > 1 ? 'View the first session' : 'View the session',
+      tenantId: first.tenantId,
+      profileId: practitioner.id,
     });
-    if (!b) return;
-    const origin = tenantWebOrigin(b.tenant as any);
-    // VID-01: online sessions are joined in the app; rooms are made on the first join.
-    const videoLine = (b as any).format !== 'IN_PERSON' ? ` Join link: ${joinLinkFor(origin, b)}` : '';
-    // The client reads this, so their own time zone, not the server's or the practice's.
-    const timeZone = (b.client as { timezone?: string | null }).timezone || 'Africa/Lagos';
-    const when = new Intl.DateTimeFormat('en-GB', {
-      weekday: 'long', day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit', timeZone,
-    }).format(new Date(r.startsAt));
-
-    if (r.status === 'CONFIRMED') {
-      await this.calendar.pushBookingToGoogle(bookingId).catch(() => undefined);
-    }
-    if (!notifyClient) return;
-
-    try {
-      if (r.status === 'PENDING_PAYMENT') {
-        const deadline = r.holdExpiresAt
-          ? new Intl.DateTimeFormat('en-GB', { day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit', timeZone }).format(new Date(r.holdExpiresAt))
-          : '';
-        await this.notifications.sendEmail({
-          to: b.client.email,
-          type: 'bookings.staff_payment_link',
-          title: `Pay for your session on ${when}`,
-          message: `${b.tenant.name} has booked your ${r.serviceTitle} with ${r.practitionerName} on ${when}. Please pay ${formatNaira(Number(r.amountKobo))} by ${deadline} to keep this time.`,
-          link: `${origin}/pay/${bookingId}?t=${payLinkToken(bookingId)}`,
-          actionLabel: 'Pay now',
-          tenantId: b.tenantId,
-          profileId: b.clientProfileId,
-        });
-      } else {
-        await this.notifications.sendEmail({
-          to: b.client.email,
-          type: 'bookings.staff_confirmed',
-          title: 'Your session is booked',
-          message: `${b.tenant.name} has booked your ${r.serviceTitle} with ${r.practitionerName} on ${when}.${videoLine}`,
-          link: `${origin}/portal`,
-          actionLabel: 'View my booking',
-          tenantId: b.tenantId,
-          profileId: b.clientProfileId,
-        });
-      }
-    } catch (err) {
-      this.logger.warn(`Could not email the client about booking ${bookingId}: ${(err as Error).message}`);
-    }
   }
 
   private async payLinkBooking(tenantId: bigint, bookingId: bigint, token: string) {

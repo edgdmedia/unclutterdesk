@@ -50,6 +50,17 @@ export function collectedKobo(bookings: BillableBooking[]): bigint {
   return bookings.reduce((total, b) => (b.paidAt ? total + chargedKobo(b) : total), 0n);
 }
 
+/**
+ * Plan sessions paid directly, with no booking (spec §11.2: sessions paid at
+ * the practice, times chosen later). Their money arrived, so it is revenue
+ * like a paid booking: a plan session has the same amountKobo and paidAt.
+ *
+ * One paid on a booking (unscheduled from it) is not: that booking already
+ * counts it. And the booking a plan session is later scheduled into carries
+ * no charge (PLAN, amountKobo 0). So every naira is counted exactly once.
+ */
+export const DIRECT_PLAN_PAYMENT = { paidOnBookingId: null, paidAt: { not: null } } as const;
+
 /** Kobo are the unit of record; naira is only ever for display. */
 export function koboToNaira(kobo: bigint): number {
   return Number(kobo) / 100;

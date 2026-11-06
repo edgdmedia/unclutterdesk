@@ -1,4 +1,5 @@
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import { encryptNoteFields, resetFieldEncryptionKey } from '../../common/field-encryption';
 import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { TenantService } from './tenant.service';
 import { emergencyContactData, emergencyContactOf, emergencyContactText } from './emergency-contact';
@@ -105,6 +106,33 @@ describe('reading a client', () => {
   it('is not found for a missing client', async () => {
     const { service } = makeService({ findFirst: null });
     await expect(service.getClientById(TENANT, 99n)).rejects.toBeInstanceOf(NotFoundException);
+  });
+
+  describe('their notes', () => {
+    afterEach(() => {
+      delete process.env.FIELD_ENCRYPTION_KEY;
+      resetFieldEncryptionKey();
+    });
+
+    // All four SOAP fields are stored encrypted. Only Subjective was decrypted
+    // here, so the notes tab showed Objective, Assessment and Plan as cipher text.
+    it('reads every SOAP field in plain text', async () => {
+      process.env.FIELD_ENCRYPTION_KEY = 'a'.repeat(64);
+      resetFieldEncryptionKey();
+      const stored = encryptNoteFields({ subjective: 'Sleeps better', objective: 'Calm affect', assessment: 'Improving', plan: 'Keep the 4-7-8 breath' });
+      expect(stored.objective).not.toBe('Calm affect');
+      const { service, prisma } = makeService({ findFirst: CLIENT_ROW });
+      prisma.clinicalNote.findMany.mockResolvedValue([{ id: 7n, bookingId: 900n, isLocked: false, createdAt: new Date('2026-11-05T10:00:00Z'), ...stored }]);
+      const client = await service.getClientById(TENANT, 40n);
+      expect(client.notes[0]).toMatchObject({ subjective: 'Sleeps better', objective: 'Calm affect', assessment: 'Improving', plan: 'Keep the 4-7-8 breath' });
+    });
+
+    it('says which session each note is for', async () => {
+      const { service, prisma } = makeService({ findFirst: CLIENT_ROW });
+      prisma.clinicalNote.findMany.mockResolvedValue([{ id: 7n, bookingId: 900n, isLocked: true, createdAt: new Date(), subjective: null, objective: null, assessment: null, plan: null }]);
+      const client = await service.getClientById(TENANT, 40n);
+      expect(client.notes[0].bookingId).toBe('900');
+    });
   });
 });
 

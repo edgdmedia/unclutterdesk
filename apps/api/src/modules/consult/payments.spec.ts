@@ -31,6 +31,7 @@ function row(over: Record<string, unknown> = {}) {
 function makeService(rows: ReturnType<typeof row>[]) {
   const prisma: any = {
     consultBooking: { findMany: vi.fn().mockResolvedValue(rows) },
+    planSession: { findMany: vi.fn().mockResolvedValue([]) },
   };
   const service = new ConsultService(
     prisma, {} as any, {} as any, {} as any, {} as any, {} as any, {} as any,
