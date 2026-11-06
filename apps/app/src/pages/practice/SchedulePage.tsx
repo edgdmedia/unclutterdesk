@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { ChevronLeft, ChevronRight, Plus, Settings, X, Calendar, Clock, User, Trash2, CheckCircle2, CalendarPlus } from 'lucide-react';
 import { Page, PageHeader, useBrand, useToast } from '@unclutterdesk/ui';
 import { StaffBookingDialog } from '../../components/booking/StaffBookingDialog';
-import { api, getBookingUrl, TENANT_SLUG } from '../../utils/apiClient';
+import { api } from '../../utils/apiClient';
 
 /** YYYY-MM-DD in the viewer's own time zone (toISOString would use UTC and can be a day off). */
 function localDateInput(d: Date): string {
@@ -46,7 +46,7 @@ interface SchedulePageProps {
   onRefresh?: () => Promise<unknown>;
 }
 
-export function SchedulePage({ sessions, setSessions, clients, tenantSlug, onRefresh }: SchedulePageProps) {
+export function SchedulePage({ sessions, setSessions, clients, onRefresh }: SchedulePageProps) {
   const toast = useToast();
   const brand = useBrand();
   const primaryColor = brand.primaryColor || '#0F3A53';
@@ -70,7 +70,7 @@ export function SchedulePage({ sessions, setSessions, clients, tenantSlug, onRef
   const [formDuration, setFormDuration] = useState(50);
   const [showAvailabilityModal, setShowAvailabilityModal] = useState(false);
   const [updatingStatusId, setUpdatingStatusId] = useState<string | null>(null);
-  const [reviewLinkCopied, setReviewLinkCopied] = useState(false);
+  const [askingReview, setAskingReview] = useState(false);
 
   // The hours and days shown come from your weekly availability and the sessions in view.
   const [weekly, setWeekly] = useState<{ weeklyTimes: WeeklyTimeLite[]; sessionLengthMinutes: number }>({ weeklyTimes: [], sessionLengthMinutes: 50 });
@@ -255,14 +255,20 @@ export function SchedulePage({ sessions, setSessions, clients, tenantSlug, onRef
     }
   };
 
-  const handleCopyReviewLink = async () => {
-    const effectiveSlug = tenantSlug || TENANT_SLUG;
-    if (!effectiveSlug) return;
-    const reviewUrl = `${getBookingUrl(effectiveSlug)}/review`;
-    await navigator.clipboard.writeText(reviewUrl);
-    setReviewLinkCopied(true);
-    window.setTimeout(() => setReviewLinkCopied(false), 2000);
+  // Never automatic: the practitioner chooses, per completed session, once.
+  const handleAskForReview = async () => {
+    if (!selectedEvent) return;
+    setAskingReview(true);
+    try {
+      await api.post(`/v1/consult/practice/sessions/${selectedEvent.id}/review-request`, {});
+      toast.success(`Review request emailed to ${selectedEvent.title}`);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Could not send the review request');
+    } finally {
+      setAskingReview(false);
+    }
   };
+
 
   return (
     <Page
@@ -687,8 +693,8 @@ export function SchedulePage({ sessions, setSessions, clients, tenantSlug, onRef
 
             <div className="rounded-[16px] border border-[var(--desk-border)] bg-[var(--desk-surface)] px-4 py-3 text-xs font-medium text-[var(--desk-text-body)]">
               {selectedEvent.status === 'COMPLETED'
-                ? 'This session is completed. You can now send the review request link to the client.'
-                : 'Once the session is completed, you can immediately copy the public review link for the client.'}
+                ? 'This session is completed. If it feels right, you can email the client a link to leave a review. Each session is asked once.'
+                : 'Once the session is completed, you can ask the client for a review. Nothing is sent unless you ask.'}
             </div>
 
             {/* Actions */}
@@ -723,11 +729,12 @@ export function SchedulePage({ sessions, setSessions, clients, tenantSlug, onRef
                 </button>
               ) : (
                 <button
-                  onClick={() => void handleCopyReviewLink()}
-                  className="w-full h-11 rounded-[14px] text-white font-bold text-xs hover:brightness-95 cursor-pointer"
+                  onClick={() => void handleAskForReview()}
+                  disabled={askingReview}
+                  className="w-full h-11 rounded-[14px] text-white font-bold text-xs hover:brightness-95 cursor-pointer disabled:opacity-60"
                   style={{ backgroundColor: primaryColor }}
                 >
-                  {reviewLinkCopied ? 'Review link copied' : 'Copy Review Link'}
+                  {askingReview ? 'Sending...' : 'Ask for a review'}
                 </button>
               )}
             </div>

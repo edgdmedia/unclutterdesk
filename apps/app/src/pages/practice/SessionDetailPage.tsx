@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { JoinButton } from '../../components/video/JoinButton';
 import { Link, useLocation, useParams } from 'react-router-dom';
-import { CalendarClock, CheckCircle2, Download, FileText, Loader2, PencilLine } from 'lucide-react';
+import { CalendarClock, CheckCircle2, Download, FileText, Loader2, PencilLine, Star } from 'lucide-react';
 import { Card, Eyebrow, Page, PageHeader, StatTile, StatusBadge, useToast } from '@unclutterdesk/ui';
 import { PaymentChip } from '../../components/booking/PaymentChip';
 import { EditSessionDialog } from '../../components/booking/EditSessionDialog';
@@ -22,6 +22,8 @@ interface SessionDetail extends SessionRow {
   internalSummary: string | null;
   clientRecap: string | null;
   clientRecapSentAt: string | null;
+  /** When the client was emailed a review request for this session; once per session. */
+  reviewRequestedAt?: string | null;
   can: { edit: boolean; summary: boolean; markPaid: boolean };
   serviceId?: string | null;
   durationMinutes?: number | null;
@@ -178,6 +180,27 @@ export function SessionDetailPage() {
           <p className="text-[12.5px] font-medium text-[var(--desk-text-body)] inline-flex items-center gap-1.5">
             <CalendarClock className="h-4 w-4" /> Note {d.note.status === 'COMPLETED' ? 'signed' : 'in draft'}
           </p>
+        ) : null}
+        {d.status === 'COMPLETED' && (d.can.edit || d.can.summary) ? (
+          // Never automatic: many therapy ethics codes caution against asking a
+          // client still in care for a testimonial, so this is the practitioner's call.
+          d.reviewRequestedAt ? (
+            <p className="text-[12.5px] font-medium text-[var(--desk-text-body)] inline-flex items-center gap-1.5">
+              <Star className="h-4 w-4" /> Review requested {new Date(d.reviewRequestedAt).toLocaleDateString('en-GB')}
+            </p>
+          ) : (
+            <div className="flex flex-wrap items-center gap-3">
+              <button
+                type="button"
+                disabled={busy}
+                onClick={() => void act(() => api.post(`/v1/consult/practice/sessions/${d.id}/review-request`, {}), `Review request emailed to ${d.client.name}`)}
+                className="h-[36px] px-3 rounded-[10px] bg-white border border-[var(--desk-pine-200)] text-[var(--desk-text)] text-[12px] font-bold inline-flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+              >
+                <Star className="h-4 w-4" /> Ask for a review
+              </button>
+              <span className="text-[11.5px] text-[var(--desk-text-muted)]">Emails {d.client.name} a link to your review form. Asked once per session.</span>
+            </div>
+          )
         ) : null}
         {forms ? (
           <p className="text-[12.5px] font-medium text-[var(--desk-text-body)] inline-flex items-center gap-2">

@@ -173,3 +173,40 @@ describe("the session's note on the session page", () => {
     expect(screen.queryByLabelText('Subjective')).toBeNull();
   });
 });
+
+// Never automatic: the practitioner chooses, per completed session, once.
+describe('asking for a review', () => {
+  const done = { ...DETAIL, status: 'COMPLETED', reviewRequestedAt: null };
+
+  it('emails the client from a completed session, then says it was asked', async () => {
+    const session: Record<string, unknown> = { ...done };
+    renderPage(session);
+    apiPost.mockImplementation(async () => {
+      session.reviewRequestedAt = '2026-11-06T12:00:00.000Z';
+      return { id: '900', reviewRequestedAt: session.reviewRequestedAt };
+    });
+    fireEvent.click(await screen.findByRole('button', { name: /Ask for a review/ }));
+    await waitFor(() => expect(apiPost).toHaveBeenCalledWith('/v1/consult/practice/sessions/900/review-request', {}));
+    expect(await screen.findByText(/Review requested/)).toBeTruthy();
+    expect(screen.queryByRole('button', { name: /Ask for a review/ })).toBeNull();
+  });
+
+  it('is not offered twice', async () => {
+    renderPage({ ...done, reviewRequestedAt: '2026-11-05T12:00:00.000Z' });
+    expect(await screen.findByText(/Review requested/)).toBeTruthy();
+    expect(screen.queryByRole('button', { name: /Ask for a review/ })).toBeNull();
+  });
+
+  it('is not offered before the session is completed', async () => {
+    renderPage(DETAIL);
+    await screen.findByRole('heading', { name: 'Ada Ola' });
+    expect(screen.queryByRole('button', { name: /Ask for a review/ })).toBeNull();
+  });
+
+  it("shows the API's reason when it can't be sent", async () => {
+    renderPage(done);
+    apiPost.mockRejectedValue(new Error('Set up a review form under Forms first.'));
+    fireEvent.click(await screen.findByRole('button', { name: /Ask for a review/ }));
+    expect(await screen.findByText(/Set up a review form/)).toBeTruthy();
+  });
+});
