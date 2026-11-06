@@ -63,6 +63,23 @@ function parseDateOnly(value: string): Date {
 /** §6.17: edited only in My profile (PractitionerProfile), never on the practice record. */
 export const PERSON_FIELDS = ['welcomeMessage', 'tagline', 'specialty', 'credentials', 'yearsExperience', 'modalities', 'languages'] as const;
 
+/** A clinical note as the prep and the session room read it. */
+function noteView(note: any) {
+  if (!note) return null;
+  // Stored encrypted; the practitioner reading their own note is exactly who
+  // it is decrypted for.
+  const { subjective, objective, assessment, plan } = decryptNoteFields(note);
+  return {
+    id: note.id.toString(),
+    subjective,
+    objective,
+    assessment,
+    plan,
+    isLocked: note.isLocked,
+    createdAt: note.createdAt.toISOString(),
+  };
+}
+
 @Injectable()
 export class ConsultService {
   private readonly logger = new Logger(ConsultService.name);
@@ -1705,8 +1722,13 @@ export class ConsultService {
   }
 
   /**
-   * Slots this booking could move to: same practitioner, same service, still
-   * open, still in the future.
+   * Slots this booking could move to: the times the public booking page would
+   * offer this practitioner, service and format, minus the current slot and
+   * anything inside the notice window.
+   *
+   * Reusing `getPublicAvailability` keeps the two lists from disagreeing. They
+   * did once: this list asked for times pinned to the service, but the weekly
+   * hours make times open to any service, so clients were offered nothing.
    *
    * Keeping the practitioner fixed is deliberate — the payout split, the
    * practitioner's prep and their calendar are all tied to who is seeing the
@@ -1719,38 +1741,27 @@ export class ConsultService {
       bookingId,
     );
 
-    const slots = await this.prisma.consultAvailability.findMany({
-      where: {
-        tenantId,
-        providerProfileId: booking.availability.providerProfileId,
-        serviceId: booking.serviceId,
-        isActive: true,
-        // A slot that starts sooner than the notice window would be unmovable
-        // the moment it was booked, so it is not worth offering.
-        startsAt: { gte: new Date(Date.now() + noticeHours * 60 * 60 * 1000) },
-        id: { not: booking.availabilityId },
-      },
-      orderBy: { startsAt: 'asc' },
-      take: 60,
-    });
-    const away = await this.prisma.timeOff.findMany({
-      where: { tenantId, profileId: booking.availability.providerProfileId },
-      select: { startsOn: true, endsOn: true },
-    });
+    const boughtFormat = asFormat((booking as { format?: string | null }).format ?? 'ONLINE') ?? 'ONLINE';
+    const open = await this.getPublicAvailability(
+      tenantId,
+      booking.availability.providerProfileId,
+      booking.serviceId,
+      boughtFormat,
+    );
+    // A slot that starts sooner than the notice window would be unmovable the
+    // moment it was booked, so it is not worth offering.
+    const earliest = Date.now() + noticeHours * 60 * 60 * 1000;
+    const current = booking.availabilityId.toString();
 
     return {
       bookingId: booking.id.toString(),
       serviceTitle: booking.service.title,
       currentStartsAt: booking.availability.startsAt.toISOString(),
       noticeHours,
-      slots: slots
-        .filter((slot) => !inAwayPeriod(away, slot.startsAt))
-        .map((slot) => ({
-          id: slot.id.toString(),
-          startsAt: slot.startsAt.toISOString(),
-          endsAt: slot.endsAt.toISOString(),
-          channel: slot.channel,
-        })),
+      slots: open
+        .filter((slot) => slot.id !== current && new Date(slot.startsAt).getTime() >= earliest)
+        .slice(0, 60)
+        .map((slot) => ({ id: slot.id, startsAt: slot.startsAt, endsAt: slot.endsAt, channel: slot.channel })),
     };
   }
 
@@ -1791,8 +1802,13 @@ export class ConsultService {
         'That time belongs to a different practitioner. Book a new session instead.',
       );
     }
-    if (target.serviceId !== booking.serviceId) {
+    // A time from the weekly hours is open to any service (serviceId null).
+    if (target.serviceId !== null && target.serviceId !== booking.serviceId) {
       throw new BadRequestException('That time is not open for this service');
+    }
+    const minutes = (target.endsAt.getTime() - target.startsAt.getTime()) / 60_000;
+    if (booking.service.durationMinutes && minutes < booking.service.durationMinutes) {
+      throw new BadRequestException('That time is too short for this session. Choose another.');
     }
     if (await this.isAway(tenantId, target.providerProfileId, target.startsAt)) {
       throw new BadRequestException('The practice is away on that day. Choose another time.');
@@ -1862,7 +1878,7 @@ export class ConsultService {
         type: 'consult.booking_rescheduled',
         title: 'Session moved',
         message: `${clientName} moved their ${updated.service.title} session to ${when}.`,
-        link: `/portal/clients/${updated.clientProfileId}`,
+        link: `/dashboard/clients/${updated.clientProfileId}`,
         preferenceCategory: 'reminders',
       });
     } catch (err) {
@@ -2010,7 +2026,7 @@ export class ConsultService {
           type: 'consult.soap_reminder',
           title: 'Session complete — note pending',
           message: `Write your SOAP note for ${clientName}'s session to complete the record.`,
-          link: `/portal/clients/${updated.client.id}?tab=notes&booking=${bookingId}`,
+          link: `/dashboard/clients/${updated.client.id}?tab=notes&booking=${bookingId}`,
           preferenceCategory: 'reminders',
         });
       }
@@ -2044,7 +2060,10 @@ export class ConsultService {
 
     if (!booking) throw new NotFoundException('Booking not found');
 
-    const [latestNote, submissions, nextBooking] = await Promise.all([
+    // Two notes, two jobs: the last session's is prep ("where you left off");
+    // this session's is the one the session room edits. Mixing them up once
+    // locked today's editor whenever last week's note was signed.
+    const [latestNote, sessionNote, submissions, nextBooking] = await Promise.all([
       this.prisma.clinicalNote.findFirst({
         where: {
           tenantId,
@@ -2053,6 +2072,7 @@ export class ConsultService {
         },
         orderBy: { createdAt: 'desc' },
       }),
+      this.prisma.clinicalNote.findFirst({ where: { tenantId, bookingId } }),
       this.prisma.universalFormSubmission.findMany({
         where: { tenantId, bookingId },
         include: { form: true },
@@ -2084,21 +2104,8 @@ export class ConsultService {
         status: booking.status,
         ...this.bookingFormatFields(booking),
         },
-      latestNote: latestNote
-        ? {
-          id: latestNote.id.toString(),
-          // Stored encrypted; the practitioner reading their own note is
-          // exactly who it is decrypted for.
-          ...(({ subjective, objective, assessment, plan }) => ({
-            subjective,
-            objective,
-            assessment,
-            plan,
-          }))(decryptNoteFields(latestNote)),
-          isLocked: latestNote.isLocked,
-          createdAt: latestNote.createdAt.toISOString(),
-        }
-        : null,
+      latestNote: noteView(latestNote),
+      sessionNote: noteView(sessionNote),
       submissions: submissions.map((submission) => ({
         id: submission.id.toString(),
         formTitle: submission.form.title,

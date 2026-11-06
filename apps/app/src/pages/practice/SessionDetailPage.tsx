@@ -1,10 +1,11 @@
 import { useEffect, useState } from 'react';
 import { JoinButton } from '../../components/video/JoinButton';
 import { Link, useParams } from 'react-router-dom';
-import { CalendarClock, CheckCircle2, Download, FileText, Loader2, Repeat, Video } from 'lucide-react';
+import { CalendarClock, CalendarRange, CheckCircle2, Download, FileText, Loader2, Repeat, Video } from 'lucide-react';
 import { Card, Eyebrow, Page, PageHeader, StatTile, StatusBadge, useToast } from '@unclutterdesk/ui';
 import { PaymentChip } from '../../components/booking/PaymentChip';
 import { ChangeServiceDialog } from '../../components/booking/ChangeServiceDialog';
+import { MoveSessionDialog } from '../../components/booking/MoveSessionDialog';
 import { api } from '../../utils/apiClient';
 import type { SessionRow } from './SessionsPage';
 import { activeDisplayPrefs, formatWhen } from '../../utils/displayFormat';
@@ -40,6 +41,7 @@ export function SessionDetailPage() {
   const [recap, setRecap] = useState('');
   const [busy, setBusy] = useState(false);
   const [changing, setChanging] = useState(false);
+  const [moving, setMoving] = useState(false);
   // BKG-06: whether the client's default forms are in yet.
   const [forms, setForms] = useState<{ intake: boolean; confidentiality: boolean } | null>(null);
 
@@ -110,6 +112,12 @@ export function SessionDetailPage() {
                   waitingClassName="h-[40px] px-4 rounded-[12px] bg-[var(--desk-border)] text-[var(--desk-text-muted)] text-[12.5px] font-bold inline-flex items-center gap-2 cursor-not-allowed"
                 />
               ) : null}
+              {d.can.summary && d.status !== 'CANCELLED' && new Date(d.startsAt) <= new Date() && d.note?.status !== 'COMPLETED' ? (
+                // After the session the room is closed; the note is written in the client's notes, tied to this session.
+                <Link to={`/dashboard/clients/${d.client.id}?tab=notes&booking=${d.id}`} className="h-[40px] px-4 rounded-[12px] bg-[var(--desk-pine-600)] text-white text-[12.5px] font-bold inline-flex items-center gap-2 cursor-pointer">
+                  <FileText className="h-4 w-4" /> {d.note ? 'Finish note' : 'Write note'}
+                </Link>
+              ) : null}
               <Link to={`/session/${d.id}/prep`} className="h-[40px] px-4 rounded-[12px] bg-white border border-[var(--desk-pine-200)] text-[var(--desk-text)] text-[12.5px] font-bold inline-flex items-center gap-2 cursor-pointer">
                 <FileText className="h-4 w-4" /> Session prep
               </Link>
@@ -126,6 +134,11 @@ export function SessionDetailPage() {
                 {d.status === 'PENDING_PAYMENT' && d.can.markPaid ? (
                   <button type="button" disabled={busy} onClick={() => void act(() => api.post(`/v1/consult/bookings/${d.id}/mark-paid`, {}), 'Payment recorded')} className="h-[40px] px-4 rounded-[12px] bg-white border border-[var(--desk-pine-200)] text-[var(--desk-text)] text-xs font-bold inline-flex items-center gap-1.5 cursor-pointer disabled:opacity-50">
                     <Download className="h-4 w-4" /> Mark as paid
+                  </button>
+                ) : null}
+                {d.status !== 'CANCELLED' && d.status !== 'COMPLETED' ? (
+                  <button type="button" disabled={busy} onClick={() => setMoving(true)} className="h-[40px] px-4 rounded-[12px] bg-white border border-[var(--desk-pine-200)] text-[var(--desk-text)] text-xs font-bold inline-flex items-center gap-1.5 cursor-pointer disabled:opacity-50">
+                    <CalendarRange className="h-4 w-4" /> Move session
                   </button>
                 ) : null}
                 {d.status !== 'CANCELLED' ? (
@@ -211,6 +224,18 @@ export function SessionDetailPage() {
             const owed = r.balanceKobo ? ` ${naira(r.balanceKobo)} is still owed.` : '';
             const over = r.overpaidKobo !== '0' ? ` The client paid ${naira(r.overpaidKobo)} more than the new price.` : '';
             toast.success(`Now ${r.serviceTitle}.${owed}${over}`);
+            void api.get<SessionDetail>(`/v1/consult/practice/sessions/${id}`).then(setD).catch(() => undefined);
+          }}
+        />
+      ) : null}
+
+      {moving ? (
+        <MoveSessionDialog
+          session={d}
+          onClose={() => setMoving(false)}
+          onMoved={(r) => {
+            setMoving(false);
+            toast.success(`Session moved to ${longWhen(r.startsAt)}. The client has been emailed.`);
             void api.get<SessionDetail>(`/v1/consult/practice/sessions/${id}`).then(setD).catch(() => undefined);
           }}
         />

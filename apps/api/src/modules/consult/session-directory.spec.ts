@@ -41,6 +41,7 @@ function make(over: Record<string, any> = {}) {
       }),
     },
     profile: { findMany: vi.fn().mockResolvedValue(over.creators ?? []), findFirst: vi.fn().mockResolvedValue({ firstName: 'Frank', lastName: 'Desk' }) },
+    tenant: { findUnique: vi.fn().mockResolvedValue({ name: 'Calm Practice', slug: 'calm', customDomain: null, customDomainStatus: null }) },
   };
   const notifications: any = { sendEmail: vi.fn().mockResolvedValue({ success: true }) };
   return { prisma, notifications, service: new SessionDirectoryService(prisma, notifications), booking };
@@ -158,7 +159,7 @@ describe('rescheduleByStaff', () => {
     const { service, prisma } = make();
     prisma.$transaction = vi.fn(async (fn: any) => fn(t));
     await service.rescheduleByStaff(TENANT, DESK, 900n, 301n);
-    expect(t.consultAvailability.updateMany).toHaveBeenCalledWith({ where: { id: 300n, tenantId: TENANT }, data: { isActive: true } });
+    expect(t.consultAvailability.updateMany).toHaveBeenCalledWith({ where: { id: 300n, tenantId: TENANT, createdForBooking: false }, data: { isActive: true } });
     expect(t.consultAvailability.update).toHaveBeenCalledWith({ where: { id: 301n }, data: { isActive: false } });
     expect(t.consultBooking.update).toHaveBeenCalledWith({ where: { id: 900n }, data: { availabilityId: 301n } });
   });
@@ -228,6 +229,113 @@ describe('rescheduleByStaff', () => {
     prisma.$transaction = vi.fn(async (fn: any) => fn(t));
     await expect(service.rescheduleByStaff(TENANT, DESK, 900n, 301n)).rejects.toThrow(/away on that day/i);
     expect(t.consultBooking.update).not.toHaveBeenCalled();
+  });
+
+  // A time staff made by hand for one booking may be outside working hours, so
+  // it is never handed to the public when its session moves away.
+  it('never reopens a time made by hand for this booking', async () => {
+    const t = tx();
+    const { service, prisma } = make();
+    prisma.$transaction = vi.fn(async (fn: any) => fn(t));
+    await service.rescheduleByStaff(TENANT, DESK, 900n, 301n);
+    expect(t.consultAvailability.updateMany.mock.calls[0][0].where).toMatchObject({ id: 300n, createdForBooking: false });
+  });
+
+  it('emails the client the new time', async () => {
+    const t = tx();
+    const { service, prisma, notifications } = make();
+    prisma.$transaction = vi.fn(async (fn: any) => fn(t));
+    await service.rescheduleByStaff(TENANT, DESK, 900n, 301n);
+    expect(notifications.sendEmail).toHaveBeenCalledWith(expect.objectContaining({ to: 'ada@example.com', type: 'bookings.rescheduled' }));
+  });
+
+  it('still moves the session when the email fails', async () => {
+    const t = tx();
+    const { service, prisma, notifications } = make();
+    notifications.sendEmail.mockRejectedValue(new Error('smtp'));
+    prisma.$transaction = vi.fn(async (fn: any) => fn(t));
+    await expect(service.rescheduleByStaff(TENANT, DESK, 900n, 301n)).resolves.toMatchObject({ id: '900' });
+  });
+
+  describe('to a time staff choose', () => {
+    const at = new Date(Date.now() + 4 * DAY);
+    function customTx(over: Record<string, any> = {}) {
+      const t: any = tx({ booking: { service: { durationMinutes: 50 }, format: 'ONLINE', locationId: null, ...(over.booking ?? {}) } });
+      t.$executeRaw = vi.fn().mockResolvedValue(1);
+      t.consultBooking.findFirst = vi.fn(async ({ where }: any) =>
+        // The clash check carries the time range; the first call loads the booking.
+        where.availability ? over.clash ?? null : { id: 900n, tenantId: TENANT, status: 'CONFIRMED', availabilityId: 300n, serviceId: 20n, service: { durationMinutes: 50 }, format: 'ONLINE', locationId: null, ...(over.booking ?? {}) },
+      );
+      t.consultAvailability.create = vi.fn().mockResolvedValue({ id: 555n, startsAt: at, endsAt: new Date(at.getTime() + 50 * 60_000) });
+      t.consultAvailability.findFirst = vi.fn().mockResolvedValue({ providerProfileId: ACTOR });
+      return t;
+    }
+
+    it("makes a time just for this session, as long as the service, and moves it there", async () => {
+      const t = customTx();
+      const { service, prisma } = make();
+      prisma.$transaction = vi.fn(async (fn: any) => fn(t));
+      await service.rescheduleByStaff(TENANT, DESK, 900n, { startsAt: at });
+      const made = t.consultAvailability.create.mock.calls[0][0].data;
+      expect(made).toMatchObject({ tenantId: TENANT, providerProfileId: ACTOR, serviceId: 20n, startsAt: at, isActive: false, createdForBooking: true, allowsOnline: true, allowsInPerson: false });
+      expect(made.endsAt.getTime() - at.getTime()).toBe(50 * 60_000);
+      expect(t.consultBooking.update).toHaveBeenCalledWith(expect.objectContaining({ where: { id: 900n }, data: expect.objectContaining({ availabilityId: 555n }) }));
+    });
+
+    it('closes open times it overlaps, after giving the old time back', async () => {
+      const t = customTx();
+      const order: string[] = [];
+      t.consultAvailability.updateMany = vi.fn(async ({ where }: any) => {
+        order.push(where.id === 300n ? 'release-old' : 'close-overlap');
+        return { count: 1 };
+      });
+      const { service, prisma } = make();
+      prisma.$transaction = vi.fn(async (fn: any) => fn(t));
+      await service.rescheduleByStaff(TENANT, DESK, 900n, { startsAt: at });
+      // Closing second means a reopened old time that overlaps the new one is shut again.
+      expect(order).toEqual(['release-old', 'close-overlap']);
+      expect(t.$executeRaw).toHaveBeenCalled();
+    });
+
+    it('refuses a time that clashes with another session', async () => {
+      const t = customTx({ clash: { availability: { startsAt: at, endsAt: new Date(at.getTime() + 3_600_000) } } });
+      const { service, prisma } = make();
+      prisma.$transaction = vi.fn(async (fn: any) => fn(t));
+      await expect(service.rescheduleByStaff(TENANT, DESK, 900n, { startsAt: at })).rejects.toThrow(/already has a session/i);
+      expect(t.consultAvailability.create).not.toHaveBeenCalled();
+    });
+
+    it('does not count the session being moved as a clash', async () => {
+      const t = customTx();
+      const { service, prisma } = make();
+      prisma.$transaction = vi.fn(async (fn: any) => fn(t));
+      await service.rescheduleByStaff(TENANT, DESK, 900n, { startsAt: at });
+      const clashCheck = t.consultBooking.findFirst.mock.calls.find((c: any[]) => c[0].where.availability)[0].where;
+      expect(clashCheck.id).toEqual({ not: 900n });
+    });
+
+    it('refuses a time in the past', async () => {
+      const t = customTx();
+      const { service, prisma } = make();
+      prisma.$transaction = vi.fn(async (fn: any) => fn(t));
+      await expect(service.rescheduleByStaff(TENANT, DESK, 900n, { startsAt: new Date(Date.now() - DAY) })).rejects.toThrow(/future/i);
+    });
+
+    it('keeps an in-person session in person, at its place', async () => {
+      const t = customTx({ booking: { format: 'IN_PERSON', locationId: 4n } });
+      const { service, prisma } = make();
+      prisma.$transaction = vi.fn(async (fn: any) => fn(t));
+      await service.rescheduleByStaff(TENANT, DESK, 900n, { startsAt: at });
+      expect(t.consultAvailability.create.mock.calls[0][0].data).toMatchObject({ allowsOnline: false, allowsInPerson: true, locationId: 4n, channel: 'IN_PERSON' });
+    });
+
+    it('refuses a day the therapist is away', async () => {
+      const t = customTx();
+      t.timeOff.findFirst = vi.fn().mockResolvedValue({ id: 7n });
+      const { service, prisma } = make();
+      prisma.$transaction = vi.fn(async (fn: any) => fn(t));
+      await expect(service.rescheduleByStaff(TENANT, DESK, 900n, { startsAt: at })).rejects.toThrow(/away on that day/i);
+    });
   });
 });
 

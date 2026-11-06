@@ -190,27 +190,28 @@ export class SessionDirectoryService {
     tenantId: bigint,
     actor: SessionActor,
     bookingId: bigint,
-    newAvailabilityId: bigint,
+    to: bigint | { startsAt: Date },
     opts: { toOwnSlot?: boolean } = {},
   ) {
-    return this.prisma.$transaction(async (tx: any) => {
+    const moved = await this.prisma.$transaction(async (tx: any) => {
       const b = await tx.consultBooking.findFirst({
         where: { id: bookingId, tenantId },
-        select: { id: true, status: true, availabilityId: true, serviceId: true, format: true, videoProvider: true },
+        select: { id: true, status: true, availabilityId: true, serviceId: true, format: true, locationId: true, videoProvider: true, service: { select: { durationMinutes: true } } },
       });
       if (!b) throw new NotFoundException('Session not found');
       if (b.status === 'CANCELLED' || b.status === 'COMPLETED') {
         throw new BadRequestException('A cancelled or completed session cannot be moved.');
       }
-      const [slot, oldSlot] = await Promise.all([
-        tx.consultAvailability.findFirst({ where: { id: newAvailabilityId, tenantId } }),
-        tx.consultAvailability.findFirst({ where: { id: b.availabilityId }, select: { providerProfileId: true } }),
-      ]);
+      const oldSlot = await tx.consultAvailability.findFirst({ where: { id: b.availabilityId }, select: { providerProfileId: true } });
       // A therapist may move their own session without view-all. Moving another
       // practitioner's booking still needs the front desk or a practice admin.
       if (!actor.viewAll && oldSlot?.providerProfileId !== actor.profileId) {
         throw new ForbiddenException('Ask the front desk or a practice admin to move a session.');
       }
+      if (typeof to !== 'bigint') {
+        return this.moveToChosenTime(tx, tenantId, b, oldSlot.providerProfileId, to.startsAt);
+      }
+      const slot = await tx.consultAvailability.findFirst({ where: { id: to, tenantId } });
       if (!slot || !slot.isActive || slot.startsAt <= new Date()) {
         throw new BadRequestException('That time is no longer open. Choose another.');
       }
@@ -235,13 +236,125 @@ export class SessionDirectoryService {
       if ((b.format ?? 'ONLINE') === 'ONLINE' && slot.allowsOnline === false) {
         throw new BadRequestException("That time isn't available online. Choose another.");
       }
-      await tx.consultAvailability.updateMany({ where: { id: b.availabilityId, tenantId }, data: { isActive: true } });
+      await this.releaseOldTime(tx, tenantId, b.availabilityId);
       await tx.consultAvailability.update({ where: { id: slot.id }, data: { isActive: false } });
       await tx.consultBooking.update({
         where: { id: b.id },
         data: { availabilityId: slot.id, ...(b.format === 'IN_PERSON' ? { locationId: slot.locationId } : {}), ...roomResetOnMove(b) },
       });
       return { id: b.id.toString(), startsAt: slot.startsAt.toISOString() };
+    });
+    // Best effort: the session has moved; a mail outage must not report failure.
+    await this.emailMoved(tenantId, bookingId).catch(() => undefined);
+    return moved;
+  }
+
+  /**
+   * Gives the old time back to the pool, unless staff made it by hand for this
+   * booking alone: that time may be outside working hours.
+   */
+  private async releaseOldTime(tx: any, tenantId: bigint, availabilityId: bigint) {
+    await tx.consultAvailability.updateMany({ where: { id: availabilityId, tenantId, createdForBooking: false }, data: { isActive: true } });
+  }
+
+  /**
+   * Staff move a session to a time they choose, not one of the open times: the
+   * client asked for a time the weekly hours don't offer. The same lock and
+   * clash rules as a staff booking at a chosen time, so the two cannot
+   * double-book. The new time lasts as long as the service.
+   */
+  private async moveToChosenTime(
+    tx: any,
+    tenantId: bigint,
+    b: { id: bigint; availabilityId: bigint; serviceId: bigint; format: string | null; locationId: bigint | null; videoProvider?: string | null; service: { durationMinutes: number } },
+    providerId: bigint,
+    startsAt: Date,
+  ) {
+    if (Number.isNaN(startsAt.getTime())) throw new BadRequestException('Enter a valid time.');
+    if (startsAt.getTime() <= Date.now()) throw new BadRequestException('Choose a time in the future.');
+    const endsAt = new Date(startsAt.getTime() + b.service.durationMinutes * 60_000);
+
+    const day = lagosDay(startsAt);
+    const away = await tx.timeOff.findFirst({
+      where: { tenantId, profileId: providerId, startsOn: { lte: day }, endsOn: { gte: day } },
+      select: { id: true },
+    });
+    if (away) throw new BadRequestException('The practice is away on that day. Choose another time.');
+
+    const lockKey = `staff-booking:${tenantId}:${providerId}`;
+    await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtextextended(${lockKey}, 0))`;
+
+    // The old time goes back first, so that if it overlaps the new time the
+    // close below shuts it again.
+    await this.releaseOldTime(tx, tenantId, b.availabilityId);
+    // Close overlapping open times BEFORE the clash check: this waits on any
+    // public booking mid-claim of one, so the check then sees it.
+    await tx.consultAvailability.updateMany({
+      where: { tenantId, providerProfileId: providerId, isActive: true, startsAt: { lt: endsAt }, endsAt: { gt: startsAt } },
+      data: { isActive: false },
+    });
+    const clash = await tx.consultBooking.findFirst({
+      where: {
+        tenantId,
+        id: { not: b.id },
+        status: { not: 'CANCELLED' },
+        availability: { providerProfileId: providerId, startsAt: { lt: endsAt }, endsAt: { gt: startsAt } },
+      },
+      include: { availability: { include: { therapist: { select: { profile: { select: { firstName: true, lastName: true, timezone: true } } } } } } },
+    });
+    if (clash) {
+      const profile = clash.availability.therapist?.profile;
+      const hhmm = (d: Date) =>
+        new Intl.DateTimeFormat('en-GB', { hour: '2-digit', minute: '2-digit', timeZone: profile?.timezone || 'Africa/Lagos' }).format(d);
+      throw new BadRequestException(
+        `${name(profile, 'This practitioner')} already has a session from ${hhmm(clash.availability.startsAt)} to ${hhmm(clash.availability.endsAt)}. Choose another time.`,
+      );
+    }
+
+    // SET-06: the move keeps the bought format; in person stays at its place.
+    const inPerson = b.format === 'IN_PERSON';
+    const slot = await tx.consultAvailability.create({
+      data: {
+        tenantId,
+        providerProfileId: providerId,
+        serviceId: b.serviceId,
+        startsAt,
+        endsAt,
+        allowsOnline: !inPerson,
+        allowsInPerson: inPerson,
+        locationId: inPerson ? b.locationId : null,
+        channel: inPerson ? 'IN_PERSON' : 'VIDEO',
+        isActive: false,
+        createdForBooking: true,
+      },
+    });
+    await tx.consultBooking.update({ where: { id: b.id }, data: { availabilityId: slot.id, ...roomResetOnMove(b) } });
+    return { id: b.id.toString(), startsAt: slot.startsAt.toISOString() };
+  }
+
+  /** Tells the client their session has a new time. */
+  private async emailMoved(tenantId: bigint, bookingId: bigint) {
+    const b = await this.prisma.consultBooking.findFirst({
+      where: { id: bookingId, tenantId },
+      include: { client: true, service: true, availability: true },
+    });
+    if (!b?.client?.email) return;
+    const tenant = await this.prisma.tenant.findUnique({
+      where: { id: tenantId },
+      select: { name: true, slug: true, customDomain: true, customDomainStatus: true },
+    });
+    const when = new Intl.DateTimeFormat('en-GB', {
+      weekday: 'long', day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit', timeZone: b.client.timezone || 'Africa/Lagos',
+    }).format(b.availability.startsAt);
+    await this.notifications.sendEmail({
+      to: b.client.email,
+      type: 'bookings.rescheduled',
+      title: `Your session has moved to ${when}`,
+      message: `${tenant?.name ?? 'Your practice'} has moved your ${b.service.title} session to ${when}.`,
+      link: `${tenantWebOrigin(tenant as any)}/portal`,
+      actionLabel: 'View my booking',
+      tenantId,
+      profileId: b.client.id,
     });
   }
 
