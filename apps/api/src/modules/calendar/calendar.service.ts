@@ -175,6 +175,28 @@ export class CalendarService {
     return joinLinkFor(tenantWebOrigin(booking.tenant), booking);
   }
 
+  /** The Google Calendar client acting as one practitioner (the network boundary in tests). */
+  protected async calendarApi(refreshToken: string) {
+    const google = await loadGoogle();
+    return google.calendar({ version: 'v3', auth: await this.oauthClient(refreshToken) });
+  }
+
+  /** A 404 or 410 from Google: the event was deleted there, by the practitioner or the client. */
+  private static gone(err: unknown): boolean {
+    const code = Number((err as any)?.code ?? (err as any)?.response?.status);
+    return code === 404 || code === 410;
+  }
+
+  /**
+   * Keeps the session's Google Calendar event in step with the session: made
+   * once and remembered, updated when the session moves (the same event, so
+   * the same Meet link), moved when the session goes to another practitioner,
+   * and removed when it is cancelled. Every push used to insert a new event,
+   * so a moved session left its old one, and old Meet link, behind.
+   *
+   * Call it after any change to a booking. Best effort: a Google failure is
+   * logged and never fails the change that called it.
+   */
   async pushBookingToGoogle(bookingId: bigint) {
     const booking = await this.prisma.consultBooking.findUnique({
       where: { id: bookingId },
@@ -190,79 +212,136 @@ export class CalendarService {
         }
       }
     });
-
-    if (!booking || booking.status !== 'CONFIRMED') return;
-    // A connection made on a paid plan stays stored after a downgrade, but
-    // nothing is pushed until the practice is back on a plan that includes it.
-    if (!practiceEntitlements(booking.tenant).googleCalendarSync) return;
-    const refreshToken = booking.availability.therapist.googleRefreshToken;
-    if (!refreshToken) return;
+    if (!booking) return;
 
     try {
-      const google = await loadGoogle();
-      const calendar = google.calendar({ version: 'v3', auth: await this.oauthClient(refreshToken) });
+      const providerId = booking.availability.providerProfileId;
+      const keep =
+        booking.status === 'CONFIRMED' &&
+        // A connection made on a paid plan stays stored after a downgrade, but
+        // nothing is pushed until the practice is back on a plan that includes it.
+        practiceEntitlements(booking.tenant).googleCalendarSync &&
+        Boolean(booking.availability.therapist.googleRefreshToken);
 
+      // An event in another practitioner's calendar (the session was taken
+      // over), or one for a session no longer happening, comes out first.
+      let eventId = booking.googleEventId;
+      if (eventId && (!keep || booking.googleEventOwnerProfileId !== providerId)) {
+        const ownToken = booking.googleEventOwnerProfileId === providerId ? booking.availability.therapist.googleRefreshToken : null;
+        await this.removeEvent(booking.id, eventId, booking.googleEventOwnerProfileId, ownToken);
+        eventId = null;
+      }
+      if (!keep) return;
+
+      const calendar = await this.calendarApi(booking.availability.therapist.googleRefreshToken!);
+      // Pushed before events were remembered: find the one made then, so a
+      // first move after this change updates it instead of adding another.
+      if (!eventId && !booking.googleEventId) eventId = await this.findEarlierEvent(calendar, booking.id);
       const clientName = `${booking.client.firstName || ''} ${booking.client.lastName || ''}`.trim() || booking.client.email;
-
       const isGoogleMeet = booking.availability.therapist.videoProvider === 'GOOGLE_MEET';
       const inPerson = booking.format === 'IN_PERSON' && booking.location;
-      const videoLink = this.getVideoRoomLink(booking);
-      // SET-06: an in-person event carries the address, not a room.
-      const where = inPerson ? `${booking.location.name}, ${booking.location.address}, ${booking.location.city}` : videoLink;
-      const whereLine = inPerson ? `Where: ${where}${booking.location.directions ? `\nDirections: ${booking.location.directions}` : ''}` : `Video Room: ${videoLink}`;
+      const describe = (videoLink: string) => {
+        // SET-06: an in-person event carries the address, not a room.
+        const where = inPerson ? `${booking.location!.name}, ${booking.location!.address}, ${booking.location!.city}` : videoLink;
+        const whereLine = inPerson ? `Where: ${where}${booking.location!.directions ? `\nDirections: ${booking.location!.directions}` : ''}` : `Video Room: ${videoLink}`;
+        return {
+          summary: `${booking.service.title} with ${clientName}`,
+          description: `Booking ID: ${booking.id}\nClient: ${clientName}\nEmail: ${booking.client.email}\nPhone: ${booking.client.phone || 'N/A'}\n\n${whereLine}`,
+          ...(inPerson ? { location: where } : {}),
+          start: { dateTime: booking.availability.startsAt.toISOString() },
+          end: { dateTime: booking.availability.endsAt.toISOString() },
+          attendees: [{ email: booking.client.email }],
+          // Finds the event again whatever its text says.
+          extendedProperties: { private: { unclutterBookingId: booking.id.toString() } },
+        };
+      };
+
+      if (eventId) {
+        try {
+          // The same event: its Meet link, if it has one, stays as it is.
+          await calendar.events.patch({ calendarId: 'primary', eventId, requestBody: describe(this.getVideoRoomLink(booking)) });
+          if (eventId !== booking.googleEventId) {
+            await this.prisma.consultBooking.update({ where: { id: bookingId }, data: { googleEventId: eventId, googleEventOwnerProfileId: providerId } });
+          }
+          this.logger.log(`Updated booking ${booking.id} in Google Calendar`);
+          return;
+        } catch (err) {
+          if (!CalendarService.gone(err)) throw err;
+          // Deleted in Google: make it again below.
+        }
+      }
 
       const res = await calendar.events.insert({
         calendarId: 'primary',
         conferenceDataVersion: isGoogleMeet ? 1 : 0,
         requestBody: {
-          summary: `${booking.service.title} with ${clientName}`,
-          description: `Booking ID: ${booking.id}\nClient: ${clientName}\nEmail: ${booking.client.email}\nPhone: ${booking.client.phone || 'N/A'}\n\n${whereLine}`,
-          ...(inPerson ? { location: where } : {}),
-          start: {
-            dateTime: booking.availability.startsAt.toISOString(),
-          },
-          end: {
-            dateTime: booking.availability.endsAt.toISOString(),
-          },
-          attendees: [
-            { email: booking.client.email }
-          ],
-          ...(isGoogleMeet ? {
-            conferenceData: {
-              createRequest: {
-                requestId: `booking-${booking.id}-${Date.now()}`,
-                conferenceSolutionKey: { type: 'hangoutsMeet' },
-              },
-            },
-          } : {}),
+          ...describe(this.getVideoRoomLink(booking)),
+          ...(isGoogleMeet
+            ? { conferenceData: { createRequest: { requestId: `booking-${booking.id}-${Date.now()}`, conferenceSolutionKey: { type: 'hangoutsMeet' } } } }
+            : {}),
         },
       });
-
       this.logger.log(`Pushed booking ${booking.id} to Google Calendar`);
 
       const hangoutLink = res.data.hangoutLink;
-      if (hangoutLink && hangoutLink !== booking.videoRoomName) {
-        // Update the booking to use the new Google Meet link
-        await this.prisma.consultBooking.update({
-          where: { id: bookingId },
-          data: { videoRoomName: hangoutLink },
-        });
-
-        // Also update the description to reflect the new link
-        await calendar.events.patch({
-          calendarId: 'primary',
-          eventId: res.data.id!,
-          requestBody: {
-            description: `Booking ID: ${booking.id}\nClient: ${clientName}\nEmail: ${booking.client.email}\nPhone: ${booking.client.phone || 'N/A'}\n\nVideo Room: ${hangoutLink}`,
-          }
-        });
-        
+      await this.prisma.consultBooking.update({
+        where: { id: bookingId },
+        data: {
+          googleEventId: res.data.id ?? null,
+          googleEventOwnerProfileId: providerId,
+          // The session's Meet link is the event's.
+          ...(hangoutLink && hangoutLink !== booking.videoRoomName ? { videoRoomName: hangoutLink } : {}),
+        },
+      });
+      if (hangoutLink && hangoutLink !== booking.videoRoomName && res.data.id) {
+        await calendar.events.patch({ calendarId: 'primary', eventId: res.data.id, requestBody: { description: describe(hangoutLink).description } });
         this.logger.log(`Generated Google Meet link for booking ${booking.id}`);
       }
-
     } catch (error) {
       this.logger.error(`Failed to push booking ${booking.id} to Google`, error);
     }
+  }
+
+  /**
+   * The event an earlier push made for this booking, before events were
+   * remembered. Its description starts "Booking ID: <id>"; newer events also
+   * carry the id as a private property. Best effort: none found means a new one.
+   */
+  private async findEarlierEvent(calendar: Awaited<ReturnType<CalendarService['calendarApi']>>, bookingId: bigint): Promise<string | null> {
+    try {
+      const marker = `Booking ID: ${bookingId}\n`;
+      const res = await calendar.events.list({ calendarId: 'primary', q: `Booking ID: ${bookingId}`, maxResults: 10, showDeleted: false });
+      const found = (res.data.items ?? []).find(
+        (e) => e.extendedProperties?.private?.unclutterBookingId === bookingId.toString() || (e.description ?? '').startsWith(marker),
+      );
+      return found?.id ?? null;
+    } catch {
+      return null;
+    }
+  }
+
+  /** Removes the event from the calendar it is in, and forgets it. Already gone counts as removed. */
+  private async removeEvent(bookingId: bigint, eventId: string, ownerProfileId: bigint | null, knownToken: string | null = null) {
+    const token =
+      knownToken ??
+      (ownerProfileId
+        ? (await this.prisma.consultTherapistProfile.findFirst({ where: { profileId: ownerProfileId }, select: { googleRefreshToken: true } }))?.googleRefreshToken ?? null
+        : null);
+    if (token) {
+      try {
+        const calendar = await this.calendarApi(token);
+        await calendar.events.delete({ calendarId: 'primary', eventId });
+        this.logger.log(`Removed booking ${bookingId}'s event from Google Calendar`);
+      } catch (err) {
+        if (!CalendarService.gone(err)) throw err;
+      }
+    }
+    // Without a token (disconnected) there is no way to reach that calendar;
+    // forget the event so the next push starts clean.
+    await this.prisma.consultBooking.updateMany({
+      where: { id: bookingId, googleEventId: eventId },
+      data: { googleEventId: null, googleEventOwnerProfileId: null },
+    });
   }
 
   /**

@@ -146,6 +146,25 @@ describe('setStatus', () => {
     await service.setStatus(TENANT, DESK, 900n, 'CANCELLED');
     expect(prisma.consultAvailability.updateMany).toHaveBeenCalled();
   });
+  // The event used to stay in both calendars after a cancellation.
+  it("cancelling takes the session's event out of Google Calendar", async () => {
+    const { prisma, notifications } = make();
+    prisma.consultBooking.updateMany = vi.fn().mockResolvedValue({ count: 1 });
+    prisma.consultAvailability = { updateMany: vi.fn().mockResolvedValue({ count: 1 }) };
+    prisma.planSession = { updateMany: vi.fn().mockResolvedValue({ count: 0 }) };
+    const calendar = { pushBookingToGoogle: vi.fn().mockResolvedValue(undefined) };
+    const service = new SessionDirectoryService(prisma, notifications, undefined, calendar as any);
+    await service.setStatus(TENANT, DESK, 900n, 'CANCELLED');
+    expect(calendar.pushBookingToGoogle).toHaveBeenCalledWith(900n);
+  });
+  it('completing a session leaves its event alone', async () => {
+    const { prisma, notifications } = make();
+    prisma.consultBooking.updateMany = vi.fn().mockResolvedValue({ count: 1 });
+    const calendar = { pushBookingToGoogle: vi.fn() };
+    const service = new SessionDirectoryService(prisma, notifications, undefined, calendar as any);
+    await service.setStatus(TENANT, VIEWER, 900n, 'COMPLETED');
+    expect(calendar.pushBookingToGoogle).not.toHaveBeenCalled();
+  });
   // Paid already on an earlier booking: cancelling its time must not lose it.
   it('cancelling a session from a plan puts it back to not scheduled', async () => {
     const { service, prisma } = make();
