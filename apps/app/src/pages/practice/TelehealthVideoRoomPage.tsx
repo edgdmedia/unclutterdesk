@@ -5,6 +5,16 @@ import { api } from '../../utils/apiClient';
 import { useToast } from '@unclutterdesk/ui';
 import { VideoStage } from '../../components/video/VideoStage';
 
+type RoomNote = {
+  id: string;
+  subjective?: string | null;
+  objective?: string | null;
+  assessment?: string | null;
+  plan?: string | null;
+  isLocked: boolean;
+  createdAt: string;
+};
+
 type RoomPayload = {
   booking: {
     id: string;
@@ -17,15 +27,11 @@ type RoomPayload = {
     status: string;
     videoRoomLink: string | null;
   };
-  latestNote: {
-    id: string;
-    subjective?: string | null;
-    objective?: string | null;
-    assessment?: string | null;
-    plan?: string | null;
-    isLocked: boolean;
-    createdAt: string;
-  } | null;
+  /**
+   * This session's own note, if one was started. Not `latestNote`: that is the
+   * last session's, shown as prep, and it once filled and locked this editor.
+   */
+  sessionNote?: RoomNote | null;
   submissions: Array<{ id: string; formTitle: string; targetType: string; status: string; submittedAt: string; answers: Array<{ key: string; value: unknown }> }>;
 };
 
@@ -57,12 +63,12 @@ export function TelehealthVideoRoomPage() {
         const data = await api.get<RoomPayload>(`/v1/consult/therapist/bookings/${id}/prep`);
         if (cancelled) return;
         setPayload(data);
-        setNoteId(data.latestNote?.id || null);
-        setNoteLocked(Boolean(data.latestNote?.isLocked));
-        setSubjective(data.latestNote?.subjective || '');
-        setObjective(data.latestNote?.objective || '');
-        setAssessment(data.latestNote?.assessment || '');
-        setPlan(data.latestNote?.plan || '');
+        setNoteId(data.sessionNote?.id || null);
+        setNoteLocked(Boolean(data.sessionNote?.isLocked));
+        setSubjective(data.sessionNote?.subjective || '');
+        setObjective(data.sessionNote?.objective || '');
+        setAssessment(data.sessionNote?.assessment || '');
+        setPlan(data.sessionNote?.plan || '');
         setSaveState('idle');
         setLastSavedAt(null);
         setHydrated(true);

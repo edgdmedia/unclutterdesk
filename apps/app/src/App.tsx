@@ -122,6 +122,8 @@ export interface Client {
   emergencyContact?: EmergencyContact | null;
   notes: {
     id: string;
+    /** The session the note is for; null for a note written apart from one. */
+    bookingId?: string | null;
     date: string;
     time: string;
     title: string;

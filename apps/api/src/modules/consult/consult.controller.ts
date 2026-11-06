@@ -412,12 +412,14 @@ export class ConsultController {
   @Post('practice/sessions/:bookingId/reschedule')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @ApiBearerAuth('access-token')
-  @ApiOperation({ summary: 'Move a session to another open slot' })
-  rescheduleSession(@Req() req: any, @Param('bookingId') bookingId: string, @Body() dto: { availabilityId?: string }) {
-    if (!/^\d+$/.test(bookingId) || !/^\d+$/.test(String(dto?.availabilityId ?? ''))) {
-      throw new NotFoundException('Session not found');
+  @ApiOperation({ summary: 'Move a session to another open slot, or to a time staff choose' })
+  rescheduleSession(@Req() req: any, @Param('bookingId') bookingId: string, @Body() dto: { availabilityId?: string; startsAt?: string }) {
+    if (!/^\d+$/.test(bookingId)) throw new NotFoundException('Session not found');
+    if (dto?.startsAt) {
+      return this.sessions.rescheduleByStaff(authenticatedTenantId(req), this.actor(req), BigInt(bookingId), { startsAt: new Date(String(dto.startsAt)) });
     }
-    return this.sessions.rescheduleByStaff(authenticatedTenantId(req), this.actor(req), BigInt(bookingId), BigInt(dto.availabilityId));
+    if (!/^\d+$/.test(String(dto?.availabilityId ?? ''))) throw new BadRequestException('Choose a time.');
+    return this.sessions.rescheduleByStaff(authenticatedTenantId(req), this.actor(req), BigInt(bookingId), BigInt(dto.availabilityId!));
   }
 
   @Permissions('sessions.edit', 'clinical.record')

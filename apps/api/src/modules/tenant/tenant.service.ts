@@ -1249,18 +1249,23 @@ export class TenantService {
       since: new Intl.DateTimeFormat('en-GB', { month: 'short', year: 'numeric' }).format(client.createdAt),
       emergencyContact: emergencyContactOf(client),
       emergency: emergencyContactText(emergencyContactOf(client)),
-      notes: notes.map((n) => ({
-        id: n.id.toString(),
-        date: new Intl.DateTimeFormat('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }).format(n.createdAt),
-        time: new Intl.DateTimeFormat('en-GB', { hour: '2-digit', minute: '2-digit' }).format(n.createdAt),
-        title: 'Clinical Session Note',
-        status: n.isLocked ? 'COMPLETED' : 'DRAFT',
-        note: n.isLocked ? 'NOTE SIGNED' : 'DRAFT',
-        subjective: decryptNoteFields(n).subjective || '',
-        objective: n.objective || '',
-        assessment: n.assessment || '',
-        plan: n.plan || '',
-      })),
+      notes: notes.map((n) => {
+        // All four SOAP fields are stored encrypted, not only Subjective.
+        const plain = decryptNoteFields(n);
+        return {
+          id: n.id.toString(),
+          bookingId: n.bookingId ? n.bookingId.toString() : null,
+          date: new Intl.DateTimeFormat('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }).format(n.createdAt),
+          time: new Intl.DateTimeFormat('en-GB', { hour: '2-digit', minute: '2-digit' }).format(n.createdAt),
+          title: 'Clinical Session Note',
+          status: n.isLocked ? 'COMPLETED' : 'DRAFT',
+          note: n.isLocked ? 'NOTE SIGNED' : 'DRAFT',
+          subjective: plain.subjective || '',
+          objective: plain.objective || '',
+          assessment: plain.assessment || '',
+          plan: plain.plan || '',
+        };
+      }),
       intake,
       intakeSummary,
     };
