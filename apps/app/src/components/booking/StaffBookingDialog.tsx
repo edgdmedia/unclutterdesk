@@ -11,6 +11,10 @@ type Staff = { id: string; name: string };
 type Slot = { id: string; startsAt: string; endsAt: string; formats?: Array<'ONLINE' | 'IN_PERSON'>; location?: { id?: string; name: string; city: string } | null };
 type Payment = 'LINK' | 'PAID' | 'NONE';
 export type StaffBookingResult = { bookingId: string; status: 'PENDING_PAYMENT' | 'CONFIRMED' };
+/** Sessions added with no time yet (§11.2): the client chooses the times later. */
+export type ScheduledLaterResult = { count: number; planSessionIds: string[] };
+/** As the API: more at once is a plan (§11.2, later). */
+const MAX_LATER = 12;
 /** A time added to the list, to book with the others in one go. */
 type Pick = { availabilityId?: string; startsAt: string; format?: 'ONLINE' | 'IN_PERSON'; locationId?: string };
 /** As the API: more than this at once is a session plan (§11.2). */
@@ -31,7 +35,7 @@ export function StaffBookingDialog({
 }: {
   client: { id: string; name: string } | null;
   onClose: () => void;
-  onBooked: (r: StaffBookingResult) => void;
+  onBooked: (r: StaffBookingResult | ScheduledLaterResult) => void;
 }) {
   const { profile } = useAuth();
   const role = String(profile?.role ?? '').toUpperCase();
@@ -49,7 +53,9 @@ export function StaffBookingDialog({
   const [staff, setStaff] = useState<Staff[] | null>(null);
   const [serviceId, setServiceId] = useState('');
   const [providerId, setProviderId] = useState(String(profile?.id ?? ''));
-  const [mode, setMode] = useState<'slot' | 'custom'>('slot');
+  // 'later': paid at the practice (or no charge) now, the client chooses the times.
+  const [mode, setMode] = useState<'slot' | 'custom' | 'later'>('slot');
+  const [laterCount, setLaterCount] = useState('1');
   const [slots, setSlots] = useState<Slot[]>([]);
   const [slotId, setSlotId] = useState('');
   // SET-06: the format for this booking; a slot that allows one fixes it.
@@ -102,7 +108,7 @@ export function StaffBookingDialog({
   const chosenSlot = slots.find((x) => x.id === slotId) ?? null;
   const slotFormats = chosenSlot?.formats?.length ? chosenSlot.formats : ['ONLINE'] as Array<'ONLINE' | 'IN_PERSON'>;
   useEffect(() => {
-    if (mode !== 'custom') return;
+    if (mode === 'slot') return;
     api.get<typeof locations>('/v1/tenant/locations', tenantHeaders).then((r) => setLocations(r ?? [])).catch(() => setLocations([]));
   }, [mode]);
   // Another service or practitioner means other times: start the list again.
@@ -111,7 +117,12 @@ export function StaffBookingDialog({
   const timeReady = started
     && (mode === 'custom' ? format !== '' : slotFormats.length === 1 || format !== '')
     && (format !== 'IN_PERSON' || (mode === 'slot' ? true : locationId !== ''));
-  const ready = clientId && serviceId && (timeReady || (picks.length > 0 && !started));
+  const laterN = Number(laterCount);
+  const laterReady =
+    Number.isInteger(laterN) && laterN >= 1 && laterN <= MAX_LATER && format !== '' && (format !== 'IN_PERSON' || locationId !== '');
+  const ready = clientId && serviceId && (mode === 'later' ? laterReady : timeReady || (picks.length > 0 && !started));
+  // A payment link needs a time to hold; sessions without one are paid at the practice.
+  const shownPayments = mode === 'later' ? payments.filter((p) => p.value !== 'LINK') : payments;
   const currentPick = (): Pick => ({
     ...(mode === 'slot' ? { availabilityId: slotId, startsAt: chosenSlot?.startsAt ?? '' } : { startsAt: new Date(customAt).toISOString() }),
     format: (format || (slotFormats.length === 1 ? slotFormats[0] : undefined)) as Pick['format'],
@@ -139,7 +150,20 @@ export function StaffBookingDialog({
         note: note || undefined,
         notifyClient,
       };
-      if (all.length > 1) {
+      if (mode === 'later') {
+        const r = await api.post<ScheduledLaterResult>('/v1/consult/practice/plan-sessions', {
+          clientProfileId: clientId,
+          serviceId,
+          providerProfileId: providerId || undefined,
+          count: laterN,
+          format,
+          locationId: format === 'IN_PERSON' ? locationId : undefined,
+          payment,
+          ...(payment === 'PAID' && amount ? { amountKobo: String(Math.round(Number(amount) * 100)) } : {}),
+          notifyClient,
+        });
+        onBooked(r);
+      } else if (all.length > 1) {
         // All or none: the API books every time in one transaction.
         const r = await api.post<{ bookings: StaffBookingResult[] }>('/v1/consult/practice/bookings/several', {
           ...common,
@@ -220,8 +244,33 @@ export function StaffBookingDialog({
           <div className="flex gap-2">
             <label className={radio(mode === 'slot')}><input type="radio" name="mode" checked={mode === 'slot'} onChange={() => { setMode('slot'); }} aria-label="Open slots" /><span className="text-[13px]">Open slots</span></label>
             <label className={radio(mode === 'custom')}><input type="radio" name="mode" checked={mode === 'custom'} onChange={() => { setMode('custom'); setFormat((f) => f || 'ONLINE'); }} aria-label="Custom time" /><span className="text-[13px]">Custom time</span></label>
+            <label className={radio(mode === 'later')}>
+              <input
+                type="radio"
+                name="mode"
+                checked={mode === 'later'}
+                onChange={() => {
+                  setMode('later');
+                  setFormat((f) => f || 'ONLINE');
+                  setPicks([]);
+                  setPayment((p) => (p === 'LINK' ? (isTherapist ? 'NONE' : 'PAID') : p));
+                }}
+                aria-label="Client chooses later"
+              />
+              <span className="text-[13px]">Client chooses later</span>
+            </label>
           </div>
-          {mode === 'slot' ? (
+          {mode === 'later' ? (
+            <div className="space-y-1.5">
+              <label className="block text-[12px] font-semibold text-[var(--desk-text-body)]">
+                How many sessions
+                <input type="number" min={1} max={MAX_LATER} step={1} aria-label="How many sessions" className="mt-1 w-[120px] h-[40px] px-3 rounded-[12px] border border-[var(--desk-border)] text-[13px] block" value={laterCount} onChange={(e) => setLaterCount(e.target.value)} />
+              </label>
+              <p className="text-[11.5px] text-[var(--desk-text-muted)]">
+                Paid now, at the practice. The client chooses each time from the practitioner's open times in their portal, and you can choose for them from their client page.
+              </p>
+            </div>
+          ) : mode === 'slot' ? (
             serviceId ? (
               slots.length ? (
                 <SlotDayPicker
@@ -249,16 +298,16 @@ export function StaffBookingDialog({
           )}
         </fieldset>
 
-        {(mode === 'custom' || slotFormats.length > 1) ? (
+        {(mode !== 'slot' || slotFormats.length > 1) ? (
           <fieldset className="space-y-2">
             <legend className="text-[12px] font-semibold text-[var(--desk-text-body)] mb-1">Format</legend>
-            {(['ONLINE', 'IN_PERSON'] as const).filter((f) => mode === 'custom' || slotFormats.includes(f)).map((f) => (
+            {(['ONLINE', 'IN_PERSON'] as const).filter((f) => mode !== 'slot' || slotFormats.includes(f)).map((f) => (
               <label key={f} className={radio(format === f)}>
                 <input type="radio" name="format" checked={format === f} onChange={() => setFormat(f)} aria-label={f === 'ONLINE' ? 'Online' : 'In person'} />
                 <span className="text-[13px]">{f === 'ONLINE' ? 'Online' : 'In person'}</span>
               </label>
             ))}
-            {format === 'IN_PERSON' && mode === 'custom' ? (
+            {format === 'IN_PERSON' && mode !== 'slot' ? (
               <label className="block text-[12px] font-semibold text-[var(--desk-text-body)]">
                 Location
                 <select className="mt-1 w-full h-[40px] px-3 rounded-[12px] border border-[var(--desk-border)] text-[13px]" value={locationId} onChange={(e) => setLocationId(e.target.value)} aria-label="Location">
@@ -270,6 +319,7 @@ export function StaffBookingDialog({
           </fieldset>
         ) : null}
 
+        {mode !== 'later' ? (
         <div className="space-y-2">
           {picks.length ? (
             <div className="rounded-[12px] border border-[var(--desk-border)] bg-[var(--desk-surface)] p-3 space-y-1.5">
@@ -300,10 +350,11 @@ export function StaffBookingDialog({
             <p className="text-[11.5px] text-[var(--desk-text-muted)]">To book several sessions together, choose a time and add another.</p>
           ) : null}
         </div>
+        ) : null}
 
         <fieldset className="space-y-2">
           <legend className="text-[12px] font-semibold text-[var(--desk-text-body)] mb-1">Payment</legend>
-          {payments.map((p) => (
+          {shownPayments.map((p) => (
             <label key={p.value} className={radio(payment === p.value)}>
               <input type="radio" name="payment" checked={payment === p.value} onChange={() => setPayment(p.value)} aria-label={p.label} />
               <span><span className="block text-[13px] font-semibold text-[var(--desk-text)]">{p.label}</span><span className="block text-[11.5px] text-[var(--desk-text-muted)]">{p.hint}</span></span>
@@ -311,7 +362,7 @@ export function StaffBookingDialog({
           ))}
           {payment === 'PAID' && (
             <label className="block text-[12px] font-semibold text-[var(--desk-text-body)]">
-              {all.length > 1 ? 'Amount received per session (₦)' : 'Amount received (₦)'}
+              {all.length > 1 || (mode === 'later' && laterN > 1) ? 'Amount received per session (₦)' : 'Amount received (₦)'}
               <input type="number" min="0" step="0.01" placeholder={service ? String(Number(service.priceKobo) / 100) : ''} className="mt-1 w-full h-[40px] px-3 rounded-[12px] border border-[var(--desk-border)] text-[13px]" value={amount} onChange={(e) => setAmount(e.target.value)} />
             </label>
           )}
@@ -330,7 +381,9 @@ export function StaffBookingDialog({
         {error ? <p className="text-[12px] font-medium text-rose-700">{error}</p> : null}
         <button type="submit" disabled={busy || !ready} className="w-full h-[42px] rounded-[12px] bg-[var(--desk-pine-600)] text-white text-[13px] font-bold inline-flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50">
           {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
-          {all.length > 1 ? `Book ${all.length} sessions` : 'Book session'}
+          {mode === 'later'
+            ? `Add ${laterN > 1 ? `${laterN} sessions` : 'session'} to schedule later`
+            : all.length > 1 ? `Book ${all.length} sessions` : 'Book session'}
         </button>
       </form>
     </div>

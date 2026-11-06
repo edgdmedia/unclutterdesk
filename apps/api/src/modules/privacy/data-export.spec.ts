@@ -49,6 +49,7 @@ function makeService(over: Record<string, any> = {}) {
         .mockResolvedValueOnce(over.client === null ? null : client),
     },
     consultBooking: { findMany: vi.fn().mockResolvedValue(over.bookings ?? []) },
+    planSession: { findMany: vi.fn().mockResolvedValue(over.prepaid ?? []) },
     universalFormSubmission: { findMany: vi.fn().mockResolvedValue(over.submissions ?? []) },
     assessmentResponse: { findMany: vi.fn().mockResolvedValue(over.assessments ?? []) },
     clinicalNote: { findMany: vi.fn().mockResolvedValue(over.notes ?? []) },
@@ -253,5 +254,16 @@ describe('the emergency contact', () => {
     const { service } = makeService();
     const out: any = await service.exportClientData(TENANT, OWNER, CLIENT);
     expect(out.about.emergencyContact).toBeNull();
+  });
+});
+
+describe('prepaid sessions in the export', () => {
+  // §11.2: a session paid at the practice has no booking; its record is the plan session.
+  it('includes sessions paid for, with or without a time', async () => {
+    const { service } = makeService({
+      prepaid: [{ id: 50n, serviceId: 2n, status: 'PAID', format: 'ONLINE', paymentMethod: 'MANUAL', amountKobo: 3_000_000n, paidAt: new Date('2026-11-05T10:00:00Z'), paidOnBookingId: null, bookingId: null, createdAt: new Date('2026-11-05T10:00:00Z') }],
+    });
+    const out: any = await service.exportClientData(TENANT, OWNER, CLIENT);
+    expect(out.prepaidSessions).toEqual([expect.objectContaining({ planSessionId: '50', amountKobo: '3000000', paymentMethod: 'MANUAL', bookingId: null })]);
   });
 });

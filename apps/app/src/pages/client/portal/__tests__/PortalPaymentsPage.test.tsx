@@ -33,12 +33,12 @@ const PAYMENTS = {
   outstandingKobo: '300000',
   payments: [
     {
-      bookingId: '1', serviceTitle: 'Therapy', sessionAt: '2026-08-05T10:00:00Z', amountKobo: '500000',
+      id: 'booking-1', bookingId: '1', serviceTitle: 'Therapy', sessionAt: '2026-08-05T10:00:00Z', amountKobo: '500000',
       discountCode: 'SAVE10', status: 'CONFIRMED', paidAt: '2026-08-01T10:00:00Z',
       reference: 'booking-1-1725000000', bookedAt: '2026-07-30T09:00:00Z',
     },
     {
-      bookingId: '2', serviceTitle: 'Follow-up', sessionAt: '2026-09-20T10:00:00Z', amountKobo: '300000',
+      id: 'booking-2', bookingId: '2', serviceTitle: 'Follow-up', sessionAt: '2026-09-20T10:00:00Z', amountKobo: '300000',
       discountCode: null, status: 'PENDING_PAYMENT', paidAt: null, reference: null, bookedAt: '2026-09-01T09:00:00Z',
     },
   ],
@@ -113,6 +113,24 @@ describe('the Payments page', () => {
       openPayments();
       expect(await screen.findByText('No charge')).toBeTruthy();
       expect(screen.queryByText('Paid')).toBeNull();
+    });
+
+    // §11.2: paid at the practice, no time chosen yet; it has no booking.
+    it('shows a session paid ahead that is not scheduled yet', async () => {
+      apiGet.mockImplementation((path: string) =>
+        path === '/v1/consult/portal/payments'
+          ? Promise.resolve({
+              totalPaidKobo: '3000000',
+              outstandingKobo: '0',
+              payments: [
+                { id: 'plan-50', bookingId: null, planSessionId: '50', serviceTitle: 'Therapy', sessionAt: null, amountKobo: '3000000', discountCode: null, status: 'CONFIRMED', paidAt: '2026-11-05T10:00:00Z', reference: null, bookedAt: '2026-11-05T10:00:00Z' },
+              ],
+            })
+          : route(path),
+      );
+      openPayments();
+      expect(await screen.findByText('Paid ahead · not scheduled yet')).toBeTruthy();
+      expect(screen.getByText('Paid')).toBeTruthy();
     });
 
     it('marks a cancelled session as cancelled', async () => {

@@ -2,7 +2,16 @@ import { BadRequestException, Injectable, NotFoundException } from '@nestjs/comm
 import { chargedKobo } from '../../common/revenue';
 import { tenantWebOrigin } from '../../common/origins';
 import { assertWithinMonthlyLimit } from './booking-limits';
-import { StaffBookingService, type StaffBookingResult } from './staff-booking.service';
+import { StaffBookingService, type StaffBookingInput, type StaffBookingResult } from './staff-booking.service';
+import { allowedFormats, asFormat, priceFor } from './formats';
+import { paidAmount } from './staff-booking-rules';
+
+/** As many as a client is likely to pay for at once; more is a plan (§11.2, later). */
+export const MAX_PLAN_SESSIONS_AT_ONCE = 12;
+
+export type AddPlanSessionsInput = Pick<StaffBookingInput, 'clientProfileId' | 'serviceId' | 'providerProfileId' | 'payment' | 'amountKobo' | 'notifyClient' | 'format' | 'locationId'> & {
+  count: number | string;
+};
 import type { SessionActor } from './session-directory.service';
 
 const fullName = (p: { firstName?: string | null; lastName?: string | null } | null | undefined) =>
@@ -108,6 +117,106 @@ export class PlanSessionService extends StaffBookingService {
       message: `${tenant?.name ?? 'Your practice'} has freed your ${b.service.title} session on ${when}, so you can choose a time that suits you. It is already paid for.`,
       link: `${tenantWebOrigin(tenant as any)}/portal`,
       actionLabel: 'Choose a time',
+      tenantId,
+      profileId: client.id,
+    });
+  }
+
+  /**
+   * Sessions paid at the practice (or at no charge) with no time yet: the
+   * client paid the desk for several and chooses the times later. The plan
+   * session is the only record of that money, so it carries paidAt and is
+   * revenue (DIRECT_PLAN_PAYMENT) and a row in the client's payments.
+   *
+   * The same checks as a staff booking: who may book, for whom, with whom;
+   * only the desk or an admin marks money received. Paying online for
+   * sessions with no time yet comes with buying plans online (§11.2).
+   */
+  async addPaid(tenantId: bigint, actorProfileId: bigint, dto: AddPlanSessionsInput) {
+    const count = Number(dto?.count);
+    if (!Number.isInteger(count) || count < 1 || count > MAX_PLAN_SESSIONS_AT_ONCE) {
+      throw new BadRequestException(`Choose between 1 and ${MAX_PLAN_SESSIONS_AT_ONCE} sessions.`);
+    }
+    if (String(dto?.payment ?? '').toUpperCase() === 'LINK') {
+      throw new BadRequestException('Sessions without a time are paid at the practice, or at no charge, for now. Book a time to send a payment link.');
+    }
+    const ctx = await this.bookingContext(tenantId, actorProfileId, dto as StaffBookingInput);
+    const { client, therapist, service, providerId, payment } = ctx;
+
+    // SET-06: the format is fixed now, as on a booking: the practitioner must
+    // offer it, the service must be priced for it, in person needs a place.
+    const format = asFormat(dto.format) ?? 'ONLINE';
+    const workLocations = (((therapist as any).workLocations ?? []) as Array<{ locationId: bigint }>).map((w) => w.locationId);
+    const offered = allowedFormats(
+      { allowsOnline: true, allowsInPerson: true, locationId: dto.locationId ? BigInt(String(dto.locationId)) : null },
+      { offersOnline: (therapist as any).offersOnline ?? true, offersInPerson: (therapist as any).offersInPerson ?? false, locationIds: workLocations },
+    );
+    if (format === 'ONLINE' && !offered.online) throw new BadRequestException(`${fullName(therapist.profile) || 'This practitioner'} does not see clients online.`);
+    let locationId: bigint | null = null;
+    if (format === 'IN_PERSON') {
+      locationId = dto.locationId && /^\d+$/.test(String(dto.locationId)) ? BigInt(String(dto.locationId)) : null;
+      if (!locationId || !workLocations.includes(locationId)) throw new BadRequestException('Choose where the sessions happen.');
+    }
+    const price = priceFor((service as any).formats ?? [], format) ?? (format === 'ONLINE' ? BigInt(service.priceKobo ?? 0) : null);
+    if (price === null) throw new BadRequestException(`${service.title} is not offered in person. Choose online, or another service.`);
+
+    const free = payment === 'NONE' || price === 0n;
+    const now = new Date();
+    const money = free
+      ? { paymentMethod: 'NONE', amountKobo: 0n, paidAt: null }
+      : { paymentMethod: 'MANUAL', amountKobo: paidAmount(dto.amountKobo, price), paidAt: now };
+
+    const ids = await this.prisma.$transaction(async (tx: any) => {
+      const plan =
+        (await tx.sessionPlan.findFirst({ where: { tenantId, clientProfileId: client.id, providerProfileId: providerId, status: 'ACTIVE' }, select: { id: true } })) ??
+        (await tx.sessionPlan.create({ data: { tenantId, clientProfileId: client.id, providerProfileId: providerId, status: 'ACTIVE', createdByProfileId: actorProfileId } }));
+      const existing = await tx.sessionPlanLine.findFirst({ where: { planId: plan.id, serviceId: service.id }, select: { id: true, count: true } });
+      const line = existing
+        ? await tx.sessionPlanLine.update({ where: { id: existing.id }, data: { count: existing.count + count } })
+        : await tx.sessionPlanLine.create({ data: { planId: plan.id, serviceId: service.id, count, unitPriceKobo: price } });
+      const made: bigint[] = [];
+      for (let i = 0; i < count; i++) {
+        const ps = await tx.planSession.create({
+          data: {
+            tenantId,
+            planId: plan.id,
+            lineId: existing ? existing.id : line.id,
+            clientProfileId: client.id,
+            providerProfileId: providerId,
+            serviceId: service.id,
+            format,
+            locationId,
+            status: 'PAID',
+            ...money,
+            paidOnBookingId: null,
+            bookingId: null,
+            createdByProfileId: actorProfileId,
+          },
+        });
+        made.push(ps.id);
+      }
+      return made;
+    });
+
+    if (dto.notifyClient !== false) {
+      await this.emailToSchedule(tenantId, client, service.title, fullName(therapist.profile), count, free).catch((err) =>
+        this.logger.warn(`Could not email the client about ${count} sessions to schedule: ${(err as Error).message}`),
+      );
+    }
+    return { count, planSessionIds: ids.map((id) => id.toString()) };
+  }
+
+  private async emailToSchedule(tenantId: bigint, client: { id: bigint; email: string | null }, serviceTitle: string, practitioner: string, count: number, free: boolean) {
+    if (!client.email) return;
+    const tenant = await this.prisma.tenant.findUnique({ where: { id: tenantId } });
+    const sessions = count === 1 ? `a ${serviceTitle} session` : `${count} ${serviceTitle} sessions`;
+    await this.notifications.sendEmail({
+      to: client.email,
+      type: 'bookings.sessions_to_schedule',
+      title: count === 1 ? 'Choose a time for your session' : `Choose times for your ${count} sessions`,
+      message: `${tenant?.name ?? 'Your practice'} has added ${sessions} with ${practitioner || 'your practitioner'}${free ? '' : ', already paid'}. Choose a time for each whenever you know when you are free.`,
+      link: `${tenantWebOrigin(tenant as any)}/portal`,
+      actionLabel: count === 1 ? 'Choose a time' : 'Choose times',
       tenantId,
       profileId: client.id,
     });

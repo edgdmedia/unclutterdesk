@@ -1,6 +1,6 @@
 import { BadRequestException, Injectable, Logger, NotFoundException, Optional } from '@nestjs/common';
 import { PrismaService } from '../../common/prisma/prisma.service';
-import { chargedKobo, collectedKobo } from '../../common/revenue';
+import { chargedKobo, collectedKobo, DIRECT_PLAN_PAYMENT } from '../../common/revenue';
 import { isPaidTier, isTier, PLAN_SELECT, planView } from '../entitlements/entitlements';
 import { NotificationService } from '../notifications/notification.service';
 import { complimentaryPrefix } from '../invites/complimentary-emails';
@@ -54,7 +54,13 @@ export class AdminService {
       where: { tenant: AdminService.REAL_TENANTS, paidAt: { not: null } },
       select: { amountKobo: true, paidAt: true, service: { select: { priceKobo: true } } },
     });
-    const revenueKobo = collectedKobo(bookingRows);
+    // §11.2: sessions paid at the practice with no booking yet are revenue too.
+    const realTenantIds = (await this.prisma.tenant.findMany({ where: AdminService.REAL_TENANTS, select: { id: true } })).map((t: { id: bigint }) => t.id);
+    const planRows = await this.prisma.planSession.findMany({
+      where: { ...DIRECT_PLAN_PAYMENT, tenantId: { in: realTenantIds } },
+      select: { amountKobo: true, paidAt: true },
+    });
+    const revenueKobo = collectedKobo([...bookingRows, ...planRows]);
 
     return {
       tenants,
@@ -94,8 +100,12 @@ export class AdminService {
         service: { select: { priceKobo: true } },
       },
     });
+    const planRows = await this.prisma.planSession.findMany({
+      where: DIRECT_PLAN_PAYMENT,
+      select: { tenantId: true, amountKobo: true, paidAt: true },
+    });
     const revenueByTenant = new Map<string, number>();
-    for (const row of bookingRows) {
+    for (const row of [...bookingRows, ...planRows]) {
       const key = row.tenantId.toString();
       revenueByTenant.set(key, (revenueByTenant.get(key) ?? 0) + Number(chargedKobo(row)));
     }
@@ -170,8 +180,13 @@ export class AdminService {
         select: { amountKobo: true, paidAt: true, service: { select: { priceKobo: true } } },
       }),
     ]);
+    // §11.2: sessions paid at the practice with no booking yet are revenue too.
+    const planRows = await this.prisma.planSession.findMany({
+      where: { tenantId: id, ...DIRECT_PLAN_PAYMENT },
+      select: { amountKobo: true, paidAt: true },
+    });
 
-    const revenueKobo = collectedKobo(bookingRows);
+    const revenueKobo = collectedKobo([...bookingRows, ...planRows]);
 
     return {
       id: tenant.id.toString(),

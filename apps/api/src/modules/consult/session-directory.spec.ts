@@ -430,6 +430,7 @@ describe('client history', () => {
       { id: 1n, service: { title: 'A', priceKobo: 200n }, availability: { startsAt: new Date() }, amountKobo: 200n, discountCodeUsed: null, status: 'CONFIRMED', paidAt: new Date(), paymentRef: 'r1', createdAt: new Date() },
       { id: 2n, service: { title: 'B', priceKobo: 500n }, availability: { startsAt: new Date() }, amountKobo: null, discountCodeUsed: null, status: 'PENDING_PAYMENT', paidAt: null, paymentRef: null, createdAt: new Date() },
     ]);
+    prisma.planSession = { findMany: vi.fn().mockResolvedValue([]) };
     const out = await service.clientPayments(TENANT, 40n);
     expect(out.totalPaidKobo).toBe('200');
     expect(out.outstandingKobo).toBe('500');
