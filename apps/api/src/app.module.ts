@@ -25,6 +25,7 @@ import { CalendarModule } from './modules/calendar/calendar.module';
 import { PrivacyModule } from './modules/privacy/privacy.module';
 import { InviteModule } from './modules/invites/invite.module';
 import { AssessmentModule } from './modules/assessments/assessment.module';
+import { JournalModule } from './modules/journal/journal.module';
 import { VideoModule } from './modules/video/video.module';
 import { RequestModule } from './modules/requests/request.module';
 import { EntitlementsModule } from './modules/entitlements/entitlements.module';
@@ -63,6 +64,7 @@ import { EntitlementsModule } from './modules/entitlements/entitlements.module';
     PrivacyModule,
     InviteModule,
     AssessmentModule,
+    JournalModule,
     VideoModule,
     RequestModule,
     EntitlementsModule,

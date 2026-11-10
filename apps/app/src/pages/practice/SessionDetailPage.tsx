@@ -7,6 +7,7 @@ import { PaymentChip } from '../../components/booking/PaymentChip';
 import { EditSessionDialog } from '../../components/booking/EditSessionDialog';
 import { SessionNoteEditor } from '../../components/notes/SessionNoteEditor';
 import { RichTextEditor } from '../../components/richText/RichTextEditor';
+import { JournalPlanPanel } from '../../components/journal/JournalPlanPanel';
 import { RecapAssessmentsPicker, type SentAssessment } from '../../components/notes/RecapAssessmentsPicker';
 import { hasRichText } from '../../components/richText/richDoc';
 import { api } from '../../utils/apiClient';
@@ -389,6 +390,11 @@ export function SessionDetailPage() {
                 </button>
               </div>
             </Card>
+            {d.status !== 'CANCELLED' ? (
+              <div className="mt-4">
+                <JournalPlanPanel bookingId={d.id} clientFirstName={d.client.name.split(' ')[0] ?? ''} recap={recap} />
+              </div>
+            ) : null}
           </div>
         </div>
       ) : null}

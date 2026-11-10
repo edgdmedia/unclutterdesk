@@ -4,6 +4,7 @@ import { chargedKobo, collectedKobo, DIRECT_PLAN_PAYMENT } from '../../common/re
 import { isPaidTier, isTier, PLAN_SELECT, planView } from '../entitlements/entitlements';
 import { NotificationService } from '../notifications/notification.service';
 import { complimentaryPrefix } from '../invites/complimentary-emails';
+import { JournalService } from '../journal/journal.service';
 
 const REASONS = ['INVITE_CODE', 'MIGRATION', 'INTERNAL'] as const;
 type ComplimentaryReason = (typeof REASONS)[number];
@@ -15,6 +16,7 @@ export class AdminService {
   constructor(
     private readonly prisma: PrismaService,
     @Optional() private readonly notifications?: NotificationService,
+    @Optional() private readonly journal?: JournalService,
   ) {}
 
   /**
@@ -256,6 +258,8 @@ export class AdminService {
           : {}),
       },
     });
+    // Switched off: every client's Journal link with this practice ends (journal-integration.md §4).
+    if (dto.ecosystemIntegrationEnabled === false) await this.journal?.endAllForTenant(id);
     return {
       id: tenant.id.toString(),
       isActive: tenant.isActive,

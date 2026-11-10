@@ -1,9 +1,10 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Link, useParams } from 'react-router-dom';
+import { Link, useParams, useSearchParams } from 'react-router-dom';
 import { ArrowLeft, CheckCircle2, ClipboardList, Loader2 } from 'lucide-react';
 import { Card, Eyebrow, Page, PageHeader, useBrand } from '@unclutterdesk/ui';
 import { api } from '../../../utils/apiClient';
 import { RichTextView } from '../../../components/richText/RichTextView';
+import { PortalJournalCard } from './PortalJournalCard';
 
 interface RecapAssessment {
   id: string;
@@ -35,6 +36,7 @@ const whenFormat = new Intl.DateTimeFormat('en-GB', { weekday: 'long', day: 'num
 export function PortalRecapPage() {
   const { id = '' } = useParams<{ id: string }>();
   const brand = useBrand();
+  const [search] = useSearchParams();
   const [recap, setRecap] = useState<Recap | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [saveError, setSaveError] = useState<string | null>(null);
@@ -103,6 +105,8 @@ export function PortalRecapPage() {
         ) : null}
         {saveError ? <p role="alert" className="text-[12px] font-semibold text-rose-700">{saveError}</p> : null}
       </Card>
+
+      <PortalJournalCard bookingId={recap.id} notice={search.get('journal')} />
 
       {recap.assessments.length ? (
         <Card padding="p-[22px_24px]" className="space-y-3">
