@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Link, useParams, useSearchParams } from 'react-router-dom';
+import { Link, useLocation, useParams, useSearchParams } from 'react-router-dom';
 import { ArrowLeft, CheckCircle2 } from 'lucide-react';
 import { useBrand } from '@unclutterdesk/ui';
 import { api } from '../../utils/apiClient';
@@ -28,6 +28,7 @@ const LABEL = 'block text-[13.5px] font-bold text-[var(--desk-text)] mb-1.5';
 export function ClientFormPage() {
   const { id = '' } = useParams();
   const [search] = useSearchParams();
+  const location = useLocation();
   const bookingId = search.get('booking') ?? undefined;
   const brand = useBrand();
   const { profile } = useAuth();
@@ -121,7 +122,7 @@ export function ClientFormPage() {
               </div>
               {profile ? null : (
                 <p className="text-[13px] text-[var(--desk-pending)] bg-[var(--desk-pending-bg)] border border-[var(--desk-pending-border)] rounded-[12px] px-3.5 py-2.5">
-                  <a href="/login" className="font-bold underline">Sign in</a> first, so the practice knows whose answers these are.
+                  <a href={`/login?returnTo=${encodeURIComponent(`${location.pathname}${location.search}`)}`} className="font-bold underline">Sign in</a> first, so the practice knows whose answers these are.
                 </p>
               )}
               {form.schemaJson.map((field) => {

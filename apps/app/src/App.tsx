@@ -12,6 +12,7 @@ import { PracticeBrandProvider, usePracticeBrand } from './context/PracticeBrand
 import { api, getSubdomainTenantSlug, getAppType } from './utils/apiClient';
 import { ExternalRedirect } from './components/ExternalRedirect';
 import { LEGAL_URLS } from './utils/legal';
+import { isSafeReturnPath } from './utils/returnTo';
 
 // ── Lazy-loaded pages (code-split per route) ──────────────────────────────────
 const NotFoundPage = lazy(() => import('./pages/shared/NotFoundPage').then((m) => ({ default: m.NotFoundPage })));
@@ -564,7 +565,7 @@ function AdminShell() {
 function SignInToContinue() {
   const location = useLocation();
   const returnTo = `${location.pathname}${location.search}`;
-  return <Navigate to="/login" replace state={returnTo.startsWith('/dashboard') ? { returnTo } : undefined} />;
+  return <Navigate to="/login" replace state={isSafeReturnPath(returnTo) ? { returnTo } : undefined} />;
 }
 
 function RootRedirect() {

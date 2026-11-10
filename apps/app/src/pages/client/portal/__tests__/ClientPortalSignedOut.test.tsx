@@ -76,4 +76,12 @@ describe('the portal once the person is signed out', () => {
     expect(screen.queryAllByText(/Individual Therapy/)).toHaveLength(0);
     expect(screen.queryByText('Join session')).toBeNull();
   });
+
+  it('carries the requested portal path into the sign-in link', () => {
+    act(() => setSignedIn(false));
+    renderWithApp(<ClientShell><PortalHomePage /></ClientShell>, { route: '/portal/sessions/10/recap' });
+
+    const link = screen.getByRole('link', { name: 'Sign in' });
+    expect(link.getAttribute('href')).toBe('/login?returnTo=%2Fportal%2Fsessions%2F10%2Frecap');
+  });
 });

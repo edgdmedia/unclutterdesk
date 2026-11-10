@@ -1,4 +1,5 @@
 import React from 'react';
+import { useLocation } from 'react-router-dom';
 import { useBrand } from '@unclutterdesk/ui';
 import { PracticeLogo } from '../../../components/public/PracticeLogo';
 
@@ -8,7 +9,10 @@ import { PracticeLogo } from '../../../components/public/PracticeLogo';
  */
 export function PortalSignIn() {
   const brand = useBrand();
+  const location = useLocation();
   const primary = brand.primaryColor || '#0F3A53';
+  const returnTo = `${location.pathname}${location.search}`;
+  const signInHref = `/login?returnTo=${encodeURIComponent(returnTo)}`;
   return (
     <div className="min-h-screen bg-[var(--desk-surface)] flex items-center justify-center p-6">
       <div className="w-full max-w-[420px] space-y-4 text-center">
@@ -25,7 +29,7 @@ export function PortalSignIn() {
             </p>
           </div>
           <a
-            href="/login"
+            href={signInHref}
             className="inline-flex h-[46px] px-5 rounded-[14px] text-white text-[13px] font-bold items-center"
             style={{ backgroundColor: primary }}
           >
