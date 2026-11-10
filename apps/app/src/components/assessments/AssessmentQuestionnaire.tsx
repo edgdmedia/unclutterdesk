@@ -37,6 +37,8 @@ export function AssessmentQuestionnaire({ assessment, color, firstName, message,
     }
   }
 
+  // An instrument with a client-facing description is an assessment; the
+  // intake questionnaire has none and keeps its own heading.
   const isAssessment = Boolean(assessment.description);
   const heading = isAssessment
     ? `${firstName ? `Hi ${firstName}, here is the ` : 'Here is the '}${assessment.name}`
