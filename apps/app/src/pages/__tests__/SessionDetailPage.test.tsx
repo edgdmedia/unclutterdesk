@@ -45,7 +45,7 @@ const LIBRARY = [
 ];
 let recapState: { recapAssessmentKeys: string[]; sentAssessments: unknown[] } = { recapAssessmentKeys: [], sentAssessments: [] };
 
-function renderPage(detail = DETAIL, submissions: unknown[] = []) {
+function renderPage(detail = DETAIL, submissions: unknown[] = [], route = '/dashboard/sessions/900') {
   apiGet.mockImplementation((p: string) =>
     p === '/v1/consult/practice/sessions/900'
       ? Promise.resolve(detail)
@@ -59,7 +59,7 @@ function renderPage(detail = DETAIL, submissions: unknown[] = []) {
   );
   return renderWithApp(
     <Routes><Route path="/dashboard/sessions/:id" element={<SessionDetailPage />} /></Routes>,
-    { route: '/dashboard/sessions/900' },
+    { route },
   );
 }
 
@@ -190,5 +190,34 @@ describe('the default forms on a session', () => {
     renderPage(DETAIL, [{ targetType: 'INTAKE' }, { targetType: 'CONSENT' }]);
     const line = await screen.findByText(/Intake: done/);
     expect(line.parentElement?.textContent).toMatch(/Confidentiality: done/);
+  });
+});
+
+describe('the notes and summary tabs', () => {
+  it('opens Summary by default for clinical staff', async () => {
+    renderPage();
+    await waitFor(() => screen.getByRole('heading', { name: 'Ada Ola' }));
+    expect(screen.getByRole('tab', { name: 'Summary' }).getAttribute('aria-selected')).toBe('true');
+    expect(screen.getByLabelText('Client recap')).toBeTruthy();
+  });
+
+  it('opens the tab named in the URL', async () => {
+    renderPage(DETAIL, [], '/dashboard/sessions/900?tab=notes');
+    await waitFor(() => screen.getByRole('heading', { name: 'Ada Ola' }));
+    expect(screen.getByRole('tab', { name: 'SOAP notes' }).getAttribute('aria-selected')).toBe('true');
+    expect(screen.getByLabelText('Subjective')).toBeTruthy();
+  });
+
+  it('opens the SOAP notes tab from a #note link', async () => {
+    renderPage(DETAIL, [], '/dashboard/sessions/900#note');
+    await waitFor(() => screen.getByRole('heading', { name: 'Ada Ola' }));
+    expect(screen.getByRole('tab', { name: 'SOAP notes' }).getAttribute('aria-selected')).toBe('true');
+  });
+
+  it('gives the desk the overview only', async () => {
+    renderPage({ ...DETAIL, can: { edit: true, summary: false, markPaid: true } });
+    await waitFor(() => screen.getByRole('heading', { name: 'Ada Ola' }));
+    expect(screen.queryByRole('tablist')).toBeNull();
+    expect(screen.queryByLabelText('Client recap')).toBeNull();
   });
 });

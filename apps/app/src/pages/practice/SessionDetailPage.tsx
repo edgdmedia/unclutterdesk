@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react';
 import { JoinButton } from '../../components/video/JoinButton';
-import { Link, useLocation, useParams } from 'react-router-dom';
+import { Link, useLocation, useParams, useSearchParams } from 'react-router-dom';
 import { CalendarClock, CheckCircle2, Download, FileText, Loader2, PencilLine, Star } from 'lucide-react';
-import { Card, Eyebrow, Page, PageHeader, StatTile, StatusBadge, useToast } from '@unclutterdesk/ui';
+import { Card, Eyebrow, Page, PageHeader, SegmentedControl, StatTile, StatusBadge, useToast } from '@unclutterdesk/ui';
 import { PaymentChip } from '../../components/booking/PaymentChip';
 import { EditSessionDialog } from '../../components/booking/EditSessionDialog';
 import { SessionNoteEditor } from '../../components/notes/SessionNoteEditor';
@@ -45,6 +45,7 @@ const longWhen = (iso: string) => formatWhen(iso, 'long');
 export function SessionDetailPage() {
   const { id } = useParams();
   const { hash } = useLocation();
+  const [searchParams, setSearchParams] = useSearchParams();
   const toast = useToast();
   const [d, setD] = useState<SessionDetail | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -59,6 +60,12 @@ export function SessionDetailPage() {
   const [editing, setEditing] = useState(false);
   // BKG-06: whether the client's default forms are in yet.
   const [forms, setForms] = useState<{ intake: boolean; confidentiality: boolean } | null>(null);
+
+  const tabParam = searchParams.get('tab');
+  // `#note` links (the client page and the room) still open the SOAP notes tab.
+  const activeTab: 'notes' | 'summary' =
+    d?.status === 'CANCELLED' ? 'summary' : hash === '#note' || tabParam === 'notes' ? 'notes' : 'summary';
+  const tabOptions = d?.status === 'CANCELLED' ? ['Summary'] : ['SOAP notes', 'Summary'];
 
   useEffect(() => {
     api.get<SessionDetail>(`/v1/consult/practice/sessions/${id}`)
@@ -81,12 +88,21 @@ export function SessionDetailPage() {
       .catch(() => setForms(null));
   }, [id]);
 
-  // `#note` (the "Write SOAP note" prompt, the note-pending reminder): the page
-  // loads after the browser looks for the anchor, so scroll once it is there.
+  // `#note` (the "Write SOAP note" prompt, the note-pending reminder): open the
+  // SOAP tab, then scroll once the tab's content is on screen.
   const loaded = d !== null;
   useEffect(() => {
-    if (loaded && hash === '#note') document.getElementById('note')?.scrollIntoView?.({ block: 'start' });
-  }, [loaded, hash]);
+    if (!loaded || hash !== '#note' || searchParams.get('tab') === 'notes') return;
+    const next = new URLSearchParams(searchParams);
+    next.set('tab', 'notes');
+    setSearchParams(next, { replace: true });
+  }, [loaded, hash, searchParams, setSearchParams]);
+
+  useEffect(() => {
+    if (loaded && activeTab === 'notes' && hash === '#note') {
+      document.getElementById('note')?.scrollIntoView?.({ block: 'start' });
+    }
+  }, [loaded, activeTab, hash]);
 
   /** The three texts as they are on screen. */
   async function loadRecapAssessments() {
@@ -120,6 +136,12 @@ export function SessionDetailPage() {
     } finally {
       setBusy(false);
     }
+  }
+
+  function showTab(label: string) {
+    const next = new URLSearchParams(searchParams);
+    next.set('tab', label === 'SOAP notes' ? 'notes' : 'summary');
+    setSearchParams(next, { replace: true });
   }
 
   if (error) {
@@ -299,59 +321,71 @@ export function SessionDetailPage() {
         />
       ) : null}
 
-      {d.can.summary && d.status !== 'CANCELLED' ? (
-        // The session's note lives here as well as in the room: after a call in
-        // Google Meet the room is never reopened, and the note is written later.
-        <Card padding="p-[22px]" className="space-y-3" id="note">
-          <SessionNoteEditor key={d.id} bookingId={d.id} clientProfileId={d.client.id} note={d.note ? { ...d.note, isLocked: d.note.status === 'COMPLETED' } : null} />
-        </Card>
-      ) : null}
-
       {d.can.summary ? (
-        <Card padding="p-[22px]" className="space-y-3">
-          <Eyebrow>SUMMARY</Eyebrow>
-          <div className="space-y-1.5">
-            <div className="text-[11.5px] font-bold text-slate-500 uppercase">Internal summary (staff only)</div>
-            <RichTextEditor label="Internal summary" value={internal} onChange={setInternal} placeholder="What happened, for the file." minHeight={64} />
+        <div className="space-y-4">
+          <div className="flex max-w-full overflow-x-auto">
+            <SegmentedControl
+              options={tabOptions}
+              value={activeTab === 'notes' ? 'SOAP notes' : 'Summary'}
+              onChange={showTab}
+            />
           </div>
-          <div className="space-y-1.5">
-            <div className="text-[11.5px] font-bold text-slate-500 uppercase">Supervision notes (clinical staff only)</div>
-            <RichTextEditor label="Supervision notes" value={supervision} onChange={setSupervision} placeholder="Points to take to supervision: the relationship, your own process, risk, pacing." minHeight={64} />
-          </div>
-          <div className="space-y-1.5">
-            <div className="text-[11.5px] font-bold text-slate-500 uppercase">Client recap</div>
-            <RichTextEditor label="Client recap" value={recap} onChange={setRecap} placeholder="Written for the client: what was covered, what to practise." minHeight={96} />
-          </div>
-          <RecapAssessmentsPicker value={attached} onChange={setAttached} sent={sentAssessments} />
-          {d.clientRecapSentAt ? (
-            <p className="text-[11.5px] text-emerald-700 font-semibold">Recap sent {new Date(d.clientRecapSentAt).toLocaleDateString('en-GB')}.</p>
+
+          {activeTab === 'notes' && d.status !== 'CANCELLED' ? (
+            // The session's note lives here as well as in the room: after a call in
+            // Google Meet the room is never reopened, and the note is written later.
+            <Card padding="p-[22px]" className="space-y-3" id="note">
+              <SessionNoteEditor key={d.id} bookingId={d.id} clientProfileId={d.client.id} note={d.note ? { ...d.note, isLocked: d.note.status === 'COMPLETED' } : null} />
+            </Card>
           ) : null}
-          <div className="flex flex-wrap gap-2">
-            <button
-              type="button"
-              disabled={busy}
-              onClick={() => void act(saveSummary, 'Summary saved')}
-              className="h-[38px] px-4 rounded-[12px] bg-[var(--desk-pine-600)] text-white text-[12.5px] font-bold cursor-pointer disabled:opacity-50"
-            >
-              Save
-            </button>
-            <button
-              type="button"
-              disabled={busy || !hasRichText(recap)}
-              // What is on screen is what is sent: save first.
-              onClick={() =>
-                void act(async () => {
-                  await saveSummary();
-                  await api.post(`/v1/consult/practice/sessions/${d.id}/recap-email`, {});
-                  await loadRecapAssessments();
-                }, 'Recap emailed to the client')
-              }
-              className="h-[38px] px-4 rounded-[12px] bg-white border border-[var(--desk-pine-200)] text-[var(--desk-text)] text-[12.5px] font-bold cursor-pointer disabled:opacity-50"
-            >
-              Send recap
-            </button>
-          </div>
-        </Card>
+
+          {activeTab === 'summary' ? (
+            <Card padding="p-[22px]" className="space-y-3">
+              <Eyebrow>SUMMARY</Eyebrow>
+              <div className="space-y-1.5">
+                <div className="text-[11.5px] font-bold text-slate-500 uppercase">Internal summary (staff only)</div>
+                <RichTextEditor label="Internal summary" value={internal} onChange={setInternal} placeholder="What happened, for the file." minHeight={64} />
+              </div>
+              <div className="space-y-1.5">
+                <div className="text-[11.5px] font-bold text-slate-500 uppercase">Supervision notes (clinical staff only)</div>
+                <RichTextEditor label="Supervision notes" value={supervision} onChange={setSupervision} placeholder="Points to take to supervision: the relationship, your own process, risk, pacing." minHeight={64} />
+              </div>
+              <div className="space-y-1.5">
+                <div className="text-[11.5px] font-bold text-slate-500 uppercase">Client recap</div>
+                <RichTextEditor label="Client recap" value={recap} onChange={setRecap} placeholder="Written for the client: what was covered, what to practise." minHeight={96} />
+              </div>
+              <RecapAssessmentsPicker value={attached} onChange={setAttached} sent={sentAssessments} />
+              {d.clientRecapSentAt ? (
+                <p className="text-[11.5px] text-emerald-700 font-semibold">Recap sent {new Date(d.clientRecapSentAt).toLocaleDateString('en-GB')}.</p>
+              ) : null}
+              <div className="flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  disabled={busy}
+                  onClick={() => void act(saveSummary, 'Summary saved')}
+                  className="h-[38px] px-4 rounded-[12px] bg-[var(--desk-pine-600)] text-white text-[12.5px] font-bold cursor-pointer disabled:opacity-50"
+                >
+                  Save
+                </button>
+                <button
+                  type="button"
+                  disabled={busy || !hasRichText(recap)}
+                  // What is on screen is what is sent: save first.
+                  onClick={() =>
+                    void act(async () => {
+                      await saveSummary();
+                      await api.post(`/v1/consult/practice/sessions/${d.id}/recap-email`, {});
+                      await loadRecapAssessments();
+                    }, 'Recap emailed to the client')
+                  }
+                  className="h-[38px] px-4 rounded-[12px] bg-white border border-[var(--desk-pine-200)] text-[var(--desk-text)] text-[12.5px] font-bold cursor-pointer disabled:opacity-50"
+                >
+                  Send recap
+                </button>
+              </div>
+            </Card>
+          ) : null}
+        </div>
       ) : null}
     </Page>
   );
