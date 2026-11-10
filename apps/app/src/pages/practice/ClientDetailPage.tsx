@@ -3,6 +3,9 @@ import { Link, useParams, useSearchParams } from 'react-router-dom';
 import { Download, ChevronRight, FileText, Printer, Lock, Plus, X, Loader2, CalendarPlus } from 'lucide-react';
 import { Eyebrow, Card, StatusBadge, Button, useToast, Page, PageHeader, Grid, StatTile, ResponsiveTable, type Column } from '@unclutterdesk/ui';
 import { useBrand } from '@unclutterdesk/ui';
+import { RichTextEditor } from '../../components/richText/RichTextEditor';
+import { RichTextView } from '../../components/richText/RichTextView';
+import { hasRichText, richPreview } from '../../components/richText/richDoc';
 import { api } from '../../utils/apiClient';
 import type { Client } from '../../App';
 import { ClientAssessmentsPanel } from '../../components/ClientAssessmentsPanel';
@@ -160,8 +163,12 @@ export function ClientDetailPage({ clients, setClients, canViewPayments }: Clien
   // Save SOAP Note to API
   const handleSaveNote = async (e: React.FormEvent) => {
     e.preventDefault();
-    setIsSavingNote(true);
     setNoteError(null);
+    if (![noteSubjective, noteObjective, noteAssessment, notePlan].every(hasRichText)) {
+      setNoteError('Write all four sections before saving.');
+      return;
+    }
+    setIsSavingNote(true);
 
     try {
       const saved = await api.post<{ id: string; subjective?: string; objective?: string; assessment?: string; plan?: string; isLocked: boolean; updatedAt: string }>(
@@ -365,7 +372,7 @@ export function ClientDetailPage({ clients, setClients, canViewPayments }: Clien
                             {s.note}
                           </span>
                         </div>
-                        <p className="text-[13px] text-[var(--desk-text-body)] leading-relaxed truncate">{s.subjective}</p>
+                        <p className="text-[13px] text-[var(--desk-text-body)] leading-relaxed truncate">{richPreview(s.subjective)}</p>
                       </div>
                     </div>
                   ))}
@@ -432,7 +439,7 @@ export function ClientDetailPage({ clients, setClients, canViewPayments }: Clien
                         </span>
                         <strong className="text-xs font-bold text-[var(--desk-text)]">Subjective</strong>
                       </div>
-                      <p className="text-[13px] text-[var(--desk-text-body)] leading-relaxed">{selectedNote.subjective}</p>
+                      <RichTextView value={selectedNote.subjective} />
                     </div>
 
                     <div className="p-4 rounded-[18px] bg-[var(--desk-surface)] border border-[var(--desk-border)] space-y-1">
@@ -445,7 +452,7 @@ export function ClientDetailPage({ clients, setClients, canViewPayments }: Clien
                         </span>
                         <strong className="text-xs font-bold text-[var(--desk-text)]">Objective</strong>
                       </div>
-                      <p className="text-[13px] text-[var(--desk-text-body)] leading-relaxed">{selectedNote.objective}</p>
+                      <RichTextView value={selectedNote.objective} />
                     </div>
 
                     <div className="p-4 rounded-[18px] bg-[var(--desk-surface)] border border-[var(--desk-border)] space-y-1">
@@ -458,7 +465,7 @@ export function ClientDetailPage({ clients, setClients, canViewPayments }: Clien
                         </span>
                         <strong className="text-xs font-bold text-[var(--desk-text)]">Assessment</strong>
                       </div>
-                      <p className="text-[13px] text-[var(--desk-text-body)] leading-relaxed">{selectedNote.assessment}</p>
+                      <RichTextView value={selectedNote.assessment} />
                     </div>
 
                     <div className="p-4 rounded-[18px] bg-[var(--desk-surface)] border border-[var(--desk-border)] space-y-1">
@@ -471,7 +478,7 @@ export function ClientDetailPage({ clients, setClients, canViewPayments }: Clien
                         </span>
                         <strong className="text-xs font-bold text-[var(--desk-text)]">Plan</strong>
                       </div>
-                      <p className="text-[13px] text-[var(--desk-text-body)] leading-relaxed">{selectedNote.plan}</p>
+                      <RichTextView value={selectedNote.plan} />
                     </div>
                   </div>
                 </Card>
@@ -577,50 +584,22 @@ export function ClientDetailPage({ clients, setClients, canViewPayments }: Clien
             <Grid cols={{ base: 1, md: 2 }}>
               <div className="space-y-1">
                 <label className="text-[11px] font-bold text-slate-500 uppercase">Subjective (S)</label>
-                <textarea
-                  rows={4}
-                  required
-                  value={noteSubjective}
-                  onChange={(e) => setNoteSubjective(e.target.value)}
-                  placeholder="Client feelings, symptoms reported..."
-                  className="w-full p-2.5 rounded-[12px] bg-[var(--desk-surface)] border border-[var(--desk-border)] text-xs outline-none resize-none"
-                />
+                <RichTextEditor label="Subjective" value={noteSubjective} onChange={setNoteSubjective} placeholder="Client feelings, symptoms reported..." minHeight={88} />
               </div>
               <div className="space-y-1">
                 <label className="text-[11px] font-bold text-slate-500 uppercase">Objective (O)</label>
-                <textarea
-                  rows={4}
-                  required
-                  value={noteObjective}
-                  onChange={(e) => setNoteObjective(e.target.value)}
-                  placeholder="Clinician observations, assessments, speech rhythm..."
-                  className="w-full p-2.5 rounded-[12px] bg-[var(--desk-surface)] border border-[var(--desk-border)] text-xs outline-none resize-none"
-                />
+                <RichTextEditor label="Objective" value={noteObjective} onChange={setNoteObjective} placeholder="Clinician observations, assessments, speech rhythm..." minHeight={88} />
               </div>
             </Grid>
 
             <Grid cols={{ base: 1, md: 2 }}>
               <div className="space-y-1">
                 <label className="text-[11px] font-bold text-slate-500 uppercase">Assessment (A)</label>
-                <textarea
-                  rows={4}
-                  required
-                  value={noteAssessment}
-                  onChange={(e) => setNoteAssessment(e.target.value)}
-                  placeholder="Response to therapy protocols, progress observations..."
-                  className="w-full p-2.5 rounded-[12px] bg-[var(--desk-surface)] border border-[var(--desk-border)] text-xs outline-none resize-none"
-                />
+                <RichTextEditor label="Assessment" value={noteAssessment} onChange={setNoteAssessment} placeholder="Response to therapy protocols, progress observations..." minHeight={88} />
               </div>
               <div className="space-y-1">
                 <label className="text-[11px] font-bold text-slate-500 uppercase">Plan (P)</label>
-                <textarea
-                  rows={4}
-                  required
-                  value={notePlan}
-                  onChange={(e) => setNotePlan(e.target.value)}
-                  placeholder="Homework assigned, next session date, exercises..."
-                  className="w-full p-2.5 rounded-[12px] bg-[var(--desk-surface)] border border-[var(--desk-border)] text-xs outline-none resize-none"
-                />
+                <RichTextEditor label="Plan" value={notePlan} onChange={setNotePlan} placeholder="Homework assigned, next session date, exercises..." minHeight={88} />
               </div>
             </Grid>
 

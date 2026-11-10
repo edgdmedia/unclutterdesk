@@ -1,4 +1,5 @@
 import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest';
+import { docOf, isEditable, textOf, writeIn } from '../../test/richText';
 import React from 'react';
 import { Route, Routes } from 'react-router-dom';
 import { cleanup, fireEvent, renderWithApp, screen, waitFor } from '../../test/renderWithApp';
@@ -143,15 +144,15 @@ describe("the session's note on the session page", () => {
     renderPage(ended);
     const s = await screen.findByLabelText('Subjective');
     apiPost.mockResolvedValue({ id: '7', isLocked: false });
-    fireEvent.change(s, { target: { value: 'Sleeps better' } });
+    writeIn(s, 'Sleeps better');
     fireEvent.click(screen.getByRole('button', { name: 'Save note' }));
-    await waitFor(() => expect(apiPost).toHaveBeenCalledWith('/v1/notes', expect.objectContaining({ bookingId: '900', clientProfileId: '40', subjective: 'Sleeps better' })));
+    await waitFor(() => expect(apiPost).toHaveBeenCalledWith('/v1/notes', expect.objectContaining({ bookingId: '900', clientProfileId: '40', subjective: docOf('Sleeps better') })));
   });
 
   it('carries on a draft', async () => {
     renderPage({ ...ended, note: { id: '7', status: 'DRAFT', subjective: 'Sleeps better', objective: '', assessment: '', plan: 'Breathing' } });
-    expect(((await screen.findByLabelText('Plan')) as HTMLTextAreaElement).value).toBe('Breathing');
-    expect(((screen.getByLabelText('Subjective')) as HTMLTextAreaElement).disabled).toBe(false);
+    expect(textOf(await screen.findByLabelText('Plan'))).toBe('Breathing');
+    expect(isEditable(screen.getByLabelText('Subjective'))).toBe(true);
   });
 
   it('signs and locks it', async () => {
@@ -164,7 +165,7 @@ describe("the session's note on the session page", () => {
 
   it('shows a signed note read-only', async () => {
     renderPage({ ...ended, note: { id: '7', status: 'COMPLETED', subjective: 'Sleeps better', objective: '', assessment: '', plan: '' } });
-    expect(((await screen.findByLabelText('Subjective')) as HTMLTextAreaElement).disabled).toBe(true);
+    expect(isEditable(await screen.findByLabelText('Subjective'))).toBe(false);
   });
 
   it('is not shown to the desk', async () => {

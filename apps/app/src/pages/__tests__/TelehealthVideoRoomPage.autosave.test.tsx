@@ -3,6 +3,7 @@ import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, test, vi } from 'vitest';
 import { TelehealthVideoRoomPage } from '../practice/TelehealthVideoRoomPage';
+import { docOf, isEditable, textOf, writeIn } from '../../test/richText';
 
 const getMock = vi.fn();
 const postMock = vi.fn();
@@ -55,8 +56,8 @@ describe('TelehealthVideoRoomPage autosave', () => {
 
     await screen.findByText('SOAP Notes');
 
-    const subjectiveField = screen.getAllByRole('textbox')[0];
-    fireEvent.change(subjectiveField, { target: { value: 'Client reports improved sleep.' } });
+    const subjectiveField = screen.getByLabelText('Subjective');
+    writeIn(subjectiveField, 'Client reports improved sleep.');
 
     await waitFor(() => {
       expect(postMock).toHaveBeenCalledTimes(1);
@@ -134,13 +135,13 @@ describe('TelehealthVideoRoomPage autosave', () => {
     );
 
     await screen.findByText('SOAP Notes');
-    const subjectiveField = screen.getAllByRole('textbox')[0] as HTMLTextAreaElement;
-    expect(subjectiveField.value).toBe('');
-    expect(subjectiveField.disabled).toBe(false);
+    const subjectiveField = screen.getByLabelText('Subjective');
+    expect(textOf(subjectiveField)).toBe('');
+    expect(isEditable(subjectiveField)).toBe(true);
     expect(screen.queryByText('Locked')).toBeNull();
 
-    fireEvent.change(subjectiveField, { target: { value: 'Today: sleep better.' } });
-    await waitFor(() => expect(postMock).toHaveBeenCalledWith('/v1/notes', expect.objectContaining({ bookingId: '42', subjective: 'Today: sleep better.' })), { timeout: 3500 });
+    writeIn(subjectiveField, 'Today: sleep better.');
+    await waitFor(() => expect(postMock).toHaveBeenCalledWith('/v1/notes', expect.objectContaining({ bookingId: '42', subjective: docOf('Today: sleep better.') })), { timeout: 3500 });
   });
 
   test('shows autosave failure when save request rejects', async () => {
@@ -156,8 +157,8 @@ describe('TelehealthVideoRoomPage autosave', () => {
 
     await screen.findByText('SOAP Notes');
 
-    const subjectiveField = screen.getAllByRole('textbox')[0];
-    fireEvent.change(subjectiveField, { target: { value: 'Autosave should fail.' } });
+    const subjectiveField = screen.getByLabelText('Subjective');
+    writeIn(subjectiveField, 'Autosave should fail.');
 
     await screen.findByText('Autosave failed', {}, { timeout: 3500 });
   });

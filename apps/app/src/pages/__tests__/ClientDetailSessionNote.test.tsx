@@ -2,6 +2,7 @@ import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest';
 import React from 'react';
 import { Route, Routes } from 'react-router-dom';
 import { cleanup, fireEvent, renderWithApp, screen, waitFor } from '../../test/renderWithApp';
+import { docOf, textOf, writeIn } from '../../test/richText';
 
 /**
  * After a session, "Write SOAP note" and the "note pending" reminder open the
@@ -45,18 +46,18 @@ describe("writing a session's note from the client page", () => {
     renderAt('/dashboard/clients/40?tab=notes&booking=900');
     expect(await screen.findByRole('heading', { name: 'Compose Session SOAP Note' })).toBeTruthy();
     apiPost.mockResolvedValue({ id: '8', isLocked: false, subjective: 'S', objective: 'O', assessment: 'A', plan: 'P', updatedAt: new Date().toISOString() });
-    fireEvent.change(screen.getByPlaceholderText(/Client feelings/), { target: { value: 'S' } });
-    fireEvent.change(screen.getByPlaceholderText(/Clinician observations/), { target: { value: 'O' } });
-    fireEvent.change(screen.getByPlaceholderText(/Response to therapy/), { target: { value: 'A' } });
-    fireEvent.change(screen.getByPlaceholderText(/Homework assigned/), { target: { value: 'P' } });
+    writeIn(screen.getByLabelText('Subjective'), 'S');
+    writeIn(screen.getByLabelText('Objective'), 'O');
+    writeIn(screen.getByLabelText('Assessment'), 'A');
+    writeIn(screen.getByLabelText('Plan'), 'P');
     fireEvent.submit(screen.getByRole('heading', { name: 'Compose Session SOAP Note' }).closest('form')!);
-    await waitFor(() => expect(apiPost).toHaveBeenCalledWith('/v1/notes', expect.objectContaining({ clientProfileId: '40', bookingId: '900', subjective: 'S' })));
+    await waitFor(() => expect(apiPost).toHaveBeenCalledWith('/v1/notes', expect.objectContaining({ clientProfileId: '40', bookingId: '900', subjective: docOf('S') })));
   });
 
   it("reopens the session's draft to carry on, not a blank note", async () => {
     renderAt('/dashboard/clients/40?tab=notes&booking=900', [note({})]);
     expect(await screen.findByRole('heading', { name: 'Compose Session SOAP Note' })).toBeTruthy();
-    await waitFor(() => expect((screen.getByPlaceholderText(/Client feelings/) as HTMLTextAreaElement).value).toBe('Sleeps better'));
+    await waitFor(() => expect(textOf(screen.getByLabelText('Subjective'))).toBe('Sleeps better'));
   });
 
   it("shows the session's signed note instead of offering a new one", async () => {
@@ -69,9 +70,7 @@ describe("writing a session's note from the client page", () => {
     renderAt('/dashboard/clients/40');
     fireEvent.click(await screen.findByRole('button', { name: /New note/ }));
     apiPost.mockResolvedValue({ id: '8', isLocked: false, updatedAt: new Date().toISOString() });
-    for (const p of [/Client feelings/, /Clinician observations/, /Response to therapy/, /Homework assigned/]) {
-      fireEvent.change(screen.getByPlaceholderText(p), { target: { value: 'x' } });
-    }
+    for (const label of ['Subjective', 'Objective', 'Assessment', 'Plan']) writeIn(screen.getByLabelText(label), 'x');
     fireEvent.submit(screen.getByRole('heading', { name: 'Compose Session SOAP Note' }).closest('form')!);
     await waitFor(() => expect(apiPost).toHaveBeenCalled());
     expect(apiPost.mock.calls[0][1].bookingId).toBeUndefined();
