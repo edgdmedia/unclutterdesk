@@ -196,6 +196,26 @@ describe('ConsultService.getClientPortal', () => {
     expect(portal.past.map((s: any) => s.id)).toEqual(['0']);
   });
 
+  // Its session is under "to schedule", then at the new time: never a cancelled row.
+  it('leaves out a session the practice left for the client to choose a time for', async () => {
+    prisma.profile.findFirst.mockResolvedValue({ id: 9n });
+    const at = (minutesFromNow: number) => new Date(Date.now() + minutesFromNow * 60_000);
+    const row = (id: bigint, startsIn: number, over: Record<string, unknown> = {}) => ({
+      id, status: 'CONFIRMED', paymentMethod: 'PAYSTACK', amountKobo: 1000n, holdExpiresAt: null, clientReportedPaidAt: null, unscheduledAt: null,
+      format: 'ONLINE', location: null, videoRoomName: null, service: { title: 'Therapy', priceKobo: 1000n },
+      availability: { startsAt: at(startsIn), endsAt: at(startsIn + 50), therapist: { profile: { firstName: 'Jane', lastName: 'Smith' } } },
+      ...over,
+    });
+    prisma.consultBooking.findMany.mockResolvedValue([
+      row(5n, 2 * 24 * 60, { paymentMethod: 'PLAN', amountKobo: 0n }),
+      row(4n, 24 * 60, { status: 'CANCELLED', unscheduledAt: at(-60) }),
+      row(3n, -3 * 24 * 60, { status: 'CANCELLED', unscheduledAt: at(-4 * 24 * 60) }),
+    ]);
+    const portal: any = await service.getClientPortal(1n, 9n);
+    expect(portal.upcoming.map((s: any) => s.id)).toEqual(['5']);
+    expect(portal.past).toEqual([]);
+  });
+
   it('scopes the booking query to the tenant and that client', async () => {
     prisma.profile.findFirst.mockResolvedValue({ id: 9n });
     await service.getClientPortal(1n, 9n);

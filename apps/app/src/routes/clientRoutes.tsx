@@ -9,6 +9,7 @@ const PortalHomePage = lazy(() => import('../pages/client/portal/PortalHomePage'
 const PortalSessionsPage = lazy(() => import('../pages/client/portal/PortalSessionsPage').then((m) => ({ default: m.PortalSessionsPage })));
 const PortalFormsPage = lazy(() => import('../pages/client/portal/PortalFormsPage').then((m) => ({ default: m.PortalFormsPage })));
 const PortalPaymentsPage = lazy(() => import('../pages/client/portal/PortalPaymentsPage').then((m) => ({ default: m.PortalPaymentsPage })));
+const PortalRecapPage = lazy(() => import('../pages/client/portal/PortalRecapPage').then((m) => ({ default: m.PortalRecapPage })));
 const PortalDetailsPage = lazy(() => import('../pages/client/portal/PortalDetailsPage').then((m) => ({ default: m.PortalDetailsPage })));
 const ClientSessionRoomPage = lazy(() => import('../pages/client/ClientSessionRoomPage').then((m) => ({ default: m.ClientSessionRoomPage })));
 const PortalAssessmentPage = lazy(() => import('../pages/client/PortalAssessmentPage').then((m) => ({ default: m.PortalAssessmentPage })));
@@ -54,6 +55,7 @@ export const CLIENT_PORTAL_ROUTES = (
       <Route path="forms" element={<PortalFormsPage />} />
       <Route path="payments" element={<PortalPaymentsPage />} />
       <Route path="details" element={<PortalDetailsPage />} />
+      <Route path="sessions/:id/recap" element={<PortalRecapPage />} />
     </Route>
     <Route path="/portal/assessments/:id" element={<PortalAssessmentPage />} />
     <Route path="/portal/sessions/:id/room" element={<ClientSessionRoomPage />} />

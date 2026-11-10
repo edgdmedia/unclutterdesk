@@ -26,6 +26,10 @@ export interface ClientPaymentRow {
  * time yet (§11.2), whose only record of the money is the plan session. A
  * booking scheduled from a plan session (PLAN) carries no charge and is left
  * out: its money is on the earlier booking or the plan session's own row.
+ *
+ * A booking left for the client to schedule is cancelled in the records, but
+ * its payment was carried to the session, not lost: its row reads as paid,
+ * with the session's new time once one is chosen.
  */
 export async function clientPaymentHistory(prisma: any, tenantId: bigint, clientProfileId: bigint) {
   const [bookings, planSessions] = await Promise.all([
@@ -36,37 +40,59 @@ export async function clientPaymentHistory(prisma: any, tenantId: bigint, client
       take: 200,
     }),
     prisma.planSession.findMany({
-      where: { tenantId, clientProfileId, paidOnBookingId: null },
+      where: { tenantId, clientProfileId },
       include: { booking: { select: { id: true, availability: { select: { startsAt: true } } } } },
       orderBy: { createdAt: 'desc' },
       take: 200,
     }),
   ]);
-  const serviceIds = [...new Set(planSessions.map((p: any) => p.serviceId.toString()))] as string[];
+  const direct = planSessions.filter((p: any) => p.paidOnBookingId === null || p.paidOnBookingId === undefined);
+  const carriedFrom = new Map<string, any>(planSessions.filter((p: any) => p.paidOnBookingId !== null && p.paidOnBookingId !== undefined).map((p: any) => [p.paidOnBookingId.toString(), p]));
+  const serviceIds = [...new Set(direct.map((p: any) => p.serviceId.toString()))] as string[];
   const services: any[] = serviceIds.length
     ? await prisma.consultService.findMany({ where: { tenantId, id: { in: serviceIds.map((x) => BigInt(x)) } }, select: { id: true, title: true } })
     : [];
   const title = new Map(services.map((s) => [s.id.toString(), s.title as string]));
 
+  /** What the booking was charged, which stays the same wherever its session went. */
+  const charge = (b: any) => ({
+    amountKobo: chargedKobo(b).toString(),
+    discountCode: b.discountCodeUsed,
+    paidAt: b.paidAt ? b.paidAt.toISOString() : null,
+    // Enough to match against a bank statement.
+    reference: b.paymentRef,
+    bookedAt: b.createdAt.toISOString(),
+    at: b.createdAt.getTime(),
+  });
+
   const rows: Array<ClientPaymentRow & { at: number }> = [
     ...bookings
       .filter((b: any) => b.paymentMethod !== 'PLAN')
-      .map((b: any) => ({
-        id: `booking-${b.id}`,
-        bookingId: b.id.toString(),
-        planSessionId: null,
-        serviceTitle: b.service.title,
-        sessionAt: b.availability.startsAt.toISOString(),
-        amountKobo: chargedKobo(b).toString(),
-        discountCode: b.discountCodeUsed,
-        status: b.status,
-        paidAt: b.paidAt ? b.paidAt.toISOString() : null,
-        // Enough to match against a bank statement.
-        reference: b.paymentRef,
-        bookedAt: b.createdAt.toISOString(),
-        at: b.createdAt.getTime(),
-      })),
-    ...planSessions.map((p: any) => ({
+      .map((b: any) => {
+        const carried = b.unscheduledAt ? carriedFrom.get(b.id.toString()) : undefined;
+        if (!carried) {
+          return {
+            id: `booking-${b.id}`,
+            bookingId: b.id.toString(),
+            planSessionId: null,
+            serviceTitle: b.service.title,
+            sessionAt: b.availability.startsAt.toISOString(),
+            status: b.status,
+            ...charge(b),
+          };
+        }
+        return {
+          id: `booking-${b.id}`,
+          // The session as it is now: its new booking, or this one until a time is chosen.
+          bookingId: carried.booking ? carried.booking.id.toString() : b.id.toString(),
+          planSessionId: carried.id.toString(),
+          serviceTitle: b.service.title,
+          sessionAt: carried.booking ? carried.booking.availability.startsAt.toISOString() : null,
+          status: carried.status === 'REFUNDED' ? 'CANCELLED' : 'CONFIRMED',
+          ...charge(b),
+        };
+      }),
+    ...direct.map((p: any) => ({
       id: `plan-${p.id}`,
       bookingId: p.booking ? p.booking.id.toString() : null,
       planSessionId: p.id.toString(),

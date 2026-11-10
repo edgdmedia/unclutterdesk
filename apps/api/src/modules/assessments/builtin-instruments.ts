@@ -7,7 +7,7 @@ import type { InstrumentDefinition } from './engine';
  * rules without a deploy. Editing these files does not change an instrument
  * that is already stored.
  *
- * All four are free to use for clinical purposes.
+ * Each one's source says where it comes from and on what terms it is used.
  */
 
 const ids = (prefix: string, n: number) => Array.from({ length: n }, (_, i) => `${prefix}_${i + 1}`);
@@ -297,4 +297,200 @@ export const DASS_21: InstrumentDefinition = {
   ],
 };
 
-export const BUILTIN_INSTRUMENTS: InstrumentDefinition[] = [PHQ_9, GAD_7, PCL_5, DASS_21];
+// ── Anger, aggression and self-esteem ───────────────────────────────────
+// None of these is a diagnostic test. The DAR-5 has a published screening
+// cut-off; the Buss–Perry and Rosenberg scales are read against the client's
+// own earlier scores, so their wording never claims a clinical threshold.
+
+const CHARACTERISTIC = [
+  { value: 1, label: 'Extremely uncharacteristic of me' },
+  { value: 2, label: 'Somewhat uncharacteristic of me' },
+  { value: 3, label: 'Neither uncharacteristic nor characteristic of me' },
+  { value: 4, label: 'Somewhat characteristic of me' },
+  { value: 5, label: 'Extremely characteristic of me' },
+];
+
+const bpaq = (n: number[]) => n.map((i) => `bpaq_${i}`);
+
+export const BPAQ: InstrumentDefinition = {
+  key: 'BPAQ',
+  name: 'Buss–Perry Aggression Questionnaire (BPAQ)',
+  shortName: 'Buss–Perry AQ',
+  measures: 'Aggression: physical, verbal, anger and hostility',
+  instructions: 'Using the scale, say how characteristic or uncharacteristic each statement is of you. There are no right or wrong answers: answer for how you usually are, not how you would like to be.',
+  estimatedMinutes: 10,
+  tier: 'PRO',
+  clientResults: 'summary',
+  source: 'Buss & Perry (1992), Journal of Personality and Social Psychology 63(3), 452–459. Items 9 and 16 are reverse-scored.',
+  scale: CHARACTERISTIC,
+  items: items('bpaq', [
+    'Some of my friends think I am a hothead.',
+    'If I have to resort to violence to protect my rights, I will.',
+    'When people are especially nice to me, I wonder what they want.',
+    'I tell my friends openly when I disagree with them.',
+    'I have become so mad that I have broken things.',
+    "I can't help getting into arguments when people disagree with me.",
+    'I wonder why sometimes I feel so bitter about things.',
+    "Once in a while, I can't control the urge to strike another person.",
+    'I am an even-tempered person.',
+    'I am suspicious of overly friendly strangers.',
+    'I have threatened people I know.',
+    'I flare up quickly but get over it quickly.',
+    'Given enough provocation, I may hit another person.',
+    'When people annoy me, I may tell them what I think of them.',
+    'I am sometimes eaten up with jealousy.',
+    'I can think of no good reason for ever hitting a person.',
+    'At times I feel I have gotten a raw deal out of life.',
+    'I have trouble controlling my temper.',
+    'When frustrated, I let my irritation show.',
+    'I sometimes feel that people are laughing at me behind my back.',
+    'I often find myself disagreeing with people.',
+    'If somebody hits me, I hit back.',
+    'I sometimes feel like a powder keg ready to explode.',
+    'Other people always seem to get the breaks.',
+    'There are people who pushed me so far that we came to blows.',
+    'I know that "friends" talk about me behind my back.',
+    "My friends say that I'm somewhat argumentative.",
+    'Sometimes I fly off the handle for no good reason.',
+    'I get into fights a little more than a normal person.',
+  ]),
+  scoring: {
+    total: { from: 'subscales' },
+    reverse: bpaq([9, 16]),
+    headline: 'total',
+    // No validated clinical cut-off: one band, read against the client's baseline.
+    bands: [
+      {
+        min: 29, label: 'Scored', level: 0,
+        clinicianText: 'Total 29–145; higher means more aggression. There is no clinical cut-off: compare the subscale profile and the client’s own earlier scores.',
+        clientText: 'Thank you for completing this. Your practitioner will go through it with you, and doing it again later will show how things are changing.',
+      },
+    ],
+    subscales: [
+      { key: 'physical', label: 'Physical aggression', items: bpaq([2, 5, 8, 11, 13, 16, 22, 25, 29]) },
+      { key: 'verbal', label: 'Verbal aggression', items: bpaq([4, 6, 14, 21, 27]) },
+      { key: 'anger', label: 'Anger', items: bpaq([1, 9, 12, 18, 19, 23, 28]) },
+      { key: 'hostility', label: 'Hostility', items: bpaq([3, 7, 10, 15, 17, 20, 24, 26]) },
+    ],
+  },
+  rules: [
+    {
+      key: 'urge_to_strike',
+      when: { item: 'bpaq_8', op: '>=', value: 4 },
+      level: 'attention',
+      clinicianMessage: 'Rated losing control of the urge to strike someone as characteristic of them (item 8). Ask about physical aggression and who is at risk.',
+    },
+    {
+      key: 'threatened_people',
+      when: { item: 'bpaq_11', op: '>=', value: 4 },
+      level: 'attention',
+      clinicianMessage: 'Rated threatening people they know as characteristic of them (item 11). Ask about threats and who is at risk.',
+    },
+  ],
+};
+
+export const DAR_5: InstrumentDefinition = {
+  key: 'DAR_5',
+  name: 'Dimensions of Anger Reactions (DAR-5)',
+  shortName: 'DAR-5',
+  measures: 'Anger: how often, how intense, how long, and its effect',
+  instructions: 'Over the last 4 weeks, how much of the time has each of these been true for you?',
+  estimatedMinutes: 2,
+  tier: 'STARTER',
+  clientResults: 'summary',
+  source: 'Forbes et al. (2014), Journal of Affective Disorders 168, 1–7. Free to use. A total of 12 or more is the screening cut-off.',
+  scale: [
+    { value: 1, label: 'None or almost none of the time' },
+    { value: 2, label: 'A little of the time' },
+    { value: 3, label: 'Some of the time' },
+    { value: 4, label: 'A lot of the time' },
+    { value: 5, label: 'All or almost all of the time' },
+  ],
+  items: items('dar5', [
+    'I found myself getting angry at people or situations.',
+    'When I got angry, I got really mad.',
+    'When I got angry, I stayed angry.',
+    'When I got angry at someone, I wanted to hit them.',
+    "My anger prevented me from getting along with people as well as I'd have liked to.",
+  ]),
+  scoring: {
+    total: { from: 'items' },
+    headline: 'total',
+    bands: [
+      {
+        min: 5, label: 'Below the cut-off', level: 0,
+        clinicianText: 'Total 5–11: below the screening cut-off for problematic anger.',
+        clientText: 'Your answers suggest anger has not been causing you many problems over the past four weeks.',
+      },
+      {
+        min: 12, label: 'Above the cut-off', level: 2,
+        clinicianText: 'Total 12 or more: above the screening cut-off for problematic anger. Explore frequency, intensity, duration and impact.',
+        clientText: 'Your answers suggest anger has been affecting you and the people around you. Your practitioner will talk this through with you.',
+      },
+    ],
+  },
+  rules: [
+    {
+      key: 'wanted_to_hit',
+      when: { item: 'dar5_4', op: '>=', value: 4 },
+      level: 'attention',
+      clinicianMessage: 'Wanted to hit someone when angry a lot or all of the time in the last 4 weeks (item 4). Ask about physical aggression and who is at risk.',
+    },
+  ],
+};
+
+export const RSES: InstrumentDefinition = {
+  key: 'RSES',
+  name: 'Rosenberg Self-Esteem Scale (RSES)',
+  shortName: 'Rosenberg',
+  measures: 'Self-esteem',
+  instructions: 'Below is a list of statements about how you feel about yourself in general. Choose how strongly you agree or disagree with each one.',
+  estimatedMinutes: 3,
+  tier: 'STARTER',
+  clientResults: 'summary',
+  source: 'Rosenberg (1965), Society and the Adolescent Self-Image. Free to use. Items 2, 5, 6, 8 and 9 are reverse-scored.',
+  scale: [
+    { value: 3, label: 'Strongly agree' },
+    { value: 2, label: 'Agree' },
+    { value: 1, label: 'Disagree' },
+    { value: 0, label: 'Strongly disagree' },
+  ],
+  items: items('rses', [
+    'On the whole, I am satisfied with myself.',
+    'At times I think I am no good at all.',
+    'I feel that I have a number of good qualities.',
+    'I am able to do things as well as most other people.',
+    'I feel I do not have much to be proud of.',
+    'I certainly feel useless at times.',
+    "I feel that I'm a person of worth, at least on an equal plane with others.",
+    'I wish I could have more respect for myself.',
+    'All in all, I am inclined to feel that I am a failure.',
+    'I take a positive attitude toward myself.',
+  ]),
+  scoring: {
+    total: { from: 'items' },
+    reverse: ['rses_2', 'rses_5', 'rses_6', 'rses_8', 'rses_9'],
+    headline: 'total',
+    // Higher is better here: the lowest band is the one to notice.
+    bands: [
+      {
+        min: 0, label: 'Low self-esteem', level: 2,
+        clinicianText: 'Total below 15 (of 30): low self-esteem. Explore with the client; there is no formal clinical cut-off, so compare over time.',
+        clientText: 'Your answers suggest you are being quite hard on yourself at the moment. Your practitioner will talk this through with you.',
+      },
+      {
+        min: 15, label: 'Typical range', level: 0,
+        clinicianText: 'Total 15–25 (of 30): the usual range of self-esteem.',
+        clientText: 'Your answers suggest you see yourself in a generally balanced way.',
+      },
+      {
+        min: 26, label: 'High self-esteem', level: 0,
+        clinicianText: 'Total 26–30 (of 30): high self-esteem.',
+        clientText: 'Your answers suggest you feel positively about yourself.',
+      },
+    ],
+  },
+  rules: [],
+};
+
+export const BUILTIN_INSTRUMENTS: InstrumentDefinition[] = [PHQ_9, GAD_7, PCL_5, DASS_21, BPAQ, DAR_5, RSES];

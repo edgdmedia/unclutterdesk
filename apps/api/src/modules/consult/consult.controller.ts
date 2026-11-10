@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Patch, Delete, Body, Param, Query, Req, UseGuards, NotFoundException } from '@nestjs/common';
+import { Controller, Get, Post, Patch, Put, Delete, Body, Param, Query, Req, UseGuards, NotFoundException } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { ConsultService } from './consult.service';
 import { ManualPaymentService } from './manual-payment.service';
@@ -13,6 +13,7 @@ import { RolesGuard } from '../../common/roles.guard';
 import { Permissions } from '../../common/permissions';
 import { TenantRequest } from '../../common/middleware/tenant.middleware';
 import { authenticatedProfileId, authenticatedTenantId } from '../../common/authenticated-tenant';
+import { SessionRecapService } from './session-recap.service';
 
 @ApiTags('Consult')
 @Controller('v1/consult')
@@ -24,6 +25,7 @@ export class ConsultController {
     private readonly sessions: SessionDirectoryService,
     private readonly reviewRequests: ReviewRequestService,
     private readonly planSessions: PlanSessionService,
+    private readonly recaps: SessionRecapService,
   ) {}
 
   /** Who the session routes act as: the guard already loaded role and grants. */
@@ -491,11 +493,11 @@ export class ConsultController {
   @Patch('practice/sessions/:bookingId/summary')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @ApiBearerAuth('access-token')
-  @ApiOperation({ summary: 'Internal summary and client recap' })
+  @ApiOperation({ summary: 'Internal summary, client recap and supervision notes' })
   setSessionSummary(
     @Req() req: any,
     @Param('bookingId') bookingId: string,
-    @Body() dto: { internalSummary?: string | null; clientRecap?: string | null },
+    @Body() dto: { internalSummary?: string | null; clientRecap?: string | null; supervisionNotes?: string | null },
   ) {
     if (!/^\d+$/.test(bookingId)) throw new NotFoundException('Session not found');
     return this.sessions.setSummary(authenticatedTenantId(req), this.actor(req), BigInt(bookingId), dto ?? {});
@@ -505,10 +507,30 @@ export class ConsultController {
   @Post('practice/sessions/:bookingId/recap-email')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @ApiBearerAuth('access-token')
-  @ApiOperation({ summary: 'Email the recap to the client' })
+  @ApiOperation({ summary: 'Email the recap to the client, with any attached assessments' })
   sendSessionRecap(@Req() req: any, @Param('bookingId') bookingId: string) {
     if (!/^\d+$/.test(bookingId)) throw new NotFoundException('Session not found');
-    return this.sessions.sendRecap(authenticatedTenantId(req), this.actor(req), BigInt(bookingId));
+    return this.recaps.send(authenticatedTenantId(req), this.actor(req), BigInt(bookingId));
+  }
+
+  @Permissions('sessions.summary')
+  @Get('practice/sessions/:bookingId/recap')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @ApiBearerAuth('access-token')
+  @ApiOperation({ summary: 'The assessments attached to the recap, and those already sent for the session' })
+  getSessionRecap(@Req() req: any, @Param('bookingId') bookingId: string) {
+    if (!/^\d+$/.test(bookingId)) throw new NotFoundException('Session not found');
+    return this.recaps.staffView(authenticatedTenantId(req), this.actor(req), BigInt(bookingId));
+  }
+
+  @Permissions('clinical.record')
+  @Put('practice/sessions/:bookingId/recap-assessments')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @ApiBearerAuth('access-token')
+  @ApiOperation({ summary: 'Choose the assessments sent with the recap' })
+  setRecapAssessments(@Req() req: any, @Param('bookingId') bookingId: string, @Body() dto: { keys?: unknown }) {
+    if (!/^\d+$/.test(bookingId)) throw new NotFoundException('Session not found');
+    return this.recaps.setAttachments(authenticatedTenantId(req), this.actor(req), BigInt(bookingId), dto?.keys);
   }
 
   @Permissions('sessions.edit', 'clinical.record')
@@ -627,6 +649,26 @@ export class ConsultController {
       authenticatedProfileId(req),
       BigInt(bookingId),
     );
+  }
+
+  @Permissions('any.authenticated')
+  @Get('portal/sessions/:bookingId/recap')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @ApiBearerAuth('access-token')
+  @ApiOperation({ summary: 'The signed-in client’s recap of one session, once sent' })
+  portalRecap(@Req() req: any, @Param('bookingId') bookingId: string) {
+    if (!/^\d+$/.test(bookingId)) throw new NotFoundException('Recap not found');
+    return this.recaps.forClient(authenticatedTenantId(req), authenticatedProfileId(req), BigInt(bookingId));
+  }
+
+  @Permissions('any.authenticated')
+  @Put('portal/sessions/:bookingId/recap/ticks')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @ApiBearerAuth('access-token')
+  @ApiOperation({ summary: 'The signed-in client ticking off their recap' })
+  portalRecapTicks(@Req() req: any, @Param('bookingId') bookingId: string, @Body() dto: { ticks?: unknown }) {
+    if (!/^\d+$/.test(bookingId)) throw new NotFoundException('Recap not found');
+    return this.recaps.saveTicks(authenticatedTenantId(req), authenticatedProfileId(req), BigInt(bookingId), dto?.ticks);
   }
 
   @Permissions('any.authenticated')

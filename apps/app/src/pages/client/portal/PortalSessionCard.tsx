@@ -3,6 +3,7 @@ import { API_BASE } from '../../../utils/apiClient';
 import { AddToCalendar } from '../../public/booking/AddToCalendar';
 import { JoinButton } from '../../../components/video/JoinButton';
 import { DateTile } from './DateTile';
+import { RecapLink } from './RecapLink';
 import { formatMoney, formatTimeRange } from './portalFormat';
 import type { PortalSession } from './PortalDataContext';
 
@@ -40,6 +41,7 @@ export function PortalSessionCard({ session, onReschedule }: { session: PortalSe
           Reschedule
         </button>
       ) : null}
+      {session.recapSentAt ? <RecapLink id={session.id} /> : null}
       {session.status === 'CONFIRMED' && session.format !== 'IN_PERSON' ? (
         <JoinButton opensAt={session.joinOpensAt} startsAt={session.startsAt} endsAt={session.endsAt} to={`/portal/sessions/${session.id}/room`} />
       ) : null}

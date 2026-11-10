@@ -73,6 +73,9 @@ describe('AssessmentService', () => {
         ['GAD_7', true, true],
         ['PCL_5', false, false],
         ['DASS_21', false, false],
+        ['BPAQ', false, false],
+        ['DAR_5', false, true],
+        ['RSES', false, true],
       ]);
       expect(lib[0]).not.toHaveProperty('scoring');
       expect(lib[0]).not.toHaveProperty('rules');

@@ -9,7 +9,8 @@ import { tenantWebOrigin } from '../../common/origins';
 import { formatNaira } from '../billing/subscription-plans';
 import { priceFor, type Format } from './formats';
 import { isUnpaid, moneyAfterServiceChange } from './service-change';
-import { decryptNoteFields } from '../../common/field-encryption';
+import { decryptField, decryptNoteFields, encryptField } from '../../common/field-encryption';
+import { normaliseRichInput } from '../../common/rich-text';
 import { returnPlanSessionOnCancel } from './plan-session-rules';
 import { clientPaymentHistory } from './client-payments';
 
@@ -71,6 +72,9 @@ export class SessionDirectoryService {
       startsAt: b.availability.startsAt.toISOString(),
       endsAt: b.availability.endsAt.toISOString(),
       status: b.status as string,
+      // Left for the client to choose a new time: cancelled in the records
+      // (its money stays traceable), but moved, not called off.
+      unscheduledAt: b.unscheduledAt ? b.unscheduledAt.toISOString() : null,
       paymentMethod: b.paymentMethod as string,
       amountKobo: b.amountKobo !== null && b.amountKobo !== undefined ? String(b.amountKobo) : null,
       holdExpiresAt: b.holdExpiresAt ? b.holdExpiresAt.toISOString() : null,
@@ -164,9 +168,10 @@ export class SessionDirectoryService {
         : null,
       internalSummary: b.internalSummary,
       clientRecap: b.clientRecap,
+      // Only for clinical staff; never sent to the desk at all.
+      ...(actor.clinical ? { supervisionNotes: decryptField(b.supervisionNotes) } : {}),
       clientRecapSentAt: b.clientRecapSentAt ? b.clientRecapSentAt.toISOString() : null,
       reviewRequestedAt: b.reviewRequestedAt ? b.reviewRequestedAt.toISOString() : null,
-      unscheduledAt: b.unscheduledAt ? b.unscheduledAt.toISOString() : null,
       can: {
         edit: actor.viewAll === true,
         summary: actor.clinical === true,
@@ -554,48 +559,29 @@ export class SessionDirectoryService {
     tenantId: bigint,
     actor: SessionActor,
     bookingId: bigint,
-    dto: { internalSummary?: string | null; clientRecap?: string | null },
+    dto: { internalSummary?: string | null; clientRecap?: string | null; supervisionNotes?: string | null },
   ) {
+    // Points for supervision are about the practitioner's own work: clinical staff only.
+    if ('supervisionNotes' in dto && !actor.clinical) throw new ForbiddenException('Only clinical staff can write supervision notes.');
     const b = await this.prisma.consultBooking.findFirst({
       where: { id: bookingId, tenantId, ...(actor.viewAll ? {} : { availability: { providerProfileId: actor.profileId } }) },
       select: { id: true },
     });
     if (!b) throw new NotFoundException('Session not found');
-    const clean = (v: unknown) => (v === null || v === undefined ? null : String(v).trim().slice(0, 4000) || null);
+    const clean = (v: unknown, what: string) => {
+      try {
+        return normaliseRichInput(v, what);
+      } catch (err) {
+        throw new BadRequestException((err as Error).message);
+      }
+    };
     const data: Record<string, unknown> = {};
-    if ('internalSummary' in dto) data.internalSummary = clean(dto.internalSummary);
-    if ('clientRecap' in dto) data.clientRecap = clean(dto.clientRecap);
+    if ('internalSummary' in dto) data.internalSummary = clean(dto.internalSummary, 'The internal summary');
+    if ('clientRecap' in dto) data.clientRecap = clean(dto.clientRecap, 'The recap');
+    // Encrypted like the SOAP note.
+    if ('supervisionNotes' in dto) data.supervisionNotes = encryptField(clean(dto.supervisionNotes, 'The supervision notes'));
     await this.prisma.consultBooking.update({ where: { id: b.id }, data });
     return { id: b.id.toString() };
-  }
-
-  async sendRecap(tenantId: bigint, actor: SessionActor, bookingId: bigint) {
-    const b = await this.prisma.consultBooking.findFirst({
-      where: { id: bookingId, tenantId, ...(actor.viewAll ? {} : { availability: { providerProfileId: actor.profileId } }) },
-      include: {
-        client: { select: { id: true, email: true, firstName: true } },
-        service: { select: { title: true } },
-        availability: { select: { startsAt: true } },
-      },
-    });
-    if (!b) throw new NotFoundException('Session not found');
-    if (!b.clientRecap?.trim()) throw new BadRequestException('Write the recap before sending it.');
-    const tenant = await this.prisma.tenant.findUnique({
-      where: { id: tenantId },
-      select: { name: true, slug: true, customDomain: true, customDomainStatus: true },
-    });
-    await this.notifications.sendEmail({
-      to: b.client.email,
-      type: 'bookings.session_recap',
-      title: `Your recap from ${b.service.title}`,
-      message: `${b.client.firstName ?? 'There'}, here is the recap from your session on ${b.availability.startsAt.toDateString()}:\n\n${b.clientRecap.trim()}\n\n— ${tenant?.name ?? 'Your practice'}`,
-      link: `${tenantWebOrigin(tenant as any)}/portal`,
-      actionLabel: 'View my sessions',
-      tenantId,
-      profileId: b.client.id,
-    });
-    await this.prisma.consultBooking.update({ where: { id: b.id }, data: { clientRecapSentAt: new Date() } });
-    return { id: b.id.toString(), sentAt: new Date().toISOString() };
   }
 
   /** One client's sessions for the client page — no clinical text. */

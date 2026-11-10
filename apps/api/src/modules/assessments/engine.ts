@@ -72,6 +72,13 @@ export interface InstrumentDefinition {
     total: { from: 'items' | 'subscales'; items?: string[]; multiplier?: number };
     bands?: Band[];
     subscales?: SubscaleDefinition[];
+    /**
+     * Questions worded the other way round (e.g. "I am an even-tempered
+     * person" on an aggression scale): their answer is flipped on the scale
+     * before any total or subscale is added up. Rules on a single question
+     * still read the answer the client gave.
+     */
+    reverse?: string[];
     /** How the headline is chosen: the total's band, or the most severe subscale. */
     headline: 'total' | 'worst_subscale';
     /** Headline when every subscale is in its lowest band. */
@@ -185,6 +192,8 @@ export function validateDefinition(def: unknown): string[] {
     if (!['items', 'subscales'].includes(s.total?.from)) errors.push('scoring.total.from must be items or subscales.');
     for (const id of s.total?.items ?? []) if (!itemIds.has(id)) errors.push(`scoring.total.items names an unknown question ${id}.`);
     checkBands('scoring.bands', s.bands, errors);
+    if (s.reverse !== undefined && !Array.isArray(s.reverse)) errors.push('scoring.reverse must be a list of question ids.');
+    for (const id of Array.isArray(s.reverse) ? s.reverse : []) if (!itemIds.has(id)) errors.push(`scoring.reverse names an unknown question ${id}.`);
     for (const sub of s.subscales ?? []) {
       if (!sub?.key || !sub?.label) errors.push('Each subscale needs a key and a label.');
       if (subscaleKeys.has(sub.key)) errors.push(`Subscale ${sub.key} is listed twice.`);
@@ -236,14 +245,26 @@ function bandFor(score: number, bands: Band[] | undefined): Band | null {
 }
 
 const maxValue = (def: InstrumentDefinition) => Math.max(...def.scale.map((s) => s.value));
+const minValue = (def: InstrumentDefinition) => Math.min(...def.scale.map((s) => s.value));
+
+/** The answers as they count towards scores: reverse-worded questions flipped on the scale. */
+function scoredAnswers(def: InstrumentDefinition, answers: Record<string, number>): Record<string, number> {
+  const reverse = def.scoring.reverse ?? [];
+  if (!reverse.length) return answers;
+  const flip = minValue(def) + maxValue(def);
+  const out = { ...answers };
+  for (const id of reverse) if (out[id] !== undefined) out[id] = flip - out[id];
+  return out;
+}
 const sum = (answers: Record<string, number>, ids: string[]) => ids.reduce((t, id) => t + (answers[id] ?? 0), 0);
 
 /** Applies an instrument's definition to answers already checked by validateAnswers. */
 export function score(def: InstrumentDefinition, answers: Record<string, number>): AssessmentResult {
   const top = maxValue(def);
+  const counted = scoredAnswers(def, answers);
   const subscales: SubscaleResult[] = (def.scoring.subscales ?? []).map((sub) => {
     const m = sub.multiplier ?? 1;
-    const value = sum(answers, sub.items) * m;
+    const value = sum(counted, sub.items) * m;
     const band = bandFor(value, sub.bands);
     return {
       key: sub.key,
@@ -264,7 +285,7 @@ export function score(def: InstrumentDefinition, answers: Record<string, number>
   } else {
     const ids = def.scoring.total.items ?? def.items.map((i) => i.id);
     const m = def.scoring.total.multiplier ?? 1;
-    totalScore = sum(answers, ids) * m;
+    totalScore = sum(counted, ids) * m;
     maxScore = ids.length * top * m;
   }
 

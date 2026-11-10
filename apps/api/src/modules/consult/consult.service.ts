@@ -1917,7 +1917,9 @@ export class ConsultService {
     const manualDetails = bookings.some((b) => b.paymentMethod === 'MANUAL' && b.status === 'PENDING_PAYMENT')
       ? await this.manualPayments.available(tenantId)
       : null;
-    const mapped = bookings.map((booking) => ({
+    // A session left for the client to schedule is not a session of its own:
+    // it is in "to schedule", and then at the time the client chooses.
+    const mapped = bookings.filter((booking) => !booking.unscheduledAt).map((booking) => ({
       id: booking.id.toString(),
       icalToken: CalendarService.icalToken(booking.id),
       serviceTitle: booking.service.title,
@@ -1930,6 +1932,8 @@ export class ConsultService {
       // VID-02: when an online session's room is open. Clients join in the app, never by a provider link.
       ...this.joinWindowFields(booking, practice?.joinOpensMinutesBefore),
       paymentMethod: booking.paymentMethod,
+      // When the practitioner sent this session's recap: the portal links to it.
+      recapSentAt: booking.clientRecapSentAt ? booking.clientRecapSentAt.toISOString() : null,
       // How to pay a transfer that is still due.
       manualPayment:
         booking.paymentMethod === 'MANUAL' && booking.status === 'PENDING_PAYMENT'

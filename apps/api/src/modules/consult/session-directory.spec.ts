@@ -1,5 +1,6 @@
-import { describe, expect, it, vi } from 'vitest';
-import { NotFoundException } from '@nestjs/common';
+import { decryptField, encryptField, isEncrypted, resetFieldEncryptionKey } from '../../common/field-encryption';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import { ForbiddenException, NotFoundException } from '@nestjs/common';
 import { SessionDirectoryService } from './session-directory.service';
 
 const TENANT = 1n;
@@ -85,6 +86,14 @@ describe('listSessions', () => {
     const { service } = make({ booking: { createdByProfileId: 9n } });
     const rows = await service.listSessions(TENANT, DESK, {});
     expect(rows[0].bookedBy).toBe('Frank Desk');
+  });
+
+  // So the lists can say "Open": the record is cancelled, the session was moved.
+  it('says when a session was left for the client to choose a new time', async () => {
+    const left = make({ booking: { status: 'CANCELLED', unscheduledAt: new Date('2026-11-06T09:00:00Z') } });
+    expect((await left.service.listSessions(TENANT, DESK, {}))[0]).toMatchObject({ status: 'CANCELLED', unscheduledAt: '2026-11-06T09:00:00.000Z' });
+    const booked = make();
+    expect((await booked.service.listSessions(TENANT, DESK, {}))[0].unscheduledAt).toBeNull();
   });
 });
 
@@ -417,22 +426,44 @@ describe('summaries', () => {
       clientRecap: 'Practised the 4-7-8 breath.',
     });
   });
-  it('refuses to send a recap that was never written', async () => {
-    const { service } = make();
-    await expect(service.sendRecap(TENANT, DESK, 900n)).rejects.toThrow(/Write the recap/i);
-  });
-  it('emails the client and stamps the send', async () => {
-    const { service, prisma, notifications } = make({ booking: { clientRecap: 'Well done this week.' } });
+  it('keeps a formatted recap whole, however long', async () => {
+    const { service, prisma } = make();
     prisma.consultBooking.update = vi.fn().mockResolvedValue({ id: 900n });
-    prisma.tenant = { findUnique: vi.fn().mockResolvedValue({ name: 'Smith Therapy', slug: 'dr-smith', customDomain: null, customDomainStatus: null }) };
-    await service.sendRecap(TENANT, { profileId: ACTOR, viewAll: false, clinical: true }, 900n);
-    expect(notifications.sendEmail).toHaveBeenCalledWith(expect.objectContaining({
-      to: 'ada@example.com',
-      type: 'bookings.session_recap',
-      profileId: 40n,
-    }));
-    expect(prisma.consultBooking.update.mock.calls[0][0].data.clientRecapSentAt).toBeInstanceOf(Date);
+    const long = JSON.stringify({ type: 'doc', content: Array.from({ length: 200 }, (_, i) => ({ type: 'paragraph', content: [{ type: 'text', text: `Step ${i}: breathe slowly and notice.` }] })) });
+    await service.setSummary(TENANT, { profileId: ACTOR, viewAll: false, clinical: true }, 900n, { clientRecap: long });
+    expect(JSON.parse(prisma.consultBooking.update.mock.calls[0][0].data.clientRecap).content).toHaveLength(200);
   });
+
+  // Points for supervision are about the practitioner's own work.
+  const withKey = () => {
+    process.env.FIELD_ENCRYPTION_KEY = 'a'.repeat(64);
+    resetFieldEncryptionKey();
+  };
+  afterEach(() => {
+    delete process.env.FIELD_ENCRYPTION_KEY;
+    resetFieldEncryptionKey();
+  });
+
+  it('stores supervision notes encrypted, for clinical staff only', async () => {
+    withKey();
+    const { service, prisma } = make();
+    prisma.consultBooking.update = vi.fn().mockResolvedValue({ id: 900n });
+    await service.setSummary(TENANT, { profileId: ACTOR, viewAll: false, clinical: true }, 900n, { supervisionNotes: 'Peer client: watch my pull to perform.' });
+    const stored = prisma.consultBooking.update.mock.calls[0][0].data.supervisionNotes;
+    expect(isEncrypted(stored)).toBe(true);
+    expect(decryptField(stored)).toBe('Peer client: watch my pull to perform.');
+    await expect(service.setSummary(TENANT, DESK, 900n, { supervisionNotes: 'x' })).rejects.toBeInstanceOf(ForbiddenException);
+  });
+
+  it('gives supervision notes to clinical staff and never to the desk', async () => {
+    withKey();
+    const { service } = make({ booking: { supervisionNotes: encryptField('Check readiness before going deeper.') } });
+    const clinical = await service.getSession(TENANT, { profileId: ACTOR, viewAll: false, clinical: true }, 900n);
+    expect(clinical.supervisionNotes).toBe('Check readiness before going deeper.');
+    const desk = await service.getSession(TENANT, DESK, 900n);
+    expect(desk).not.toHaveProperty('supervisionNotes');
+  });
+
 });
 
 describe('client history', () => {

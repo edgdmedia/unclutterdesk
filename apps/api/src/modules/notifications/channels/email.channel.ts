@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { MailService } from '../mail/mail.service';
 import { SenderIdentityService } from '../mail/sender-identity.service';
 import { absoluteUrl } from '../../../common/origins';
+import { richToEmailHtml, richToText } from '../../../common/rich-text';
 import {
   ChannelKey,
   ChannelRecipient,
@@ -68,6 +69,7 @@ export class EmailChannel implements NotificationChannel {
   /** The plain-text version: the message, then each detail and link on its own line. */
   private plainText(payload: ChannelPayload): string {
     const parts = [payload.message];
+    if (payload.richBody) parts.push(richToText(payload.richBody));
     if (payload.details?.length) parts.push(payload.details.map((d) => `${d.label}: ${d.value}`).join('\n'));
     if (payload.link) parts.push(`${payload.actionLabel || 'Open'}: ${absoluteUrl(payload.link)}`);
     if (payload.links?.length) parts.push(payload.links.map((l) => `${l.label}: ${absoluteUrl(l.url)}`).join('\n'));
@@ -97,6 +99,8 @@ export class EmailChannel implements NotificationChannel {
             .join('')}
         </table>`
       : '';
+    // Built from the cleaned document with every piece of text escaped (common/rich-text.ts).
+    const richBody = payload.richBody ? `<div style="margin-top:18px;">${richToEmailHtml(payload.richBody)}</div>` : '';
     const extraLinks = payload.links?.length
       ? `<div style="margin-top:18px;font-size:14px;line-height:1.9;">
           ${payload.links
@@ -124,6 +128,7 @@ export class EmailChannel implements NotificationChannel {
       ${logo}
       <div style="font-size:22px;font-weight:700;color:#0F172A;">${escapeHtml(payload.title)}</div>
       <div style="margin-top:12px;font-size:15px;line-height:1.7;color:#334155;white-space:pre-line;">${escapeHtml(payload.message)}</div>
+      ${richBody}
       ${details}
       ${code}
       ${link}
