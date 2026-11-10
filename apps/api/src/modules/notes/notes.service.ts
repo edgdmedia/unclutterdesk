@@ -1,6 +1,21 @@
 import { Injectable, BadRequestException, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../../common/prisma/prisma.service';
 import { decryptNoteFields, encryptNoteFields } from '../../common/field-encryption';
+import { normaliseRichInput } from '../../common/rich-text';
+
+/** The four SOAP sections as they are stored: formatted documents cleaned to the allowed shape (common/rich-text.ts). */
+function soapSections(dto: { subjective?: string; objective?: string; assessment?: string; plan?: string }) {
+  const out: { subjective?: string | null; objective?: string | null; assessment?: string | null; plan?: string | null } = {};
+  for (const [field, label] of [['subjective', 'Subjective'], ['objective', 'Objective'], ['assessment', 'Assessment'], ['plan', 'Plan']] as const) {
+    if (dto[field] === undefined) continue;
+    try {
+      out[field] = normaliseRichInput(dto[field], label);
+    } catch (err) {
+      throw new BadRequestException((err as Error).message);
+    }
+  }
+  return out;
+}
 
 @Injectable()
 export class NotesService {
@@ -35,6 +50,8 @@ export class NotesService {
         })
       : null;
 
+    const sections = soapSections(dto);
+
     if (note && note.isLocked) {
       throw new BadRequestException('This clinical note has been locked and cannot be edited');
     }
@@ -45,12 +62,7 @@ export class NotesService {
         data: {
           // The narrative is encrypted before it reaches the database; see
           // common/field-encryption.ts.
-          ...encryptNoteFields({
-            subjective: dto.subjective,
-            objective: dto.objective,
-            assessment: dto.assessment,
-            plan: dto.plan,
-          }),
+          ...encryptNoteFields(sections),
           diagnosisCode: dto.diagnosisCode,
         },
       });
@@ -61,12 +73,7 @@ export class NotesService {
           bookingId,
           clientProfileId,
           authorProfileId,
-          ...encryptNoteFields({
-            subjective: dto.subjective,
-            objective: dto.objective,
-            assessment: dto.assessment,
-            plan: dto.plan,
-          }),
+          ...encryptNoteFields(sections),
           diagnosisCode: dto.diagnosisCode,
         },
       });

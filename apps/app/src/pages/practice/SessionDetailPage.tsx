@@ -6,6 +6,8 @@ import { Card, Eyebrow, Page, PageHeader, StatTile, StatusBadge, useToast } from
 import { PaymentChip } from '../../components/booking/PaymentChip';
 import { EditSessionDialog } from '../../components/booking/EditSessionDialog';
 import { SessionNoteEditor } from '../../components/notes/SessionNoteEditor';
+import { RichTextEditor } from '../../components/richText/RichTextEditor';
+import { hasRichText } from '../../components/richText/richDoc';
 import { api } from '../../utils/apiClient';
 import type { SessionRow } from './SessionsPage';
 import { activeDisplayPrefs, formatWhen } from '../../utils/displayFormat';
@@ -21,6 +23,8 @@ interface SessionDetail extends SessionRow {
   note: { id: string; status: 'DRAFT' | 'COMPLETED'; subjective?: string; objective?: string; assessment?: string; plan?: string } | null;
   internalSummary: string | null;
   clientRecap: string | null;
+  /** Only sent to clinical staff. */
+  supervisionNotes?: string | null;
   clientRecapSentAt: string | null;
   /** When the client was emailed a review request for this session; once per session. */
   reviewRequestedAt?: string | null;
@@ -45,6 +49,7 @@ export function SessionDetailPage() {
   const [error, setError] = useState<string | null>(null);
   const [internal, setInternal] = useState('');
   const [recap, setRecap] = useState('');
+  const [supervision, setSupervision] = useState('');
   const [busy, setBusy] = useState(false);
   const [editing, setEditing] = useState(false);
   // BKG-06: whether the client's default forms are in yet.
@@ -56,6 +61,7 @@ export function SessionDetailPage() {
         setD(r);
         setInternal(r.internalSummary ?? '');
         setRecap(r.clientRecap ?? '');
+        setSupervision(r.supervisionNotes ?? '');
       })
       .catch((err) => setError(err instanceof Error ? err.message : 'Could not load this session'));
     api
@@ -75,6 +81,10 @@ export function SessionDetailPage() {
   useEffect(() => {
     if (loaded && hash === '#note') document.getElementById('note')?.scrollIntoView?.({ block: 'start' });
   }, [loaded, hash]);
+
+  /** The three texts as they are on screen. */
+  const saveSummary = () =>
+    api.patch(`/v1/consult/practice/sessions/${id}/summary`, { internalSummary: internal, clientRecap: recap, supervisionNotes: supervision });
 
   async function act(fn: () => Promise<unknown>, ok: string) {
     setBusy(true);
@@ -103,8 +113,6 @@ export function SessionDetailPage() {
       </Page>
     );
   }
-
-  const area = 'w-full px-3 py-2 rounded-[12px] bg-[var(--desk-surface)] border border-[var(--desk-border)] text-[13px] font-medium text-[var(--desk-text)] outline-none';
 
   return (
     <Page
@@ -279,14 +287,18 @@ export function SessionDetailPage() {
       {d.can.summary ? (
         <Card padding="p-[22px]" className="space-y-3">
           <Eyebrow>SUMMARY</Eyebrow>
-          <label className="block text-[11.5px] font-bold text-slate-500 uppercase">
-            Internal summary (staff only)
-            <textarea rows={3} className={area} value={internal} onChange={(e) => setInternal(e.target.value)} placeholder="What happened, for the file." />
-          </label>
-          <label className="block text-[11.5px] font-bold text-slate-500 uppercase">
-            Client recap
-            <textarea rows={3} className={area} value={recap} onChange={(e) => setRecap(e.target.value)} placeholder="Written for the client: what was covered, what to practise." />
-          </label>
+          <div className="space-y-1.5">
+            <div className="text-[11.5px] font-bold text-slate-500 uppercase">Internal summary (staff only)</div>
+            <RichTextEditor label="Internal summary" value={internal} onChange={setInternal} placeholder="What happened, for the file." minHeight={64} />
+          </div>
+          <div className="space-y-1.5">
+            <div className="text-[11.5px] font-bold text-slate-500 uppercase">Supervision notes (clinical staff only)</div>
+            <RichTextEditor label="Supervision notes" value={supervision} onChange={setSupervision} placeholder="Points to take to supervision: the relationship, your own process, risk, pacing." minHeight={64} />
+          </div>
+          <div className="space-y-1.5">
+            <div className="text-[11.5px] font-bold text-slate-500 uppercase">Client recap</div>
+            <RichTextEditor label="Client recap" value={recap} onChange={setRecap} placeholder="Written for the client: what was covered, what to practise." minHeight={96} />
+          </div>
           {d.clientRecapSentAt ? (
             <p className="text-[11.5px] text-emerald-700 font-semibold">Recap sent {new Date(d.clientRecapSentAt).toLocaleDateString('en-GB')}.</p>
           ) : null}
@@ -294,15 +306,16 @@ export function SessionDetailPage() {
             <button
               type="button"
               disabled={busy}
-              onClick={() => void act(() => api.patch(`/v1/consult/practice/sessions/${d.id}/summary`, { internalSummary: internal, clientRecap: recap }), 'Summary saved')}
+              onClick={() => void act(saveSummary, 'Summary saved')}
               className="h-[38px] px-4 rounded-[12px] bg-[var(--desk-pine-600)] text-white text-[12.5px] font-bold cursor-pointer disabled:opacity-50"
             >
               Save
             </button>
             <button
               type="button"
-              disabled={busy || !recap.trim()}
-              onClick={() => void act(() => api.post(`/v1/consult/practice/sessions/${d.id}/recap-email`, {}), 'Recap emailed to the client')}
+              disabled={busy || !hasRichText(recap)}
+              // What is on screen is what is sent: save first.
+              onClick={() => void act(async () => { await saveSummary(); return api.post(`/v1/consult/practice/sessions/${d.id}/recap-email`, {}); }, 'Recap emailed to the client')}
               className="h-[38px] px-4 rounded-[12px] bg-white border border-[var(--desk-pine-200)] text-[var(--desk-text)] text-[12.5px] font-bold cursor-pointer disabled:opacity-50"
             >
               Send recap

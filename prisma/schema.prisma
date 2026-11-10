@@ -517,6 +517,8 @@ model ConsultBooking {
   /// The recap written for the client; emailed on request, never automatically.
   clientRecap                 String?      @db.Text
   clientRecapSentAt           DateTime?
+  /// Points for the practitioner's clinical supervision. Encrypted; clinical staff only.
+  supervisionNotes            String?      @db.Text
   /// When staff emailed the client a review request for this session. Never
   /// automatic (therapy ethics: no pressure on a client still in care); once
   /// per session.

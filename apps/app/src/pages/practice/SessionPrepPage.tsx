@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { JoinButton } from '../../components/video/JoinButton';
+import { RichTextView } from '../../components/richText/RichTextView';
 import { useNavigate, useParams } from 'react-router-dom';
 import { ArrowLeft, Video } from 'lucide-react';
 import { Eyebrow, Page, PageHeader } from '@unclutterdesk/ui';
@@ -142,8 +143,8 @@ export function SessionPrepPage() {
                   <div className="flex items-center justify-between"><Eyebrow>WHERE YOU LEFT OFF</Eyebrow>{prep.latestNote ? <span className="text-[11.5px] text-[var(--desk-text-subtle)] font-medium">{formatDateTime(prep.latestNote.createdAt)}</span> : null}</div>
                   {prep.latestNote ? (
                     <div className="mt-4 grid grid-cols-2 gap-3">
-                      <div className="rounded-[16px] bg-[var(--desk-surface)] shadow-[inset_0_0_0_1px_#E2E8F0] p-[14px_16px]"><span className="text-[10px] font-black tracking-[0.14em] uppercase text-[var(--desk-text-subtle)]">Subjective</span><p className="mt-2 text-[12.5px] text-[var(--desk-text-body)] font-medium leading-relaxed">{prep.latestNote.subjective || 'No subjective note saved.'}</p></div>
-                      <div className="rounded-[16px] bg-[var(--desk-surface)] shadow-[inset_0_0_0_1px_#E2E8F0] p-[14px_16px]"><span className="text-[10px] font-black tracking-[0.14em] uppercase text-[var(--desk-text-subtle)]">Plan</span><p className="mt-2 text-[12.5px] text-[var(--desk-text-body)] font-medium leading-relaxed">{prep.latestNote.plan || 'No plan saved.'}</p></div>
+                      <div className="rounded-[16px] bg-[var(--desk-surface)] shadow-[inset_0_0_0_1px_#E2E8F0] p-[14px_16px]"><span className="text-[10px] font-black tracking-[0.14em] uppercase text-[var(--desk-text-subtle)]">Subjective</span><RichTextView className="mt-2" value={prep.latestNote.subjective} empty={<p className="mt-2 text-[12.5px] text-[var(--desk-text-body)] font-medium">No subjective note saved.</p>} /></div>
+                      <div className="rounded-[16px] bg-[var(--desk-surface)] shadow-[inset_0_0_0_1px_#E2E8F0] p-[14px_16px]"><span className="text-[10px] font-black tracking-[0.14em] uppercase text-[var(--desk-text-subtle)]">Plan</span><RichTextView className="mt-2" value={prep.latestNote.plan} empty={<p className="mt-2 text-[12.5px] text-[var(--desk-text-body)] font-medium">No plan saved.</p>} /></div>
                     </div>
                   ) : <div className="mt-4 text-sm text-[var(--desk-text-muted)] font-medium">No previous clinical note found for this client yet.</div>}
                 </div>

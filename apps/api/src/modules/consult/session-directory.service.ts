@@ -9,7 +9,8 @@ import { tenantWebOrigin } from '../../common/origins';
 import { formatNaira } from '../billing/subscription-plans';
 import { priceFor, type Format } from './formats';
 import { isUnpaid, moneyAfterServiceChange } from './service-change';
-import { decryptNoteFields } from '../../common/field-encryption';
+import { decryptField, decryptNoteFields, encryptField } from '../../common/field-encryption';
+import { normaliseRichInput, parseRich, richToText } from '../../common/rich-text';
 import { returnPlanSessionOnCancel } from './plan-session-rules';
 import { clientPaymentHistory } from './client-payments';
 
@@ -167,6 +168,8 @@ export class SessionDirectoryService {
         : null,
       internalSummary: b.internalSummary,
       clientRecap: b.clientRecap,
+      // Only for clinical staff; never sent to the desk at all.
+      ...(actor.clinical ? { supervisionNotes: decryptField(b.supervisionNotes) } : {}),
       clientRecapSentAt: b.clientRecapSentAt ? b.clientRecapSentAt.toISOString() : null,
       reviewRequestedAt: b.reviewRequestedAt ? b.reviewRequestedAt.toISOString() : null,
       can: {
@@ -556,17 +559,27 @@ export class SessionDirectoryService {
     tenantId: bigint,
     actor: SessionActor,
     bookingId: bigint,
-    dto: { internalSummary?: string | null; clientRecap?: string | null },
+    dto: { internalSummary?: string | null; clientRecap?: string | null; supervisionNotes?: string | null },
   ) {
+    // Points for supervision are about the practitioner's own work: clinical staff only.
+    if ('supervisionNotes' in dto && !actor.clinical) throw new ForbiddenException('Only clinical staff can write supervision notes.');
     const b = await this.prisma.consultBooking.findFirst({
       where: { id: bookingId, tenantId, ...(actor.viewAll ? {} : { availability: { providerProfileId: actor.profileId } }) },
       select: { id: true },
     });
     if (!b) throw new NotFoundException('Session not found');
-    const clean = (v: unknown) => (v === null || v === undefined ? null : String(v).trim().slice(0, 4000) || null);
+    const clean = (v: unknown, what: string) => {
+      try {
+        return normaliseRichInput(v, what);
+      } catch (err) {
+        throw new BadRequestException((err as Error).message);
+      }
+    };
     const data: Record<string, unknown> = {};
-    if ('internalSummary' in dto) data.internalSummary = clean(dto.internalSummary);
-    if ('clientRecap' in dto) data.clientRecap = clean(dto.clientRecap);
+    if ('internalSummary' in dto) data.internalSummary = clean(dto.internalSummary, 'The internal summary');
+    if ('clientRecap' in dto) data.clientRecap = clean(dto.clientRecap, 'The recap');
+    // Encrypted like the SOAP note.
+    if ('supervisionNotes' in dto) data.supervisionNotes = encryptField(clean(dto.supervisionNotes, 'The supervision notes'));
     await this.prisma.consultBooking.update({ where: { id: b.id }, data });
     return { id: b.id.toString() };
   }
@@ -581,7 +594,8 @@ export class SessionDirectoryService {
       },
     });
     if (!b) throw new NotFoundException('Session not found');
-    if (!b.clientRecap?.trim()) throw new BadRequestException('Write the recap before sending it.');
+    const recapText = richToText(parseRich(b.clientRecap)).trim();
+    if (!recapText) throw new BadRequestException('Write the recap before sending it.');
     const tenant = await this.prisma.tenant.findUnique({
       where: { id: tenantId },
       select: { name: true, slug: true, customDomain: true, customDomainStatus: true },
@@ -590,7 +604,7 @@ export class SessionDirectoryService {
       to: b.client.email,
       type: 'bookings.session_recap',
       title: `Your recap from ${b.service.title}`,
-      message: `${b.client.firstName ?? 'There'}, here is the recap from your session on ${b.availability.startsAt.toDateString()}:\n\n${b.clientRecap.trim()}\n\n— ${tenant?.name ?? 'Your practice'}`,
+      message: `${b.client.firstName ?? 'There'}, here is the recap from your session on ${b.availability.startsAt.toDateString()}:\n\n${recapText}\n\n— ${tenant?.name ?? 'Your practice'}`,
       link: `${tenantWebOrigin(tenant as any)}/portal`,
       actionLabel: 'View my sessions',
       tenantId,

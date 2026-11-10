@@ -148,6 +148,25 @@ describe('NotesService tenant isolation', () => {
       await expect(service.saveSOAPNote(TENANT, 3n, dto)).rejects.toThrow(BadRequestException);
       expect(prisma.clinicalNote.update).not.toHaveBeenCalled();
     });
+
+    // The editor sends a small document; only the allowed shape is stored (common/rich-text.ts).
+    it('stores a formatted section cleaned of anything the notes do not use', async () => {
+      prisma.clinicalNote.create.mockResolvedValue({ ...noteRow, id: 1n });
+      const subjective = JSON.stringify({ type: 'doc', content: [
+        { type: 'paragraph', content: [{ type: 'text', text: 'Background', marks: [{ type: 'bold' }, { type: 'link', attrs: { href: 'javascript:x' } }] }] },
+        { type: 'table', content: [] },
+      ] });
+      await service.saveSOAPNote(TENANT, 3n, { ...dto, subjective });
+      // No key in tests, so the stored text is readable here.
+      expect(JSON.parse(prisma.clinicalNote.create.mock.calls[0][0].data.subjective)).toEqual({
+        type: 'doc',
+        content: [{ type: 'paragraph', content: [{ type: 'text', text: 'Background', marks: [{ type: 'bold' }] }] }],
+      });
+    });
+
+    it('refuses a section that is not text', async () => {
+      await expect(service.saveSOAPNote(TENANT, 3n, { ...dto, subjective: { type: 'doc' } as any })).rejects.toThrow(/Subjective must be text/);
+    });
   });
 
   // A blanket sweep, so a method added later without scoping is caught even if

@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Lock } from 'lucide-react';
 import { useToast } from '@unclutterdesk/ui';
 import { api } from '../../utils/apiClient';
+import { RichTextEditor } from '../richText/RichTextEditor';
 
 export interface SessionNoteValue {
   id?: string | null;
@@ -139,16 +140,15 @@ export function SessionNoteEditor({
             <span className="h-6 w-6 rounded-[8px] bg-[var(--desk-pine-600)] text-[var(--ds-sky)] font-black text-xs flex items-center justify-center">{s.chip}</span>
             <span className="text-[12.5px] font-bold text-[var(--desk-text)] tracking-tight">{s.title}</span>
           </div>
-          <textarea
-            rows={3}
-            aria-label={s.title}
+          <RichTextEditor
+            label={s.title}
             disabled={locked}
             value={s.val}
-            onChange={(e) => {
+            minHeight={72}
+            onChange={(v) => {
               typed.current = true;
-              s.set(e.target.value);
+              s.set(v);
             }}
-            className="w-full text-[13px] text-[var(--desk-text-body)] font-medium leading-relaxed bg-transparent border-none outline-none resize-y disabled:opacity-75"
           />
         </div>
       ))}

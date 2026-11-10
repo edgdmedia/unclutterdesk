@@ -1,4 +1,5 @@
 import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest';
+import { docOf, writeIn } from '../../test/richText';
 import React from 'react';
 import { Route, Routes } from 'react-router-dom';
 import { cleanup, fireEvent, renderWithApp, screen, waitFor } from '../../test/renderWithApp';
@@ -89,11 +90,30 @@ describe('SessionDetailPage', () => {
     apiPost.mockResolvedValue({ id: '900', sentAt: new Date().toISOString() });
     renderPage();
     await waitFor(() => screen.getByRole('heading', { name: 'Ada Ola' }));
-    fireEvent.change(screen.getByLabelText('Client recap'), { target: { value: 'Practised breathing.' } });
+    writeIn(screen.getByLabelText('Client recap'), 'Practised breathing.');
     fireEvent.click(screen.getByRole('button', { name: 'Save' }));
-    await waitFor(() => expect(apiPatch).toHaveBeenCalledWith('/v1/consult/practice/sessions/900/summary', expect.objectContaining({ clientRecap: 'Practised breathing.' })));
+    await waitFor(() => expect(apiPatch).toHaveBeenCalledWith('/v1/consult/practice/sessions/900/summary', expect.objectContaining({ clientRecap: docOf('Practised breathing.') })));
     fireEvent.click(screen.getByRole('button', { name: /Send recap/ }));
     await waitFor(() => expect(apiPost).toHaveBeenCalledWith('/v1/consult/practice/sessions/900/recap-email', {}));
+  });
+  it('keeps supervision notes apart, saved with the summary', async () => {
+    apiPatch.mockResolvedValue({ id: '900' });
+    renderPage({ ...DETAIL, supervisionNotes: 'Peer client.' } as any);
+    await waitFor(() => screen.getByRole('heading', { name: 'Ada Ola' }));
+    writeIn(screen.getByLabelText('Supervision notes'), 'Check readiness before going deeper.');
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+    await waitFor(() => expect(apiPatch).toHaveBeenCalledWith('/v1/consult/practice/sessions/900/summary', expect.objectContaining({ supervisionNotes: docOf('Check readiness before going deeper.') })));
+  });
+  it('sends the recap as it is on screen, saving it first', async () => {
+    apiPatch.mockResolvedValue({ id: '900' });
+    apiPost.mockResolvedValue({ id: '900', sentAt: new Date().toISOString() });
+    renderPage();
+    await waitFor(() => screen.getByRole('heading', { name: 'Ada Ola' }));
+    writeIn(screen.getByLabelText('Client recap'), 'Breathe slowly.');
+    fireEvent.click(screen.getByRole('button', { name: /Send recap/ }));
+    await waitFor(() => expect(apiPost).toHaveBeenCalledWith('/v1/consult/practice/sessions/900/recap-email', {}));
+    expect(apiPatch.mock.invocationCallOrder[0]).toBeLessThan(apiPost.mock.invocationCallOrder[0]);
+    expect(apiPatch.mock.calls[0][1]).toMatchObject({ clientRecap: docOf('Breathe slowly.') });
   });
   it('hides what the caller may not do', async () => {
     renderPage({ ...DETAIL, can: { edit: false, summary: false, markPaid: false } });

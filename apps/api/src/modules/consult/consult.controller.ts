@@ -491,11 +491,11 @@ export class ConsultController {
   @Patch('practice/sessions/:bookingId/summary')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @ApiBearerAuth('access-token')
-  @ApiOperation({ summary: 'Internal summary and client recap' })
+  @ApiOperation({ summary: 'Internal summary, client recap and supervision notes' })
   setSessionSummary(
     @Req() req: any,
     @Param('bookingId') bookingId: string,
-    @Body() dto: { internalSummary?: string | null; clientRecap?: string | null },
+    @Body() dto: { internalSummary?: string | null; clientRecap?: string | null; supervisionNotes?: string | null },
   ) {
     if (!/^\d+$/.test(bookingId)) throw new NotFoundException('Session not found');
     return this.sessions.setSummary(authenticatedTenantId(req), this.actor(req), BigInt(bookingId), dto ?? {});
