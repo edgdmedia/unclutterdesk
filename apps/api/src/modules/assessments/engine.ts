@@ -61,6 +61,7 @@ export interface InstrumentDefinition {
   measures: string;
   instructions: string;
   estimatedMinutes: number;
+  description?: string;
   /** The lowest plan that can use it. */
   tier: Tier;
   /** What the client sees afterwards: their score too, only the wording, or only a thank-you. */
@@ -380,5 +381,6 @@ export function publicDefinition(def: InstrumentDefinition) {
     tier: def.tier,
     scale: def.scale,
     items: def.items,
+    ...(def.description ? { description: def.description } : {}),
   };
 }

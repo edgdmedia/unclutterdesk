@@ -41,6 +41,22 @@ export class InstrumentService implements OnModuleInit {
         skipDuplicates: true,
       });
       if (created.count) this.logger.log(`Added ${created.count} built-in assessment(s) to the library`);
+
+      // Backfill description for built-in instruments that were created before the field existed.
+      for (const def of BUILTIN_INSTRUMENTS) {
+        const existing = await this.prisma.assessmentInstrument.findUnique({ where: { key: def.key } });
+        if (existing?.builtIn) {
+          const storedDef = existing.definition as unknown as InstrumentDefinition;
+          if (!storedDef.description && def.description) {
+            const merged = { ...storedDef, description: def.description };
+            await this.prisma.assessmentInstrument.update({
+              where: { key: def.key },
+              data: { definition: merged as unknown as Prisma.InputJsonValue },
+            });
+            this.logger.log(`Backfilled description for built-in ${def.key}`);
+          }
+        }
+      }
     } catch (err) {
       // A missing table (migration not yet run) must not stop the API starting.
       this.logger.error(`Could not seed built-in assessments: ${(err as Error).message}`);

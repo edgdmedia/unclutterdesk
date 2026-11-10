@@ -37,12 +37,17 @@ export function AssessmentQuestionnaire({ assessment, color, firstName, message,
     }
   }
 
+  const isAssessment = Boolean(assessment.description);
+  const heading = isAssessment
+    ? `${firstName ? `Hi ${firstName}, here is the ` : 'Here is the '}${assessment.name}`
+    : `${firstName ? `Hi ${firstName}, ` : ''}a few questions before we talk`;
+
   return (
     <>
       <div className="bg-white rounded-[20px] border border-[var(--desk-border)] p-5">
         <p className="text-xs font-bold uppercase tracking-[0.08em]" style={{ color }}>{assessment.shortName}</p>
         <h1 className="mt-1 text-[18px] font-bold text-[var(--desk-text)]">
-          {firstName ? `Hi ${firstName}, ` : ''}a few questions before we talk
+          {heading}
         </h1>
         {message ? (
           <div className="mt-3 rounded-[14px] bg-[var(--desk-surface)] border border-[var(--desk-border)] px-3.5 py-2.5">
@@ -50,10 +55,15 @@ export function AssessmentQuestionnaire({ assessment, color, firstName, message,
             <p className="mt-1 text-sm text-[var(--desk-text)] whitespace-pre-line">{message}</p>
           </div>
         ) : null}
+        {isAssessment && assessment.description ? (
+          <p className="mt-3 text-sm text-[var(--desk-text)] leading-relaxed">{assessment.description}</p>
+        ) : null}
+        <div className="mt-3 text-xs text-[var(--desk-text-muted)] space-y-1">
+          <p className="inline-flex items-center gap-1.5"><Clock className="h-3.5 w-3.5" /> About {assessment.estimatedMinutes} minutes</p>
+          <p>There are no right or wrong answers</p>
+          <p>Your answers go only to your practitioner</p>
+        </div>
         <p className="mt-3 text-sm text-[var(--desk-text)] leading-relaxed">{assessment.instructions}</p>
-        <p className="mt-3 text-xs text-[var(--desk-text-muted)] inline-flex items-center gap-1.5">
-          <Clock className="h-3.5 w-3.5" /> About {assessment.estimatedMinutes} minutes · only your practitioner sees your answers
-        </p>
       </div>
 
       <ol className="mt-4 space-y-3">

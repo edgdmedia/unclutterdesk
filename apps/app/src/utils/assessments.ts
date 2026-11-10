@@ -11,6 +11,7 @@ export interface AssessmentDefinition {
   tier: Tier;
   scale: Array<{ value: number; label: string }>;
   items: Array<{ id: string; text: string }>;
+  description?: string;
 }
 
 export interface LibraryEntry extends AssessmentDefinition {
