@@ -21,7 +21,7 @@ export function ClientLoginPage() {
     (location.state as { returnTo?: string } | null)?.returnTo,
     params.get('returnTo')
   );
-  
+  const initialMode = params.get('mode') === 'create' ? 'create' : 'signin';
 
   return (
     <div className="min-h-screen bg-[var(--desk-surface)] flex items-center justify-center p-6">
@@ -35,7 +35,7 @@ export function ClientLoginPage() {
             <h1 className="m-0 text-[18px] font-bold text-[var(--desk-text)]">Welcome back</h1>
             <p className="m-0 text-[13px] text-[var(--desk-text-muted)]">Sign in to see your sessions, forms and payments.</p>
           </div>
-          <ClientAuthPanel initialMode="signin" onDone={() => navigate(returnTo, { replace: true })} />
+          <ClientAuthPanel initialMode={initialMode} onDone={() => navigate(returnTo, { replace: true })} />
         </div>
         <p className="text-center text-[12.5px] text-[var(--desk-text-muted)]">
           Are you the practice?{' '}

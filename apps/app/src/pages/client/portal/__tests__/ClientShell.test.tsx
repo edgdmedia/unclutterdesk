@@ -72,6 +72,7 @@ describe('ClientShell', () => {
     act(() => setSignedIn(false));
     await waitFor(() => expect(screen.queryByText('1 upcoming')).toBeNull());
     expect(screen.queryByRole('link', { name: /My details/ })).toBeNull();
-    expect(screen.getByText('Sign in to see your sessions')).toBeTruthy();
+    expect(screen.getByText(/Welcome to/)).toBeTruthy();
+    expect(screen.getByText(/only shown once you are signed in/)).toBeTruthy();
   });
 });

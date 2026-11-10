@@ -71,17 +71,18 @@ describe('the portal once the person is signed out', () => {
 
     act(() => setSignedIn(false));
 
-    expect(screen.getByText('Sign in to see your sessions')).toBeTruthy();
+    expect(screen.getByText(/Welcome to/)).toBeTruthy();
     expect(screen.queryByText('Hello, Ada')).toBeNull();
     expect(screen.queryAllByText(/Individual Therapy/)).toHaveLength(0);
     expect(screen.queryByText('Join session')).toBeNull();
   });
 
-  it('carries the requested portal path into the sign-in link', () => {
+  it('carries the requested portal path into the sign-in and create-account links', () => {
     act(() => setSignedIn(false));
     renderWithApp(<ClientShell><PortalHomePage /></ClientShell>, { route: '/portal/sessions/10/recap' });
 
-    const link = screen.getByRole('link', { name: 'Sign in' });
-    expect(link.getAttribute('href')).toBe('/login?returnTo=%2Fportal%2Fsessions%2F10%2Frecap');
+    expect(screen.getByRole('button', { name: 'Sign in' })).toBeTruthy();
+    const create = screen.getByRole('link', { name: 'Create your account' });
+    expect(create.getAttribute('href')).toBe('/login?mode=create&returnTo=%2Fportal%2Fsessions%2F10%2Frecap');
   });
 });
