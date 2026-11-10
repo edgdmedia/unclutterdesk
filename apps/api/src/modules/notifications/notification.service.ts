@@ -1,4 +1,5 @@
 import { Inject, Injectable, Logger, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
+import type { RichDoc } from '../../common/rich-text';
 import { logoUrlFor } from '../../common/logo-url';
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '../../common/prisma/prisma.service';
@@ -62,6 +63,8 @@ export interface SendEmailInput {
   details?: MessageDetail[];
   /** Further links under the main action. */
   links?: MessageLink[];
+  /** Formatted text after the message, as a cleaned document (common/rich-text.ts). */
+  richBody?: RichDoc | null;
   /** Present when a tenant exists — drives branding; absent for pre-tenant sends. */
   tenantId?: bigint | null;
   /** Present when a profile exists — enables emailLog; absent for pre-tenant sends. */
@@ -195,6 +198,7 @@ export class NotificationService implements OnModuleInit, OnModuleDestroy {
         link: input.link,
         details: input.details,
         links: input.links,
+        richBody: input.richBody,
         actionLabel: input.actionLabel,
         brand,
       },

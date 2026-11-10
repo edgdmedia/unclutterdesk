@@ -1932,6 +1932,8 @@ export class ConsultService {
       // VID-02: when an online session's room is open. Clients join in the app, never by a provider link.
       ...this.joinWindowFields(booking, practice?.joinOpensMinutesBefore),
       paymentMethod: booking.paymentMethod,
+      // When the practitioner sent this session's recap: the portal links to it.
+      recapSentAt: booking.clientRecapSentAt ? booking.clientRecapSentAt.toISOString() : null,
       // How to pay a transfer that is still due.
       manualPayment:
         booking.paymentMethod === 'MANUAL' && booking.status === 'PENDING_PAYMENT'

@@ -464,36 +464,6 @@ describe('summaries', () => {
     expect(desk).not.toHaveProperty('supervisionNotes');
   });
 
-  it('emails a formatted recap as readable text, never its stored form', async () => {
-    const recap = JSON.stringify({ type: 'doc', content: [
-      { type: 'heading', attrs: { level: 2 }, content: [{ type: 'text', text: 'Your next steps' }] },
-      { type: 'taskList', content: [{ type: 'taskItem', attrs: { checked: false }, content: [{ type: 'paragraph', content: [{ type: 'text', text: 'Day 1' }] }] }] },
-    ] });
-    const { service, prisma, notifications } = make({ booking: { clientRecap: recap } });
-    prisma.consultBooking.update = vi.fn().mockResolvedValue({ id: 900n });
-    prisma.tenant = { findUnique: vi.fn().mockResolvedValue({ name: 'Smith Therapy', slug: 'dr-smith', customDomain: null, customDomainStatus: null }) };
-    await service.sendRecap(TENANT, { profileId: ACTOR, viewAll: false, clinical: true }, 900n);
-    const message = notifications.sendEmail.mock.calls[0][0].message;
-    expect(message).toContain('Your next steps\n[ ] Day 1');
-    expect(message).not.toContain('"type"');
-  });
-
-  it('refuses to send a recap that was never written', async () => {
-    const { service } = make();
-    await expect(service.sendRecap(TENANT, DESK, 900n)).rejects.toThrow(/Write the recap/i);
-  });
-  it('emails the client and stamps the send', async () => {
-    const { service, prisma, notifications } = make({ booking: { clientRecap: 'Well done this week.' } });
-    prisma.consultBooking.update = vi.fn().mockResolvedValue({ id: 900n });
-    prisma.tenant = { findUnique: vi.fn().mockResolvedValue({ name: 'Smith Therapy', slug: 'dr-smith', customDomain: null, customDomainStatus: null }) };
-    await service.sendRecap(TENANT, { profileId: ACTOR, viewAll: false, clinical: true }, 900n);
-    expect(notifications.sendEmail).toHaveBeenCalledWith(expect.objectContaining({
-      to: 'ada@example.com',
-      type: 'bookings.session_recap',
-      profileId: 40n,
-    }));
-    expect(prisma.consultBooking.update.mock.calls[0][0].data.clientRecapSentAt).toBeInstanceOf(Date);
-  });
 });
 
 describe('client history', () => {

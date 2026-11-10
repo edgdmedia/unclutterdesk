@@ -7,11 +7,13 @@ import { cleanup, fireEvent, renderWithApp, screen, waitFor } from '../../test/r
 const apiGet = vi.fn();
 const apiPatch = vi.fn();
 const apiPost = vi.fn();
+const apiPut = vi.fn();
 vi.mock('../../utils/apiClient', () => ({
   api: {
     get: (...a: unknown[]) => apiGet(...a),
     patch: (...a: unknown[]) => apiPatch(...a),
     post: (...a: unknown[]) => apiPost(...a),
+    put: (...a: unknown[]) => apiPut(...a),
   },
   getBookingUrl: () => 'https://dr-smith.unclutterdesk.com',
   TENANT_SLUG: 'dr-smith',
@@ -30,12 +32,30 @@ const DETAIL = {
   can: { edit: true, summary: true, markPaid: true },
 };
 
-beforeEach(() => { apiGet.mockReset(); apiPatch.mockReset(); apiPost.mockReset(); });
+beforeEach(() => {
+  apiGet.mockReset(); apiPatch.mockReset(); apiPost.mockReset(); apiPut.mockReset();
+  recapState = { recapAssessmentKeys: [], sentAssessments: [] };
+});
 afterEach(cleanup);
+
+const LIBRARY = [
+  { key: 'DAR_5', shortName: 'DAR-5', name: 'Dimensions of Anger Reactions (DAR-5)', measures: 'Anger', estimatedMinutes: 2, enabled: true, onPlan: true },
+  { key: 'RSES', shortName: 'Rosenberg', name: 'Rosenberg Self-Esteem Scale (RSES)', measures: 'Self-esteem', estimatedMinutes: 3, enabled: true, onPlan: true },
+  { key: 'BPAQ', shortName: 'Buss–Perry AQ', name: 'Buss–Perry Aggression Questionnaire (BPAQ)', measures: 'Aggression', estimatedMinutes: 10, enabled: false, onPlan: true },
+];
+let recapState: { recapAssessmentKeys: string[]; sentAssessments: unknown[] } = { recapAssessmentKeys: [], sentAssessments: [] };
 
 function renderPage(detail = DETAIL, submissions: unknown[] = []) {
   apiGet.mockImplementation((p: string) =>
-    p === '/v1/consult/practice/sessions/900' ? Promise.resolve(detail) : p === '/v1/intake/submissions/booking/900' ? Promise.resolve(submissions) : Promise.resolve([]),
+    p === '/v1/consult/practice/sessions/900'
+      ? Promise.resolve(detail)
+      : p === '/v1/intake/submissions/booking/900'
+        ? Promise.resolve(submissions)
+        : p === '/v1/consult/practice/sessions/900/recap'
+          ? Promise.resolve(recapState)
+          : p === '/v1/assessments/library'
+            ? Promise.resolve(LIBRARY)
+            : Promise.resolve([]),
   );
   return renderWithApp(
     <Routes><Route path="/dashboard/sessions/:id" element={<SessionDetailPage />} /></Routes>,
@@ -114,6 +134,40 @@ describe('SessionDetailPage', () => {
     await waitFor(() => expect(apiPost).toHaveBeenCalledWith('/v1/consult/practice/sessions/900/recap-email', {}));
     expect(apiPatch.mock.invocationCallOrder[0]).toBeLessThan(apiPost.mock.invocationCallOrder[0]);
     expect(apiPatch.mock.calls[0][1]).toMatchObject({ clientRecap: docOf('Breathe slowly.') });
+  });
+  it('attaches questionnaires the practice has switched on, and sends them with the recap', async () => {
+    apiPatch.mockResolvedValue({ id: '900' });
+    apiPut.mockResolvedValue({ recapAssessmentKeys: ['DAR_5', 'RSES'] });
+    apiPost.mockResolvedValue({ id: '900', sentAt: new Date().toISOString() });
+    renderPage({ ...DETAIL, clientRecap: docOf('Practise daily.') } as any);
+    const add = (await screen.findByLabelText('Add a questionnaire')) as HTMLSelectElement;
+    // Switched off in Assessments: not offered.
+    expect([...add.options].map((o) => o.value)).toEqual(['', 'DAR_5', 'RSES']);
+    fireEvent.change(add, { target: { value: 'DAR_5' } });
+    fireEvent.change(screen.getByLabelText('Add a questionnaire'), { target: { value: 'RSES' } });
+    expect(screen.getAllByText('Goes with the recap')).toHaveLength(2);
+    fireEvent.click(screen.getByRole('button', { name: /Send recap/ }));
+    await waitFor(() => expect(apiPost).toHaveBeenCalledWith('/v1/consult/practice/sessions/900/recap-email', {}));
+    expect(apiPut).toHaveBeenCalledWith('/v1/consult/practice/sessions/900/recap-assessments', { keys: ['DAR_5', 'RSES'] });
+    expect(apiPut.mock.invocationCallOrder[0]).toBeLessThan(apiPost.mock.invocationCallOrder[0]);
+  });
+  it('shows how far the client got with ones already sent, and saves nothing unchanged', async () => {
+    recapState = { recapAssessmentKeys: ['DAR_5'], sentAssessments: [{ id: '71', key: 'DAR_5', shortName: 'DAR-5', status: 'COMPLETED' }] };
+    apiPatch.mockResolvedValue({ id: '900' });
+    renderPage();
+    expect(await screen.findByText('Done')).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+    await waitFor(() => expect(apiPatch).toHaveBeenCalled());
+    expect(apiPut).not.toHaveBeenCalled();
+  });
+  it('can take one off before it goes', async () => {
+    recapState = { recapAssessmentKeys: ['DAR_5'], sentAssessments: [] };
+    apiPatch.mockResolvedValue({ id: '900' });
+    apiPut.mockResolvedValue({ recapAssessmentKeys: [] });
+    renderPage();
+    fireEvent.click(await screen.findByRole('button', { name: 'Remove DAR-5' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Save' }));
+    await waitFor(() => expect(apiPut).toHaveBeenCalledWith('/v1/consult/practice/sessions/900/recap-assessments', { keys: [] }));
   });
   it('hides what the caller may not do', async () => {
     renderPage({ ...DETAIL, can: { edit: false, summary: false, markPaid: false } });

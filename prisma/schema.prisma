@@ -517,6 +517,11 @@ model ConsultBooking {
   /// The recap written for the client; emailed on request, never automatically.
   clientRecap                 String?      @db.Text
   clientRecapSentAt           DateTime?
+  /// Assessments attached to the recap (instrument keys): assigned for this
+  /// session when the recap is sent, and listed on the client's recap page.
+  recapAssessmentKeys         String[]     @default([])
+  /// The client's ticks on the recap's tick-box items, in reading order.
+  recapTicks                  Json?
   /// Points for the practitioner's clinical supervision. Encrypted; clinical staff only.
   supervisionNotes            String?      @db.Text
   /// When staff emailed the client a review request for this session. Never

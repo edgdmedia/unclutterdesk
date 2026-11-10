@@ -19,6 +19,8 @@ export type PortalSession = {
   format?: string;
   paymentMethod?: string;
   manualPayment?: ManualPayment | null;
+  /** When the practitioner sent this session's recap; it opens at /portal/sessions/:id/recap. */
+  recapSentAt?: string | null;
 };
 
 export type PortalPayload = {

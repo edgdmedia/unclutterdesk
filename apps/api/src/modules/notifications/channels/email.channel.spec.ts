@@ -30,6 +30,31 @@ describe('EmailChannel', () => {
     expect(out).toContain('Calm &lt;Rooms&gt;');
   });
 
+  // A session recap: formatted, built from the cleaned document, every word escaped.
+  it('lays out a formatted body after the message, in the HTML and the plain text', async () => {
+    const { channel, mail } = make();
+    await channel.send(
+      { profileId: null, tenantId: null, email: 'a@x.com' },
+      {
+        type: 'bookings.session_recap',
+        title: 'Your recap',
+        message: 'Here is your recap.',
+        richBody: {
+          type: 'doc',
+          content: [
+            { type: 'heading', attrs: { level: 2 }, content: [{ type: 'text', text: 'Next <steps>' }] },
+            { type: 'taskList', content: [{ type: 'taskItem', attrs: { checked: false }, content: [{ type: 'paragraph', content: [{ type: 'text', text: 'Day 1' }] }] }] },
+          ],
+        },
+      },
+    );
+    const out = html(mail);
+    expect(out).toContain('Next &lt;steps&gt;</h2>');
+    expect(out).not.toContain('<steps>');
+    expect(out.indexOf('Here is your recap.')).toBeLessThan(out.indexOf('Next &lt;steps&gt;'));
+    expect(mail.deliver.mock.calls[0][0].text).toBe('Here is your recap.\n\nNext <steps>\n[ ] Day 1');
+  });
+
   it('keeps a link inside its attribute', async () => {
     const { channel, mail } = make();
     await channel.send(

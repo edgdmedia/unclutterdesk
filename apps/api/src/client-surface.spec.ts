@@ -51,6 +51,9 @@ const CLIENT_SURFACE = [
   'GET /v1/consult/portal/plan-sessions',
   'GET /v1/consult/portal/plan-sessions/:id/options',
   'POST /v1/consult/portal/plan-sessions/:id/schedule',
+  // A sent recap of the client's own session, and ticking it off.
+  'GET /v1/consult/portal/sessions/:bookingId/recap',
+  'PUT /v1/consult/portal/sessions/:bookingId/recap/ticks',
   // Booking needs a client session now: name and email come from the account.
   'POST /v1/consult/public/bookings',
   // Paystack's pop-up reported success: the server asks Paystack itself, and only for the caller's own booking.

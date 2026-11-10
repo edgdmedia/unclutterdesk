@@ -243,16 +243,20 @@ export function richToEmailHtml(doc: RichDoc | null): string {
   return render(doc.content, false);
 }
 
-/** How many tick-box items the document has, in reading order (the portal keeps the client's ticks by position). */
-export function countTasks(doc: RichDoc | null): number {
-  if (!doc) return 0;
-  let n = 0;
+/** Each tick-box item's state as written, in reading order (the portal keeps the client's ticks by position). */
+export function taskStates(doc: RichDoc | null): boolean[] {
+  const out: boolean[] = [];
   const walk = (nodes: RichBlock[]) => {
     for (const b of nodes) {
-      if (b.type === 'taskList') for (const i of b.content) { n++; walk(i.content); }
+      if (b.type === 'taskList') for (const i of b.content) { out.push(i.attrs.checked); walk(i.content); }
       else if (b.type === 'bulletList' || b.type === 'orderedList') for (const i of b.content) walk(i.content);
     }
   };
-  walk(doc.content);
-  return n;
+  if (doc) walk(doc.content);
+  return out;
+}
+
+/** How many tick-box items the document has. */
+export function countTasks(doc: RichDoc | null): number {
+  return taskStates(doc).length;
 }

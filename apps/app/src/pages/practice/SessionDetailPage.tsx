@@ -7,6 +7,7 @@ import { PaymentChip } from '../../components/booking/PaymentChip';
 import { EditSessionDialog } from '../../components/booking/EditSessionDialog';
 import { SessionNoteEditor } from '../../components/notes/SessionNoteEditor';
 import { RichTextEditor } from '../../components/richText/RichTextEditor';
+import { RecapAssessmentsPicker, type SentAssessment } from '../../components/notes/RecapAssessmentsPicker';
 import { hasRichText } from '../../components/richText/richDoc';
 import { api } from '../../utils/apiClient';
 import type { SessionRow } from './SessionsPage';
@@ -50,6 +51,10 @@ export function SessionDetailPage() {
   const [internal, setInternal] = useState('');
   const [recap, setRecap] = useState('');
   const [supervision, setSupervision] = useState('');
+  // Questionnaires attached to the recap, as saved and as on screen.
+  const [attached, setAttached] = useState<string[]>([]);
+  const [savedAttached, setSavedAttached] = useState<string[]>([]);
+  const [sentAssessments, setSentAssessments] = useState<SentAssessment[]>([]);
   const [busy, setBusy] = useState(false);
   const [editing, setEditing] = useState(false);
   // BKG-06: whether the client's default forms are in yet.
@@ -62,6 +67,7 @@ export function SessionDetailPage() {
         setInternal(r.internalSummary ?? '');
         setRecap(r.clientRecap ?? '');
         setSupervision(r.supervisionNotes ?? '');
+        if (r.can.summary) void loadRecapAssessments();
       })
       .catch((err) => setError(err instanceof Error ? err.message : 'Could not load this session'));
     api
@@ -83,8 +89,25 @@ export function SessionDetailPage() {
   }, [loaded, hash]);
 
   /** The three texts as they are on screen. */
-  const saveSummary = () =>
-    api.patch(`/v1/consult/practice/sessions/${id}/summary`, { internalSummary: internal, clientRecap: recap, supervisionNotes: supervision });
+  async function loadRecapAssessments() {
+    try {
+      const r = await api.get<{ recapAssessmentKeys: string[]; sentAssessments: SentAssessment[] }>(`/v1/consult/practice/sessions/${id}/recap`);
+      setAttached(r.recapAssessmentKeys ?? []);
+      setSavedAttached(r.recapAssessmentKeys ?? []);
+      setSentAssessments(r.sentAssessments ?? []);
+    } catch {
+      // The recap still works without the list; the picker shows nothing attached.
+    }
+  }
+
+  /** The texts and attached questionnaires as they are on screen. */
+  async function saveSummary() {
+    await api.patch(`/v1/consult/practice/sessions/${id}/summary`, { internalSummary: internal, clientRecap: recap, supervisionNotes: supervision });
+    if (attached.join() !== savedAttached.join()) {
+      await api.put(`/v1/consult/practice/sessions/${id}/recap-assessments`, { keys: attached });
+      setSavedAttached(attached);
+    }
+  }
 
   async function act(fn: () => Promise<unknown>, ok: string) {
     setBusy(true);
@@ -299,6 +322,7 @@ export function SessionDetailPage() {
             <div className="text-[11.5px] font-bold text-slate-500 uppercase">Client recap</div>
             <RichTextEditor label="Client recap" value={recap} onChange={setRecap} placeholder="Written for the client: what was covered, what to practise." minHeight={96} />
           </div>
+          <RecapAssessmentsPicker value={attached} onChange={setAttached} sent={sentAssessments} />
           {d.clientRecapSentAt ? (
             <p className="text-[11.5px] text-emerald-700 font-semibold">Recap sent {new Date(d.clientRecapSentAt).toLocaleDateString('en-GB')}.</p>
           ) : null}
@@ -315,7 +339,13 @@ export function SessionDetailPage() {
               type="button"
               disabled={busy || !hasRichText(recap)}
               // What is on screen is what is sent: save first.
-              onClick={() => void act(async () => { await saveSummary(); return api.post(`/v1/consult/practice/sessions/${d.id}/recap-email`, {}); }, 'Recap emailed to the client')}
+              onClick={() =>
+                void act(async () => {
+                  await saveSummary();
+                  await api.post(`/v1/consult/practice/sessions/${d.id}/recap-email`, {});
+                  await loadRecapAssessments();
+                }, 'Recap emailed to the client')
+              }
               className="h-[38px] px-4 rounded-[12px] bg-white border border-[var(--desk-pine-200)] text-[var(--desk-text)] text-[12.5px] font-bold cursor-pointer disabled:opacity-50"
             >
               Send recap

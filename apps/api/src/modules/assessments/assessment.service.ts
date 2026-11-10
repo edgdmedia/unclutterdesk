@@ -20,6 +20,16 @@ type AssignmentWithParties = Prisma.AssessmentAssignmentGetPayload<{
   };
 }>;
 
+/** An instrument assigned for a session, as a recap lists it. */
+export interface SessionAssessment {
+  id: string;
+  key: string;
+  shortName: string;
+  name: string;
+  estimatedMinutes: number;
+  status: 'SENT' | 'COMPLETED';
+}
+
 /** The part of a stored result a client may see. */
 function clientView(result: Prisma.JsonValue) {
   return ((result as unknown as AssessmentResult | null)?.client ?? { show: 'none', messages: [] }) as AssessmentResult['client'];
@@ -85,21 +95,94 @@ export class AssessmentService {
 
   // ── Sending to a client ──────────────────────────────────────────────
 
+  /** An instrument this practice may send now: published, switched on, and on its plan. */
+  private async sendable(tenantId: bigint, key: string, plan?: PracticeEntitlements): Promise<StoredInstrument> {
+    const inst = await this.instruments.find(key);
+    if (!inst || inst.status !== 'PUBLISHED') throw new BadRequestException('Choose an assessment from the library.');
+    const isEnabled = await this.prisma.tenantAssessment.findUnique({
+      where: { tenantId_instrumentKey: { tenantId, instrumentKey: inst.key } },
+    });
+    if (!isEnabled) throw new BadRequestException(`Switch ${inst.definition.shortName} on in Assessments before sending it.`);
+    // Checked again here: the practice may have moved to a lower plan since.
+    this.assertOnPlan(plan ?? (await this.plan(tenantId)), inst);
+    return inst;
+  }
+
+  /**
+   * Checks a list of instruments can be sent by this practice (attached to a
+   * recap before it goes). Throws the first reason one cannot.
+   */
+  async assertSendable(tenantId: bigint, keys: string[]) {
+    const plan = await this.plan(tenantId);
+    for (const key of keys) await this.sendable(tenantId, key, plan);
+  }
+
+  /**
+   * Assigns instruments to a client for one session, without an email of
+   * their own: the session recap carries them. One already assigned for the
+   * session (still open, or done) is kept rather than sent twice.
+   */
+  async assignForSession(
+    tenantId: bigint,
+    senderProfileId: bigint,
+    clientProfileId: bigint,
+    bookingId: bigint,
+    keys: string[],
+  ): Promise<SessionAssessment[]> {
+    const plan = await this.plan(tenantId);
+    const existing = await this.prisma.assessmentAssignment.findMany({
+      where: { tenantId, clientProfileId, bookingId, status: { in: ['SENT', 'COMPLETED'] } },
+      select: { instrumentKey: true },
+    });
+    const have = new Set(existing.map((e) => e.instrumentKey));
+    for (const key of [...new Set(keys)]) {
+      if (have.has(key)) continue;
+      const inst = await this.sendable(tenantId, key, plan);
+      await this.prisma.assessmentAssignment.create({
+        data: {
+          tenantId,
+          instrumentKey: inst.key,
+          clientProfileId,
+          sentByProfileId: senderProfileId,
+          bookingId,
+          // Taken in the portal, signed in; the token link is for the standalone email only.
+          tokenHash: hashToken(randomBytes(32).toString('base64url')),
+        },
+      });
+    }
+    return this.forSession(tenantId, clientProfileId, bookingId);
+  }
+
+  /** The instruments assigned to a client for one session, oldest first. */
+  async forSession(tenantId: bigint, clientProfileId: bigint, bookingId: bigint): Promise<SessionAssessment[]> {
+    const rows = await this.prisma.assessmentAssignment.findMany({
+      where: { tenantId, clientProfileId, bookingId, status: { in: ['SENT', 'COMPLETED'] } },
+      orderBy: { createdAt: 'asc' },
+    });
+    const instruments = await this.instruments.findMany(rows.map((r) => r.instrumentKey));
+    return rows
+      .filter((r) => instruments.has(r.instrumentKey))
+      .map((r) => {
+        const def = instruments.get(r.instrumentKey)!.definition;
+        return {
+          id: r.id.toString(),
+          key: r.instrumentKey,
+          shortName: def.shortName,
+          name: def.name,
+          estimatedMinutes: def.estimatedMinutes,
+          status: r.status as 'SENT' | 'COMPLETED',
+        };
+      });
+  }
+
+
   async send(
     tenantId: bigint,
     senderProfileId: bigint,
     dto: { instrumentKey?: string; clientProfileId?: string; bookingId?: string; message?: string },
   ) {
-    const inst = await this.instruments.find(String(dto?.instrumentKey ?? ''));
-    if (!inst || inst.status !== 'PUBLISHED') throw new BadRequestException('Choose an assessment from the library.');
+    const inst = await this.sendable(tenantId, String(dto?.instrumentKey ?? ''));
     const def = inst.definition;
-
-    const isEnabled = await this.prisma.tenantAssessment.findUnique({
-      where: { tenantId_instrumentKey: { tenantId, instrumentKey: inst.key } },
-    });
-    if (!isEnabled) throw new BadRequestException(`Switch ${def.shortName} on in Assessments before sending it.`);
-    // Checked again here: the practice may have moved to a lower plan since.
-    this.assertOnPlan(await this.plan(tenantId), inst);
 
     if (!/^\d+$/.test(String(dto.clientProfileId ?? ''))) throw new BadRequestException('Choose a client.');
     // The client id comes from the request; the practice comes from the session.
