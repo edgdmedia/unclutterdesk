@@ -1,12 +1,14 @@
 import { useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { api } from '../../utils/apiClient';
+import { resolveReturnTo } from '../../utils/returnTo';
 
 const field = 'w-full h-[44px] px-3 rounded-[12px] bg-white border border-[var(--desk-pine-200)] text-[14px] outline-none';
 
 export function SetPasswordPage() {
   const [params] = useSearchParams();
   const token = params.get('t') ?? '';
+  const returnTo = resolveReturnTo(null, params.get('returnTo'));
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
   const [password, setPassword] = useState('');
@@ -19,7 +21,7 @@ export function SetPasswordPage() {
     setError(null);
     try {
       await api.post('/v1/auth/client-set-password', { token, password, firstName: firstName || undefined, lastName: lastName || undefined });
-      window.location.href = '/portal';
+      window.location.href = returnTo;
     } catch (err) {
       setError(err instanceof Error ? err.message : 'That link did not work');
       setBusy(false);

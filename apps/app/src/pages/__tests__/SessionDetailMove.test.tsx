@@ -142,8 +142,13 @@ describe("the session's note on the session page", () => {
   const past = new Date(Date.now() - 5 * 3_600_000);
   const ended = { ...DETAIL, status: 'COMPLETED', startsAt: past.toISOString(), endsAt: new Date(past.getTime() + 50 * 60_000).toISOString(), can: { edit: true, summary: true, markPaid: false } };
 
+  async function openNotes() {
+    fireEvent.click(await screen.findByRole('tab', { name: 'SOAP notes' }));
+  }
+
   it('is there to write when none has been started, and saves against the session', async () => {
     renderPage(ended);
+    await openNotes();
     const s = await screen.findByLabelText('Subjective');
     apiPost.mockResolvedValue({ id: '7', isLocked: false });
     writeIn(s, 'Sleeps better');
@@ -153,6 +158,7 @@ describe("the session's note on the session page", () => {
 
   it('carries on a draft', async () => {
     renderPage({ ...ended, note: { id: '7', status: 'DRAFT', subjective: 'Sleeps better', objective: '', assessment: '', plan: 'Breathing' } });
+    await openNotes();
     expect(textOf(await screen.findByLabelText('Plan'))).toBe('Breathing');
     expect(isEditable(screen.getByLabelText('Subjective'))).toBe(true);
   });
@@ -161,12 +167,14 @@ describe("the session's note on the session page", () => {
     renderPage({ ...ended, note: { id: '7', status: 'DRAFT', subjective: 'x', objective: 'x', assessment: 'x', plan: 'x' } });
     apiPost.mockResolvedValue({ id: '7', isLocked: false });
     apiPatch.mockResolvedValue({ id: '7', isLocked: true });
+    await openNotes();
     fireEvent.click(await screen.findByRole('button', { name: /Sign & lock/ }));
     await waitFor(() => expect(apiPatch).toHaveBeenCalledWith('/v1/notes/7/lock', {}));
   });
 
   it('shows a signed note read-only', async () => {
     renderPage({ ...ended, note: { id: '7', status: 'COMPLETED', subjective: 'Sleeps better', objective: '', assessment: '', plan: '' } });
+    await openNotes();
     expect(isEditable(await screen.findByLabelText('Subjective'))).toBe(false);
   });
 

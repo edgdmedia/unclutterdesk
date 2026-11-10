@@ -6,6 +6,7 @@ import { AuthSplitShell } from '../../components/AuthSplitShell';
 import { AuthField, authInputCls } from '../../components/AuthField';
 import { api } from '../../utils/apiClient';
 import { onboardingDraftKey } from '../../utils/onboardingDraft';
+import { resolveReturnTo } from '../../utils/returnTo';
 
 function looksLikeVerificationPending(message: string): boolean {
   const normalized = message.toLowerCase();
@@ -21,6 +22,7 @@ export function LoginPage() {
   const location = useLocation();
   const { login, isLoading } = useAuth();
   const locationState = (location.state as { email?: string; returnTo?: string } | null) || null;
+  const returnTo = resolveReturnTo(locationState?.returnTo, new URLSearchParams(location.search).get('returnTo'));
   const [email, setEmail] = useState((location.state as { email?: string } | null)?.email || '');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -38,8 +40,8 @@ export function LoginPage() {
         return;
       }
 
-      if (locationState?.returnTo) {
-        navigate(locationState.returnTo);
+      if (returnTo !== '/portal') {
+        navigate(returnTo);
         return;
       }
 
@@ -69,7 +71,7 @@ export function LoginPage() {
         return;
       }
 
-      navigate('/portal');
+      navigate(returnTo);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Login failed. Check your credentials.');
     }

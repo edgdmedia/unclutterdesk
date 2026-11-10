@@ -24,6 +24,24 @@ describe('the instrument store', () => {
     expect(call.data.map((d: any) => d.key)).toEqual(['PHQ_9', 'GAD_7', 'PCL_5', 'DASS_21', 'BPAQ', 'DAR_5', 'RSES']);
   });
 
+  it('backfills description for built-in instruments that lack it', async () => {
+    const existing = { key: 'GAD_7', builtIn: true, definition: { ...GAD_7, description: undefined } };
+    const { prisma, service } = setup(existing);
+    await service.onModuleInit();
+    expect(prisma.assessmentInstrument.update).toHaveBeenCalledWith({
+      where: { key: 'GAD_7' },
+      data: { definition: expect.objectContaining({ description: GAD_7.description }) },
+    });
+  });
+
+  it('does not overwrite an existing description', async () => {
+    const custom = 'Custom description';
+    const existing = { key: 'GAD_7', builtIn: true, definition: { ...GAD_7, description: custom } };
+    const { prisma, service } = setup(existing);
+    await service.onModuleInit();
+    expect(prisma.assessmentInstrument.update).not.toHaveBeenCalled();
+  });
+
   it('does not stop the API starting if seeding fails', async () => {
     const { prisma, service } = setup();
     prisma.assessmentInstrument.createMany.mockRejectedValue(new Error('relation does not exist'));

@@ -72,7 +72,7 @@ describe('the client form page', () => {
     profile = null;
     renderWithApp(<Routes><Route path="/forms/:id" element={<ClientFormPage />} /></Routes>, { route: '/forms/20' });
     await screen.findByLabelText(/Preferred name/);
-    expect(screen.getByRole('link', { name: 'Sign in' }).getAttribute('href')).toBe('/login');
+    expect(screen.getByRole('link', { name: 'Sign in' }).getAttribute('href')).toBe('/login?returnTo=%2Fforms%2F20');
     expect(screen.getByText(/so the practice knows whose answers/i)).toBeTruthy();
   });
 
