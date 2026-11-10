@@ -1,3 +1,4 @@
+import type { RichDoc } from '../../../common/rich-text';
 export type ChannelKey = 'in_app' | 'email' | 'push' | 'sms';
 
 export const CHANNEL_KEYS: readonly ChannelKey[] = ['in_app', 'email', 'push', 'sms'];
@@ -48,6 +49,11 @@ export interface ChannelPayload {
   details?: MessageDetail[];
   /** Further links under the main action. */
   links?: MessageLink[];
+  /**
+   * Formatted text after the message (a session recap): the cleaned document
+   * from common/rich-text.ts, never HTML, so the channel renders it escaped.
+   */
+  richBody?: RichDoc | null;
   data?: Record<string, unknown>;
   brand?: ChannelBrand;
 }

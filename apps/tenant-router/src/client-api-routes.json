@@ -44,6 +44,8 @@
     "GET /v1/consult/portal/plan-sessions",
     "GET /v1/consult/portal/plan-sessions/:id/options",
     "POST /v1/consult/portal/plan-sessions/:id/schedule",
+    "GET /v1/consult/portal/sessions/:bookingId/recap",
+    "PUT /v1/consult/portal/sessions/:bookingId/recap/ticks",
     "GET /v1/calendar/bookings/:bookingId/ical",
 
     "GET /v1/intake/public/forms",

@@ -54,7 +54,9 @@ function renderPage(detail: Record<string, unknown> = DETAIL) {
       ? Promise.resolve(detail)
       : p.startsWith('/v1/consult/public/availability')
         ? Promise.resolve(SLOTS)
-        : Promise.resolve([]),
+        : p === '/v1/consult/practice/sessions/900/recap'
+          ? Promise.resolve({ recapAssessmentKeys: [], sentAssessments: [] })
+          : Promise.resolve([]),
   );
   return renderWithApp(
     <Routes><Route path="/dashboard/sessions/:id" element={<SessionDetailPage />} /></Routes>,
