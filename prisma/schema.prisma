@@ -126,6 +126,9 @@ model Tenant {
   universalSubmissions    UniversalFormSubmission[]
   clinicalNotes           ClinicalNote[]
   bankSubaccount          BankSubaccount?
+  journalLinks            JournalLink[]
+  journalLinkRequests     JournalLinkRequest[]
+  journalSharedEntries    JournalSharedEntry[]
 
   @@index([slug])
   @@index([customDomain])
@@ -524,6 +527,12 @@ model ConsultBooking {
   recapTicks                  Json?
   /// Points for the practitioner's clinical supervision. Encrypted; clinical staff only.
   supervisionNotes            String?      @db.Text
+  /// The practitioner's Journal plan for this session (docs/design/journal-integration.md §3), as written.
+  journalPlan                 Json?
+  /// When the client added the plan to her Unclutter Journal; null until she does.
+  journalPlanAddedAt          DateTime?
+  /// The time she chose for her prompt (HH:MM, her timezone), kept so an edited plan keeps it.
+  journalDeliveryTime         String?
   /// When staff emailed the client a review request for this session. Never
   /// automatic (therapy ethics: no pressure on a client still in care); once
   /// per session.
@@ -660,6 +669,68 @@ model UniversalFormSubmission {
 }
 
 // ── Clinical Notes & SOAP Records ──────────────────────────────────────────
+
+/// A client's Unclutter Journal, linked to this practice by her (journal-integration.md §4).
+/// One per (practice, client); relinking reuses the row. Ended links are kept with endedAt.
+model JournalLink {
+  id              BigInt    @id @default(autoincrement())
+  tenantId        BigInt
+  clientProfileId BigInt
+  /// Journal's link id (dl_…): every server call names it.
+  suiteLinkId     String    @unique
+  /// Her name as Journal knows it.
+  profileName     String?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  endedAt         DateTime?
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@unique([tenantId, clientProfileId])
+}
+
+/// A link request handed to the client's browser: its nonce comes back as
+/// `state`, checked once, so a code can only finish the request Desk made.
+model JournalLinkRequest {
+  nonce             String    @id
+  tenantId          BigInt
+  clientProfileId   BigInt
+  /// The session whose plan she was adding.
+  bookingId         BigInt
+  /// When she asked for her prompt, HH:MM in her own timezone.
+  deliveryTimeLocal String
+  expiresAt         DateTime
+  usedAt            DateTime?
+  createdAt         DateTime  @default(now())
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId, clientProfileId])
+}
+
+/// An entry she chose to share from her Journal. Clinical record: the words
+/// are encrypted and shown to clinical staff only. When she stops sharing,
+/// the words are removed and withdrawnAt records that one was withdrawn.
+model JournalSharedEntry {
+  id              BigInt    @id @default(autoincrement())
+  tenantId        BigInt
+  clientProfileId BigInt
+  /// The session whose plan it answered, when Journal says so.
+  bookingId       BigInt?
+  suiteEntryId    String
+  promptText      String?   @db.Text
+  content         String?   @db.Text
+  writtenAt       DateTime
+  entryUpdatedAt  DateTime
+  sharedAt        DateTime
+  withdrawnAt     DateTime?
+  syncedAt        DateTime
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@unique([tenantId, suiteEntryId])
+  @@index([tenantId, clientProfileId])
+}
 
 model ClinicalNote {
   id              BigInt   @id @default(autoincrement())

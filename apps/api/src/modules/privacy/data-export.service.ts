@@ -2,6 +2,7 @@ import { BadRequestException, ForbiddenException, Injectable, Logger, NotFoundEx
 import { PrismaService } from '../../common/prisma/prisma.service';
 import { chargedKobo } from '../../common/revenue';
 import { emergencyContactOf } from '../tenant/emergency-contact';
+import { decryptField } from '../../common/field-encryption';
 
 export const ERASED_STATUS = 'erased';
 
@@ -123,6 +124,11 @@ export class DataExportService {
       where: { tenantId, clientProfileId },
       orderBy: { createdAt: 'asc' },
     });
+    // Her own words, shared from her Unclutter Journal; withdrawn ones keep no words.
+    const journalShared = await this.prisma.journalSharedEntry.findMany({
+      where: { tenantId, clientProfileId },
+      orderBy: { writtenAt: 'asc' },
+    });
 
     this.logger.log(
       `Client data export: profile ${clientProfileId} in tenant ${tenantId}, by ${actorProfileId}`,
@@ -229,6 +235,15 @@ export class DataExportService {
         message: item.message,
         sentAt: item.createdAt.toISOString(),
         readAt: item.readAt ? item.readAt.toISOString() : null,
+      })),
+
+      journalEntriesYouShared: journalShared.map((e) => ({
+        bookingId: e.bookingId ? e.bookingId.toString() : null,
+        prompt: e.withdrawnAt ? null : decryptField(e.promptText),
+        entry: e.withdrawnAt ? null : decryptField(e.content),
+        writtenAt: e.writtenAt.toISOString(),
+        sharedAt: e.sharedAt.toISOString(),
+        stoppedSharingAt: e.withdrawnAt ? e.withdrawnAt.toISOString() : null,
       })),
     };
   }

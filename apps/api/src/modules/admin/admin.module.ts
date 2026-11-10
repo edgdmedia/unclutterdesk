@@ -1,3 +1,4 @@
+import { JournalModule } from '../journal/journal.module';
 import { Module } from '@nestjs/common';
 import { AdminController } from './admin.controller';
 import { AdminService } from './admin.service';
@@ -11,7 +12,7 @@ import { PrismaService } from '../../common/prisma/prisma.service';
 import { VideoModule } from '../video/video.module';
 
 @Module({
-  imports: [AuthModule, InviteModule, AssessmentModule, RequestModule, IntakeModule, VideoModule],
+  imports: [AuthModule, InviteModule, AssessmentModule, RequestModule, IntakeModule, VideoModule, JournalModule],
   controllers: [AdminController],
   providers: [AdminService, PlatformAdminGuard, PrismaService],
   exports: [AdminService],

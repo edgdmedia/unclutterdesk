@@ -5,8 +5,10 @@ import { PracticeClosureService } from './practice-closure.service';
 import { PrismaService } from '../../common/prisma/prisma.service';
 import { PlatformAdminGuard } from '../admin/platform-admin.guard';
 import { DataExportService } from './data-export.service';
+import { JournalModule } from '../journal/journal.module';
 
 @Module({
+  imports: [JournalModule],
   controllers: [PrivacyController, PlatformPrivacyController],
   providers: [PrivacyService, DataExportService, PracticeClosureService, PrismaService, PlatformAdminGuard],
 })

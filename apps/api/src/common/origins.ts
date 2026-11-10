@@ -38,6 +38,15 @@ export const PROFILE_PUBLIC_ORIGIN = trimSlash(setting('PROFILE_PUBLIC_URL') ?? 
 export const MEDIA_ORIGIN = httpsOriginSetting('R2_PUBLIC_URL');
 
 /**
+ * Unclutter Journal (docs/design/journal-integration.md). JOURNAL_APP_URL is
+ * where the client confirms a link (its /link/desk page); JOURNAL_API_URL is
+ * the Suite API Desk calls, including its /v1. Development points both at the
+ * Suite's test environment.
+ */
+export const JOURNAL_APP_ORIGIN = trimSlash(setting('JOURNAL_APP_URL') ?? 'https://journal.unclutter.com.ng');
+export const JOURNAL_API_BASE = trimSlash(setting('JOURNAL_API_URL') ?? 'https://api.unclutter.com.ng/v1');
+
+/**
  * A setting that must be a bare https origin. Anything else (a typo, or the
  * setting's own name pasted as its value) is treated as unset, with a clear
  * log line, rather than producing broken public links.
