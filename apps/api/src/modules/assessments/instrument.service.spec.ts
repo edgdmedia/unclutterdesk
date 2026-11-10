@@ -21,7 +21,7 @@ describe('the instrument store', () => {
     await service.onModuleInit();
     const call = prisma.assessmentInstrument.createMany.mock.calls[0][0];
     expect(call.skipDuplicates).toBe(true);
-    expect(call.data.map((d: any) => d.key)).toEqual(['PHQ_9', 'GAD_7', 'PCL_5', 'DASS_21']);
+    expect(call.data.map((d: any) => d.key)).toEqual(['PHQ_9', 'GAD_7', 'PCL_5', 'DASS_21', 'BPAQ', 'DAR_5', 'RSES']);
   });
 
   it('does not stop the API starting if seeding fails', async () => {

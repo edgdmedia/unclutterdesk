@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { BUILTIN_INSTRUMENTS, DASS_21, GAD_7, PCL_5, PHQ_9 } from './builtin-instruments';
+import { BPAQ, BUILTIN_INSTRUMENTS, DAR_5, DASS_21, GAD_7, PCL_5, PHQ_9, RSES } from './builtin-instruments';
 import { publicDefinition, score, validateAnswers, validateDefinition, type InstrumentDefinition } from './engine';
 
 /** Answers every item with `value`, then applies any overrides. */
@@ -20,15 +20,15 @@ function totalling(def: InstrumentDefinition, total: number) {
 }
 
 describe('the built-in library', () => {
-  it('has PHQ-9, GAD-7, PCL-5 and DASS-21', () => {
-    expect(BUILTIN_INSTRUMENTS.map((i) => i.key)).toEqual(['PHQ_9', 'GAD_7', 'PCL_5', 'DASS_21']);
+  it('has PHQ-9, GAD-7, PCL-5, DASS-21, Buss–Perry, DAR-5 and Rosenberg', () => {
+    expect(BUILTIN_INSTRUMENTS.map((i) => i.key)).toEqual(['PHQ_9', 'GAD_7', 'PCL_5', 'DASS_21', 'BPAQ', 'DAR_5', 'RSES']);
   });
 
   it.each(BUILTIN_INSTRUMENTS.map((d) => [d.key, d]))('%s is a valid definition', (_key, def) => {
     expect(validateDefinition(def)).toEqual([]);
   });
 
-  it.each([[PHQ_9, 9, 4], [GAD_7, 7, 4], [PCL_5, 20, 5], [DASS_21, 21, 4]] as const)('%s has its published length', (def, count, points) => {
+  it.each([[PHQ_9, 9, 4], [GAD_7, 7, 4], [PCL_5, 20, 5], [DASS_21, 21, 4], [BPAQ, 29, 5], [DAR_5, 5, 5], [RSES, 10, 4]] as const)('%s has its published length', (def, count, points) => {
     expect(def.items).toHaveLength(count);
     expect(def.scale).toHaveLength(points);
   });
@@ -36,6 +36,7 @@ describe('the built-in library', () => {
   it('puts the common screeners on every plan and the longer ones on Pro', () => {
     expect(BUILTIN_INSTRUMENTS.map((d) => [d.key, d.tier])).toEqual([
       ['PHQ_9', 'STARTER'], ['GAD_7', 'STARTER'], ['PCL_5', 'PRO'], ['DASS_21', 'PRO'],
+      ['BPAQ', 'PRO'], ['DAR_5', 'STARTER'], ['RSES', 'STARTER'],
     ]);
   });
 
@@ -185,5 +186,75 @@ describe('answers', () => {
     const cleaned = validateAnswers(PHQ_9, { ...answers(PHQ_9, 1), injected: 99 }) as Record<string, number>;
     expect(cleaned).not.toHaveProperty('injected');
     expect(Object.keys(cleaned)).toHaveLength(9);
+  });
+});
+
+// Questions worded the other way round are flipped before they are added up.
+describe('reverse-scored questions', () => {
+  it('refuses a reverse list naming a question the instrument does not have', () => {
+    const bad = { ...DAR_5, scoring: { ...DAR_5.scoring, reverse: ['dar5_99'] } };
+    expect(validateDefinition(bad)).toContain('scoring.reverse names an unknown question dar5_99.');
+  });
+
+  it('flips them on the scale, whatever the scale starts at', () => {
+    // Rosenberg, 0–3: "strongly agree" (3) everywhere means the five negative statements count 0.
+    expect(score(RSES, answers(RSES, 3)).totalScore).toBe(15);
+    // Buss–Perry, 1–5: "extremely characteristic" (5) on item 9 counts 1.
+    const r = score(BPAQ, answers(BPAQ, 1, { bpaq_9: 5 }));
+    expect(r.subscales.find((x) => x.key === 'anger')!.score).toBe(7);
+  });
+
+  it('leaves single-question rules on the answer the client gave', () => {
+    const r = score(BPAQ, answers(BPAQ, 1, { bpaq_8: 4 }));
+    expect(r.flags.map((f) => f.key)).toEqual(['urge_to_strike']);
+  });
+});
+
+describe('Buss–Perry Aggression Questionnaire', () => {
+  it('scores its four subscales and a total of 29–145', () => {
+    const low = score(BPAQ, answers(BPAQ, 1, { bpaq_9: 5, bpaq_16: 5 }));
+    expect(low.totalScore).toBe(29);
+    const high = score(BPAQ, answers(BPAQ, 5, { bpaq_9: 1, bpaq_16: 1 }));
+    expect(high.totalScore).toBe(145);
+    expect(high.subscales.map((x) => [x.key, x.score])).toEqual([['physical', 45], ['verbal', 25], ['anger', 35], ['hostility', 40]]);
+  });
+
+  it('claims no clinical threshold', () => {
+    const r = score(BPAQ, answers(BPAQ, 5));
+    expect(r.severity).toEqual({ label: 'Scored', level: 0 });
+  });
+
+  it('every question is in exactly one subscale', () => {
+    const all = BPAQ.scoring.subscales!.flatMap((x) => x.items).sort();
+    expect(all).toEqual(BPAQ.items.map((i) => i.id).sort());
+  });
+});
+
+describe('DAR-5', () => {
+  it('uses the published cut-off of 12', () => {
+    expect(score(DAR_5, answers(DAR_5, 1, { dar5_1: 3, dar5_2: 3, dar5_3: 3 })).severity.label).toBe('Below the cut-off'); // 11
+    expect(score(DAR_5, answers(DAR_5, 1, { dar5_1: 3, dar5_2: 3, dar5_3: 3, dar5_5: 2 })).severity).toEqual({ label: 'Above the cut-off', level: 2 }); // 12
+  });
+
+  it('asks the practitioner to look when the client often wanted to hit someone', () => {
+    expect(score(DAR_5, answers(DAR_5, 1, { dar5_4: 4 })).flags.map((f) => f.key)).toEqual(['wanted_to_hit']);
+    expect(score(DAR_5, answers(DAR_5, 1, { dar5_4: 3 })).flags).toEqual([]);
+  });
+});
+
+describe('Rosenberg Self-Esteem Scale', () => {
+  const positive = ['rses_1', 'rses_3', 'rses_4', 'rses_7', 'rses_10'];
+  const strongly = (agreePositive: number, agreeNegative: number) =>
+    Object.fromEntries(RSES.items.map((i) => [i.id, positive.includes(i.id) ? agreePositive : agreeNegative]));
+
+  it('scores 0–30, higher meaning higher self-esteem', () => {
+    expect(score(RSES, strongly(3, 0)).totalScore).toBe(30);
+    expect(score(RSES, strongly(0, 3)).totalScore).toBe(0);
+  });
+
+  it('marks below 15 as low, and only that as something to notice', () => {
+    expect(score(RSES, strongly(0, 3)).severity).toEqual({ label: 'Low self-esteem', level: 2 });
+    expect(score(RSES, strongly(2, 1)).severity).toEqual({ label: 'Typical range', level: 0 }); // 20
+    expect(score(RSES, strongly(3, 0)).severity).toEqual({ label: 'High self-esteem', level: 0 });
   });
 });
