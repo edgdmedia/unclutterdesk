@@ -39,10 +39,10 @@ describe('the assessment questionnaire intro', () => {
     expect(screen.getByText('Below is a list of statements about how you feel about yourself in general.')).toBeTruthy();
   });
 
-  it('keeps the intake heading for a questionnaire without a description', () => {
+  it('shows the instrument name even without a description', () => {
     render(BASE);
 
-    expect(screen.getByRole('heading', { name: 'Hi Ada, a few questions before we talk' })).toBeTruthy();
+    expect(screen.getByRole('heading', { name: 'Hi Ada, here is the Rosenberg Self-Esteem Scale (RSES)' })).toBeTruthy();
     expect(screen.queryByText('This questionnaire asks about how you generally view yourself.')).toBeNull();
   });
 });

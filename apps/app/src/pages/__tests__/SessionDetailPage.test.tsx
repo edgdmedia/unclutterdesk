@@ -201,6 +201,20 @@ describe('the notes and summary tabs', () => {
     expect(screen.getByLabelText('Client recap')).toBeTruthy();
   });
 
+  it('opens SOAP notes by default when the note is not signed', async () => {
+    renderPage({ ...DETAIL, note: { id: '7', status: 'DRAFT', subjective: '', objective: '', assessment: '', plan: '' } } as any);
+    await waitFor(() => screen.getByRole('heading', { name: 'Ada Ola' }));
+    expect(screen.getByRole('tab', { name: 'SOAP notes' }).getAttribute('aria-selected')).toBe('true');
+    expect(screen.getByLabelText('Subjective')).toBeTruthy();
+  });
+
+  it('opens Summary by default when the note is signed', async () => {
+    renderPage({ ...DETAIL, note: { id: '7', status: 'COMPLETED', subjective: 'x', objective: 'x', assessment: 'x', plan: 'x' } } as any);
+    await waitFor(() => screen.getByRole('heading', { name: 'Ada Ola' }));
+    expect(screen.getByRole('tab', { name: 'Summary' }).getAttribute('aria-selected')).toBe('true');
+    expect(screen.getByLabelText('Client recap')).toBeTruthy();
+  });
+
   it('opens the tab named in the URL', async () => {
     renderPage(DETAIL, [], '/dashboard/sessions/900?tab=notes');
     await waitFor(() => screen.getByRole('heading', { name: 'Ada Ola' }));
@@ -212,6 +226,24 @@ describe('the notes and summary tabs', () => {
     renderPage(DETAIL, [], '/dashboard/sessions/900#note');
     await waitFor(() => screen.getByRole('heading', { name: 'Ada Ola' }));
     expect(screen.getByRole('tab', { name: 'SOAP notes' }).getAttribute('aria-selected')).toBe('true');
+  });
+
+  it('keeps SOAP editor state when switching tabs', async () => {
+    apiPost.mockResolvedValue({ id: '7', isLocked: false });
+    renderPage({ ...DETAIL, note: { id: '7', status: 'DRAFT', subjective: '', objective: '', assessment: '', plan: '' } } as any);
+    await waitFor(() => screen.getByRole('tab', { name: 'SOAP notes' }));
+    const subjective = screen.getByLabelText('Subjective');
+    const { writeIn } = await import('../../test/richText');
+    writeIn(subjective, 'Initial note');
+    fireEvent.click(screen.getByRole('tab', { name: 'Summary' }));
+    await waitFor(() => expect(screen.getByRole('tab', { name: 'Summary' }).getAttribute('aria-selected')).toBe('true'));
+    fireEvent.click(screen.getByRole('tab', { name: 'SOAP notes' }));
+    await waitFor(() => expect(screen.getByRole('tab', { name: 'SOAP notes' }).getAttribute('aria-selected')).toBe('true'));
+    expect(screen.getByLabelText('Subjective').textContent).toContain('Initial note');
+    fireEvent.click(screen.getByRole('button', { name: 'Save note' }));
+    await waitFor(() => expect(apiPost).toHaveBeenCalledWith('/v1/notes', expect.objectContaining({ subjective: expect.objectContaining({}) })));
+    const call = apiPost.mock.calls.find(c => c[0] === '/v1/notes');
+    expect(call?.[1].subjective).toBeDefined();
   });
 
   it('gives the desk the overview only', async () => {

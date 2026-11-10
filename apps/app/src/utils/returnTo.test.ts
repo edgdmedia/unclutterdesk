@@ -7,6 +7,7 @@ describe('isSafeReturnPath', () => {
     '/portal/assessments/5',
     '/forms/3',
     '/portal?tab=recap',
+    '/%5Cevil.example',
   ])('accepts %s', (path) => {
     expect(isSafeReturnPath(path)).toBe(true);
   });
@@ -20,6 +21,8 @@ describe('isSafeReturnPath', () => {
     '',
     null,
     undefined,
+    '/\\evil.example',
+    '/\t/evil.example',
   ])('rejects %s', (path) => {
     expect(isSafeReturnPath(path as string | null | undefined)).toBe(false);
   });

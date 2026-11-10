@@ -37,12 +37,9 @@ export function AssessmentQuestionnaire({ assessment, color, firstName, message,
     }
   }
 
-  // An instrument with a client-facing description is an assessment; the
-  // intake questionnaire has none and keeps its own heading.
-  const isAssessment = Boolean(assessment.description);
-  const heading = isAssessment
-    ? `${firstName ? `Hi ${firstName}, here is the ` : 'Here is the '}${assessment.name}`
-    : `${firstName ? `Hi ${firstName}, ` : ''}a few questions before we talk`;
+  // This component is used only for assessments (PortalAssessmentPage, AssessmentPage).
+  // The heading always names the instrument.
+  const heading = `${firstName ? `Hi ${firstName}, here is the ` : 'Here is the '}${assessment.name}`;
 
   return (
     <>
@@ -57,7 +54,7 @@ export function AssessmentQuestionnaire({ assessment, color, firstName, message,
             <p className="mt-1 text-sm text-[var(--desk-text)] whitespace-pre-line">{message}</p>
           </div>
         ) : null}
-        {isAssessment && assessment.description ? (
+        {assessment.description ? (
           <p className="mt-3 text-sm text-[var(--desk-text)] leading-relaxed">{assessment.description}</p>
         ) : null}
         <div className="mt-3 text-xs text-[var(--desk-text-muted)] space-y-1">

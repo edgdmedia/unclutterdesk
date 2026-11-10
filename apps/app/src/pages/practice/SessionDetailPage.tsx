@@ -63,8 +63,14 @@ export function SessionDetailPage() {
 
   const tabParam = searchParams.get('tab');
   // `#note` links (the client page and the room) still open the SOAP notes tab.
-  const activeTab: 'notes' | 'summary' =
-    d?.status === 'CANCELLED' ? 'summary' : hash === '#note' || tabParam === 'notes' ? 'notes' : 'summary';
+  const activeTab: 'notes' | 'summary' = (() => {
+    if (d?.status === 'CANCELLED') return 'summary';
+    if (hash === '#note' || tabParam === 'notes') return 'notes';
+    if (tabParam === 'summary') return 'summary';
+    // Default: open SOAP notes while the note is not signed, otherwise Summary
+    const noteNotSigned = d?.note && d.note.status !== 'COMPLETED';
+    return noteNotSigned ? 'notes' : 'summary';
+  })();
   const tabOptions = d?.status === 'CANCELLED' ? ['Summary'] : ['SOAP notes', 'Summary'];
 
   useEffect(() => {
@@ -331,15 +337,15 @@ export function SessionDetailPage() {
             />
           </div>
 
-          {activeTab === 'notes' && d.status !== 'CANCELLED' ? (
-            // The session's note lives here as well as in the room: after a call in
-            // Google Meet the room is never reopened, and the note is written later.
-            <Card padding="p-[22px]" className="space-y-3" id="note">
+          <div hidden={activeTab !== 'notes' || d.status === 'CANCELLED'} id="note">
+            {/* The session's note lives here as well as in the room: after a call in
+                Google Meet the room is never reopened, and the note is written later. */}
+            <Card padding="p-[22px]" className="space-y-3">
               <SessionNoteEditor key={d.id} bookingId={d.id} clientProfileId={d.client.id} note={d.note ? { ...d.note, isLocked: d.note.status === 'COMPLETED' } : null} />
             </Card>
-          ) : null}
+          </div>
 
-          {activeTab === 'summary' ? (
+          <div hidden={activeTab !== 'summary'}>
             <Card padding="p-[22px]" className="space-y-3">
               <Eyebrow>SUMMARY</Eyebrow>
               <div className="space-y-1.5">
@@ -384,7 +390,7 @@ export function SessionDetailPage() {
                 </button>
               </div>
             </Card>
-          ) : null}
+          </div>
         </div>
       ) : null}
     </Page>
