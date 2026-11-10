@@ -1,5 +1,6 @@
 import { describe, expect, it, vi, afterEach } from 'vitest';
 import React from 'react';
+import { Route, Routes } from 'react-router-dom';
 import { fireEvent, renderWithApp, screen, waitFor, cleanup } from '../../test/renderWithApp';
 
 const apiPost = vi.fn();
@@ -36,5 +37,20 @@ describe('the client login page', () => {
     renderWithApp(<ClientLoginPage />);
     const staff = screen.getByRole('link', { name: /Staff sign in/ });
     expect(staff.getAttribute('href')).toBe('https://app.unclutterdesk.com/login');
+  });
+
+  it('returns to the requested portal path after signing in', async () => {
+    login.mockResolvedValue({ type: 'user' });
+    renderWithApp(
+      <Routes>
+        <Route path="/login" element={<ClientLoginPage />} />
+        <Route path="/portal/sessions/10/recap" element={<div>the recap</div>} />
+      </Routes>,
+      { route: '/login?returnTo=%2Fportal%2Fsessions%2F10%2Frecap' },
+    );
+    fireEvent.change(screen.getByLabelText(/Email/i), { target: { value: 'ada@example.com' } });
+    fireEvent.change(screen.getByLabelText(/Password/i), { target: { value: 'password123' } });
+    fireEvent.submit(screen.getByRole('button', { name: /Sign in and continue/ }).closest('form')!);
+    expect(await screen.findByText('the recap')).toBeTruthy();
   });
 });

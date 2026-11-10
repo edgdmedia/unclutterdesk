@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Link, useNavigate, useParams } from 'react-router-dom';
+import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
 import { ShieldCheck } from 'lucide-react';
 import { useBrand } from '@unclutterdesk/ui';
 import { PracticeLogo } from '../../components/public/PracticeLogo';
@@ -23,6 +23,7 @@ const timeRange = (s: PortalSession) => {
 export function ClientSessionRoomPage() {
   const { id = '' } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const location = useLocation();
   const brand = useBrand();
   const { isAuthenticated, isLoading } = useAuth() as { isAuthenticated: boolean; isLoading?: boolean };
   const [session, setSession] = useState<PortalSession | null>(null);
@@ -65,7 +66,7 @@ export function ClientSessionRoomPage() {
           <div className="mx-auto mt-10 max-w-[440px] rounded-[22px] bg-white text-[var(--desk-text)] p-6 space-y-3">
             <h2 className="text-[16px] font-bold">Sign in to join your session</h2>
             <p className="text-[13px] text-[var(--desk-text-muted)]">Use the email address you booked with. Your room is private to you and your therapist.</p>
-            <Link to="/login" className="inline-flex h-[44px] px-5 rounded-[14px] text-white text-[13px] font-bold items-center" style={{ backgroundColor: primary }}>
+            <Link to="/login" state={{ returnTo: `${location.pathname}${location.search}` }} className="inline-flex h-[44px] px-5 rounded-[14px] text-white text-[13px] font-bold items-center" style={{ backgroundColor: primary }}>
               Sign in
             </Link>
           </div>

@@ -45,6 +45,18 @@ describe('the built-in library', () => {
     expect(shown).not.toHaveProperty('scoring');
     expect(shown).not.toHaveProperty('rules');
   });
+
+  it('sends description for instruments that have it', () => {
+    const shown = publicDefinition(PHQ_9);
+    expect(shown).toHaveProperty('description');
+    expect(shown.description).toMatch(/low mood/);
+  });
+
+  it('omits description when it is absent', () => {
+    const def = { ...PHQ_9, description: undefined };
+    const shown = publicDefinition(def);
+    expect(shown).not.toHaveProperty('description');
+  });
 });
 
 describe('PHQ-9', () => {

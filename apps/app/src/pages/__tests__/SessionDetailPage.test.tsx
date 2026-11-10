@@ -45,7 +45,7 @@ const LIBRARY = [
 ];
 let recapState: { recapAssessmentKeys: string[]; sentAssessments: unknown[] } = { recapAssessmentKeys: [], sentAssessments: [] };
 
-function renderPage(detail = DETAIL, submissions: unknown[] = []) {
+function renderPage(detail = DETAIL, submissions: unknown[] = [], route = '/dashboard/sessions/900') {
   apiGet.mockImplementation((p: string) =>
     p === '/v1/consult/practice/sessions/900'
       ? Promise.resolve(detail)
@@ -59,7 +59,7 @@ function renderPage(detail = DETAIL, submissions: unknown[] = []) {
   );
   return renderWithApp(
     <Routes><Route path="/dashboard/sessions/:id" element={<SessionDetailPage />} /></Routes>,
-    { route: '/dashboard/sessions/900' },
+    { route },
   );
 }
 
@@ -105,11 +105,16 @@ describe('SessionDetailPage', () => {
     expect(screen.queryByRole('link', { name: /Start session/ })).toBeNull();
     vi.useRealTimers();
   });
+  async function openSummary() {
+    fireEvent.click(await screen.findByRole('tab', { name: 'Summary' }));
+  }
+
   it('saves the summary and sends the recap', async () => {
     apiPatch.mockResolvedValue({ id: '900' });
     apiPost.mockResolvedValue({ id: '900', sentAt: new Date().toISOString() });
     renderPage();
     await waitFor(() => screen.getByRole('heading', { name: 'Ada Ola' }));
+    await openSummary();
     writeIn(screen.getByLabelText('Client recap'), 'Practised breathing.');
     fireEvent.click(screen.getByRole('button', { name: 'Save' }));
     await waitFor(() => expect(apiPatch).toHaveBeenCalledWith('/v1/consult/practice/sessions/900/summary', expect.objectContaining({ clientRecap: docOf('Practised breathing.') })));
@@ -120,6 +125,7 @@ describe('SessionDetailPage', () => {
     apiPatch.mockResolvedValue({ id: '900' });
     renderPage({ ...DETAIL, supervisionNotes: 'Peer client.' } as any);
     await waitFor(() => screen.getByRole('heading', { name: 'Ada Ola' }));
+    await openSummary();
     writeIn(screen.getByLabelText('Supervision notes'), 'Check readiness before going deeper.');
     fireEvent.click(screen.getByRole('button', { name: 'Save' }));
     await waitFor(() => expect(apiPatch).toHaveBeenCalledWith('/v1/consult/practice/sessions/900/summary', expect.objectContaining({ supervisionNotes: docOf('Check readiness before going deeper.') })));
@@ -129,6 +135,7 @@ describe('SessionDetailPage', () => {
     apiPost.mockResolvedValue({ id: '900', sentAt: new Date().toISOString() });
     renderPage();
     await waitFor(() => screen.getByRole('heading', { name: 'Ada Ola' }));
+    await openSummary();
     writeIn(screen.getByLabelText('Client recap'), 'Breathe slowly.');
     fireEvent.click(screen.getByRole('button', { name: /Send recap/ }));
     await waitFor(() => expect(apiPost).toHaveBeenCalledWith('/v1/consult/practice/sessions/900/recap-email', {}));
@@ -140,6 +147,8 @@ describe('SessionDetailPage', () => {
     apiPut.mockResolvedValue({ recapAssessmentKeys: ['DAR_5', 'RSES'] });
     apiPost.mockResolvedValue({ id: '900', sentAt: new Date().toISOString() });
     renderPage({ ...DETAIL, clientRecap: docOf('Practise daily.') } as any);
+    await waitFor(() => screen.getByRole('heading', { name: 'Ada Ola' }));
+    await openSummary();
     const add = (await screen.findByLabelText('Add a questionnaire')) as HTMLSelectElement;
     // Switched off in Assessments: not offered.
     expect([...add.options].map((o) => o.value)).toEqual(['', 'DAR_5', 'RSES']);
@@ -155,6 +164,8 @@ describe('SessionDetailPage', () => {
     recapState = { recapAssessmentKeys: ['DAR_5'], sentAssessments: [{ id: '71', key: 'DAR_5', shortName: 'DAR-5', status: 'COMPLETED' }] };
     apiPatch.mockResolvedValue({ id: '900' });
     renderPage();
+    await waitFor(() => screen.getByRole('heading', { name: 'Ada Ola' }));
+    await openSummary();
     expect(await screen.findByText('Done')).toBeTruthy();
     fireEvent.click(screen.getByRole('button', { name: 'Save' }));
     await waitFor(() => expect(apiPatch).toHaveBeenCalled());
@@ -165,6 +176,8 @@ describe('SessionDetailPage', () => {
     apiPatch.mockResolvedValue({ id: '900' });
     apiPut.mockResolvedValue({ recapAssessmentKeys: [] });
     renderPage();
+    await waitFor(() => screen.getByRole('heading', { name: 'Ada Ola' }));
+    await openSummary();
     fireEvent.click(await screen.findByRole('button', { name: 'Remove DAR-5' }));
     fireEvent.click(screen.getByRole('button', { name: 'Save' }));
     await waitFor(() => expect(apiPut).toHaveBeenCalledWith('/v1/consult/practice/sessions/900/recap-assessments', { keys: [] }));
@@ -190,5 +203,66 @@ describe('the default forms on a session', () => {
     renderPage(DETAIL, [{ targetType: 'INTAKE' }, { targetType: 'CONSENT' }]);
     const line = await screen.findByText(/Intake: done/);
     expect(line.parentElement?.textContent).toMatch(/Confidentiality: done/);
+  });
+});
+
+describe('the notes and summary tabs', () => {
+  it('opens SOAP notes by default when there is no note', async () => {
+    renderPage();
+    await waitFor(() => screen.getByRole('heading', { name: 'Ada Ola' }));
+    expect(screen.getByRole('tab', { name: 'SOAP notes' }).getAttribute('aria-selected')).toBe('true');
+    expect(screen.getByLabelText('Subjective')).toBeTruthy();
+  });
+
+  it('opens SOAP notes by default when the note is not signed', async () => {
+    renderPage({ ...DETAIL, note: { id: '7', status: 'DRAFT', subjective: '', objective: '', assessment: '', plan: '' } } as any);
+    await waitFor(() => screen.getByRole('heading', { name: 'Ada Ola' }));
+    expect(screen.getByRole('tab', { name: 'SOAP notes' }).getAttribute('aria-selected')).toBe('true');
+    expect(screen.getByLabelText('Subjective')).toBeTruthy();
+  });
+
+  it('opens Summary by default when the note is signed', async () => {
+    renderPage({ ...DETAIL, note: { id: '7', status: 'COMPLETED', subjective: 'x', objective: 'x', assessment: 'x', plan: 'x' } } as any);
+    await waitFor(() => screen.getByRole('heading', { name: 'Ada Ola' }));
+    expect(screen.getByRole('tab', { name: 'Summary' }).getAttribute('aria-selected')).toBe('true');
+    expect(screen.getByLabelText('Client recap')).toBeTruthy();
+  });
+
+  it('opens the tab named in the URL', async () => {
+    renderPage(DETAIL, [], '/dashboard/sessions/900?tab=notes');
+    await waitFor(() => screen.getByRole('heading', { name: 'Ada Ola' }));
+    expect(screen.getByRole('tab', { name: 'SOAP notes' }).getAttribute('aria-selected')).toBe('true');
+    expect(screen.getByLabelText('Subjective')).toBeTruthy();
+  });
+
+  it('opens the SOAP notes tab from a #note link', async () => {
+    renderPage(DETAIL, [], '/dashboard/sessions/900#note');
+    await waitFor(() => screen.getByRole('heading', { name: 'Ada Ola' }));
+    expect(screen.getByRole('tab', { name: 'SOAP notes' }).getAttribute('aria-selected')).toBe('true');
+  });
+
+  it('keeps SOAP editor state when switching tabs', async () => {
+    apiPost.mockResolvedValue({ id: '7', isLocked: false });
+    renderPage({ ...DETAIL, note: { id: '7', status: 'DRAFT', subjective: '', objective: '', assessment: '', plan: '' } } as any);
+    await waitFor(() => screen.getByRole('tab', { name: 'SOAP notes' }));
+    const subjective = screen.getByLabelText('Subjective');
+    const { writeIn } = await import('../../test/richText');
+    writeIn(subjective, 'Initial note');
+    fireEvent.click(screen.getByRole('tab', { name: 'Summary' }));
+    await waitFor(() => expect(screen.getByRole('tab', { name: 'Summary' }).getAttribute('aria-selected')).toBe('true'));
+    fireEvent.click(screen.getByRole('tab', { name: 'SOAP notes' }));
+    await waitFor(() => expect(screen.getByRole('tab', { name: 'SOAP notes' }).getAttribute('aria-selected')).toBe('true'));
+    expect(screen.getByLabelText('Subjective').textContent).toContain('Initial note');
+    fireEvent.click(screen.getByRole('button', { name: 'Save note' }));
+    await waitFor(() => expect(apiPost).toHaveBeenCalledWith('/v1/notes', expect.objectContaining({ subjective: expect.objectContaining({}) })));
+    const call = apiPost.mock.calls.find(c => c[0] === '/v1/notes');
+    expect(call?.[1].subjective).toBeDefined();
+  });
+
+  it('gives the desk the overview only', async () => {
+    renderPage({ ...DETAIL, can: { edit: true, summary: false, markPaid: true } });
+    await waitFor(() => screen.getByRole('heading', { name: 'Ada Ola' }));
+    expect(screen.queryByRole('tablist')).toBeNull();
+    expect(screen.queryByLabelText('Client recap')).toBeNull();
   });
 });

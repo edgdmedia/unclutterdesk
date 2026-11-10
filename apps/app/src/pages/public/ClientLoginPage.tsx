@@ -1,9 +1,10 @@
 import React from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { useBrand } from '@unclutterdesk/ui';
 import { APP_BASE_URL } from '../../utils/apiClient';
 import { PracticeLogo } from '../../components/public/PracticeLogo';
 import { ClientAuthPanel } from './ClientAuthPanel';
+import { resolveReturnTo } from '../../utils/returnTo';
 
 /**
  * BKG-15: the client's way in, on the practice's own host. The header's
@@ -13,7 +14,14 @@ import { ClientAuthPanel } from './ClientAuthPanel';
 export function ClientLoginPage() {
   const brand = useBrand();
   const navigate = useNavigate();
+  const location = useLocation();
   const primary = brand.primaryColor || '#0F3A53';
+  const params = new URLSearchParams(location.search);
+  const returnTo = resolveReturnTo(
+    (location.state as { returnTo?: string } | null)?.returnTo,
+    params.get('returnTo')
+  );
+  const initialMode = params.get('mode') === 'create' ? 'create' : 'signin';
 
   return (
     <div className="min-h-screen bg-[var(--desk-surface)] flex items-center justify-center p-6">
@@ -27,7 +35,7 @@ export function ClientLoginPage() {
             <h1 className="m-0 text-[18px] font-bold text-[var(--desk-text)]">Welcome back</h1>
             <p className="m-0 text-[13px] text-[var(--desk-text-muted)]">Sign in to see your sessions, forms and payments.</p>
           </div>
-          <ClientAuthPanel initialMode="signin" onDone={() => navigate('/portal', { replace: true })} />
+          <ClientAuthPanel initialMode={initialMode} onDone={() => navigate(returnTo, { replace: true })} />
         </div>
         <p className="text-center text-[12.5px] text-[var(--desk-text-muted)]">
           Are you the practice?{' '}
