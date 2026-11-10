@@ -67,15 +67,18 @@ the link exists only because she completed it:
 
 1. **Portal → Journal.** "Add to my Unclutter Journal" sends her to
    `https://journal.unclutter.com.ng/link/desk?request=<signed>`. The request
-   is signed by Desk (HMAC-SHA256, shared secret), short-lived (10 minutes),
-   single-use, and names: practice name, practitioner name, Desk client ref
-   (opaque), plan ref, and the Desk return URL (must be on an allow-listed
-   Desk origin).
+   is `base64url(JSON) + "." + base64url(HMAC-SHA256(secret, base64url(JSON)))`
+   with JSON `{ v: 1, nonce, iat, exp, practice_name, practitioner_name,
+   client_ref, return_url }` (seconds; `exp - iat` at most 10 minutes; the
+   nonce is single-use). `return_url` must be https on an allowed Desk origin
+   (Suite env `DESK_RETURN_ORIGINS`, default `https://*.unclutterdesk.com`).
+   Reference implementation: Suite `apps/api/src/modules/desk-integration/desk-signing.ts`.
 2. **Journal.** She signs in or creates her account (existing Suite auth),
    sees exactly what is being linked and what Desk will see (progress; only
    entries she shares), and confirms.
-3. **Journal → Desk.** Redirect back to the return URL with a one-time `code`
-   (valid 5 minutes).
+3. **Journal → Desk.** Redirect back to the return URL with `code` (one-time,
+   valid 5 minutes) and `state` (the request's nonce, which Desk checks), or
+   with `error=declined&state=…` if she said no.
 4. **Desk ↔ Journal, server to server.** Desk exchanges the code for a
    `linkId`. From then on every call carries the `linkId`, signed with the
    shared secret. No user tokens cross between the systems.
@@ -87,21 +90,29 @@ nothing she wrote is deleted from her journal.
 
 ## 5. The server-to-server API (Journal side)
 
-All under `/v1/integrations/desk/` on the Suite API, each request signed:
-`X-Desk-Timestamp`, `X-Desk-Signature = HMAC-SHA256(secret, method + path + timestamp + sha256(body))`,
-rejected if the timestamp is more than 5 minutes off or a signature is reused.
+All under `/v1/integrations/desk/` on the Suite API, each request signed with
+headers `X-Desk-Timestamp` (Unix seconds) and `X-Desk-Signature`
+= hex `HMAC-SHA256(secret, METHOD + "\n" + pathWithQuery + "\n" + timestamp + "\n" + hex(sha256(exactBodyBytes)))`,
+where `pathWithQuery` includes `/v1` (e.g. `/v1/integrations/desk/plans/p_1/progress?link_id=dl_…`)
+and an empty body hashes the empty string. Rejected if the timestamp is more
+than 5 minutes off. Replays inside that window are harmless: the code exchange
+is single-use, plan writes and ends are idempotent, the rest are reads.
+Without `DESK_INTEGRATION_SECRET` set, every route answers 503.
 
 | Call | What it does |
 |---|---|
-| `POST link/exchange { code }` → `{ linkId, profileName }` | finishes linking |
-| `PUT plans/:planRef { linkId, plan, timezone, deliveryTimeLocal, startsOn }` → `{ seriesId, subscriptionId }` | creates or replaces her private series and subscribes her (idempotent on `planRef`) |
-| `DELETE plans/:planRef { linkId }` | ends that plan (subscription stops; past entries stay hers) |
-| `GET plans/:planRef/progress?linkId` → `{ delivered, responded, total, lastRespondedAt, days: [...] }` | progress, no words |
-| `GET links/:linkId/shared?since=` → `[{ entryId, planRef, promptText, content, sharedAt }]` | entries she chose to share |
+| `POST link/exchange { code }` → `{ link_id, profile_name }` | finishes linking |
+| `PUT plans/:planRef { link_id, plan, timezone?, delivery_time_local?, starts_on? }` → `{ series_id, subscription_id, days, next_delivery_at }` | creates or replaces her private series and subscribes her (idempotent on `planRef`; carries on from her day). Defaults: `Africa/Lagos`, `08:00`, `next_day` |
+| `DELETE plans/:planRef?link_id=` | ends that plan (subscription stops; past entries stay hers) |
+| `GET plans/:planRef/progress?link_id=` → `{ status, total, delivered, responded, last_responded_at, next_delivery_at, days: [{ day, delivered_at, responded_at }] }` | progress, no words |
+| `GET links/:linkId/shared` → `[{ entry_id, plan_ref, prompt_text, content, written_at, updated_at, shared_at }]` | the entries she shares **now** (Desk replaces its copy, so un-sharing is reflected) |
 | `DELETE links/:linkId` | Desk ends the link |
 
-Journal → Desk (signed webhook, retried): `link.ended`, `entry.shared`,
-`entry.unshared`. Desk can also poll; the webhook only makes it timely.
+`planRef`: 1–64 of `[A-Za-z0-9_-]`. An unknown or ended link answers 404.
+
+Webhooks (Journal → Desk: `link.ended`, `entry.shared`, `entry.unshared`)
+are a later addition; until then Desk polls `progress` and `shared`, and treats
+a 404 on the link as "ended".
 
 ## 6. Journal changes (Suite)
 
