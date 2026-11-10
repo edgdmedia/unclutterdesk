@@ -67,9 +67,8 @@ export function SessionDetailPage() {
     if (d?.status === 'CANCELLED') return 'summary';
     if (hash === '#note' || tabParam === 'notes') return 'notes';
     if (tabParam === 'summary') return 'summary';
-    // Default: open SOAP notes while the note is not signed, otherwise Summary
-    const noteNotSigned = d?.note && d.note.status !== 'COMPLETED';
-    return noteNotSigned ? 'notes' : 'summary';
+    // Default: open SOAP notes unless the note is signed (COMPLETED)
+    return d?.note?.status === 'COMPLETED' ? 'summary' : 'notes';
   })();
   const tabOptions = d?.status === 'CANCELLED' ? ['Summary'] : ['SOAP notes', 'Summary'];
 
