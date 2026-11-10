@@ -54,6 +54,7 @@ function makeService(over: Record<string, any> = {}) {
     assessmentResponse: { findMany: vi.fn().mockResolvedValue(over.assessments ?? []) },
     clinicalNote: { findMany: vi.fn().mockResolvedValue(over.notes ?? []) },
     notification: { findMany: vi.fn().mockResolvedValue(over.notifications ?? []) },
+    journalSharedEntry: { findMany: vi.fn().mockResolvedValue(over.journalShared ?? []) },
   };
   return { service: new DataExportService(prisma), prisma };
 }
@@ -265,5 +266,23 @@ describe('prepaid sessions in the export', () => {
     });
     const out: any = await service.exportClientData(TENANT, OWNER, CLIENT);
     expect(out.prepaidSessions).toEqual([expect.objectContaining({ planSessionId: '50', amountKobo: '3000000', paymentMethod: 'MANUAL', bookingId: null })]);
+  });
+});
+
+describe('entries she shared from her Unclutter Journal', () => {
+  it('are hers, so they are in her export with their words; one she stopped sharing keeps none', async () => {
+    const at = new Date('2026-11-08T07:00:00Z');
+    const { service, prisma } = makeService({
+      journalShared: [
+        { bookingId: 900n, promptText: 'What went well?', content: 'I walked to work.', writtenAt: at, sharedAt: at, withdrawnAt: null },
+        { bookingId: 900n, promptText: null, content: null, writtenAt: at, sharedAt: at, withdrawnAt: at },
+      ],
+    });
+    const out: any = await service.exportClientData(TENANT, OWNER, CLIENT);
+    expect(prisma.journalSharedEntry.findMany).toHaveBeenCalledWith(expect.objectContaining({ where: { tenantId: TENANT, clientProfileId: CLIENT } }));
+    expect(out.journalEntriesYouShared).toEqual([
+      expect.objectContaining({ prompt: 'What went well?', entry: 'I walked to work.', stoppedSharingAt: null }),
+      expect.objectContaining({ prompt: null, entry: null, stoppedSharingAt: at.toISOString() }),
+    ]);
   });
 });

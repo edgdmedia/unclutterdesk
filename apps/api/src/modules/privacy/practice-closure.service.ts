@@ -4,8 +4,10 @@ import {
   NotFoundException,
   BadRequestException,
   Logger,
+  Optional,
 } from '@nestjs/common';
 import { PrismaService } from '../../common/prisma/prisma.service';
+import { JournalService } from '../journal/journal.service';
 
 /**
  * Days between a practice requesting closure and its data becoming purgeable.
@@ -32,7 +34,10 @@ export interface PurgeResult {
 export class PracticeClosureService {
   private readonly logger = new Logger(PracticeClosureService.name);
 
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    @Optional() private readonly journal?: JournalService,
+  ) {}
 
   /**
    * Step one, run by the practice owner. Deactivates the practice and starts
@@ -94,6 +99,9 @@ export class PracticeClosureService {
         await tx.token.deleteMany({ where: { userId: { in: userIds } } });
       }
     });
+
+    // A closed practice keeps no links into its clients' Journals.
+    await this.journal?.endAllForTenant(tenantId);
 
     const purgeableFrom = new Date(
       closureRequestedAt.getTime() + CLOSURE_GRACE_DAYS * 24 * 60 * 60 * 1000,
@@ -167,6 +175,9 @@ export class PracticeClosureService {
 
       // Leaves of the graph first.
       await count('clinicalNotes', tx.clinicalNote.deleteMany({ where: { tenantId } }));
+      await count('journalSharedEntries', tx.journalSharedEntry.deleteMany({ where: { tenantId } }));
+      await count('journalLinkRequests', tx.journalLinkRequest.deleteMany({ where: { tenantId } }));
+      await count('journalLinks', tx.journalLink.deleteMany({ where: { tenantId } }));
       await count('formSubmissions', tx.universalFormSubmission.deleteMany({ where: { tenantId } }));
       await count('forms', tx.universalForm.deleteMany({ where: { tenantId } }));
 

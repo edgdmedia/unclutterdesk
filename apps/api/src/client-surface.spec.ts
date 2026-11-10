@@ -54,6 +54,13 @@ const CLIENT_SURFACE = [
   // A sent recap of the client's own session, and ticking it off.
   'GET /v1/consult/portal/sessions/:bookingId/recap',
   'PUT /v1/consult/portal/sessions/:bookingId/recap/ticks',
+  // Her own Unclutter Journal: the plan on her own sent recap, linking (the
+  // returned state must be a request made for her profile), and disconnecting.
+  'GET /v1/consult/portal/sessions/:bookingId/journal',
+  'POST /v1/consult/portal/sessions/:bookingId/journal/connect',
+  'PUT /v1/consult/portal/sessions/:bookingId/journal/plan',
+  'POST /v1/consult/portal/journal/link',
+  'DELETE /v1/consult/portal/journal/link',
   // Booking needs a client session now: name and email come from the account.
   'POST /v1/consult/public/bookings',
   // Paystack's pop-up reported success: the server asks Paystack itself, and only for the caller's own booking.
