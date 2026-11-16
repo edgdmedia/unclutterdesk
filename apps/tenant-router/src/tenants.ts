@@ -12,6 +12,8 @@ export interface TenantLookup {
   exists: boolean;
   /** A practice that exists but is deactivated is still served. */
   active: boolean;
+  /** §6.2: the current slug when the requested one is an old slug (301 redirect). */
+  redirectTo?: string;
 }
 
 const SERVE_ANYWAY: TenantLookup = { exists: true, active: true };
@@ -73,6 +75,7 @@ export async function lookupTenant(
   const result: TenantLookup = {
     exists: (body as TenantLookup).exists,
     active: Boolean((body as TenantLookup).active),
+    ...((body as TenantLookup).redirectTo ? { redirectTo: (body as TenantLookup).redirectTo } : {}),
   };
 
   try {

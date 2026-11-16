@@ -26,6 +26,7 @@ import { profileQr } from './share/qr';
 import { renderProfilePdf } from './share/profile-pdf';
 import { writingTips } from './writing-tips';
 import { HANDLE_MESSAGES, handleProblem, normalizeHandle, suggestHandle } from './handles';
+import { isReservedSlug } from '../tenant/reserved-slugs';
 import { PHOTO_BACKFILL_JOB, type PhotoBackfillPayload } from './profile-photo.job';
 import { SITEMAP_TAG, profileTag, queuePurge } from './profile-purge.job';
 import { PREVIEW_JOB, type PreviewPayload } from './profile-preview.job';
@@ -222,8 +223,12 @@ export class PractitionerProfileService {
    * Choose how clients book: through the practice (DESK), a link elsewhere
    * (EXTERNAL) or contact only (NONE). DESK makes the signed-in practice this
    * profile's main place and switches the dashboard to the full practice view.
+   *
+   * §6.2: when switching to DESK, the therapist can confirm or rename their
+   * booking address (slug). The rename is availability-checked against both
+   * the reserved list and other tenants. Old slugs are stored for 301 redirects.
    */
-  async setBooking(userId: bigint, therapistProfileId: bigint, input: { mode?: unknown; externalBookingUrl?: unknown }) {
+  async setBooking(userId: bigint, therapistProfileId: bigint, input: { mode?: unknown; externalBookingUrl?: unknown; slug?: unknown }) {
     const own = await this.requireOwn(userId);
     const mode = input.mode;
     if (mode !== 'NONE' && mode !== 'DESK' && mode !== 'EXTERNAL') throw new BadRequestException('Choose how clients book');
@@ -242,6 +247,39 @@ export class PractitionerProfileService {
         throw new ConflictException({ message: 'Set up booking first: add a service and your open times', code: 'DESK_NOT_READY', missing: desk.missing });
       }
       const tenantId = desk.tenantId;
+
+      // §6.2: confirm or rename the booking address (slug) when switching to DESK.
+      let newSlug: string | null = null;
+      if (input.slug !== undefined && input.slug !== null) {
+        const slugInput = typeof input.slug === 'string' ? input.slug.trim().toLowerCase() : '';
+        if (!slugInput) throw new BadRequestException('Enter a booking address');
+        if (slugInput.length > 50) throw new BadRequestException('Booking address is too long');
+        if (!/^[a-z0-9]([a-z0-9-]*[a-z0-9])?$/.test(slugInput)) {
+          throw new BadRequestException('Use lowercase letters, numbers and hyphens only');
+        }
+
+        const current = await this.prisma.tenant.findUnique({
+          where: { id: tenantId },
+          select: { slug: true },
+        });
+        if (!current) throw new NotFoundException('Practice not found');
+
+        if (slugInput !== current.slug) {
+          // Check availability: not reserved, not taken by another tenant.
+          if (isReservedSlug(slugInput)) {
+            throw new BadRequestException('That booking address is reserved. Please choose another.');
+          }
+          const taken = await this.prisma.tenant.findUnique({
+            where: { slug: slugInput },
+            select: { id: true },
+          });
+          if (taken) {
+            throw new BadRequestException('That booking address is taken. Please choose another.');
+          }
+          newSlug = slugInput;
+        }
+      }
+
       await this.prisma.$transaction(async (tx) => {
         await tx.practitionerPlace.updateMany({ where: { profileId: own.id }, data: { isMain: false } });
         await tx.practitionerPlace.upsert({
@@ -251,6 +289,22 @@ export class PractitionerProfileService {
         });
         await tx.practitionerProfile.update({ where: { userId }, data: { bookingMode: 'DESK' } });
         await tx.tenant.update({ where: { id: tenantId }, data: { onboardingIntent: 'PRACTICE' } });
+
+        // §6.2: if the slug changed, store the old one for redirects and update.
+        if (newSlug) {
+          const current = await tx.tenant.findUnique({
+            where: { id: tenantId },
+            select: { slug: true },
+          });
+          if (current && current.slug !== newSlug) {
+            await tx.tenantSlugHistory.upsert({
+              where: { slug: current.slug },
+              create: { slug: current.slug, tenantId },
+              update: { tenantId, changedAt: new Date() },
+            });
+            await tx.tenant.update({ where: { id: tenantId }, data: { slug: newSlug } });
+          }
+        }
       });
     }
 

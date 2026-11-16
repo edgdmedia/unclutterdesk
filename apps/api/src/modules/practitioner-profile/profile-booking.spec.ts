@@ -72,4 +72,74 @@ describe('booking mode (§6.9)', () => {
     prisma.practitionerProfile.findUnique.mockResolvedValue(null);
     await expect(service.setBooking(ME, THERAPIST, { mode: 'NONE' })).rejects.toBeInstanceOf(NotFoundException);
   });
+
+  describe('slug rename when switching to DESK (§6.2)', () => {
+    function setupWithSlug(currentSlug: string) {
+      const base = setup();
+      base.prisma.tenant = {
+        findUnique: vi.fn()
+          .mockResolvedValueOnce({ id: TENANT, slug: currentSlug }) // current tenant lookup
+          .mockResolvedValueOnce(null), // new slug not taken
+        update: vi.fn(),
+      };
+      base.tx.tenant = {
+        findUnique: vi.fn().mockResolvedValue({ slug: currentSlug }),
+        update: vi.fn(),
+      };
+      base.tx.tenantSlugHistory = {
+        upsert: vi.fn(),
+      };
+      return base;
+    }
+
+    it('accepts a valid new slug and stores the old one for redirects', async () => {
+      const { service, tx } = setupWithSlug('folake');
+
+      await service.setBooking(ME, THERAPIST, { mode: 'DESK', slug: 'folake-therapy' });
+
+      expect(tx.tenantSlugHistory.upsert).toHaveBeenCalledWith({
+        where: { slug: 'folake' },
+        create: { slug: 'folake', tenantId: TENANT },
+        update: { tenantId: TENANT, changedAt: expect.any(Date) },
+      });
+      expect(tx.tenant.update).toHaveBeenCalledWith({ where: { id: TENANT }, data: { slug: 'folake-therapy' } });
+    });
+
+    it('refuses a reserved slug', async () => {
+      const { service } = setupWithSlug('folake');
+      await expect(service.setBooking(ME, THERAPIST, { mode: 'DESK', slug: 'admin' })).rejects.toThrow(/reserved/);
+    });
+
+    it('refuses a slug taken by another tenant', async () => {
+      const { service, prisma } = setupWithSlug('folake');
+      prisma.tenant.findUnique
+        .mockReset()
+        .mockResolvedValueOnce({ id: TENANT, slug: 'folake' }) // current
+        .mockResolvedValueOnce({ id: 99n }); // taken
+
+      await expect(service.setBooking(ME, THERAPIST, { mode: 'DESK', slug: 'taken-slug' })).rejects.toThrow(/taken/);
+    });
+
+    it('skips the rename when the slug is unchanged', async () => {
+      const { service, tx, prisma } = setupWithSlug('folake');
+      prisma.tenant.findUnique
+        .mockReset()
+        .mockResolvedValueOnce({ id: TENANT, slug: 'folake' }); // current
+
+      await service.setBooking(ME, THERAPIST, { mode: 'DESK', slug: 'folake' });
+
+      expect(tx.tenantSlugHistory.upsert).not.toHaveBeenCalled();
+    });
+
+    it('validates the slug format', async () => {
+      const { service, prisma } = setupWithSlug('folake');
+      prisma.tenant.findUnique
+        .mockReset()
+        .mockResolvedValue({ id: TENANT, slug: 'folake' });
+
+      // Special characters fail the format check.
+      await expect(service.setBooking(ME, THERAPIST, { mode: 'DESK', slug: 'has space' })).rejects.toThrow(/lowercase/);
+      await expect(service.setBooking(ME, THERAPIST, { mode: 'DESK', slug: '' })).rejects.toThrow(/Enter/);
+    });
+  });
 });
