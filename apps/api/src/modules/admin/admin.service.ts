@@ -5,6 +5,7 @@ import { isPaidTier, isTier, PLAN_SELECT, planView } from '../entitlements/entit
 import { NotificationService } from '../notifications/notification.service';
 import { complimentaryPrefix } from '../invites/complimentary-emails';
 import { JournalService } from '../journal/journal.service';
+import { MembershipEndedService } from '../practitioner-profile/membership-ended.service';
 
 const REASONS = ['INVITE_CODE', 'MIGRATION', 'INTERNAL'] as const;
 type ComplimentaryReason = (typeof REASONS)[number];
@@ -17,6 +18,7 @@ export class AdminService {
     private readonly prisma: PrismaService,
     @Optional() private readonly notifications?: NotificationService,
     @Optional() private readonly journal?: JournalService,
+    @Optional() private readonly membershipEnded?: MembershipEndedService,
   ) {}
 
   /**
@@ -249,6 +251,9 @@ export class AdminService {
     if (dto.ecosystemIntegrationEnabled !== undefined && typeof dto.ecosystemIntegrationEnabled !== 'boolean') {
       throw new BadRequestException('ecosystemIntegrationEnabled must be true or false');
     }
+    const before = dto.isActive !== undefined
+      ? await this.prisma.tenant.findUnique({ where: { id }, select: { isActive: true } })
+      : null;
     const tenant = await this.prisma.tenant.update({
       where: { id },
       data: {
@@ -260,6 +265,12 @@ export class AdminService {
     });
     // Switched off: every client's Journal link with this practice ends (journal-integration.md §4).
     if (dto.ecosystemIntegrationEnabled === false) await this.journal?.endAllForTenant(id);
+    // §6.14: switching a practice off ends every membership in it for the
+    // therapists' public profiles; switching it back on offers the place back.
+    if (before && before.isActive !== tenant.isActive) {
+      if (tenant.isActive) await this.membershipEnded?.onPracticeReactivated(id);
+      else await this.membershipEnded?.onPracticeEnded(id);
+    }
     return {
       id: tenant.id.toString(),
       isActive: tenant.isActive,

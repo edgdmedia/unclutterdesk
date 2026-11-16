@@ -116,6 +116,19 @@ export class AuthController {
     return { profile: result.profile, csrfToken };
   }
 
+  @Post('own-booking/claim')
+  @Throttle({ default: { limit: 5, ttl: 60000 } })
+  @ApiOperation({ summary: 'From the emailed link: create a free practice for a therapist with no places left, and sign in (§6.14)' })
+  async claimOwnBooking(
+    @Req() req: TenantRequest,
+    @Body() dto: { token?: string },
+    @Res({ passthrough: true }) res: Response,
+  ) {
+    const result = await this.authService.claimOwnBooking(dto ?? {}, deviceOf(req));
+    const csrfToken = this.setSessionCookies(res, result.accessToken, result.refreshToken);
+    return { profile: result.profile, createdPractice: result.createdPractice, csrfToken };
+  }
+
   @Post('client-signup')
   @Throttle({ default: { limit: 5, ttl: 60000 } })
   @ApiOperation({ summary: 'A client creates their account at this practice' })

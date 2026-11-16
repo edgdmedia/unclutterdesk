@@ -10,9 +10,10 @@ import { RequestModule } from '../requests/request.module';
 import { IntakeModule } from '../intake/intake.module';
 import { PrismaService } from '../../common/prisma/prisma.service';
 import { VideoModule } from '../video/video.module';
+import { PractitionerProfileModule } from '../practitioner-profile/practitioner-profile.module';
 
 @Module({
-  imports: [AuthModule, InviteModule, AssessmentModule, RequestModule, IntakeModule, VideoModule, JournalModule],
+  imports: [AuthModule, InviteModule, AssessmentModule, RequestModule, IntakeModule, VideoModule, JournalModule, PractitionerProfileModule],
   controllers: [AdminController],
   providers: [AdminService, PlatformAdminGuard, PrismaService],
   exports: [AdminService],

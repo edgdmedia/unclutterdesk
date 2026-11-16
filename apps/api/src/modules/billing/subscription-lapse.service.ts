@@ -1,6 +1,7 @@
 import { Injectable, Logger, Optional } from '@nestjs/common';
 import { PrismaService } from '../../common/prisma/prisma.service';
 import { NotificationService } from '../notifications/notification.service';
+import { MembershipEndedService } from '../practitioner-profile/membership-ended.service';
 import { formatLagosDate } from '../../common/lagos-time';
 import { TIER_NAMES, effectiveTier, isPaidTier, PLAN_SELECT, type Tier } from '../entitlements/entitlements';
 
@@ -44,6 +45,7 @@ export class SubscriptionLapseService {
   constructor(
     private readonly prisma: PrismaService,
     @Optional() private readonly notifications?: NotificationService,
+    @Optional() private readonly membershipEnded?: MembershipEndedService,
   ) {}
 
   /**
@@ -127,6 +129,8 @@ export class SubscriptionLapseService {
       title: 'Your access is back',
       message: 'The practice has renewed its plan, so your account is active again. Sign in as usual.',
     });
+    // §6.14: the place isn't re-added to their public profile; they're told they can add it back.
+    await this.membershipEnded?.onMembershipReactivated(paused.map((p) => p.id));
     this.logger.log(`Tenant ${tenantId}: reactivated ${paused.length} membership(s) paused by a downgrade`);
   }
 
@@ -224,6 +228,8 @@ export class SubscriptionLapseService {
       message: "The practice's paid plan has ended, so your account there is paused. Nothing is deleted; it comes back if the practice renews.",
       emailOnly: true,
     });
+    // §6.14: a paused membership has left the practice for the public profile too.
+    await this.membershipEnded?.onMembershipEnded(toPause.map((p) => p.id));
     this.logger.log(`Tenant ${tenantId} moved to FREE; ${toPause.length} membership(s) paused`);
     return true;
   }

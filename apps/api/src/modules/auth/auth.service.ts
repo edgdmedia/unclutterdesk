@@ -25,6 +25,7 @@ import { isReservedSlug } from '../tenant/reserved-slugs';
 import { Prisma, type PractitionerKind } from '@prisma/client';
 import { PractitionerProfileService } from '../practitioner-profile/practitioner-profile.service';
 import { joinOpensMinutes } from '../video/join-window';
+import { OWN_BOOKING_TOKEN, hashOwnBookingToken } from '../practitioner-profile/own-booking-link';
 
 const BCRYPT_ROUNDS = 12;
 
@@ -1544,6 +1545,93 @@ export class AuthService {
     const { accessToken, refreshToken } = this.generateTokens(userId, profile.id, profile.tenantId, profile.type, sessionId);
     await this.sessions.startSession(sessionId, userId, refreshToken, device);
     return { accessToken, refreshToken, profile: this.practiceProfile(profile, user?.platformRole) };
+  }
+
+  /**
+   * §6.14 "Set up your own booking in one step", from the emailed link a
+   * therapist gets when the last place on their profile goes. Creates a FREE
+   * practice with them as OWNER (the §6.8 signup, minus the profile they
+   * already have) and signs them in to it, landing on the booking set-up.
+   *
+   * The link is the credential, since every membership they have may be
+   * inactive: it is single use (consumed in the same transaction; a second,
+   * simultaneous use loses cleanly), expires, and an unknown link and an
+   * expired one get the same answer. Reaching the email proves the address,
+   * so the new membership starts verified. If they already own an active
+   * practice, they are signed in to that one instead of getting a second.
+   */
+  async claimOwnBooking(dto: { token?: unknown }, device: DeviceInfo = {}) {
+    const invalid = 'This link is invalid or has expired. Sign in to set up booking from your profile.';
+    const raw = typeof dto?.token === 'string' ? dto.token.trim() : '';
+    if (!raw) throw new BadRequestException(invalid);
+
+    const link = await this.prisma.token.findFirst({
+      where: { type: OWN_BOOKING_TOKEN, tokenHash: hashOwnBookingToken(raw) },
+      include: { user: true },
+    });
+    if (!link || link.expiresAt < new Date()) throw new BadRequestException(invalid);
+    const userId = link.userId;
+
+    const own = await this.prisma.practitionerProfile.findUnique({ where: { userId }, select: { handle: true, displayName: true } });
+    if (!own) throw new BadRequestException(invalid);
+
+    const created = await this.prisma.$transaction(async (tx) => {
+      const consumed = await tx.token.deleteMany({ where: { id: link.id } });
+      if (consumed.count === 0) throw new BadRequestException(invalid);
+
+      const owned = await tx.profile.findFirst({
+        where: { userId, role: 'OWNER', status: 'active', tenant: { isActive: true, closureRequestedAt: null } },
+        orderBy: [{ createdAt: 'desc' }],
+        select: { id: true },
+      });
+      if (owned) return { profileId: owned.id, tenantId: null as bigint | null };
+
+      // Names and address as the person already has them in Desk.
+      const latest = await tx.profile.findFirst({ where: { userId }, orderBy: [{ createdAt: 'desc' }] });
+      const slug = await this.freeSlug(own.handle);
+      const tenant = await tx.tenant.create({
+        // They asked for booking: start in the full practice view, as "switch on booking" (§6.8) leaves it.
+        data: { name: own.displayName, slug, subscriptionTier: NEW_PRACTICE_TIER, isActive: true, onboardingIntent: 'PRACTICE' },
+      });
+      const profile = await tx.profile.create({
+        data: {
+          tenantId: tenant.id, userId, email: link.user.email, username: link.user.username,
+          firstName: latest?.firstName ?? null, lastName: latest?.lastName ?? null,
+          type: 'therapist', role: 'OWNER', status: 'active', emailVerified: true, emailVerifiedAt: new Date(),
+        },
+      });
+      await tx.consultTherapistProfile.create({
+        data: {
+          tenantId: tenant.id, profileId: profile.id, publicUsername: link.user.username, bookingEmail: link.user.email,
+          notificationEmail: link.user.email, isPublic: true, acceptsGeneralBooking: true, isVerified: true,
+        },
+      });
+      return { profileId: profile.id, tenantId: tenant.id };
+    });
+
+    // BKG-06, as at signup: a new practice starts with its default forms; a failure never undoes it.
+    if (created.tenantId) await this.defaultForms?.ensureFor(created.tenantId).catch(() => undefined);
+
+    const profile = await this.prisma.profile.findUnique({
+      where: { id: created.profileId },
+      include: { tenant: true, consultTherapistProfile: true },
+    });
+    if (!profile) throw new BadRequestException(invalid);
+
+    const sessionId = SessionService.newSessionId();
+    const { accessToken, refreshToken } = this.generateTokens(userId, profile.id, profile.tenantId, profile.type, sessionId);
+    await this.sessions.startSession(sessionId, userId, refreshToken, device);
+    this.logger.log(
+      created.tenantId
+        ? `Own booking: user ${userId} now owns practice ${created.tenantId}`
+        : `Own booking: user ${userId} already owns practice ${profile.tenantId}; signed in to it`,
+    );
+    return {
+      accessToken,
+      refreshToken,
+      profile: this.practiceProfile(profile, link.user.platformRole),
+      createdPractice: created.tenantId !== null,
+    };
   }
 }
 

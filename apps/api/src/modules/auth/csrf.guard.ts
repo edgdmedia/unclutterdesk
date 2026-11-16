@@ -35,6 +35,8 @@ const EXEMPT_ROUTES = new Set([
   'POST /v1/auth/reset-password',
   // Runs before the claimant has any session; the invite token is the credential.
   'POST /v1/auth/invite/claim',
+  // §6.14: same reasoning; the emailed own-booking link is the credential.
+  'POST /v1/auth/own-booking/claim',
   'POST /v1/auth/refresh',
   'POST /v1/admin/auth/login',
 ]);
