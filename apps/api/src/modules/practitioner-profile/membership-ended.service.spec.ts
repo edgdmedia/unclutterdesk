@@ -84,7 +84,7 @@ function world() {
     $transaction: async (fn: any) => fn(prisma),
   };
   const jobs = { enqueue: vi.fn(async () => ({ id: 1n })), runNow: vi.fn(async () => undefined) };
-  const notifications = { sendEmail: vi.fn(async () => ({ ok: true })) };
+  const notifications = { sendEmail: vi.fn(async (_input: any) => ({ ok: true })) };
   const service = new MembershipEndedService(prisma, jobs as any, notifications as any);
   return { service, jobs, notifications, places: () => places, profile: () => profiles.get(100n)!, memberships };
 }

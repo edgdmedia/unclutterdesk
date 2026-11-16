@@ -23,6 +23,7 @@ import { returnPlanSessionOnCancel } from './plan-session-rules';
 import { assertWithinMonthlyLimit, monthlyLimitReached } from './booking-limits';
 import { PLAN_SELECT } from '../entitlements/entitlements';
 import { PersonFactsService } from '../practitioner-profile/person-facts.service';
+import { MembershipEndedService } from '../practitioner-profile/membership-ended.service';
 import { labelledAnswers } from '../intake/form-answers';
 
 /** A Paystack checkout: the page to send the payer to, and the code its pop-up opens with. */
@@ -97,6 +98,7 @@ export class ConsultService {
     @Optional() private readonly notifier?: BookingNotifier,
     @Optional() private readonly settler?: BookingPaymentSettler,
     @Optional() private readonly personFacts?: PersonFactsService,
+    @Optional() private readonly membershipEnded?: MembershipEndedService,
   ) { }
 
   /** §6.17: facts about each therapist come from their profile; the practice record only for someone without one. */
@@ -399,6 +401,11 @@ export class ConsultService {
       throw new ForbiddenException('Only a practice owner or admin can change practitioner status');
     }
 
+    const before = await this.prisma.profile.findFirst({
+      where: { id: profileId, tenantId },
+      select: { status: true },
+    });
+
     // Previously `update({ where: { id: profileId } })` — tenantId was accepted
     // and never used, so any profile on the platform could be deactivated by
     // id. updateMany is used because `update` requires a unique where clause
@@ -420,6 +427,13 @@ export class ConsultService {
         where: { tenantId, profileId },
         data: { isPublic: false },
       });
+    }
+
+    // §6.14: leaving (or rejoining) a practice changes the therapist's public
+    // profile. Only a real change counts, so a repeated toggle sends nothing.
+    if (before?.status !== status) {
+      if (status === 'inactive') await this.membershipEnded?.onMembershipEnded([profileId]);
+      else await this.membershipEnded?.onMembershipReactivated([profileId]);
     }
 
     return { profileId: updated.id.toString(), status: updated.status };

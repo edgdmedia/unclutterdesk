@@ -1,4 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
+import type { Prisma } from '@prisma/client';
 import { PrismaService } from '../../common/prisma/prisma.service';
 import { appOrigin } from '../../common/origins';
 import { JobsService } from '../jobs/jobs.service';
@@ -63,7 +64,7 @@ export class MembershipEndedService {
     await this.offerAddBack({ tenantId });
   }
 
-  private async removePlaces(where: { therapistProfileId: { in: bigint[] } } | { tenantId: bigint }) {
+  private async removePlaces(where: Prisma.PractitionerPlaceWhereInput) {
     const places = await this.prisma.practitionerPlace.findMany({ where, select: PLACE_SELECT });
     for (const place of places) {
       const remaining = await this.prisma.$transaction(async (tx) => {
@@ -99,7 +100,7 @@ export class MembershipEndedService {
     }
   }
 
-  private async offerAddBack(where: { id: { in: bigint[] } } | { tenantId: bigint }) {
+  private async offerAddBack(where: Prisma.ProfileWhereInput) {
     const memberships = await this.prisma.profile.findMany({
       where: { ...where, userId: { not: null } },
       select: {

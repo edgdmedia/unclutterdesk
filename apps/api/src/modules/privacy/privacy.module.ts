@@ -6,9 +6,10 @@ import { PrismaService } from '../../common/prisma/prisma.service';
 import { PlatformAdminGuard } from '../admin/platform-admin.guard';
 import { DataExportService } from './data-export.service';
 import { JournalModule } from '../journal/journal.module';
+import { PractitionerProfileModule } from '../practitioner-profile/practitioner-profile.module';
 
 @Module({
-  imports: [JournalModule],
+  imports: [JournalModule, PractitionerProfileModule],
   controllers: [PrivacyController, PlatformPrivacyController],
   providers: [PrivacyService, DataExportService, PracticeClosureService, PrismaService, PlatformAdminGuard],
 })
