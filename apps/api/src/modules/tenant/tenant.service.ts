@@ -1,5 +1,5 @@
 import { Injectable, BadRequestException, ConflictException, NotFoundException, ForbiddenException, Optional } from '@nestjs/common';
-import { Prisma } from '@prisma/client';
+import { PracticeHomePage, Prisma } from '@prisma/client';
 import { createHash, randomBytes } from 'crypto';
 import { promises as dns } from 'dns';
 import { Logger } from '@nestjs/common';
@@ -283,11 +283,10 @@ export class TenantService {
     const key = practiceKeyFromHost(slugOrDomain);
     const tenant = await this.prisma.tenant.findFirst({
       where: { OR: [{ slug: key }, { customDomain: key, customDomainStatus: 'ACTIVE' }] },
-      select: { isActive: true },
+      select: { id: true, slug: true, isActive: true, homePage: true },
     });
-
-    // §6.2: if the slug is an old one, return the current slug for a 301 redirect.
     if (!tenant) {
+      // §6.2: if the slug is an old one, return the current slug for a 301 redirect.
       const oldSlug = await this.prisma.tenantSlugHistory.findUnique({
         where: { slug: key },
         select: { tenant: { select: { slug: true, isActive: true } } },
@@ -295,9 +294,36 @@ export class TenantService {
       if (oldSlug) {
         return { exists: true, active: Boolean(oldSlug.tenant.isActive), redirectTo: oldSlug.tenant.slug };
       }
+      return { exists: false, active: false };
     }
 
-    return { exists: Boolean(tenant), active: Boolean(tenant?.isActive) };
+    return { exists: true, active: Boolean(tenant.isActive), ...(await this.resolvedHomePage(tenant)) };
+  }
+
+  /**
+   * §6.16 "What `/` shows on a practice address": the owner's profile page
+   * when the practice is solo, its owner's profile is published, and the
+   * owner hasn't chosen the practice page. Otherwise the practice page. A
+   * deactivated practice always keeps the practice page, so clients with
+   * sessions booked still reach its inactive-practice screen.
+   */
+  private async resolvedHomePage(tenant: { id: bigint; slug: string; isActive: boolean; homePage: PracticeHomePage | null }): Promise<
+    { homePage: 'PRACTICE' } | { homePage: 'PROFILE'; profileHandle: string; practiceSlug: string }
+  > {
+    const practicePage = { homePage: 'PRACTICE' as const };
+    if (!tenant.isActive || tenant.homePage === 'PRACTICE') return practicePage;
+    const owner = await this.soloOwner(tenant.id);
+    if (owner === null) return practicePage;
+    const profile = await this.prisma.practitionerProfile.findUnique({ where: { userId: owner }, select: { handle: true, status: true } });
+    if (profile?.status !== 'PUBLISHED') return practicePage;
+    return { homePage: 'PROFILE', profileHandle: profile.handle, practiceSlug: tenant.slug };
+  }
+
+  /** §6.16 opt-out: the owner chooses what their practice address shows at `/`. */
+  async setHomePage(tenantId: bigint, value: unknown): Promise<{ homePage: PracticeHomePage }> {
+    if (value !== 'PROFILE' && value !== 'PRACTICE') throw new BadRequestException('Choose PROFILE or PRACTICE');
+    await this.prisma.tenant.update({ where: { id: tenantId }, data: { homePage: value } });
+    return { homePage: value };
   }
 
   async getPublicTenantInfo(slugOrDomain: string) {
@@ -532,6 +558,8 @@ export class TenantService {
         category: true,
         useProfileForPractice: true,
         joinOpensMinutesBefore: true,
+        // §6.16: what `/` shows while the practice is solo (null means the profile, once published).
+        homePage: true,
       },
     });
 
