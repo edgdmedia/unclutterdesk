@@ -47,11 +47,14 @@ export async function fetchProfileHome(profiles: Fetcher, request: Request, url:
   try {
     const response = await profiles.fetch(profileHomeRequest(request, url, home));
     if (response.status !== 200) {
+      // Logged (Workers observability), so a broken profile home is noticed, not just quietly replaced.
+      console.warn(`profile home for ${url.hostname} answered ${response.status}; serving the practice page`);
       await response.body?.cancel();
       return null;
     }
     return profileHomeResponse(response, indexable);
-  } catch {
+  } catch (err) {
+    console.warn(`profile home for ${url.hostname} failed (${(err as Error).message}); serving the practice page`);
     return null;
   }
 }
