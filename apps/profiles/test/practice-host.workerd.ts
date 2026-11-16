@@ -10,7 +10,7 @@
  *
  * Not covered here: purging. Workers Caching's purge isn't available in the
  * local runtime (`cache.purge is not a function`), for the existing
- * therapysts.com purge as much as for PracticeHost's.
+ * purge on the profile site as much as for PracticeHost's.
  */
 import { spawn, type ChildProcess } from 'node:child_process';
 import { mkdtempSync, readFileSync, writeFileSync, rmSync } from 'node:fs';
@@ -123,7 +123,7 @@ beforeAll(async () => {
       '-c', '../tenant-router/wrangler.jsonc', '-c', profilesConfig,
       '--var', 'APEX_HOST:example.test', '--var', `ORIGIN_HOST:${apiBase.slice('http://'.length)}`, '--var', 'ORIGIN_PROTOCOL:http:', '--var', `API_BASE:${apiBase}`,
     ]),
-    // The profiles Worker on its own, as therapysts.com.
+    // The profiles Worker on its own, as the profile site.
     wranglerDev(['-c', profilesConfig]),
   ]);
 }, 240_000);

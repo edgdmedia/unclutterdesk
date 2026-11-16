@@ -127,6 +127,9 @@ export function cleanImageUrl(value: unknown, what: 'logo' | 'photo' = 'logo'): 
 /** Kept so logo callers read as before. */
 export const cleanLogoUrl = (value: unknown): string | null | undefined => cleanImageUrl(value, 'logo');
 
+/** §6.16: what a practice address shows at `/` while the practice is solo. */
+type HomePageChoice = { homePage: PracticeHomePage };
+
 @Injectable()
 export class TenantService {
   private readonly logger = new Logger(TenantService.name);
@@ -320,7 +323,7 @@ export class TenantService {
   }
 
   /** §6.16 opt-out: the owner chooses what their practice address shows at `/`. */
-  async setHomePage(tenantId: bigint, value: unknown): Promise<{ homePage: PracticeHomePage }> {
+  async setHomePage(tenantId: bigint, value: unknown): Promise<HomePageChoice> {
     if (value !== 'PROFILE' && value !== 'PRACTICE') throw new BadRequestException('Choose PROFILE or PRACTICE');
     await this.prisma.tenant.update({ where: { id: tenantId }, data: { homePage: value } });
     return { homePage: value };

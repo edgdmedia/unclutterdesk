@@ -20,7 +20,7 @@ export const POST: APIRoute = async ({ request, locals }) => {
   if (!tags) return Response.json({ error: 'tags' }, { status: 400 });
   // A failed purge answers 502 with the reason, so the API's job records it
   // and retries (§6.12: never swallowed).
-  // Purges are per entrypoint: this one's cache (therapysts.com) and
+  // Purges are per entrypoint: this one's cache (the profile site) and
   // PracticeHost's (solo practices' `/`, §6.16) are cleared together.
   try {
     const ctx = (locals as { cfContext: PurgeContext }).cfContext;

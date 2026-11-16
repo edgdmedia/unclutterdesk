@@ -1,13 +1,13 @@
 /**
  * The profiles Worker's entrypoints.
  *
- * - default: therapysts.com, for everyone. A visitor can never switch on the
+ * - default: the profile site, for everyone. A visitor can never switch on the
  *   practice-host page: any practice header they send is removed.
  * - PracticeHost (§6.16): reachable only through a service binding, which the
  *   tenant router has. It serves a solo practice's `/` as the owner's profile
  *   page, with the practice's reviews and links that work from the practice's
  *   host. Workers Caching keys by entrypoint, path and query, so these pages
- *   are cached apart from therapysts.com's, one copy per practice.
+ *   are cached apart from the profile site's, one copy per practice.
  */
 import { handle } from '@astrojs/cloudflare/handler';
 import { WorkerEntrypoint } from 'cloudflare:workers';

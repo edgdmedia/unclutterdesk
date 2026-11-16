@@ -5,7 +5,7 @@ import { cleanup, fireEvent, renderWithApp, screen, waitFor } from '../../test/r
 /* §6.17: a solo practice can use its owner's profile for its page. Only the network is stubbed. */
 let brand: Record<string, unknown> = {};
 let own: Record<string, unknown> | null = null;
-const get = vi.fn(async (path: unknown) => (path === '/v1/practitioner-profile/me' ? own : brand));
+const get = vi.fn(async (...a: unknown[]) => (a[0] === '/v1/practitioner-profile/me' ? own : brand));
 const patch = vi.fn(async (..._a: unknown[]): Promise<unknown> => ({}));
 vi.mock('../../utils/apiClient', async (importOriginal) => {
   const real = await importOriginal<typeof import('../../utils/apiClient')>();
