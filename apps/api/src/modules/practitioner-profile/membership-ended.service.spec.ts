@@ -1,5 +1,7 @@
+import { createHash } from 'crypto';
 import { describe, expect, it, vi } from 'vitest';
 import { MembershipEndedService } from './membership-ended.service';
+import { OWN_BOOKING_TOKEN } from './own-booking-link';
 import { PURGE_JOB } from './profile-purge.job';
 
 /**
@@ -14,6 +16,7 @@ function world() {
   const tenants = new Map<bigint, { id: bigint; name: string }>([
     [5n, { id: 5n, name: 'Calm Clinic' }],
     [6n, { id: 6n, name: 'Harbour Practice' }],
+    [7n, { id: 7n, name: 'Lagoon Rooms' }],
   ]);
   const users = new Map<bigint, { id: bigint; email: string }>([[1n, { id: 1n, email: 'folake@example.com' }]]);
   // Folake's memberships: 50 in Calm Clinic, 60 in Harbour Practice.
@@ -77,16 +80,26 @@ function world() {
           };
         }),
   };
+  let tokens: { id: string; userId: bigint; type: string; tokenHash: string; expiresAt: Date }[] = [];
+  const token = {
+    deleteMany: async ({ where }: any) => {
+      const before = tokens.length;
+      tokens = tokens.filter((t) => !(t.userId === where.userId && t.type === where.type));
+      return { count: before - tokens.length };
+    },
+    create: async ({ data }: any) => (tokens.push(data), data),
+  };
   const prisma: any = {
     practitionerPlace: placeModel,
     practitionerProfile,
     profile,
+    token,
     $transaction: async (fn: any) => fn(prisma),
   };
   const jobs = { enqueue: vi.fn(async () => ({ id: 1n })), runNow: vi.fn(async () => undefined) };
   const notifications = { sendEmail: vi.fn(async (_input: any) => ({ ok: true })) };
   const service = new MembershipEndedService(prisma, jobs as any, notifications as any);
-  return { service, jobs, notifications, places: () => places, profile: () => profiles.get(100n)!, memberships };
+  return { service, jobs, notifications, places: () => places, profile: () => profiles.get(100n)!, memberships, tokens: () => tokens };
 }
 
 const purgedTags = (jobs: { enqueue: ReturnType<typeof vi.fn> }) =>
@@ -153,12 +166,32 @@ describe('leaving a practice (§6.14)', () => {
     expect(email.message).not.toContain('Set up your own booking');
   });
 
-  it('offers one-step own booking when no places remain', async () => {
+  it('offers one-step own booking when no places remain, through a single-use link', async () => {
     const w = world();
     await w.service.onMembershipEnded([50n, 60n]);
     const last = w.notifications.sendEmail.mock.calls.at(-1)![0] as any;
     expect(last.message).toContain('Set up your own booking in one step');
-    expect(last.link).toMatch(/\/dashboard\/profile\/own-booking$/);
+    const token = /\/own-booking\/([a-f0-9]{64})$/.exec(last.link)?.[1];
+    expect(token).toBeDefined();
+    // Only the hash is stored; the link itself is the credential.
+    expect(w.tokens()).toEqual([
+      expect.objectContaining({ userId: 1n, type: OWN_BOOKING_TOKEN, tokenHash: createHash('sha256').update(token!).digest('hex') }),
+    ]);
+    expect(w.tokens()[0].expiresAt.getTime()).toBeGreaterThan(Date.now() + 13 * 86_400_000);
+  });
+
+  it('keeps only the newest own-booking link for a person', async () => {
+    const w = world();
+    await w.service.onMembershipEnded([50n, 60n]);
+    w.places().push({ id: 9n, profileId: 100n, tenantId: 7n, therapistProfileId: 70n, isMain: true, sortOrder: 0, createdAt: new Date() });
+    await w.service.onMembershipEnded([70n]);
+    expect(w.tokens()).toHaveLength(1);
+  });
+
+  it('sends no own-booking link while another place remains', async () => {
+    const w = world();
+    await w.service.onMembershipEnded([60n]);
+    expect(w.tokens()).toHaveLength(0);
   });
 
   it('does nothing, and sends nothing, for a membership with no place', async () => {

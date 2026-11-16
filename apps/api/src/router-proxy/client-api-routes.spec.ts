@@ -43,6 +43,8 @@ const NEVER_PROXIED: string[] = [
   'GET /v1/auth/profile-templates',
   // Invite claim endpoint (auth flow, not client booking)
   'POST /v1/auth/invite/claim',
+  // §6.14 one-step own booking from the emailed link (the app, never a practice's booking site)
+  'POST /v1/auth/own-booking/claim',
 ];
 const ROUTES = allRoutes();
 const byTarget = new Map(ROUTES.map((r) => [r.target, r]));

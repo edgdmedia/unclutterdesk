@@ -5,12 +5,13 @@ import { appOrigin } from '../../common/origins';
 import { JobsService } from '../jobs/jobs.service';
 import { NotificationService } from '../notifications/notification.service';
 import { profileTag, queuePurge } from './profile-purge.job';
+import { OWN_BOOKING_LINK_DAYS, issueOwnBookingToken } from './own-booking-link';
 
 const PLACE_SELECT = {
   id: true,
   profileId: true,
   tenant: { select: { name: true } },
-  profile: { select: { id: true, handle: true, status: true, bookingMode: true, user: { select: { email: true } } } },
+  profile: { select: { id: true, userId: true, handle: true, status: true, bookingMode: true, user: { select: { email: true } } } },
 } as const;
 
 /**
@@ -88,13 +89,20 @@ export class MembershipEndedService {
       if (place.profile.status === 'PUBLISHED') {
         await queuePurge(this.jobs, [profileTag(place.profile.handle)]);
       }
+      // With no places left they may have no practice they can sign in to, so
+      // the one-step offer carries its own single-use link (own-booking-link.ts).
+      const link = remaining
+        ? `${appOrigin()}/dashboard/profile`
+        : `${appOrigin()}/own-booking/${await issueOwnBookingToken(this.prisma, place.profile.userId)}`;
       await this.email(place.profile.user.email, {
         type: 'profile.place_removed',
         title: `Your profile no longer books through ${place.tenant.name}`,
         message:
           `Your profile no longer books through ${place.tenant.name}.` +
-          (remaining ? '' : ' Set up your own booking in one step: your own free practice, with booking, payments and notes, ready for your profile.'),
-        link: remaining ? `${appOrigin()}/dashboard/profile` : `${appOrigin()}/dashboard/profile/own-booking`,
+          (remaining
+            ? ''
+            : ` Set up your own booking in one step: your own free practice, with booking, payments and notes, ready for your profile. The link works once and expires in ${OWN_BOOKING_LINK_DAYS} days.`),
+        link,
         actionLabel: remaining ? 'Open your profile' : 'Set up my own booking',
       });
     }
