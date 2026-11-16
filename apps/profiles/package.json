@@ -9,9 +9,14 @@
     "build": "astro build",
     "preview": "astro preview",
     "test": "vitest run",
+    "test:a11y": "tsx scripts/a11y-test.ts",
     "typecheck": "wrangler types && tsc --noEmit"
   },
   "devDependencies": {
+    "@axe-core/playwright": "^4.8.5",
+    "@types/node": "^22.10.5",
+    "playwright": "^1.49.1",
+    "tsx": "^4.19.2",
     "typescript": "^5.9.3",
     "vitest": "^2.1.9",
     "wrangler": "^4.156.2"

@@ -42,3 +42,24 @@ jobs:
           pnpm --filter @unclutterdesk/app test &&
           pnpm --filter @unclutterdesk/tenant-router test &&
           pnpm --filter @unclutterdesk/profiles test
+
+  accessibility:
+    name: Accessibility (Lighthouse ≥ 95)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - uses: pnpm/action-setup@v4
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Install Playwright browsers
+        run: pnpm --filter @unclutterdesk/profiles exec playwright install --with-deps chromium
+      - name: Generate Prisma Client
+        run: pnpm exec prisma generate --schema prisma/schema.prisma
+      - name: Run accessibility tests
+        run: pnpm --filter @unclutterdesk/profiles test:a11y
