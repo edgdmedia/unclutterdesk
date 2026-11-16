@@ -46,3 +46,7 @@ test-results/
 playwright-report/
 .wrangler/
 .dev.vars
+
+# Lighthouse CI reports
+.lighthouseci/
+apps/profiles/a11y/.logs/
