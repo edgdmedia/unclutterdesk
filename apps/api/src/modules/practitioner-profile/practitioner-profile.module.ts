@@ -16,6 +16,7 @@ import { AuditModule } from '../audit/audit.module';
 import { PlatformAdminGuard } from '../admin/platform-admin.guard';
 import { AdminProfileReportsController } from './admin-profile-reports.controller';
 import { ProfileReportsService } from './profile-reports.service';
+import { MembershipEndedService } from './membership-ended.service';
 
 @Module({
   imports: [StorageModule, AuditModule],
@@ -30,9 +31,10 @@ import { ProfileReportsService } from './profile-reports.service';
     ProfileEnsureDraftsJob,
     PersonFactsService,
     AdminProfileContentService,
+    MembershipEndedService,
     PlatformAdminGuard,
     PrismaService,
   ],
-  exports: [PractitionerProfileService, PersonFactsService],
+  exports: [PractitionerProfileService, PersonFactsService, MembershipEndedService],
 })
 export class PractitionerProfileModule {}
