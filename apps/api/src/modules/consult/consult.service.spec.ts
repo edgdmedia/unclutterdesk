@@ -141,7 +141,7 @@ describe('ConsultService.setAllowProfileBooking', () => {
     const jobs = { enqueue: vi.fn().mockResolvedValue(null), runNow: vi.fn().mockResolvedValue(null) };
     const service = new ConsultService(
       prisma, {} as any, {} as any, {} as any, {} as any, {} as any, {} as any,
-      undefined, undefined, undefined, audit as any, jobs as any,
+      undefined, undefined, undefined, undefined, audit as any, jobs as any,
     );
     return { service, prisma, audit, jobs };
   }
