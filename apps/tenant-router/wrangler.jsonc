@@ -18,6 +18,11 @@
   // `api` with a 404 rather than the SPA.
   "workers_dev": false,
 
+  // §6.16: a solo practice's `/` is the owner's profile page, rendered by the
+  // profiles Worker's PracticeHost entrypoint. A service binding needs both
+  // Workers in the same Cloudflare account.
+  "services": [{ "binding": "PROFILES", "service": "therapysts-profiles", "entrypoint": "PracticeHost" }],
+
   // Domain config (spec §4.1a): the vars below are this Worker's production
   // addresses. Change them here at the domain move.
   "vars": {

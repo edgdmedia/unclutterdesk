@@ -1,9 +1,13 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
   "name": "therapysts-profiles",
-  "main": "@astrojs/cloudflare/entrypoints/server",
+  // Our own entry (spec §6.16): Astro's handler as the default export, plus
+  // the PracticeHost entrypoint that only the tenant router's binding reaches.
+  "main": "./src/worker.ts",
   "compatibility_date": "2026-10-01",
-  "compatibility_flags": ["nodejs_compat", "global_fetch_strictly_public"],
+  // enable_ctx_exports: POST /api/purge reaches the PracticeHost entrypoint's
+  // cache through ctx.exports (src/worker.ts, spec §6.16).
+  "compatibility_flags": ["nodejs_compat", "global_fetch_strictly_public", "enable_ctx_exports"],
   "assets": { "binding": "ASSETS", "directory": "./dist" },
   "observability": { "enabled": true },
   // Workers Caching (spec §4.2, §6.12): pages are cached by this Worker, keyed
