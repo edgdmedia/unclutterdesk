@@ -155,6 +155,8 @@ export interface StaffMember {
   initials: string;
   /** Extra permission grants beyond the role. */
   permissions?: string[];
+  /** §6.9 per-place consent: whether this practice appears as a booking place on the therapist's profile. */
+  allowProfileBooking?: boolean;
   /** An invitation that has not been claimed — there is no account behind it. */
   pending?: boolean;
   invitedAt?: string | null;
@@ -190,6 +192,8 @@ interface ApiStaff {
   status: string;
   avatarUrl?: string;
   specialty?: string;
+  /** §6.9 per-place consent: whether this practice appears as a booking place on the therapist's profile. */
+  allowProfileBooking?: boolean;
   invitedAt?: string | null;
   expiresAt?: string | null;
 }
@@ -240,6 +244,7 @@ function apiStaffToMember(s: ApiStaff): StaffMember {
     role: s.role,
     status: pending ? 'Pending' : s.status === 'active' ? 'Active' : 'Inactive',
     initials,
+    allowProfileBooking: s.allowProfileBooking,
     pending,
     invitedAt: s.invitedAt ?? null,
     expiresAt: s.expiresAt ?? null,
