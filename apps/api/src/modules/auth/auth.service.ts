@@ -1590,7 +1590,8 @@ export class AuthService {
       const latest = await tx.profile.findFirst({ where: { userId }, orderBy: [{ createdAt: 'desc' }] });
       const slug = await this.freeSlug(own.handle);
       const tenant = await tx.tenant.create({
-        data: { name: own.displayName, slug, subscriptionTier: NEW_PRACTICE_TIER, isActive: true, onboardingIntent: 'PROFILE' },
+        // They asked for booking: start in the full practice view, as "switch on booking" (§6.8) leaves it.
+        data: { name: own.displayName, slug, subscriptionTier: NEW_PRACTICE_TIER, isActive: true, onboardingIntent: 'PRACTICE' },
       });
       const profile = await tx.profile.create({
         data: {
@@ -1625,7 +1626,12 @@ export class AuthService {
         ? `Own booking: user ${userId} now owns practice ${created.tenantId}`
         : `Own booking: user ${userId} already owns practice ${profile.tenantId}; signed in to it`,
     );
-    return { accessToken, refreshToken, profile: this.practiceProfile(profile, link.user.platformRole) };
+    return {
+      accessToken,
+      refreshToken,
+      profile: this.practiceProfile(profile, link.user.platformRole),
+      createdPractice: created.tenantId !== null,
+    };
   }
 }
 

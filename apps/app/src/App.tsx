@@ -62,6 +62,7 @@ const ForgotPasswordPage = lazy(() => import('./pages/auth/ForgotPasswordPage').
 const ResetPasswordPage = lazy(() => import('./pages/auth/ResetPasswordPage').then((m) => ({ default: m.ResetPasswordPage })));
 const VerifyEmailPage = lazy(() => import('./pages/auth/VerifyEmailPage').then((m) => ({ default: m.VerifyEmailPage })));
 const InvitePage = lazy(() => import('./pages/auth/InvitePage').then((m) => ({ default: m.InvitePage })));
+const OwnBookingPage = lazy(() => import('./pages/auth/OwnBookingPage').then((m) => ({ default: m.OwnBookingPage })));
 const ClientAccountSetupPage = lazy(() => import('./pages/auth/ClientAccountSetupPage').then((m) => ({ default: m.ClientAccountSetupPage })));
 const PlatformAdminLoginPage = lazy(() => import('./pages/admin/PlatformAdminLoginPage').then((m) => ({ default: m.PlatformAdminLoginPage })));
 const PlatformAdminLayout = lazy(() => import('./pages/admin/PlatformAdminLayout').then((m) => ({ default: m.PlatformAdminLayout })));
@@ -371,6 +372,7 @@ function AppLayout() {
     location.pathname === '/signup' ||
     location.pathname === '/forgot-password' ||
     location.pathname.startsWith('/reset-password') ||
+    location.pathname.startsWith('/own-booking/') ||
     location.pathname === '/verify-email';
 
   if (isFullscreen) {
@@ -404,6 +406,8 @@ function AppLayout() {
             <Route path="/verify-email" element={<VerifyEmailPage />} />
             <Route path="/auth/invite/claim" element={<InvitePage />} />
             <Route path="/invite/claim" element={<InvitePage />} />
+            {/* §6.14: the emailed one-step link; works signed in or not. */}
+            <Route path="/own-booking/:token" element={<OwnBookingPage />} />
             <Route path="/client/create-account" element={<ClientAccountSetupPage />} />
             <Route path="*" element={<NotFoundPage homeHref="/login" />} />
           </Routes>

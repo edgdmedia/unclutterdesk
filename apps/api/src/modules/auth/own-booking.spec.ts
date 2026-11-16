@@ -86,7 +86,9 @@ describe('own booking in one step (§6.14)', () => {
     const out = await w.service.claimOwnBooking({ token: RAW });
 
     const practice = w.tenants.find((t) => t.id === 9n);
-    expect(practice).toMatchObject({ slug: 'folake', name: 'Folake Adeyemi', subscriptionTier: 'FREE', onboardingIntent: 'PROFILE' });
+    // They asked for booking, so it starts in the full practice view, as "switch on booking" would leave it.
+    expect(practice).toMatchObject({ slug: 'folake', name: 'Folake Adeyemi', subscriptionTier: 'FREE', onboardingIntent: 'PRACTICE' });
+    expect(out.createdPractice).toBe(true);
     const owner = w.memberships.find((m) => m.tenantId === 9n);
     expect(owner).toMatchObject({ userId: 1n, role: 'OWNER', type: 'therapist', status: 'active', emailVerified: true, email: 'folake@example.com', firstName: 'Folake', lastName: 'Adeyemi' });
     expect(w.therapistRecords).toEqual([expect.objectContaining({ tenantId: 9n, profileId: owner.id, publicUsername: 'folake', isPublic: true })]);
@@ -129,6 +131,7 @@ describe('own booking in one step (§6.14)', () => {
     const out = await w.service.claimOwnBooking({ token: RAW });
     expect(w.db.tenant.create).not.toHaveBeenCalled();
     expect(out.profile).toMatchObject({ id: '80' });
+    expect(out.createdPractice).toBe(false);
     expect(w.tokens).toHaveLength(0);
   });
 

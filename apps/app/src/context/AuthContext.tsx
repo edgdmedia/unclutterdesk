@@ -43,6 +43,7 @@ interface AuthContextValue {
     firstName?: string;
     lastName?: string;
   }) => Promise<AuthProfile>;
+  claimOwnBooking: (token: string) => Promise<{ profile: AuthProfile; createdPractice: boolean }>;
   register: (data: {
     firstName: string;
     lastName: string;
@@ -173,6 +174,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     [],
   );
 
+  // §6.14: the emailed one-step link for a therapist whose last place has gone.
+  // The API creates their own free practice (or finds the one they own) and
+  // signs them in, so this ends with a session exactly like login.
+  const claimOwnBooking = useCallback(async (token: string) => {
+    const res = await api.post<{ profile: AuthProfile; createdPractice: boolean }>('/v1/auth/own-booking/claim', { token });
+    setProfile(res.profile);
+    cacheProfile(res.profile);
+    return { profile: res.profile, createdPractice: res.createdPractice };
+  }, []);
+
   // Registers a brand-new practice + owner therapist. The X-Tenant-Slug header
   // is explicitly emptied so the API creates a fresh tenant instead of
   // resolving into the current practice context.
@@ -237,6 +248,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         login,
         loginAdmin,
         claimInvite,
+        claimOwnBooking,
         register,
         logout,
         refreshProfile,

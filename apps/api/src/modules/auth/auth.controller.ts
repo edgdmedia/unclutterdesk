@@ -126,7 +126,7 @@ export class AuthController {
   ) {
     const result = await this.authService.claimOwnBooking(dto ?? {}, deviceOf(req));
     const csrfToken = this.setSessionCookies(res, result.accessToken, result.refreshToken);
-    return { profile: result.profile, csrfToken };
+    return { profile: result.profile, createdPractice: result.createdPractice, csrfToken };
   }
 
   @Post('client-signup')
