@@ -887,7 +887,7 @@ On a custom domain such as `chente.com`, the API's sign-in cookies (on `api.uncl
 - [x] Share link, QR and PDF use `profilePath()`; PDF gated by profile entitlements (`downloadablePdf`)
 - [x] Report → `ProfileReport` queue → takedown works end to end and is audited; `PlatformRequest` unchanged; terms updated — built 3 Nov 2026 on `phase1/profile-reports` (admin actions: unpublish, suspend, lift suspension)
 - [x] `POST /v1/tenant/register` is platform-admin only — done (PR from `phase1/admin-register`)
-- [x] Public page SSR, readable without JS, Lighthouse accessibility ≥ 95 — axe-core CI job runs on home, pricing, and sample profiles (one per layout × palette); fails if score < 95 or serious/critical violations found (PR #150)
+- [ ] Public page SSR, readable without JS, Lighthouse accessibility ≥ 95 — axe-core CI job runs on home, pricing, and sample profiles (one per layout × palette); fails if score < 95 or serious/critical violations found (PR #150)
 
 ---
 

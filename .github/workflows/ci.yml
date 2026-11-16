@@ -44,7 +44,7 @@ jobs:
           pnpm --filter @unclutterdesk/profiles test
 
   accessibility:
-    name: Accessibility (Lighthouse ≥ 95)
+    name: Accessibility (Lighthouse ≥ 95, axe no serious/critical)
     runs-on: ubuntu-latest
     timeout-minutes: 15
     permissions:
@@ -58,8 +58,14 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
       - name: Install Playwright browsers
-        run: pnpm --filter @unclutterdesk/profiles exec playwright install --with-deps chromium
+        run: pnpm exec playwright install --with-deps chromium
       - name: Generate Prisma Client
         run: pnpm exec prisma generate --schema prisma/schema.prisma
       - name: Run accessibility tests
         run: pnpm --filter @unclutterdesk/profiles test:a11y
+      - name: Upload logs on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: accessibility-logs
+          path: apps/profiles/a11y/.logs/
