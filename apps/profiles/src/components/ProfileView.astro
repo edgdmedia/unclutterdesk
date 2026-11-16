@@ -49,6 +49,9 @@ const years = (y: { startYear: number | null; endYear: number | null }) =>
 const primary = p.specialties.filter((t) => t.primary);
 const others = p.specialties.filter((t) => !t.primary);
 const hasFacts = p.populations.length > 0 || p.faithIntegration || p.languages.length > 0 || p.yearsInPractice !== null;
+// §6.9 per-place consent: show each place and whether it takes online bookings.
+const places = p.places ?? [];
+const hasPlaces = places.length > 0;
 const action = bookUrl
   ? { href: bookUrl, label: 'Book a session', external: true }
   : p.contactEmail
@@ -147,6 +150,20 @@ const showFees = Boolean(p.feeRangeText) || (layout === 'split' && action !== nu
             {p.yearsInPractice !== null && (
               <div><h2 class="fact-label">Experience</h2><p class="fact">{`${p.yearsInPractice} ${p.yearsInPractice === 1 ? 'year' : 'years'}`}</p></div>
             )}
+          </section>
+        )}
+
+        {hasPlaces && (
+          <section aria-labelledby="where-i-practise">
+            <h2 id="where-i-practise">Where I practise</h2>
+            <ul class="places">
+              {places.map((place) => (
+                <li>
+                  <span class="place-name">{place.name}</span>
+                  {!place.takesOnlineBookings && <span class="place-status">Not taking online bookings here right now</span>}
+                </li>
+              ))}
+            </ul>
           </section>
         )}
       </div>

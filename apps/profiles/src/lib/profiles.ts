@@ -1,5 +1,11 @@
 import type { ProfilesConfig } from './config';
 
+export interface PublicPlace {
+  name: string;
+  takesOnlineBookings: boolean;
+  bookingUrl: string | null;
+}
+
 /** The public profile DTO (apps/api public-profile.service.ts). */
 export interface PublicTerm {
   key: string;
@@ -27,8 +33,10 @@ export interface PublicProfile {
   feeRangeText: string | null;
   bookingMode: 'NONE' | 'DESK' | 'EXTERNAL';
   externalBookingUrl: string | null;
-  /** DESK mode: the practice's booking page. */
+  /** DESK mode: the first available place's booking page. */
   deskBookingUrl?: string | null;
+  /** DESK mode: each place and whether it takes online bookings (§6.9). */
+  places?: PublicPlace[];
   contactEmail: string | null;
   /** List form from the API; the older keyed form is still accepted (see socialItems). */
   socialLinks: SocialLink[] | Record<string, string>;

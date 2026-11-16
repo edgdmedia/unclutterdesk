@@ -35,7 +35,14 @@ const ROW = {
   externalBookingUrl: 'https://cal.example/ada',
   contactEmailPublic: 'hello@ada.example',
   socialLinks: { website: 'https://ada.example', instagram: 'javascript:alert(1)', unknown: 'https://x.example' },
-  places: [],
+  places: [
+    {
+      isMain: true,
+      sortOrder: 0,
+      tenant: { name: 'Ada Practice', slug: 'ada', customDomain: null, customDomainStatus: 'PENDING', isActive: true },
+      therapistProfile: { allowProfileBooking: true },
+    },
+  ],
   completenessScore: 80,
   publishedAt: new Date('2026-11-01T10:00:00Z'),
   lastActiveAt: new Date(),
@@ -67,7 +74,7 @@ describe('public profile reads (§6.11)', () => {
       [
         'about', 'acceptingClients', 'approach', 'bookingMode', 'brandColor', 'city', 'colors', 'contactEmail', 'countryCode', 'credentialsText',
         'deskBookingUrl', 'displayName', 'externalBookingUrl', 'faithIntegration', 'feeRangeText', 'handle', 'headline', 'kind', 'languages', 'layoutKey',
-        'modalities', 'offersInPerson', 'offersOnline', 'photoUrl', 'populations', 'previewImageUrl', 'pronouns', 'publishedAt',
+        'modalities', 'offersInPerson', 'offersOnline', 'photoUrl', 'places', 'populations', 'previewImageUrl', 'pronouns', 'publishedAt',
         'socialLinks', 'specialties', 'supervisedBy', 'themeKey', 'timeline', 'updatedAt', 'yearsInPractice',
       ].sort(),
     );
@@ -142,5 +149,66 @@ describe('public profile reads (§6.11)', () => {
     expect(custom.colors.background).toBe('#F7FAFE');
     const warm = ((await setup({ ...ROW, themeKey: 'warm', brandColor: '#FFEB3B' }).service.byHandle('adaeze')) as any).profile;
     expect(warm.brandColor).toBeNull();
+  });
+
+  describe('per-place consent (§6.9)', () => {
+    const mainPlace = {
+      isMain: true,
+      sortOrder: 0,
+      tenant: { name: 'Main Practice', slug: 'main', customDomain: null, customDomainStatus: 'PENDING', isActive: true },
+      therapistProfile: { allowProfileBooking: true },
+    };
+    const secondPlace = {
+      isMain: false,
+      sortOrder: 1,
+      tenant: { name: 'Second Practice', slug: 'second', customDomain: null, customDomainStatus: 'PENDING', isActive: true },
+      therapistProfile: { allowProfileBooking: true },
+    };
+
+    it('shows each place and whether it takes online bookings', async () => {
+      const { service } = setup({ ...ROW, bookingMode: 'DESK', places: [mainPlace, { ...secondPlace, therapistProfile: { allowProfileBooking: false } }] });
+      const p = ((await service.byHandle('adaeze')) as any).profile;
+      expect(p.places).toEqual([
+        { name: 'Main Practice', takesOnlineBookings: true, bookingUrl: expect.stringContaining('/book') },
+        { name: 'Second Practice', takesOnlineBookings: false, bookingUrl: null },
+      ]);
+    });
+
+    it('marks an inactive tenant as not taking bookings', async () => {
+      const { service } = setup({ ...ROW, bookingMode: 'DESK', places: [{ ...mainPlace, tenant: { ...mainPlace.tenant, isActive: false } }] });
+      const p = ((await service.byHandle('adaeze')) as any).profile;
+      expect(p.places[0].takesOnlineBookings).toBe(false);
+      expect(p.places[0].bookingUrl).toBeNull();
+    });
+
+    it('falls back to the next available place when the main is unavailable', async () => {
+      const { service } = setup({
+        ...ROW,
+        bookingMode: 'DESK',
+        places: [
+          { ...mainPlace, therapistProfile: { allowProfileBooking: false } },
+          secondPlace,
+        ],
+      });
+      const p = ((await service.byHandle('adaeze')) as any).profile;
+      // In non-production, tenantWebOrigin returns the same app origin for all tenants,
+      // so we check that a booking URL exists (meaning the fallback worked).
+      expect(p.deskBookingUrl).toContain('/book');
+      expect(p.places[0].takesOnlineBookings).toBe(false);
+      expect(p.places[1].takesOnlineBookings).toBe(true);
+    });
+
+    it('gives no booking URL when no place is available', async () => {
+      const { service } = setup({
+        ...ROW,
+        bookingMode: 'DESK',
+        places: [
+          { ...mainPlace, therapistProfile: { allowProfileBooking: false } },
+          { ...secondPlace, tenant: { ...secondPlace.tenant, isActive: false } },
+        ],
+      });
+      const p = ((await service.byHandle('adaeze')) as any).profile;
+      expect(p.deskBookingUrl).toBeNull();
+    });
   });
 });

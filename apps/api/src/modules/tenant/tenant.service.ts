@@ -858,6 +858,7 @@ export class TenantService {
       avatarUrl: s.avatarUrl,
       isTherapist: !!s.consultTherapistProfile,
       specialty: s.consultTherapistProfile?.specialty,
+      allowProfileBooking: s.consultTherapistProfile?.allowProfileBooking ?? true,
       invitedAt: null as string | null,
       expiresAt: null as string | null,
     }));
