@@ -444,19 +444,19 @@ Already correct, keep as built: empty/unknown plans fall back to FREE; FREE rank
 - `EntitlementsService.summary()` repeats the booking-count query. Make it call `countMonthlyBookings()` so the two can't drift.
 - Local `node_modules` is broken; run `pnpm install` and the full test suite locally before merging.
 
-**Phase 0 acceptance**
-- [ ] Two-scope entitlements in place; tier-comparison test scans **API and frontend**; all empty-plan fallbacks resolve to FREE
-- [ ] `profileEntitlementsForUser` counts only active OWNER/THERAPIST memberships (tested)
-- [ ] 402 handled in the frontend with an upgrade prompt
-- [ ] Verification code uses `crypto.randomInt`
-- [ ] New signup → FREE tenant; trial-phrase test passes on `apps/landing` and `apps/app`
-- [ ] Starter: 30 bookings, 0% fee, bank transfer enabled; Free: Paystack only
-- [ ] Edited `free_tier` migration keeps unpaid practices on Starter for 90 days and runs cleanly on a fresh database; emails and 14-/3-day reminders queued by the cron with dedupe keys; cron drops expired periods to FREE
-- [ ] `set-internal-tenant` script: refuses unknown tenants, idempotent, logs changes, cancels pending migration emails; INTERNAL with null date treated as active by `effectiveTier`, the expiry cron and the lapse logic (tested); payment clears `complimentaryUntil` and `complimentaryReason`
-- [ ] Renewal date always stored; no immediate downgrade on `not_renew`
-- [ ] Lapse timeline (§5.4a) works end to end: grace, notice with exact date, upcoming-sessions view, pause with `pausedByDowngradeAt`, selective reactivation; inactive staff don't block downgrades
-- [ ] Booking limit counts per §5.5 by creation month in Lagos time; staff today/past entries never blocked; future entries limited; `fullyBookedThisMonth` exposed
-- [ ] Legal pages list the actual video processors
+**Phase 0 acceptance** — all built and on `main` (`e3ab3bd`); boxes ticked after a code audit on 16 Nov 2026
+- [x] Two-scope entitlements in place; tier-comparison test scans **API and frontend**; all empty-plan fallbacks resolve to FREE (`entitlements.spec.ts`, `apps/app/src/__tests__/noPlanComparisons.test.ts`)
+- [x] `profileEntitlementsForUser` counts only active OWNER/THERAPIST memberships (tested) — built as `EntitlementsService.forProfile()`
+- [x] 402 handled in the frontend with an upgrade prompt (`apiClient.ts`, `UpgradePrompt.tsx`)
+- [x] Verification code uses `crypto.randomInt`
+- [x] New signup → FREE tenant; trial-phrase test passes on `apps/landing` and `apps/app` (`noTrialCopy.test.ts`)
+- [x] Starter: 30 bookings, 0% fee, bank transfer enabled; Free: Paystack only
+- [x] Edited `free_tier` migration keeps unpaid practices on Starter for 90 days and runs cleanly on a fresh database; emails and 14-/3-day reminders queued by the cron with dedupe keys; cron drops expired periods to FREE (reminders in `invite.cron.ts`)
+- [x] `set-internal-tenant` script: refuses unknown tenants, idempotent, logs changes, cancels pending migration emails; INTERNAL with null date treated as active by `effectiveTier`, the expiry cron and the lapse logic (tested); payment clears `complimentaryUntil` and `complimentaryReason`
+- [x] Renewal date always stored; no immediate downgrade on `not_renew`
+- [x] Lapse timeline (§5.4a) works end to end: grace, notice with exact date, upcoming-sessions view, pause with `pausedByDowngradeAt`, selective reactivation; inactive staff don't block downgrades
+- [x] Booking limit counts per §5.5 by creation month in Lagos time; staff today/past entries never blocked; future entries limited; `fullyBookedThisMonth` exposed
+- [x] Legal pages list the actual video processors (`privacy.astro`, `terms.astro`)
 
 ---
 
@@ -870,23 +870,23 @@ On a custom domain such as `chente.com`, the API's sign-in cookies (on `api.uncl
    - Cookies are per domain, so a client signed in on `chente.com` isn't automatically signed in on `{slug}.{TENANT_ROOT_DOMAIN}`. That's accepted.
    - **Test:** a full client sign-in and booking work through the proxy, including the CSRF header; admin and dashboard routes are refused through the proxy. The end-to-end test (local Postgres + API + built app + router via `wrangler dev`, fake custom domain) **runs in CI in the same PR** as a new workflow job with a Postgres service, not only as a local script. Acceptance in Safari (macOS and iOS), Edge and Chrome on `consult.unclutter.com.ng` after deploy is Olalekan's manual check.
 
-**Phase 1 acceptance**
-- [ ] A new therapist signs up (including the 6-digit code), picks a template and theme, and publishes a profile in under 10 minutes (manual test script)
-- [ ] Handle/slug checks across both namespaces; slug suffix on collision; slug rename when switching booking on; `profiles` and `directory` reserved after a DB check
-- [ ] Profile-first dashboard mode works; switching on Desk booking moves the tenant to the full practice view
-- [ ] Solo practices (§6.16): `/` serves the owner's published profile through the service binding, on subdomains and custom domains; the practice's published reviews appear only there, never on the profile address; opt-out works; clinics keep the practice page; switching on second-therapist activation and back; admin/receptionist staff don't affect solo status; all other paths unchanged
+**Phase 1 acceptance** — code audit 16 Nov 2026: ticked boxes are built and tested; open boxes say what's missing
+- [ ] A new therapist signs up (including the 6-digit code), picks a template and theme, and publishes a profile in under 10 minutes (manual test script) — *the flow is built; the manual test script isn't written and the timed run hasn't been done*
+- [ ] Handle/slug checks across both namespaces; slug suffix on collision; slug rename when switching booking on; `profiles` and `directory` reserved after a DB check — *checks and reserved words built (`handles.ts`, `reserved-slugs.ts`); no slug rename in the switch-to-DESK set-up; confirm the collision suffix*
+- [x] Profile-first dashboard mode works; switching on Desk booking moves the tenant to the full practice view
+- [ ] Solo practices (§6.16): *not built: no `homePage` field, no `homePage`/`profileHandle` in `exists`, no service binding in the router. Only the §6.17 fallback exists (practice page borrows the owner's profile fields).* `/` serves the owner's published profile through the service binding, on subdomains and custom domains; the practice's published reviews appear only there, never on the profile address; opt-out works; clinics keep the practice page; switching on second-therapist activation and back; admin/receptionist staff don't affect solo status; all other paths unchanged
 - [x] **First item:** custom-domain `/api` proxy built: allow-listed routes only, router-set practice header and client IP trusted only with `ROUTER_PROXY_SECRET`, ACTIVE-only origin, `Domain` stripped and `Path=/v1/` rewritten to `/api/v1/` in `Set-Cookie`, `/api` 404 on subdomains, end-to-end test in CI, frontend picks the API base from its host, full sign-in + booking with CSRF works through the proxy on `consult.unclutter.com.ng` in Edge, Safari (macOS and iOS) and Chrome — done 2 Nov 2026 (PRs #55, #58; checked by Olalekan in Safari, Edge and Chrome)
-- [ ] Unverified signups older than 7 days release their handle and slug (only owner self-signups with nothing attached; others flagged for admin)
-- [ ] Proxied page: cookies and `Authorization` stripped, no `Set-Cookie` passed back, assets and site links absolute on the profiles origin, Book button goes to the same host's `/book`, canonical points to the profile address
-- [ ] All three booking modes work; several places per profile with one main; per-place consent; Free offers Paystack only; external URL validated
-- [ ] Templates and guidance editable in admin; unchanged-template-text warning works
-- [ ] Themes pass contrast tests, including custom brand colours (Starter and up); the booking flow uses the page's palette or brand colour; preview images generated on save into R2 and served from R2
-- [ ] Security (§4.3): cache ignores cookies; renderer never reads them; credentialed requests from the profiles origin are rejected; CSP present; script/HTML payloads render inert
-- [ ] Leaving a practice removes only that place (via each of the four existing exit paths), promotes a new main place, falls back to NONE when none remain, and purges the page
-- [ ] Share link, QR and PDF use `profilePath()`; PDF gated by profile entitlements
+- [x] Unverified signups older than 7 days release their handle and slug (only owner self-signups with nothing attached; others flagged for admin) (`unverified-signups.service.ts`, run by the daily billing cron)
+- [ ] Proxied page: cookies and `Authorization` stripped, no `Set-Cookie` passed back, assets and site links absolute on the profiles origin, Book button goes to the same host's `/book`, canonical points to the profile address — *waits on solo practices; the profiles middleware already drops `Set-Cookie`*
+- [ ] All three booking modes work; several places per profile with one main; per-place consent; Free offers Paystack only; external URL validated — *modes, main place and https validation built; `allowProfileBooking` is in the schema but nothing reads or sets it*
+- [x] Templates and guidance editable in admin; unchanged-template-text warning works
+- [ ] Themes pass contrast tests, including custom brand colours (Starter and up); the booking flow uses the page's palette or brand colour; preview images generated on save into R2 and served from R2 — *contrast tests, brand colour API and R2 previews built; the booking flow doesn't take the page's look yet (design-system plan, PR 2)*
+- [x] Security (§4.3): cache ignores cookies; renderer never reads them; credentialed requests from the profiles origin are rejected; CSP present; script/HTML payloads render inert (`apps/profiles/src/lib/security.ts` + tests, `profiles-origin.spec.ts`)
+- [ ] Leaving a practice removes only that place (via each of the four existing exit paths), promotes a new main place, falls back to NONE when none remain, and purges the page — *not built: nothing deletes a `PractitionerPlace` on any of the four exit paths*
+- [x] Share link, QR and PDF use `profilePath()`; PDF gated by profile entitlements (`downloadablePdf`)
 - [x] Report → `ProfileReport` queue → takedown works end to end and is audited; `PlatformRequest` unchanged; terms updated — built 3 Nov 2026 on `phase1/profile-reports` (admin actions: unpublish, suspend, lift suspension)
 - [x] `POST /v1/tenant/register` is platform-admin only — done (PR from `phase1/admin-register`)
-- [ ] Public page SSR, readable without JS, Lighthouse accessibility ≥ 95
+- [ ] Public page SSR, readable without JS, Lighthouse accessibility ≥ 95 — *SSR built; no Lighthouse or axe check anywhere in CI*
 
 ---
 
