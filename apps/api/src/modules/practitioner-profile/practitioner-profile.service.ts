@@ -197,11 +197,17 @@ export class PractitionerProfileService {
     if (!profile) throw new NotFoundException('You have no profile yet');
     const desk = await this.deskReadiness(therapistProfileId);
     const main = profile.places[0]?.tenant;
+    // §6.2: the DESK set-up confirms or renames this booking address, so the
+    // editor needs the current slug even before a main place exists.
+    const bookedAt = desk.tenantId
+      ? await this.prisma.tenant.findUnique({ where: { id: desk.tenantId }, select: { slug: true } })
+      : null;
     return {
       mode: profile.bookingMode,
       externalBookingUrl: profile.externalBookingUrl,
       deskReady: desk.ready,
       deskMissing: desk.missing,
+      deskSlug: bookedAt?.slug ?? main?.slug ?? null,
       deskBookingUrl: profile.bookingMode === 'DESK' && main ? `${tenantWebOrigin(main)}/book` : null,
     };
   }
@@ -265,16 +271,28 @@ export class PractitionerProfileService {
         if (!current) throw new NotFoundException('Practice not found');
 
         if (slugInput !== current.slug) {
-          // Check availability: not reserved, not taken by another tenant.
+          // Check availability: not reserved, not taken by another tenant, not in slug history.
           if (isReservedSlug(slugInput)) {
             throw new BadRequestException('That booking address is reserved. Please choose another.');
+          }
+          // Check against handles (profile namespace) as well as tenant slugs.
+          if (handleProblem(slugInput)) {
+            throw new BadRequestException('That booking address is not available. Please choose another.');
           }
           const taken = await this.prisma.tenant.findUnique({
             where: { slug: slugInput },
             select: { id: true },
           });
           if (taken) {
-            throw new BadRequestException('That booking address is taken. Please choose another.');
+            throw new ConflictException('That booking address is taken. Please choose another.');
+          }
+          // Also check slug history to prevent reusing an old slug.
+          const inHistory = await this.prisma.tenantSlugHistory.findUnique({
+            where: { slug: slugInput },
+            select: { slug: true },
+          });
+          if (inHistory) {
+            throw new ConflictException('That booking address was previously used. Please choose another.');
           }
           newSlug = slugInput;
         }
@@ -305,6 +323,13 @@ export class PractitionerProfileService {
             await tx.tenant.update({ where: { id: tenantId }, data: { slug: newSlug } });
           }
         }
+      }).catch((err) => {
+        // Someone else took the slug between the availability check and the
+        // write: the unique index decides, and the caller gets a 409, not a 500.
+        if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === 'P2002') {
+          throw new ConflictException('That booking address is taken. Please choose another.');
+        }
+        throw err;
       });
     }
 

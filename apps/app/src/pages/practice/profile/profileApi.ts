@@ -130,6 +130,8 @@ export interface BookingInfo {
   externalBookingUrl: string | null;
   deskReady: boolean;
   deskMissing: ('service' | 'availability')[];
+  /** §6.2: the practice's booking address (slug), shown so it can be confirmed or renamed. */
+  deskSlug: string | null;
   deskBookingUrl: string | null;
 }
 
@@ -140,7 +142,7 @@ export const profileApi = {
   setTaxonomy: (terms: { termId: string; isPrimary?: boolean }[]) => api.put<OwnProfile>(`${BASE}/me/taxonomy`, { terms }),
   setTimeline: (entries: TimelineEntry[]) => api.put<OwnProfile>(`${BASE}/me/timeline`, { entries }),
   booking: () => api.get<BookingInfo>(`${BASE}/me/booking`),
-  setBooking: (body: { mode: BookingMode; externalBookingUrl?: string }) => api.put<BookingInfo>(`${BASE}/me/booking`, body),
+  setBooking: (body: { mode: BookingMode; externalBookingUrl?: string; slug?: string }) => api.put<BookingInfo>(`${BASE}/me/booking`, body),
   setPhoto: (image: string) => api.put<OwnProfile>(`${BASE}/me/photo`, { image }),
   removePhoto: () => api.delete<OwnProfile>(`${BASE}/me/photo`),
   changeHandle: (handle: string) => api.put<OwnProfile>(`${BASE}/me/handle`, { handle }),

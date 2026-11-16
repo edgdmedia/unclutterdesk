@@ -65,7 +65,7 @@ export class PractitionerProfileController {
   @Permissions('clinical.record')
   @Put('me/booking')
   @ApiOperation({ summary: 'Choose how clients book me: through the practice, my own link, or contact only' })
-  setBooking(@Req() req: any, @Body() dto: { mode?: unknown; externalBookingUrl?: unknown }) {
+  setBooking(@Req() req: any, @Body() dto: { mode?: unknown; externalBookingUrl?: unknown; slug?: unknown }) {
     return this.profiles.setBooking(authenticatedUserId(req), authenticatedProfileId(req), dto ?? {});
   }
 

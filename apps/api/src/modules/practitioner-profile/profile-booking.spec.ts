@@ -1,4 +1,5 @@
 import { BadRequestException, ConflictException, NotFoundException } from '@nestjs/common';
+import { Prisma } from '@prisma/client';
 import { describe, expect, it, vi } from 'vitest';
 import { PractitionerProfileService } from './practitioner-profile.service';
 
@@ -21,6 +22,7 @@ function setup({ services = 1, slots = 1, mode = 'NONE', places = [] as any[] } 
     consultTherapistProfile: { findUnique: vi.fn().mockResolvedValue({ profile: { tenantId: TENANT } }) },
     consultService: { count: vi.fn().mockResolvedValue(services) },
     consultAvailability: { count: vi.fn().mockResolvedValue(slots) },
+    tenant: { findUnique: vi.fn().mockResolvedValue({ slug: 'folake' }) },
     $transaction: vi.fn(async (fn: any) => fn(tx)),
   };
   const service = new PractitionerProfileService(prisma, { enqueue: vi.fn() } as any, {} as any, {} as any);
@@ -82,6 +84,9 @@ describe('booking mode (§6.9)', () => {
           .mockResolvedValueOnce(null), // new slug not taken
         update: vi.fn(),
       };
+      base.prisma.tenantSlugHistory = {
+        findUnique: vi.fn().mockResolvedValue(null), // not previously used
+      };
       base.tx.tenant = {
         findUnique: vi.fn().mockResolvedValue({ slug: currentSlug }),
         update: vi.fn(),
@@ -140,6 +145,42 @@ describe('booking mode (§6.9)', () => {
       // Special characters fail the format check.
       await expect(service.setBooking(ME, THERAPIST, { mode: 'DESK', slug: 'has space' })).rejects.toThrow(/lowercase/);
       await expect(service.setBooking(ME, THERAPIST, { mode: 'DESK', slug: '' })).rejects.toThrow(/Enter/);
+    });
+
+    it('refuses a slug that collides with a profile handle rule', async () => {
+      const { service, prisma } = setupWithSlug('folake');
+      prisma.tenant.findUnique
+        .mockReset()
+        .mockResolvedValue({ id: TENANT, slug: 'folake' });
+
+      // 'join' is a path the profiles site itself uses, so it can never be a slug either.
+      await expect(service.setBooking(ME, THERAPIST, { mode: 'DESK', slug: 'join' })).rejects.toThrow(/not available/);
+    });
+
+    it('refuses a slug held in TenantSlugHistory', async () => {
+      const { service, prisma } = setupWithSlug('folake');
+      prisma.tenantSlugHistory.findUnique.mockResolvedValue({ slug: 'old-name' });
+
+      await expect(service.setBooking(ME, THERAPIST, { mode: 'DESK', slug: 'old-name' })).rejects.toBeInstanceOf(ConflictException);
+    });
+
+    it('turns the unique-constraint race into a 409', async () => {
+      const { service, prisma } = setupWithSlug('folake');
+      prisma.$transaction.mockRejectedValue(
+        new Prisma.PrismaClientKnownRequestError('Unique constraint failed', { code: 'P2002', clientVersion: 'test' }),
+      );
+      await expect(service.setBooking(ME, THERAPIST, { mode: 'DESK', slug: 'folake-therapy' })).rejects.toBeInstanceOf(
+        ConflictException,
+      );
+    });
+
+    it('purges the profile page after a rename', async () => {
+      const { service } = setupWithSlug('folake');
+      const purge = vi.spyOn(service as any, 'purgeIfPublished').mockResolvedValue(undefined);
+
+      await service.setBooking(ME, THERAPIST, { mode: 'DESK', slug: 'folake-therapy' });
+
+      expect(purge).toHaveBeenCalled();
     });
   });
 });

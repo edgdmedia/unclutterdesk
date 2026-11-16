@@ -18,7 +18,7 @@ vi.mock('../../context/AuthContext', async (importOriginal) => {
 });
 const { BookingChoice } = await import('../practice/profile/BookingChoice');
 
-const info = (over = {}) => ({ mode: 'NONE', externalBookingUrl: null, deskReady: false, deskMissing: ['service', 'availability'], deskBookingUrl: null, ...over });
+const info = (over = {}) => ({ mode: 'NONE', externalBookingUrl: null, deskReady: false, deskMissing: ['service', 'availability'], deskSlug: null, deskBookingUrl: null, ...over });
 
 afterEach(() => {
   cleanup();
@@ -72,5 +72,52 @@ describe('how clients book', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Save booking choice' }));
     await waitFor(() => expect(put).toHaveBeenCalledWith('/v1/practitioner-profile/me/booking', { mode: 'DESK' }));
     expect(await screen.findByRole('link', { name: 'https://folake.example.test/book' })).toBeTruthy();
+  });
+
+  describe('confirm or rename the booking address (§6.2)', () => {
+    it('shows the current address when booking through Therapysts is chosen', async () => {
+      booking = info({ deskReady: true, deskMissing: [], deskSlug: 'folake' });
+      auth = { profile: { onboardingIntent: 'PRACTICE' } };
+      renderWithApp(<BookingChoice />);
+      fireEvent.click(await screen.findByRole('radio', { name: /Clients book through Therapysts/ }));
+      const field = (await screen.findByLabelText(/Your booking address/)) as HTMLInputElement;
+      expect(field.value).toBe('folake');
+      expect(screen.getByText(/folake\.unclutterdesk\.com\/book/)).toBeTruthy();
+    });
+
+    it('sends the new address with the DESK switch', async () => {
+      booking = info({ deskReady: true, deskMissing: [], deskSlug: 'folake' });
+      auth = { profile: { onboardingIntent: 'PRACTICE' } };
+      put.mockResolvedValue(
+        info({ mode: 'DESK', deskReady: true, deskMissing: [], deskSlug: 'folake-therapy', deskBookingUrl: 'https://folake-therapy.unclutterdesk.com/book' }),
+      );
+      renderWithApp(<BookingChoice />);
+      fireEvent.click(await screen.findByRole('radio', { name: /Clients book through Therapysts/ }));
+      fireEvent.change(await screen.findByLabelText(/Your booking address/), { target: { value: 'folake-therapy' } });
+      fireEvent.click(screen.getByRole('button', { name: 'Save booking choice' }));
+      await waitFor(() =>
+        expect(put).toHaveBeenCalledWith('/v1/practitioner-profile/me/booking', { mode: 'DESK', slug: 'folake-therapy' }),
+      );
+    });
+
+    it('says the old address keeps working when the address is changed', async () => {
+      booking = info({ deskReady: true, deskMissing: [], deskSlug: 'folake' });
+      auth = { profile: { onboardingIntent: 'PRACTICE' } };
+      renderWithApp(<BookingChoice />);
+      fireEvent.click(await screen.findByRole('radio', { name: /Clients book through Therapysts/ }));
+      fireEvent.change(await screen.findByLabelText(/Your booking address/), { target: { value: 'folake-therapy' } });
+      expect(screen.getByText(/the old address keeps working/)).toBeTruthy();
+    });
+
+    it('shows the server error when the new address is taken', async () => {
+      booking = info({ deskReady: true, deskMissing: [], deskSlug: 'folake' });
+      auth = { profile: { onboardingIntent: 'PRACTICE' } };
+      put.mockRejectedValue(new Error('That booking address is taken. Please choose another.'));
+      renderWithApp(<BookingChoice />);
+      fireEvent.click(await screen.findByRole('radio', { name: /Clients book through Therapysts/ }));
+      fireEvent.change(await screen.findByLabelText(/Your booking address/), { target: { value: 'taken' } });
+      fireEvent.click(screen.getByRole('button', { name: 'Save booking choice' }));
+      expect(await screen.findByText(/That booking address is taken/)).toBeTruthy();
+    });
   });
 });

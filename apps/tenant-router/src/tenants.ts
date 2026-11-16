@@ -72,10 +72,14 @@ export async function lookupTenant(
     return SERVE_ANYWAY;
   }
 
+  // A slug is a DNS label: lowercase letters, digits and hyphens, never a dot,
+  // so a bad value can never rewrite the host we redirect to.
+  const REDIRECT_SLUG = /^[a-z0-9]([a-z0-9-]{0,48}[a-z0-9])?$/;
+  const redirectTo = (body as TenantLookup).redirectTo;
   const result: TenantLookup = {
     exists: (body as TenantLookup).exists,
     active: Boolean((body as TenantLookup).active),
-    ...((body as TenantLookup).redirectTo ? { redirectTo: (body as TenantLookup).redirectTo } : {}),
+    ...(typeof redirectTo === 'string' && REDIRECT_SLUG.test(redirectTo) ? { redirectTo } : {}),
   };
 
   try {

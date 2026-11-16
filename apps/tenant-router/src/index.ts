@@ -85,7 +85,6 @@ export default {
           if (tenant.redirectTo) {
             const newUrl = new URL(request.url);
             // Replace the slug part of the hostname with the new slug.
-            const label = host.slice(0, -(config.apexHost.length + 1));
             const newHost = `${tenant.redirectTo}.${config.apexHost}`;
             newUrl.hostname = newHost;
             return Response.redirect(newUrl.toString(), 301);

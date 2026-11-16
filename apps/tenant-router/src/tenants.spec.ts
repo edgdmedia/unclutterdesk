@@ -61,6 +61,31 @@ describe('lookupTenant', () => {
     );
   });
 
+  describe('old slugs (§6.2)', () => {
+    it('passes through the current slug for a redirect', async () => {
+      (fetch as any).mockResolvedValue(
+        jsonResponse({ exists: true, active: true, redirectTo: 'dr-smith-new' }),
+      );
+      await expect(lookupTenant('dr-smith-old.unclutterdesk.com', API, emptyCache())).resolves.toEqual({
+        exists: true,
+        active: true,
+        redirectTo: 'dr-smith-new',
+      });
+    });
+
+    it('drops a redirect value that is not a plain slug', async () => {
+      // A redirect is spliced into the hostname; anything but a DNS label could
+      // rewrite where the browser is sent, so it is ignored.
+      (fetch as any).mockResolvedValue(
+        jsonResponse({ exists: true, active: true, redirectTo: 'evil.example.com/path' }),
+      );
+      await expect(lookupTenant('x.unclutterdesk.com', API, emptyCache())).resolves.toEqual({
+        exists: true,
+        active: true,
+      });
+    });
+  });
+
   // A wrong 404 removes a real practice from the internet; a wrong 200 only
   // shows the app's own not-found screen. Every uncertain path serves the app.
   describe('fails open', () => {
