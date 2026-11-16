@@ -85,7 +85,7 @@ let profilesPort = 0;
 /** Starts `wrangler dev` and resolves with its port once it says it's ready. */
 function wranglerDev(args: string[]): Promise<number> {
   return new Promise((done, fail) => {
-    const child = spawn('pnpm', ['exec', 'wrangler', 'dev', '--local', '--ip', '127.0.0.1', '--port', '0', '--persist-to', mkdtempSync(join(work, 'state-')), ...args], {
+    const child = spawn('pnpm', ['exec', 'wrangler', 'dev', '--local', '--ip', '127.0.0.1', '--port', '0', '--inspector-port', '0', '--persist-to', mkdtempSync(join(work, 'state-')), ...args], {
       cwd: PROFILES_DIR,
       env: { ...process.env, WRANGLER_SEND_METRICS: 'false', CI: 'true' },
     });
@@ -117,15 +117,15 @@ beforeAll(async () => {
   writeFileSync(join(PROFILES_DIR, 'dist/server/wrangler.workerd-test.json'), JSON.stringify(built));
   const profilesConfig = 'dist/server/wrangler.workerd-test.json';
 
-  [routerPort, profilesPort] = await Promise.all([
-    // The router first (it gets the port), with the profiles Worker beside it for the binding.
-    wranglerDev([
-      '-c', '../tenant-router/wrangler.jsonc', '-c', profilesConfig,
-      '--var', 'APEX_HOST:example.test', '--var', `ORIGIN_HOST:${apiBase.slice('http://'.length)}`, '--var', 'ORIGIN_PROTOCOL:http:', '--var', `API_BASE:${apiBase}`,
-    ]),
-    // The profiles Worker on its own, as the profile site.
-    wranglerDev(['-c', profilesConfig]),
+  // One after the other: two runtimes starting at once race for the same
+  // local sockets (CI failed with "Address already in use").
+  // The router first (it gets the port), with the profiles Worker beside it for the binding.
+  routerPort = await wranglerDev([
+    '-c', '../tenant-router/wrangler.jsonc', '-c', profilesConfig,
+    '--var', 'APEX_HOST:example.test', '--var', `ORIGIN_HOST:${apiBase.slice('http://'.length)}`, '--var', 'ORIGIN_PROTOCOL:http:', '--var', `API_BASE:${apiBase}`,
   ]);
+  // The profiles Worker on its own, as the profile site.
+  profilesPort = await wranglerDev(['-c', profilesConfig]);
 }, 240_000);
 
 afterAll(async () => {
