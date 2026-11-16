@@ -457,6 +457,10 @@ export class ConsultService {
     profileId: bigint,
     allow: boolean,
   ) {
+    if (typeof allow !== 'boolean') {
+      throw new BadRequestException('allowProfileBooking must be a boolean');
+    }
+
     const actor = await this.prisma.profile.findFirst({
       where: { id: actorProfileId, tenantId },
       select: { role: true },

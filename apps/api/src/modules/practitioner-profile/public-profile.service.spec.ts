@@ -210,5 +210,12 @@ describe('public profile reads (§6.11)', () => {
       const p = ((await service.byHandle('adaeze')) as any).profile;
       expect(p.deskBookingUrl).toBeNull();
     });
+
+    it('returns takesOnlineBookings: false for places that cannot book online (renderer shows "Not taking online bookings here right now")', async () => {
+      const { service } = setup({ ...ROW, bookingMode: 'DESK', places: [{ ...mainPlace, therapistProfile: { allowProfileBooking: false } }] });
+      const p = ((await service.byHandle('adaeze')) as any).profile;
+      expect(p.places[0].takesOnlineBookings).toBe(false);
+      expect(p.places[0].bookingUrl).toBeNull();
+    });
   });
 });

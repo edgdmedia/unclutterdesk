@@ -50,7 +50,8 @@ const primary = p.specialties.filter((t) => t.primary);
 const others = p.specialties.filter((t) => !t.primary);
 const hasFacts = p.populations.length > 0 || p.faithIntegration || p.languages.length > 0 || p.yearsInPractice !== null;
 // §6.9 per-place consent: show each place and whether it takes online bookings.
-const places = p.places ?? [];
+// Only shown in DESK mode, since places are only relevant for desk booking.
+const places = p.bookingMode === 'DESK' ? (p.places ?? []) : [];
 const hasPlaces = places.length > 0;
 const action = bookUrl
   ? { href: bookUrl, label: 'Book a session', external: true }

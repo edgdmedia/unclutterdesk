@@ -329,3 +329,57 @@ describe('invitations on the roster', () => {
     expect(screen.queryByText('Deactivate Member')).toBeNull();
   });
 });
+
+describe('per-place consent toggle (§6.9)', () => {
+  const RECEPTIONIST = {
+    id: '3',
+    name: 'Reception Staff',
+    title: 'Receptionist',
+    email: 'reception@practice.ng',
+    role: 'RECEPTIONIST',
+    status: 'Active',
+    initials: 'RS',
+  };
+
+  it('shows the toggle for therapists', () => {
+    renderPage([OWNER, { ...THERAPIST, allowProfileBooking: true } as any]);
+    expect(screen.getByLabelText(/Show this practice as a booking place on Segun Ade's profile/)).toBeTruthy();
+  });
+
+  it('does not show the toggle for receptionists', () => {
+    renderPage([OWNER, RECEPTIONIST]);
+    expect(screen.queryByLabelText(/Show this practice as a booking place on Reception Staff's profile/)).toBeNull();
+  });
+
+  it('does not show the toggle for pending invites', () => {
+    renderPage([OWNER, INVITE as any]);
+    expect(screen.queryByLabelText(/Show this practice as a booking place on new@practice.ng's profile/)).toBeNull();
+  });
+
+  it('calls the correct API endpoint when toggled', async () => {
+    apiPatch.mockReset().mockResolvedValue({ profileId: '2', allowProfileBooking: false });
+    renderPage([OWNER, { ...THERAPIST, allowProfileBooking: true } as any]);
+    fireEvent.click(screen.getByLabelText(/Show this practice as a booking place on Segun Ade's profile/));
+    await waitFor(() =>
+      expect(apiPatch).toHaveBeenCalledWith('/v1/consult/admin/therapists/2/allow-profile-booking', {
+        allowProfileBooking: false,
+      }),
+    );
+  });
+
+  it('re-reads the roster after toggling', async () => {
+    apiPatch.mockReset().mockResolvedValue({ profileId: '2', allowProfileBooking: false });
+    renderPage([OWNER, { ...THERAPIST, allowProfileBooking: true } as any]);
+    fireEvent.click(screen.getByLabelText(/Show this practice as a booking place on Segun Ade's profile/));
+    await waitFor(() => expect(onRefresh).toHaveBeenCalled());
+  });
+
+  it('shows an error when the server refuses', async () => {
+    apiPatch.mockRejectedValue(new Error('Only a practice owner or admin can change booking consent'));
+    renderPage([OWNER, { ...THERAPIST, allowProfileBooking: true } as any]);
+    fireEvent.click(screen.getByLabelText(/Show this practice as a booking place on Segun Ade's profile/));
+    expect((await screen.findAllByRole('alert')).map((e) => e.textContent).join(' ')).toMatch(
+      /Only a practice owner or admin/,
+    );
+  });
+});
