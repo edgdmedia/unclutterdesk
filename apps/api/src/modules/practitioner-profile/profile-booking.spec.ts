@@ -1,4 +1,5 @@
 import { BadRequestException, ConflictException, NotFoundException } from '@nestjs/common';
+import { Prisma } from '@prisma/client';
 import { describe, expect, it, vi } from 'vitest';
 import { PractitionerProfileService } from './practitioner-profile.service';
 
@@ -21,6 +22,7 @@ function setup({ services = 1, slots = 1, mode = 'NONE', places = [] as any[] } 
     consultTherapistProfile: { findUnique: vi.fn().mockResolvedValue({ profile: { tenantId: TENANT } }) },
     consultService: { count: vi.fn().mockResolvedValue(services) },
     consultAvailability: { count: vi.fn().mockResolvedValue(slots) },
+    tenant: { findUnique: vi.fn().mockResolvedValue({ slug: 'folake' }) },
     $transaction: vi.fn(async (fn: any) => fn(tx)),
   };
   const service = new PractitionerProfileService(prisma, { enqueue: vi.fn() } as any, {} as any, {} as any);
@@ -71,5 +73,114 @@ describe('booking mode (§6.9)', () => {
     await expect(service.setBooking(ME, THERAPIST, { mode: 'PHONE' })).rejects.toBeInstanceOf(BadRequestException);
     prisma.practitionerProfile.findUnique.mockResolvedValue(null);
     await expect(service.setBooking(ME, THERAPIST, { mode: 'NONE' })).rejects.toBeInstanceOf(NotFoundException);
+  });
+
+  describe('slug rename when switching to DESK (§6.2)', () => {
+    function setupWithSlug(currentSlug: string) {
+      const base = setup();
+      base.prisma.tenant = {
+        findUnique: vi.fn()
+          .mockResolvedValueOnce({ id: TENANT, slug: currentSlug }) // current tenant lookup
+          .mockResolvedValueOnce(null), // new slug not taken
+        update: vi.fn(),
+      };
+      base.prisma.tenantSlugHistory = {
+        findUnique: vi.fn().mockResolvedValue(null), // not previously used
+      };
+      base.tx.tenant = {
+        findUnique: vi.fn().mockResolvedValue({ slug: currentSlug }),
+        update: vi.fn(),
+      };
+      base.tx.tenantSlugHistory = {
+        upsert: vi.fn(),
+      };
+      return base;
+    }
+
+    it('accepts a valid new slug and stores the old one for redirects', async () => {
+      const { service, tx } = setupWithSlug('folake');
+
+      await service.setBooking(ME, THERAPIST, { mode: 'DESK', slug: 'folake-therapy' });
+
+      expect(tx.tenantSlugHistory.upsert).toHaveBeenCalledWith({
+        where: { slug: 'folake' },
+        create: { slug: 'folake', tenantId: TENANT },
+        update: { tenantId: TENANT, changedAt: expect.any(Date) },
+      });
+      expect(tx.tenant.update).toHaveBeenCalledWith({ where: { id: TENANT }, data: { slug: 'folake-therapy' } });
+    });
+
+    it('refuses a reserved slug', async () => {
+      const { service } = setupWithSlug('folake');
+      await expect(service.setBooking(ME, THERAPIST, { mode: 'DESK', slug: 'admin' })).rejects.toThrow(/reserved/);
+    });
+
+    it('refuses a slug taken by another tenant', async () => {
+      const { service, prisma } = setupWithSlug('folake');
+      prisma.tenant.findUnique
+        .mockReset()
+        .mockResolvedValueOnce({ id: TENANT, slug: 'folake' }) // current
+        .mockResolvedValueOnce({ id: 99n }); // taken
+
+      await expect(service.setBooking(ME, THERAPIST, { mode: 'DESK', slug: 'taken-slug' })).rejects.toThrow(/taken/);
+    });
+
+    it('skips the rename when the slug is unchanged', async () => {
+      const { service, tx, prisma } = setupWithSlug('folake');
+      prisma.tenant.findUnique
+        .mockReset()
+        .mockResolvedValueOnce({ id: TENANT, slug: 'folake' }); // current
+
+      await service.setBooking(ME, THERAPIST, { mode: 'DESK', slug: 'folake' });
+
+      expect(tx.tenantSlugHistory.upsert).not.toHaveBeenCalled();
+    });
+
+    it('validates the slug format', async () => {
+      const { service, prisma } = setupWithSlug('folake');
+      prisma.tenant.findUnique
+        .mockReset()
+        .mockResolvedValue({ id: TENANT, slug: 'folake' });
+
+      // Special characters fail the format check.
+      await expect(service.setBooking(ME, THERAPIST, { mode: 'DESK', slug: 'has space' })).rejects.toThrow(/lowercase/);
+      await expect(service.setBooking(ME, THERAPIST, { mode: 'DESK', slug: '' })).rejects.toThrow(/Enter/);
+    });
+
+    it('refuses a slug that collides with a profile handle rule', async () => {
+      const { service, prisma } = setupWithSlug('folake');
+      prisma.tenant.findUnique
+        .mockReset()
+        .mockResolvedValue({ id: TENANT, slug: 'folake' });
+
+      // 'join' is a path the profiles site itself uses, so it can never be a slug either.
+      await expect(service.setBooking(ME, THERAPIST, { mode: 'DESK', slug: 'join' })).rejects.toThrow(/not available/);
+    });
+
+    it('refuses a slug held in TenantSlugHistory', async () => {
+      const { service, prisma } = setupWithSlug('folake');
+      prisma.tenantSlugHistory.findUnique.mockResolvedValue({ slug: 'old-name' });
+
+      await expect(service.setBooking(ME, THERAPIST, { mode: 'DESK', slug: 'old-name' })).rejects.toBeInstanceOf(ConflictException);
+    });
+
+    it('turns the unique-constraint race into a 409', async () => {
+      const { service, prisma } = setupWithSlug('folake');
+      prisma.$transaction.mockRejectedValue(
+        new Prisma.PrismaClientKnownRequestError('Unique constraint failed', { code: 'P2002', clientVersion: 'test' }),
+      );
+      await expect(service.setBooking(ME, THERAPIST, { mode: 'DESK', slug: 'folake-therapy' })).rejects.toBeInstanceOf(
+        ConflictException,
+      );
+    });
+
+    it('purges the profile page after a rename', async () => {
+      const { service } = setupWithSlug('folake');
+      const purge = vi.spyOn(service as any, 'purgeIfPublished').mockResolvedValue(undefined);
+
+      await service.setBooking(ME, THERAPIST, { mode: 'DESK', slug: 'folake-therapy' });
+
+      expect(purge).toHaveBeenCalled();
+    });
   });
 });

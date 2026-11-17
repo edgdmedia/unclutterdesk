@@ -10,6 +10,10 @@ function createPrismaMock() {
       create: vi.fn(),
       update: vi.fn(),
     },
+    tenantSlugHistory: {
+      findUnique: vi.fn().mockResolvedValue(null),
+      upsert: vi.fn(),
+    },
     profile: {
       findFirst: vi.fn(),
       update: vi.fn(),
@@ -252,6 +256,28 @@ describe('TenantService.getPublicTenantExistence', () => {
     const result = await service.getPublicTenantExistence('dr-smith');
     expect(Object.keys(result).sort()).toEqual(['active', 'exists']);
     expect(prisma.tenant.findFirst.mock.calls[0][0].select).toEqual({ isActive: true });
+  });
+
+  test('§6.2: returns redirectTo when the slug is an old one', async () => {
+    const prisma = createPrismaMock();
+    prisma.tenant.findFirst.mockResolvedValue(null);
+    prisma.tenantSlugHistory.findUnique.mockResolvedValue({
+      tenant: { slug: 'dr-smith-new', isActive: true },
+    });
+    const service = new TenantService(prisma, notificationsMock());
+
+    const result = await service.getPublicTenantExistence('dr-smith');
+    expect(result).toEqual({ exists: true, active: true, redirectTo: 'dr-smith-new' });
+  });
+
+  test('§6.2: does not redirect when the slug is current', async () => {
+    const prisma = createPrismaMock();
+    prisma.tenant.findFirst.mockResolvedValue({ isActive: true });
+    const service = new TenantService(prisma, notificationsMock());
+
+    const result = await service.getPublicTenantExistence('dr-smith');
+    expect(result).toEqual({ exists: true, active: true });
+    expect(prisma.tenantSlugHistory.findUnique).not.toHaveBeenCalled();
   });
 });
 

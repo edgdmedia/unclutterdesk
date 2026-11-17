@@ -12,6 +12,8 @@ export interface TenantLookup {
   exists: boolean;
   /** A practice that exists but is deactivated is still served. */
   active: boolean;
+  /** §6.2: the current slug when the requested one is an old slug (301 redirect). */
+  redirectTo?: string;
 }
 
 const SERVE_ANYWAY: TenantLookup = { exists: true, active: true };
@@ -70,9 +72,14 @@ export async function lookupTenant(
     return SERVE_ANYWAY;
   }
 
+  // A slug is a DNS label: lowercase letters, digits and hyphens, never a dot,
+  // so a bad value can never rewrite the host we redirect to.
+  const REDIRECT_SLUG = /^[a-z0-9]([a-z0-9-]{0,48}[a-z0-9])?$/;
+  const redirectTo = (body as TenantLookup).redirectTo;
   const result: TenantLookup = {
     exists: (body as TenantLookup).exists,
     active: Boolean((body as TenantLookup).active),
+    ...(typeof redirectTo === 'string' && REDIRECT_SLUG.test(redirectTo) ? { redirectTo } : {}),
   };
 
   try {

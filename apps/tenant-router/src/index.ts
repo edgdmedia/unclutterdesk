@@ -81,6 +81,14 @@ export default {
           if (!tenant.exists) {
             return practiceNotFoundResponse(host, env.MARKETING_URL);
           }
+          // §6.2: if the slug is an old one, redirect to the current slug.
+          if (tenant.redirectTo) {
+            const newUrl = new URL(request.url);
+            // Replace the slug part of the hostname with the new slug.
+            const newHost = `${tenant.redirectTo}.${config.apexHost}`;
+            newUrl.hostname = newHost;
+            return Response.redirect(newUrl.toString(), 301);
+          }
         }
 
         // redirect: 'manual' so the origin's own redirects reach the browser

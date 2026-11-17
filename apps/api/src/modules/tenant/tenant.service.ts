@@ -286,6 +286,17 @@ export class TenantService {
       select: { isActive: true },
     });
 
+    // §6.2: if the slug is an old one, return the current slug for a 301 redirect.
+    if (!tenant) {
+      const oldSlug = await this.prisma.tenantSlugHistory.findUnique({
+        where: { slug: key },
+        select: { tenant: { select: { slug: true, isActive: true } } },
+      });
+      if (oldSlug) {
+        return { exists: true, active: Boolean(oldSlug.tenant.isActive), redirectTo: oldSlug.tenant.slug };
+      }
+    }
+
     return { exists: Boolean(tenant), active: Boolean(tenant?.isActive) };
   }
 

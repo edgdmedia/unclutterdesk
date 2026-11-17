@@ -59,6 +59,9 @@ model Tenant {
   closureRequestedAt DateTime?
   closureRequestedBy BigInt?
 
+  // §6.2: slug history for redirects when a practice renames its booking address.
+  slugHistory         TenantSlugHistory[]
+
   // Paystack subscription billing
   paystackCustomerCode      String?                   @unique
   paystackSubscriptionCode  String?                   @unique
@@ -769,6 +772,17 @@ model BankSubaccount {
   updatedAt     DateTime @updatedAt
 
   tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+}
+
+/// §6.2: old slugs kept for 301 redirects when a practice renames its booking address.
+model TenantSlugHistory {
+  slug      String   @id @db.VarChar(50)
+  tenantId  BigInt
+  changedAt DateTime @default(now())
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
 }
 
 // A practice's own email domain, verified through Resend. While it is VERIFIED
