@@ -37,13 +37,14 @@ Do these in any order, days before the cutover.
 ### Cloudflare, Therapysts account, zone `therapysts.app`
 
 1. **[you] Confirm the zone is Active** in the Therapysts account.
-2. **[you] DNS records:**
-   - `api`: `A 169.58.3.186` and `AAAA 2a02:c207:2343:4945::1`, **DNS-only (grey cloud)** to begin with, so certbot can issue the certificate (§2.2). Proxying it comes later, as in `CLOUDFLARE_SETUP.md` §2.
+2. **[Claude] DNS records.** **Done 17 Nov 2026**, through the Cloudflare API with a temporary token (`~/.config/cloudflare/therapysts-move.env`):
+   - `api`: `A 169.58.3.186`, **DNS-only (grey cloud)** so certbot can issue the certificate (§1.9). Proxy it afterwards, as in `CLOUDFLARE_SETUP.md` §2. There is no AAAA record, the same as `api.unclutterdesk.com` today.
    - `*`: `AAAA 100::`, **proxied**. Worker routes only run on proxied records, so this is what makes every `{slug}.therapysts.app` reach the router.
-   - The bare domain has no record by hand: the Pages custom domain adds it (§2.4).
-   - `customers`: `CNAME therapysts.app`, **proxied**. This is the address every custom domain points at.
-3. **[you] Worker route exclusion for the API:** route `api.therapysts.app/*` with **Worker = None**. Without it, the router's `*.therapysts.app/*` route would answer every API call once `api` is proxied (the same trap noted in `CLOUDFLARE_SETUP.md` §1).
-4. **[you] Cloudflare for SaaS on `therapysts.app`:** zone → SSL/TLS → Custom Hostnames → Enable. Set the fallback origin to `therapysts.app`.
+   - `customers`: `AAAA 100::`, **proxied**. This is the address every custom domain points at, and the Cloudflare for SaaS fallback origin (§1.4). It is its own record rather than a CNAME to the bare domain, because the bare domain only exists once the Pages custom domain is added (§2.4).
+   - The bare domain has no record by hand: the Pages custom domain adds it.
+3. **[Claude, once the token has Workers Routes: Edit] Worker route exclusion for the API:** route `api.therapysts.app/*` with **Worker = None**. Without it, the router's `*.therapysts.app/*` route would answer every API call once `api` is proxied (the same trap noted in `CLOUDFLARE_SETUP.md` §1).
+4. **[you] Cloudflare for SaaS on `therapysts.app`:** zone → SSL/TLS → Custom Hostnames → Enable. Set the fallback origin to `customers.therapysts.app`.
+   - Cloudflare refuses both through the API until the zone has Cloudflare for SaaS enabled (error 1456; custom hostnames return 1404, no quota), so enabling it is a dashboard step.
    - The fallback origin can only be set in the dashboard. Follow `CLOUDFLARE_SETUP.md` §5 "One-time".
 5. **[you] Credentials the API uses for custom hostnames.** These endpoints accept only a Global API key (`CLOUDFLARE_SETUP.md` §5).
    - Invite the dedicated member account to **Therapysts**, with a custom role limited to Cloudflare for SaaS + Workers Routes.
