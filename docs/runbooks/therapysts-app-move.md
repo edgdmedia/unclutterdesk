@@ -54,12 +54,13 @@ Do these in any order, days before the cutover.
    - Zone `therapysts.app` → Workers Routes: Edit
    - Account → Account Settings: Read
 
-   If the existing `THERAPYSTS_CLOUDFLARE_API_TOKEN` (used by the profiles deploy) already has these, keep it. Otherwise give me the new token and I'll set the secret.
+   **Decided:** the router and app deploys reuse the existing `THERAPYSTS_CLOUDFLARE_API_TOKEN` (the profiles deploy's token). If it lacks one of these permissions, the first release fails at that deploy step, before anything changes for visitors; add the permission to the token in the dashboard and re-run the workflow.
 
 ### Pages project for the app
 
-7. **[Claude] Create the Pages project** `therapysts-app` in the Therapysts account: `wrangler pages project create therapysts-app --production-branch main`.
-   - Confirm its address is exactly `therapysts-app.pages.dev`. If Cloudflare gives it another name, I'll change `ORIGIN_HOST` in `apps/tenant-router/wrangler.jsonc` to match before the cutover.
+7. **[Claude] Create the Pages project.** **Done 17 Nov 2026:** `therapysts-app` exists in the Therapysts account, at exactly `therapysts-app.pages.dev`, which matches `ORIGIN_HOST`.
+   - It is a classic Pages project, like `app-unclutterdesk`, because `deploy-app.yml` runs `wrangler pages deploy`. Newer Wrangler versions create Pages projects as Workers unless `--force` is passed, so it was created with `wrangler pages project create therapysts-app --production-branch main --force`, from a folder with no wrangler config.
+   - It has no deployment until the release in §2.3.
 
 ### Router secret in the new account
 
