@@ -283,7 +283,9 @@ describe('TenantService.getPublicTenantExistence', () => {
     const service = new TenantService(prisma, notificationsMock());
 
     const result = await service.getPublicTenantExistence('dr-smith');
-    expect(result).toEqual({ exists: true, active: true });
+    // A current slug: no redirect, just the §6.16 home page (a team-less practice with no published owner profile).
+    expect(result).toEqual({ exists: true, active: true, homePage: 'PRACTICE' });
+    expect(result).not.toHaveProperty('redirectTo');
     expect(prisma.tenantSlugHistory.findUnique).not.toHaveBeenCalled();
   });
 });

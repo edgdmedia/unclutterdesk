@@ -49,6 +49,8 @@ function world(seed: { tenant: Tenant; members?: Member[]; profiles?: Profile[] 
           .slice(0, take)
           .map((m) => ({ profile: { role: m.role, userId: m.userId } })),
     },
+    // §6.2 old addresses: none in these tests.
+    tenantSlugHistory: { findUnique: async () => null },
     practitionerProfile: {
       findUnique: async ({ where, select }: any) => {
         const row = profiles.find((p) => p.userId === where.userId);
