@@ -15,6 +15,7 @@ import { GRANTABLE, PERMISSIONS } from '../../common/permissions';
 import { NEW_PRACTICE_TIER, PLAN_SELECT, PRACTICE_ENTITLEMENTS, practiceEntitlements, requiredTierFor, requiredTierForStaffRole, TIER_NAMES } from '../entitlements/entitlements';
 import { EntitlementError } from '../entitlements/entitlement.error';
 import { PersonFactsService } from '../practitioner-profile/person-facts.service';
+import { themePalette } from '../practitioner-profile/themes';
 import { labelledAnswers } from '../intake/form-answers';
 import { JOIN_OPENS_CHOICES } from '../video/join-window';
 
@@ -162,15 +163,22 @@ export class TenantService {
    * practice has filled in always win. Returns only the filled-in values.
    */
   async withSoloProfile(tenantId: bigint, fields: { welcomeMessage?: unknown; tagline?: unknown; city?: unknown; logoUrl?: unknown }): Promise<Record<string, string>> {
-    if (!this.personFacts) return {};
     const tenant = await this.prisma.tenant.findUnique({ where: { id: tenantId }, select: { useProfileForPractice: true } });
     if (!tenant?.useProfileForPractice) return {};
     const owner = await this.soloOwner(tenantId);
     if (owner === null) return {};
-    const facts = (await this.personFacts.forUsers([owner])).get(owner.toString());
-    if (!facts) return {};
-    const empty = (v: unknown) => v === null || v === undefined || String(v).trim() === '';
     const out: Record<string, string> = {};
+    // §6.16 / shared-public-page task 6: the booking pages take the owner's
+    // profile look, so booking from the profile and from the practice page
+    // looks the same. The profile palette's accent, or the custom colour made
+    // readable exactly as the profile page shows it. The booking pages work
+    // out button and link colours from it (tenantBrandStyle).
+    const look = await this.prisma.practitionerProfile.findUnique({ where: { userId: owner }, select: { themeKey: true, brandColor: true } });
+    if (look) out.primaryColor = themePalette(look.themeKey, look.brandColor).accent;
+    if (!this.personFacts) return out;
+    const facts = (await this.personFacts.forUsers([owner])).get(owner.toString());
+    if (!facts) return out;
+    const empty = (v: unknown) => v === null || v === undefined || String(v).trim() === '';
     if (empty(fields.welcomeMessage) && facts.about) out.welcomeMessage = facts.about;
     if (empty(fields.tagline) && facts.headline) out.tagline = facts.headline;
     if (empty(fields.city) && facts.city) out.city = facts.city;
