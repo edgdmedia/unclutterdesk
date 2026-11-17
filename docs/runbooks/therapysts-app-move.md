@@ -38,7 +38,7 @@ Do these in any order, days before the cutover.
 
 1. **[you] Confirm the zone is Active** in the Therapysts account.
 2. **[Claude] DNS records.** **Done 17 Nov 2026**, through the Cloudflare API with a temporary token (`~/.config/cloudflare/therapysts-move.env`):
-   - `api`: `A 169.58.3.186` and `AAAA 2a02:c207:2343:4945::1`, **DNS-only (grey cloud)** so certbot can issue the certificate (§1.9). Proxy both afterwards, as in `CLOUDFLARE_SETUP.md` §2. nginx must listen on IPv6 (`listen [::]:443`) while they are DNS-only.
+   - `api`: `A 169.58.3.186` and `AAAA 2a02:c207:2343:4945::1`, **DNS-only (grey cloud)** so certbot can issue the certificate (§1.9). Proxy both afterwards, as in `CLOUDFLARE_SETUP.md` §2. `deploy/nginx/api-therapysts.app.conf` already listens on both addresses.
    - `*`: `AAAA 100::`, **proxied**. Worker routes only run on proxied records, so this is what makes every `{slug}.therapysts.app` reach the router.
    - `customers`: `AAAA 100::`, **proxied**. This is the address every custom domain points at, and the Cloudflare for SaaS fallback origin (§1.4). It is its own record rather than a CNAME to the bare domain, because the bare domain only exists once the Pages custom domain is added (§2.4).
    - The bare domain has no record by hand: the Pages custom domain adds it.
