@@ -1,0 +1,26 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  // Deploys to the Unclutter account, which keeps the old zone (spec §4.1b).
+  "name": "unclutterdesk-legacy-redirects",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-09-01",
+  "observability": { "enabled": true },
+  "workers_dev": false,
+
+  // Takes over the old practice subdomains once the tenant router has moved to
+  // the Therapysts account and its routes here are deleted
+  // (docs/runbooks/therapysts-app-move.md). Unlike the router, this Worker owns
+  // its route: nothing else creates routes on this zone after the move.
+  // `api.<root>` keeps its more specific route with Worker = None, so the API
+  // is never redirected. The bare domain is the marketing site (Pages).
+  "routes": [{ "pattern": "*.unclutterdesk.com/*", "zone_name": "unclutterdesk.com" }],
+
+  "vars": {
+    "OLD_ROOT": "unclutterdesk.com",
+    "NEW_PRACTICE_ROOT": "therapysts.app",
+    "APP_URL": "https://therapysts.app",
+    "PROFILES_URL": "https://therapysts.com",
+    // Change when the marketing site moves to the profile site.
+    "MARKETING_URL": "https://unclutterdesk.com"
+  }
+}
