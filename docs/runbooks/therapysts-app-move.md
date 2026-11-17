@@ -38,11 +38,11 @@ Do these in any order, days before the cutover.
 
 1. **[you] Confirm the zone is Active** in the Therapysts account.
 2. **[Claude] DNS records.** **Done 17 Nov 2026**, through the Cloudflare API with a temporary token (`~/.config/cloudflare/therapysts-move.env`):
-   - `api`: `A 169.58.3.186`, **DNS-only (grey cloud)** so certbot can issue the certificate (§1.9). Proxy it afterwards, as in `CLOUDFLARE_SETUP.md` §2. There is no AAAA record, the same as `api.unclutterdesk.com` today.
+   - `api`: `A 169.58.3.186` and `AAAA 2a02:c207:2343:4945::1`, **DNS-only (grey cloud)** so certbot can issue the certificate (§1.9). Proxy both afterwards, as in `CLOUDFLARE_SETUP.md` §2. nginx must listen on IPv6 (`listen [::]:443`) while they are DNS-only.
    - `*`: `AAAA 100::`, **proxied**. Worker routes only run on proxied records, so this is what makes every `{slug}.therapysts.app` reach the router.
    - `customers`: `AAAA 100::`, **proxied**. This is the address every custom domain points at, and the Cloudflare for SaaS fallback origin (§1.4). It is its own record rather than a CNAME to the bare domain, because the bare domain only exists once the Pages custom domain is added (§2.4).
    - The bare domain has no record by hand: the Pages custom domain adds it.
-3. **[Claude, once the token has Workers Routes: Edit] Worker route exclusion for the API:** route `api.therapysts.app/*` with **Worker = None**. Without it, the router's `*.therapysts.app/*` route would answer every API call once `api` is proxied (the same trap noted in `CLOUDFLARE_SETUP.md` §1).
+3. **[Claude] Worker route exclusion for the API.** **Done 17 Nov 2026.** route `api.therapysts.app/*` with **Worker = None**. Without it, the router's `*.therapysts.app/*` route would answer every API call once `api` is proxied (the same trap noted in `CLOUDFLARE_SETUP.md` §1).
 4. **[you] Cloudflare for SaaS on `therapysts.app`:** zone → SSL/TLS → Custom Hostnames → Enable. Set the fallback origin to `customers.therapysts.app`.
    - Cloudflare refuses both through the API until the zone has Cloudflare for SaaS enabled (error 1456; custom hostnames return 1404, no quota), so enabling it is a dashboard step.
    - The fallback origin can only be set in the dashboard. Follow `CLOUDFLARE_SETUP.md` §5 "One-time".
