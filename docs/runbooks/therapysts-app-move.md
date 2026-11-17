@@ -46,7 +46,7 @@ Do these in any order, days before the cutover.
 4. **[you] Cloudflare for SaaS on `therapysts.app`.** **Done 17 Nov 2026:** enabled, with fallback origin `customers.therapysts.app` Active. zone → SSL/TLS → Custom Hostnames → Enable. Set the fallback origin to `customers.therapysts.app`.
    - Cloudflare refuses both through the API until the zone has Cloudflare for SaaS enabled (error 1456; custom hostnames return 1404, no quota), so enabling it is a dashboard step.
    - The fallback origin can only be set in the dashboard. Follow `CLOUDFLARE_SETUP.md` §5 "One-time".
-5. **[you] An API token for the API server.** No member account is needed any more.
+5. **[you] An API token for the API server.** **Done 17 Nov 2026:** `therapysts-api-server`, kept in `~/.config/cloudflare/therapysts-api-server.env` until §2.2; tested by creating and deleting a custom hostname and a route. No member account is needed any more.
    - **Why it changed:** `CLOUDFLARE_SETUP.md` §5 found on 5 Oct 2026 that custom-hostname endpoints refused API tokens. On 17 Nov 2026 a scoped token created and deleted a custom hostname on `therapysts.app`, and set its fallback origin. `cloudflare-saas.service.ts` already uses `CLOUDFLARE_API_TOKEN` when no Global API key is set.
    - **How:** My Profile → API Tokens → Create Token → Custom token, named e.g. `therapysts-api-server`:
      - Zone → **SSL and Certificates → Edit** (custom hostnames)
@@ -75,7 +75,7 @@ Do these in any order, days before the cutover.
 
 The router is renamed **`therapysts-tenant-router`** in the Therapysts account (`apps/tenant-router/wrangler.jsonc`), ahead of the full rename. The old `unclutterdesk-tenant-router` stays in the Unclutter account until §2.6, and its name comes back with the rollback in §3. The package and folder names change with the full rename.
 
-8. **[you] Set the router's proxy secret.** It is a Worker secret, set with Wrangler. Use **the same value** the API already has, so the old router and the new one both match the API through the switch.
+8. **[you] Set the router's proxy secret.** **Done 17 Nov 2026**, on `therapysts-tenant-router`. It is a Worker secret, set with Wrangler. Use **the same value** the API already has, so the old router and the new one both match the API through the switch.
    1. On the server, show the current value:
       ```
       grep '^ROUTER_PROXY_SECRET=' /home/unclutterdesk/app/.env | cut -d= -f2-
@@ -91,7 +91,7 @@ The router is renamed **`therapysts-tenant-router`** in the Therapysts account (
 
 ### Server (API)
 
-9–10. **[you] Certificate and nginx for `api.therapysts.app`.** The `api` records are DNS-only, which certbot needs. Run as root (or with `sudo`):
+9–10. **[you] Certificate and nginx for `api.therapysts.app`.** **Done 17 Nov 2026:** certificate valid to 15 Feb 2027; `/health` answers on the new host; zone SSL set to **Full (strict)**, like `unclutterdesk.com`, and both `api` records proxied. The `api` records are DNS-only, which certbot needs. Run as root (or with `sudo`):
    1. Fetch the nginx file from the PR branch. The server's checkout is on `main`, where the file doesn't exist yet:
       ```
       cd /home/unclutterdesk/app
@@ -116,7 +116,7 @@ The router is renamed **`therapysts-tenant-router`** in the Therapysts account (
       ```
       echo | openssl s_client -connect 169.58.3.186:443 -servername api.therapysts.app 2>/dev/null | openssl x509 -noout -subject
       ```
-      This must print `CN = api.therapysts.app`. Then `curl -s https://api.therapysts.app/v1/health` should answer like the old host.
+      This must print `CN = api.therapysts.app`. Then `curl -s https://api.therapysts.app/health` should answer like the old host.
    6. **[Claude]** Proxy both `api` records (orange cloud), then check the health URL again through Cloudflare.
    - Keep `api-unclutterdesk.com.conf`. The old host keeps serving webhooks and old links until §2.6.
    - Renewal: certbot's timer renews it like the other certificates, through the port-80 block.
@@ -206,7 +206,7 @@ Pick a quiet hour. Before step 3, rollback is just undoing settings (§3).
    | A solo practice's `/` (§6.16) | The owner's profile, with reviews |
    | `https://<slug>.unclutterdesk.com/book?x=1` | 301 to `https://<slug>.therapysts.app/book?x=1` |
    | `https://app.unclutterdesk.com/` | 301 to `https://therapysts.app/` |
-   | `https://api.unclutterdesk.com/v1/health` | Still answers (the old host stays) |
+   | `https://api.unclutterdesk.com/health` | Still answers (the old host stays) |
    | The custom domain | Client sign-in and booking through `/api` |
    | Journal link from a client | Completes (needs §1.12) |
    | A Paystack test payment | Its webhook arrives at the new host |
