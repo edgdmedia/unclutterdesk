@@ -123,7 +123,11 @@ The router is renamed **`therapysts-tenant-router`** in the Therapysts account (
 
 ### Email
 
-11. **[you] Add `therapysts.app` as a sending domain** with the email provider (Resend), add its DNS records in the zone, and wait for it to be verified. `MAIL_FROM` changes only after this.
+11. **[you] Email sending domain: `notify.therapysts.com`** (decided 17 Nov 2026).
+    - Mail comes from the brand's permanent domain, `therapysts.com`, not from the app's address. A `notify.` subdomain keeps automated mail's reputation separate from people's own mailboxes on `therapysts.com`.
+    - Add `notify.therapysts.com` in Resend, add the DNS records it gives you in the `therapysts.com` zone, and wait for **Verified**.
+    - Then `MAIL_FROM=Therapysts <no-reply@notify.therapysts.com>` on the server. The sender's name can stay as it is today until the rename (stage 2).
+    - **Until it is verified, the cutover must keep today's sender explicitly.** When `MAIL_FROM` is unset, the API sends from `no-reply@<TENANT_ROOT_DOMAIN>`. Changing the root to `therapysts.app` would then switch the sender to an unverified address, and Resend would refuse every email.
 
 ### Journal (Unclutter Suite)
 
@@ -168,7 +172,7 @@ Pick a quiet hour. Before step 3, rollback is just undoing settings (§3).
    CLOUDFLARE_ZONE_ID=0b58d5b875e210d484b8b82c6a96f968
    CLOUDFLARE_API_TOKEN=<the server token from §1.5>
    CLOUDFLARE_WORKER_SCRIPT=therapysts-tenant-router       # the router's new name in Therapysts
-   MAIL_FROM=no-reply@therapysts.app              # only once §1.11 is verified
+   MAIL_FROM=<today's sender, unchanged>          # must be set: unset follows TENANT_ROOT_DOMAIN. no-reply@notify.therapysts.com once §1.11 is verified
    ```
    - Remove `CLOUDFLARE_SAAS_CNAME_TARGET`.
    - **Remove `CLOUDFLARE_AUTH_EMAIL` and `CLOUDFLARE_API_KEY`.** When both are set, the API uses them instead of the token, and that key can't reach the new zone.
