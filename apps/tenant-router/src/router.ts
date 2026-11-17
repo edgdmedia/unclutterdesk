@@ -7,6 +7,12 @@ export interface RouterConfig {
   originHost: string;
   /** "https:" in production; "http:" only for the local end-to-end test. */
   originProtocol?: 'https:' | 'http:';
+  /**
+   * The app's own host (APP_HOST). On the .app domain it is the bare domain
+   * (spec §4.1b), and app. and www. redirect there. Unset, or any other
+   * value, keeps today's layout: app.<apex> serves the app shell.
+   */
+  appHost?: string;
 }
 
 /**
@@ -44,8 +50,11 @@ export type Decision =
    * should 404 when no such practice exists.
    */
   | { kind: 'serve'; indexable: boolean; checkTenant: boolean }
-  /** Send www to the marketing site at the apex. */
-  | { kind: 'redirect'; to: string }
+  /**
+   * Send www to the marketing site at the apex; with the app at the bare
+   * domain, send app. and www. there with `keepPath`, so deep links survive.
+   */
+  | { kind: 'redirect'; to: string; keepPath?: boolean }
   /**
    * A subdomain that belongs to a different origin and must never be answered
    * with the SPA. Reaching this means a more specific Worker route is missing
@@ -64,9 +73,13 @@ export function decide(hostname: string, config: RouterConfig): Decision {
   const host = hostname.toLowerCase();
   const { apexHost } = config;
 
-  // The route pattern `*.<apex>/*` does not match the bare apex, but
-  // handle it anyway so the Worker is correct if the route is ever widened.
-  if (host === apexHost) return { kind: 'redirect', to: `https://${apexHost}/` };
+  // §4.1b: the platform at the bare domain. That domain is the app's Pages
+  // custom domain, so it normally never reaches this Worker; if a route ever
+  // covers it, it is the app shell and never a practice.
+  const appAtApex = config.appHost?.toLowerCase() === apexHost;
+  if (host === apexHost) {
+    return appAtApex ? { kind: 'serve', indexable: false, checkTenant: false } : { kind: 'redirect', to: `https://${apexHost}/` };
+  }
 
   if (isCustomDomainHost(host, apexHost)) {
     // Not our zone at all. A custom domain arriving via Cloudflare for SaaS is
@@ -81,6 +94,7 @@ export function decide(hostname: string, config: RouterConfig): Decision {
   // "a.b" no. A multi-label host under the apex is not something we issue.
   if (label.includes('.')) return { kind: 'misrouted', host };
 
+  if (appAtApex && (label === 'app' || label === 'www')) return { kind: 'redirect', to: `https://${apexHost}/`, keepPath: true };
   if (label === 'www') return { kind: 'redirect', to: `https://${apexHost}/` };
   if (FOREIGN_ORIGIN_LABELS.has(label)) return { kind: 'misrouted', host };
 
