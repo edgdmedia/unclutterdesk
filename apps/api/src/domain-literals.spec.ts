@@ -35,6 +35,7 @@ const CONFIG_FILES = [
 const DEPLOYMENT_FILES = [
   'apps/tenant-router/wrangler.jsonc', // the Worker's route and vars
   'apps/profiles/wrangler.jsonc', // the profiles Worker's vars (spec §0 rule 7)
+  'apps/legacy-redirects/wrangler.jsonc', // old → new addresses after the move (spec §4.1b): its whole job
   'apps/app/public/_headers', // static CSP connect-src
   /^deploy\/nginx\//, // server_name and certificate paths
 ];

@@ -1,5 +1,5 @@
 /**
- * Legacy redirects (spec §4.1b): after the move to therapysts.app, this Worker
+ * Legacy redirects (spec §4.1b): after the move to the .app domain, this Worker
  * takes the old `*.<OLD_ROOT>/*` route in the old account and sends every
  * practice, app and profile address to its new one, permanently. It reads
  * nothing and stores nothing; it never proxies.
