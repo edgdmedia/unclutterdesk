@@ -45,10 +45,21 @@ export class TenantController {
     @Res({ passthrough: true }) res: Response,
   ) {
     const result = await this.tenantService.getPublicTenantExistence(slugOrDomain);
-    // A practice that exists is stable; one that does not may be created at any
-    // moment, so a shorter negative TTL keeps a new signup from 404ing for long.
-    res.setHeader('Cache-Control', result.exists ? 'public, max-age=300' : 'public, max-age=30');
+    // The router caches this per host. §6.16: what `/` shows changes with solo
+    // status, the owner's setting and the profile being published, so a hit
+    // is cached for 60 s at most. A miss is shorter, so a new signup goes live quickly.
+    res.setHeader('Cache-Control', result.exists ? 'public, max-age=60' : 'public, max-age=30');
     return result;
+  }
+
+  /** §6.16 opt-out: the owner chooses whether `/` shows their profile (PROFILE) or the practice page (PRACTICE). */
+  @Permissions('practice.owner')
+  @Patch('home-page')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @ApiBearerAuth('access-token')
+  @ApiOperation({ summary: "Choose what the practice address shows at / when the practice is solo" })
+  setHomePage(@Req() req: any, @Body() dto: { homePage?: unknown }) {
+    return this.tenantService.setHomePage(authenticatedTenantId(req), dto?.homePage);
   }
 
   @Get('public/invite/:claimToken')

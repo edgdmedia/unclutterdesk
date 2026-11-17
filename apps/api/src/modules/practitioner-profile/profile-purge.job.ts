@@ -10,6 +10,8 @@ export interface PurgePayload {
 
 export const profileTag = (handle: string) => `profile:${handle}`;
 export const SITEMAP_TAG = 'sitemap';
+/** §6.16: a solo practice's address serves the owner's profile page with its reviews, cached under this tag. */
+export const practiceTag = (slug: string) => `practice:${slug}`;
 
 /** Queue a purge with retries, then try it at once so the change shows within a minute. */
 export async function queuePurge(jobs: JobsService, tags: string[]): Promise<void> {

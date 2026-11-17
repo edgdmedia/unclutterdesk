@@ -23,10 +23,14 @@ type PracticeProfile = {
   fromProfile?: { welcomeMessage?: string; tagline?: string; city?: string; logoUrl?: string };
   /** The practice's accent; the Look picker writes the chosen palette's accent here. */
   primaryColor?: string;
+  /** §6.16: what the practice address shows at / while solo. Null means the owner's profile. Saved on its own. */
+  homePage?: 'PROFILE' | 'PRACTICE' | null;
 };
 
 /** The owner's public profile look, shown read-only while a solo practice uses its profile. */
 type ProfileLook = { themeKey: string; brandColor: string | null };
+/** The owner's profile as /v1/practitioner-profile/me returns it: only what this page reads. */
+type OwnProfile = { themeKey?: string; brandColor?: string | null; status?: string };
 
 /** Which palette a stored practice accent belongs to; anything else is the Custom colour. */
 function lookFromAccent(accent: string | null | undefined): ProfileLook {
@@ -54,6 +58,8 @@ export function PracticeProfilePage() {
   const toast = useToast();
   const [profile, setProfile] = useState<PracticeProfile>({});
   const [profileLook, setProfileLook] = useState<ProfileLook | null>(null);
+  const [profilePublished, setProfilePublished] = useState(false);
+  const [savingHome, setSavingHome] = useState(false);
   const [look, setLook] = useState<ProfileLook>({ themeKey: 'custom', brandColor: null });
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -67,13 +73,14 @@ export function PracticeProfilePage() {
         const [data, own] = await Promise.all([
           api.get<PracticeProfile>('/v1/tenant/brand'),
           // The owner's public profile: a solo practice's page borrows its look.
-          api.get<ProfileLook | null>('/v1/practitioner-profile/me').catch(() => null),
+          api.get<OwnProfile | null>('/v1/practitioner-profile/me').catch(() => null),
         ]);
         if (cancelled) return;
         setProfile(data);
         setLook(lookFromAccent(data.primaryColor));
         if (own && typeof own === 'object') {
           setProfileLook({ themeKey: own.themeKey ?? 'calm', brandColor: own.brandColor ?? null });
+          setProfilePublished(own.status === 'PUBLISHED');
         }
       } catch (err) {
         if (!cancelled) setError(err instanceof Error ? err.message : 'Unable to load practice profile');
@@ -85,11 +92,33 @@ export function PracticeProfilePage() {
     return () => { cancelled = true; };
   }, []);
 
+  /**
+   * §6.16 opt-out, saved at once: whether the practice address shows the
+   * owner's profile at / (PROFILE) or the practice page (PRACTICE). Only the
+   * owner may change it; a refusal puts the switch back.
+   */
+  async function setHomePage(showProfile: boolean) {
+    const previous = profile.homePage ?? null;
+    const homePage = showProfile ? 'PROFILE' : 'PRACTICE';
+    setProfile((p) => ({ ...p, homePage }));
+    setSavingHome(true);
+    setError(null);
+    try {
+      await api.patch('/v1/tenant/home-page', { homePage });
+      toast.success(showProfile ? 'Your practice address shows your profile' : 'Your practice address shows your practice page');
+    } catch (err) {
+      setProfile((p) => ({ ...p, homePage: previous }));
+      setError(err instanceof Error ? err.message : 'Could not change what your practice address shows');
+    } finally {
+      setSavingHome(false);
+    }
+  }
+
   async function handleSave() {
     setSaving(true);
     setError(null);
     try {
-      const { solo: _solo, fromProfile: _from, ...editable } = profile;
+      const { solo: _solo, fromProfile: _from, homePage: _home, ...editable } = profile;
       // A solo practice using its profile takes its look from there, so the
       // practice-accent picker is not shown and must not overwrite it.
       const usesProfileLook = profile.solo && profile.useProfileForPractice !== false;
@@ -141,6 +170,31 @@ export function PracticeProfilePage() {
                       <Link to="/dashboard/profile" className="font-bold text-[var(--desk-pine-600)] underline">My profile</Link>: your about, headline, city and photo.
                       Anything you fill in below is used instead.
                     </p>
+                  </div>
+                </div>
+              ) : null}
+
+              {profile.solo ? (
+                <div className="bg-white rounded-[24px] border border-[var(--desk-border)] p-[20px_26px] flex items-start gap-4">
+                  <Toggle
+                    width={48}
+                    checked={profile.homePage !== 'PRACTICE'}
+                    disabled={savingHome}
+                    onChange={(next: boolean) => void setHomePage(next)}
+                    aria-label="Show my profile at my practice address"
+                  />
+                  <div>
+                    <p className="text-[14px] font-bold text-[var(--desk-text)]">Show my profile at my practice address</p>
+                    <p className="text-[12.5px] text-[var(--desk-text-muted)] mt-0.5">
+                      Clients who open your practice address see your profile, with your practice's published reviews and a Book button.
+                      Booking, client sign-in and session links work as before. Switch it off to show this practice page instead.
+                    </p>
+                    {!profilePublished ? (
+                      <p className="text-[12.5px] text-[var(--desk-text-muted)] mt-1.5">
+                        This starts once your profile is published in{' '}
+                        <Link to="/dashboard/profile" className="font-bold text-[var(--desk-pine-600)] underline">My profile</Link>.
+                      </p>
+                    ) : null}
                   </div>
                 </div>
               ) : null}

@@ -10,7 +10,8 @@
     "preview": "astro preview",
     "test": "vitest run",
     "test:a11y": "bash a11y/run.sh",
-    "typecheck": "wrangler types && tsc --noEmit"
+    "typecheck": "wrangler types && tsc --noEmit",
+    "test:workerd": "astro build && vitest run --config vitest.workerd.config.ts"
   },
   "devDependencies": {
     "@axe-core/playwright": "^4.14.0",

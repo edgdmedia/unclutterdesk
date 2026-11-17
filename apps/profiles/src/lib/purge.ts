@@ -4,8 +4,10 @@
  */
 export const profileTag = (handle: string) => `profile:${handle}`;
 export const SITEMAP_TAG = 'sitemap';
+/** §6.16: a solo practice's `/`, which also shows that practice's reviews. */
+export const practiceTag = (slug: string) => `practice:${slug}`;
 
-const TAG = /^(profile:[a-z0-9][a-z0-9-]{1,28}[a-z0-9]|sitemap)$/;
+const TAG = /^(profile:[a-z0-9][a-z0-9-]{1,28}[a-z0-9]|practice:[a-z0-9](?:[a-z0-9-]{0,48}[a-z0-9])?|sitemap)$/;
 
 /** The tags a purge request may name: only ours, at most 30. */
 export function purgeTags(body: unknown): string[] | null {

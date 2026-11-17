@@ -5,7 +5,8 @@ import ProfileView from '../components/ProfileView.astro';
 import { config as loadConfig } from '../lib/env';
 import { KIND_TITLES, lookupProfile, personJsonLd } from '../lib/profiles';
 import { MISS_CACHE, PAGE_CACHE } from '../lib/security';
-import { profileTag } from '../lib/purge';
+import { practiceTag, profileTag } from '../lib/purge';
+import { PRACTICE_SLUG_HEADER, practiceReviews, practiceSlug } from '../lib/practice-host';
 import { profileTheme } from '@unclutterdesk/ui/src/brand/profileThemes';
 import { normaliseHex } from '@unclutterdesk/ui/src/brand/brandTokens';
 
@@ -29,6 +30,12 @@ if (result.kind !== 'found') {
 // a just-published profile replaces its cached 404 at once.
 Astro.response.headers.set('Cache-Tag', profileTag(requested.toLowerCase()));
 const profile = result.kind === 'found' ? result.profile : null;
+// §6.16: set only by the PracticeHost entrypoint, for a solo practice's `/`.
+// The same page, plus that practice's published reviews; its tag is purged
+// when they change.
+const practice = practiceSlug(Astro.request.headers.get(PRACTICE_SLUG_HEADER));
+const reviews = practice && profile ? await practiceReviews(config, practice) : null;
+if (practice) Astro.response.headers.set('Cache-Tag', [profileTag(requested.toLowerCase()), practiceTag(practice)].join(','));
 const canonical = profile ? `${config.publicOrigin}/${profile.handle}` : undefined;
 ---
 {profile ? (
@@ -41,7 +48,7 @@ const canonical = profile ? `${config.publicOrigin}/${profile.handle}` : undefin
     image={profile.previewImageUrl ?? profile.photoUrl}
     jsonLd={personJsonLd(profile, canonical!)}
   >
-    <ProfileView profile={profile} config={config} />
+    <ProfileView profile={profile} config={config} practice={practice ? { reviews: reviews! } : undefined} />
   </Base>
 ) : (
   <SitePage title={result.kind === 'gone' ? 'Profile no longer available' : 'Profile not found'} noindex>
