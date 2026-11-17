@@ -46,9 +46,17 @@ Do these in any order, days before the cutover.
 4. **[you] Cloudflare for SaaS on `therapysts.app`.** **Done 17 Nov 2026:** enabled, with fallback origin `customers.therapysts.app` Active. zone → SSL/TLS → Custom Hostnames → Enable. Set the fallback origin to `customers.therapysts.app`.
    - Cloudflare refuses both through the API until the zone has Cloudflare for SaaS enabled (error 1456; custom hostnames return 1404, no quota), so enabling it is a dashboard step.
    - The fallback origin can only be set in the dashboard. Follow `CLOUDFLARE_SETUP.md` §5 "One-time".
-5. **[you] Credentials the API uses for custom hostnames.** These endpoints accept only a Global API key (`CLOUDFLARE_SETUP.md` §5).
-   - Invite the dedicated member account to **Therapysts**, with a custom role limited to Cloudflare for SaaS + Workers Routes.
-   - Note its Global API key and the `therapysts.app` zone ID for §2.2.
+5. **[you] An API token for the API server.** No member account is needed any more.
+   - **Why it changed:** `CLOUDFLARE_SETUP.md` §5 found on 5 Oct 2026 that custom-hostname endpoints refused API tokens. On 17 Nov 2026 a scoped token created and deleted a custom hostname on `therapysts.app`, and set its fallback origin. `cloudflare-saas.service.ts` already uses `CLOUDFLARE_API_TOKEN` when no Global API key is set.
+   - **How:** My Profile → API Tokens → Create Token → Custom token, named e.g. `therapysts-api-server`:
+     - Zone → **SSL and Certificates → Edit** (custom hostnames)
+     - Zone → **Workers Routes → Edit** (each custom domain's router route)
+     - Zone → **Zone → Read**
+     - Zone resources: **Include → Specific zone → `therapysts.app`** only
+     - No expiry. The server uses it for as long as custom domains exist.
+   - Keep the value for §2.2. It goes only in the server's `.env`.
+   - The `therapysts.app` zone ID is `0b58d5b875e210d484b8b82c6a96f968`.
+
 6. **[you] An API token for GitHub deploys** in the Therapysts account, with these permissions:
    - Account → Workers Scripts: Edit
    - Account → Cloudflare Pages: Edit
@@ -65,16 +73,51 @@ Do these in any order, days before the cutover.
 
 ### Router secret in the new account
 
-8. **[you or Claude] Set the router's proxy secret** in Therapysts: `CLOUDFLARE_ACCOUNT_ID=664a59b7ca9915d50f96a0b3890344fa pnpm --filter @unclutterdesk/tenant-router exec wrangler secret put ROUTER_PROXY_SECRET`.
-   - Use **the same value** as `ROUTER_PROXY_SECRET` in the API's `.env`. Only you have it; I can run the command if you paste it into the prompt.
-   - Without it, the custom-domain `/api` proxy still forwards requests, but the API doesn't trust its practice and client-IP headers.
+8. **[you] Set the router's proxy secret.** It is a Worker secret, set with Wrangler. Use **the same value** the API already has, so the old router and the new one both match the API through the switch.
+   1. On the server, show the current value:
+      ```
+      grep '^ROUTER_PROXY_SECRET=' /home/unclutterdesk/app/.env | cut -d= -f2-
+      ```
+   2. On your Mac, in your own terminal (not through Claude Code's `!`, because it prompts):
+      ```
+      cd ~/Projects/Unclutter/unclutterdesk/.worktrees/move-therapysts-app/apps/tenant-router
+      CLOUDFLARE_ACCOUNT_ID=664a59b7ca9915d50f96a0b3890344fa pnpm exec wrangler secret put ROUTER_PROXY_SECRET
+      ```
+      Paste the value when asked. The router doesn't exist in Therapysts yet, so Wrangler asks whether to create it: answer **yes**. That makes an empty placeholder Worker with no routes. The release in §2.3 puts the code in, and the secret stays.
+   3. Check: `CLOUDFLARE_ACCOUNT_ID=664a59b7ca9915d50f96a0b3890344fa pnpm exec wrangler secret list` shows `ROUTER_PROXY_SECRET`.
+   - If no value exists yet, generate one with `openssl rand -hex 32` and put the same value in the Worker and in the API's `.env`.
 
 ### Server (API)
 
-9. **[you] Certificate for the new API host:** on the server, `certbot certonly --webroot -w /var/www/html -d api.therapysts.app`.
-10. **[you] Install `deploy/nginx/api-therapysts.app.conf`** as `/etc/nginx/conf.d/api-therapysts.app.conf`, then `nginx -t` and reload.
-    - Keep `api-unclutterdesk.com.conf`: the old host keeps serving webhooks and old links until §2.6.
-    - Check it with `curl https://api.therapysts.app/v1/health`. It should answer the same as the old host.
+9–10. **[you] Certificate and nginx for `api.therapysts.app`.** The `api` records are DNS-only, which certbot needs. Run as root (or with `sudo`):
+   1. Fetch the nginx file from the PR branch. The server's checkout is on `main`, where the file doesn't exist yet:
+      ```
+      cd /home/unclutterdesk/app
+      git fetch origin move/therapysts-app
+      git show origin/move/therapysts-app:deploy/nginx/api-therapysts.app.conf > /root/api-therapysts.app.conf
+      ```
+   2. Install **only its port-80 block** first. The 443 block names a certificate that doesn't exist yet, so `nginx -t` would refuse the whole file:
+      ```
+      awk '/^server \{/{n++} n==1' /root/api-therapysts.app.conf > /etc/nginx/conf.d/api-therapysts.app.conf
+      nginx -t && systemctl reload nginx
+      ```
+   3. Issue the certificate:
+      ```
+      certbot certonly --webroot -w /var/www/html -d api.therapysts.app
+      ```
+   4. Install the whole file:
+      ```
+      cp /root/api-therapysts.app.conf /etc/nginx/conf.d/api-therapysts.app.conf
+      nginx -t && systemctl reload nginx
+      ```
+   5. Check it (bound-listen rule, `deploy/nginx/README.md`):
+      ```
+      echo | openssl s_client -connect 169.58.3.186:443 -servername api.therapysts.app 2>/dev/null | openssl x509 -noout -subject
+      ```
+      This must print `CN = api.therapysts.app`. Then `curl -s https://api.therapysts.app/v1/health` should answer like the old host.
+   6. **[Claude]** Proxy both `api` records (orange cloud), then check the health URL again through Cloudflare.
+   - Keep `api-unclutterdesk.com.conf`. The old host keeps serving webhooks and old links until §2.6.
+   - Renewal: certbot's timer renews it like the other certificates, through the port-80 block.
 
 ### Email
 
@@ -88,7 +131,14 @@ Do these in any order, days before the cutover.
 
 ### Google sign-in (calendar)
 
-13. **[you] Add the new addresses** in the Google Cloud console: the redirect URI `https://api.therapysts.app/v1/calendar/google/callback`, and `therapysts.app` as an authorised domain. Keep the old ones until §4.
+13. **[you] Google Cloud console**, in the project that owns the calendar OAuth client (the one whose client ID is `GOOGLE_CLIENT_ID` in the server's `.env`):
+    1. **APIs & Services → Credentials → OAuth 2.0 Client IDs →** open the web client.
+    2. Under **Authorized redirect URIs**, **add** `https://api.therapysts.app/v1/calendar/google/callback`. Keep the `api.unclutterdesk.com` one until §4. Save.
+    3. If the client lists **Authorized JavaScript origins**, add `https://therapysts.app` too. The flow is server-side, so it may have none.
+    4. **Google Auth Platform → Branding → Authorized domains:** add `therapysts.app`. Save.
+       - Google may ask you to prove you own the domain in Search Console first. Add it there as a **Domain** property; Search Console gives a TXT record, which I can add with the token.
+    5. If the app's consent screen links a privacy policy or terms page on `unclutterdesk.com`, leave them: marketing stays there for now.
+    - Changes can take a few minutes to apply. The smoke test in §2.8 includes connecting a calendar.
 
 ---
 
@@ -113,13 +163,13 @@ Pick a quiet hour. Before step 3, rollback is just undoing settings (§3).
    PROFILE_PUBLIC_URL=https://therapysts.com
    MARKETING_URL=https://unclutterdesk.com        # unchanged until the landing merge
    CUSTOM_DOMAIN_TARGET=customers.therapysts.app
-   CLOUDFLARE_ZONE_ID=<therapysts.app zone id>
-   CLOUDFLARE_AUTH_EMAIL=<member account email, Therapysts>
-   CLOUDFLARE_API_KEY=<member Global API key, Therapysts>
+   CLOUDFLARE_ZONE_ID=0b58d5b875e210d484b8b82c6a96f968
+   CLOUDFLARE_API_TOKEN=<the server token from §1.5>
    CLOUDFLARE_WORKER_SCRIPT=unclutterdesk-tenant-router
    MAIL_FROM=no-reply@therapysts.app              # only once §1.11 is verified
    ```
    - Remove `CLOUDFLARE_SAAS_CNAME_TARGET`.
+   - **Remove `CLOUDFLARE_AUTH_EMAIL` and `CLOUDFLARE_API_KEY`.** When both are set, the API uses them instead of the token, and that key can't reach the new zone.
    - Remove `GOOGLE_REDIRECT_URI` if it names the old host (it then follows `API_URL`).
    - The CSRF cookie domain follows the root, so it becomes `.therapysts.app`. Everyone signs in again once.
 3. **[Claude] Release `dev` → `main`.** This deploys:
