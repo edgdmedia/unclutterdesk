@@ -43,7 +43,7 @@ Do these in any order, days before the cutover.
    - `customers`: `AAAA 100::`, **proxied**. This is the address every custom domain points at, and the Cloudflare for SaaS fallback origin (§1.4). It is its own record rather than a CNAME to the bare domain, because the bare domain only exists once the Pages custom domain is added (§2.4).
    - The bare domain has no record by hand: the Pages custom domain adds it.
 3. **[Claude] Worker route exclusion for the API.** **Done 17 Nov 2026.** route `api.therapysts.app/*` with **Worker = None**. Without it, the router's `*.therapysts.app/*` route would answer every API call once `api` is proxied (the same trap noted in `CLOUDFLARE_SETUP.md` §1).
-4. **[you] Cloudflare for SaaS on `therapysts.app`:** zone → SSL/TLS → Custom Hostnames → Enable. Set the fallback origin to `customers.therapysts.app`.
+4. **[you] Cloudflare for SaaS on `therapysts.app`.** **Done 17 Nov 2026:** enabled, with fallback origin `customers.therapysts.app` Active. zone → SSL/TLS → Custom Hostnames → Enable. Set the fallback origin to `customers.therapysts.app`.
    - Cloudflare refuses both through the API until the zone has Cloudflare for SaaS enabled (error 1456; custom hostnames return 1404, no quota), so enabling it is a dashboard step.
    - The fallback origin can only be set in the dashboard. Follow `CLOUDFLARE_SETUP.md` §5 "One-time".
 5. **[you] Credentials the API uses for custom hostnames.** These endpoints accept only a Global API key (`CLOUDFLARE_SETUP.md` §5).
