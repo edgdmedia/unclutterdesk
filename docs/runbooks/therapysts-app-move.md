@@ -73,6 +73,8 @@ Do these in any order, days before the cutover.
 
 ### Router secret in the new account
 
+The router is renamed **`therapysts-tenant-router`** in the Therapysts account (`apps/tenant-router/wrangler.jsonc`), ahead of the full rename. The old `unclutterdesk-tenant-router` stays in the Unclutter account until §2.6, and its name comes back with the rollback in §3. The package and folder names change with the full rename.
+
 8. **[you] Set the router's proxy secret.** It is a Worker secret, set with Wrangler. Use **the same value** the API already has, so the old router and the new one both match the API through the switch.
    1. On the server, show the current value:
       ```
@@ -165,7 +167,7 @@ Pick a quiet hour. Before step 3, rollback is just undoing settings (§3).
    CUSTOM_DOMAIN_TARGET=customers.therapysts.app
    CLOUDFLARE_ZONE_ID=0b58d5b875e210d484b8b82c6a96f968
    CLOUDFLARE_API_TOKEN=<the server token from §1.5>
-   CLOUDFLARE_WORKER_SCRIPT=unclutterdesk-tenant-router
+   CLOUDFLARE_WORKER_SCRIPT=therapysts-tenant-router       # the router's new name in Therapysts
    MAIL_FROM=no-reply@therapysts.app              # only once §1.11 is verified
    ```
    - Remove `CLOUDFLARE_SAAS_CNAME_TARGET`.
