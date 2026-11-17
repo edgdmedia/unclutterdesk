@@ -123,7 +123,7 @@ The router is renamed **`therapysts-tenant-router`** in the Therapysts account (
 
 ### Email
 
-11. **[you] Email sending domain: `notify.therapysts.com`** (decided 17 Nov 2026).
+11. **[you] Email sending domain: `notify.therapysts.com`** (recommended 17 Nov 2026; confirm before adding it in Resend).
     - Mail comes from the brand's permanent domain, `therapysts.com`, not from the app's address. A `notify.` subdomain keeps automated mail's reputation separate from people's own mailboxes on `therapysts.com`.
     - Add `notify.therapysts.com` in Resend, add the DNS records it gives you in the `therapysts.com` zone, and wait for **Verified**.
     - Then `MAIL_FROM=Therapysts <no-reply@notify.therapysts.com>` on the server. The sender's name can stay as it is today until the rename (stage 2).
