@@ -9,6 +9,7 @@ import {
   ChannelPayload,
   DeliveryResult,
   NotificationChannel,
+  isAccountEmail,
 } from './notification.channel';
 
 /**
@@ -22,16 +23,6 @@ export function escapeHtml(value: unknown): string {
     .replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;')
     .replace(/'/g, '&#39;');
-}
-
-/**
- * Account emails (verification code, welcome, password reset, the unverified
- * warning) are about the person's own Desk account, not messages from their
- * practice. They come from the platform, with no practice name, logo,
- * contact details or sending domain in them.
- */
-export function isAccountEmail(type: string): boolean {
-  return type.startsWith('auth.');
 }
 
 /**
@@ -56,7 +47,7 @@ export class EmailChannel implements NotificationChannel {
   async send(recipient: ChannelRecipient, payload: ChannelPayload): Promise<DeliveryResult> {
     if (!recipient.email) return { success: false, error: 'Recipient has no email address' };
 
-    const brand = isAccountEmail(payload.type) ? undefined : payload.brand;
+    const brand = isAccountEmail(payload.type) && !recipient.isClient ? undefined : payload.brand;
     const sender = await this.identity.senderFor({
       tenantId: brand ? recipient.tenantId : null,
       practiceName: brand?.practiceName,
