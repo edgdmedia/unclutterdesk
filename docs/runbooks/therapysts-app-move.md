@@ -137,7 +137,7 @@ The router is renamed **`therapysts-tenant-router`** in the Therapysts account (
     - Practices' own sending domains (`TenantSendingDomain`) had 0 rows, so nothing depended on the old account.
     - **Who mail is from:**
       - Practice mail carries the practice's name, with Reply-To set to the practice's email.
-      - Account emails (`auth.*`: reset, verification, welcome) come from the platform, "Therapysts Desk" (PR #157). Before that PR they also carried the practice's name.
+      - Account emails (`auth.*`: reset, verification, welcome) come from the platform, "Therapysts Desk", for practice staff. A client's account emails keep their practice's name (PR #157, merged into `dev` 18 Nov; live with the next release).
     - **`MAIL_FROM` must stay set.** When it's unset, the API sends from `no-reply@<TENANT_ROOT_DOMAIN>`, an unverified address after the cutover, and Resend would refuse every email.
     - **Stale but harmless:** `SMTP_FROM=Unclutter Desk <no-reply@unclutterdesk.com>` (line 41 of `.env`). It's only read when `MAIL_FROM` is unset. Remove it in the stage 2 server cleanup.
     - The old Resend account can be closed once nothing has sent through it for a while (check its Emails log).
