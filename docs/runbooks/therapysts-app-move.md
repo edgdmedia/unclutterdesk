@@ -123,12 +123,24 @@ The router is renamed **`therapysts-tenant-router`** in the Therapysts account (
 
 ### Email
 
-11. **[you] Email sending domain: `notify.therapysts.com`** (decided 18 Nov 2026).
+11. **[you] Email sending domain: `notify.therapysts.com`.** Done 18 Nov 2026, ahead of the cutover.
     - Mail comes from the brand's permanent domain, `therapysts.com`, not from the app's address. A `notify.` subdomain keeps automated mail's reputation separate from people's own mailboxes on `therapysts.com`.
-    - The existing Resend API key keeps working **only if it has Full access, or Sending access for all domains**. A key restricted to one domain can't send from the new one; create a new key in that case and replace `RESEND_API_KEY` at the cutover.
-    - Add `notify.therapysts.com` in Resend, add the DNS records it gives you in the `therapysts.com` zone, and wait for **Verified**.
-    - Then `MAIL_FROM=Therapysts <no-reply@notify.therapysts.com>` on the server. The sender's name can stay as it is today until the rename (stage 2).
-    - **Until it is verified, the cutover must keep today's sender explicitly.** When `MAIL_FROM` is unset, the API sends from `no-reply@<TENANT_ROOT_DOMAIN>`. Changing the root to `therapysts.app` would then switch the sender to an unverified address, and Resend would refuse every email.
+    - **Resend moved to a new, separate account** for Therapysts. In it:
+      - `notify.therapysts.com` is Verified;
+      - `_dmarc.therapysts.com` is `v=DMARC1; p=none;`;
+      - there's a new API key and a new webhook.
+    - **Server `.env`, already changed and live** (API restarted 18 Nov):
+      - `RESEND_API_KEY`: the new account's key.
+      - `RESEND_WEBHOOK_SECRET`: the new webhook's `whsec_` secret.
+      - `MAIL_FROM="Therapysts Desk <no-reply@notify.therapysts.com>"`.
+    - **Verified with a real password reset:** it arrived in the inbox from `no-reply@notify.therapysts.com`, with DKIM, SPF and DMARC all passing.
+    - Practices' own sending domains (`TenantSendingDomain`) had 0 rows, so nothing depended on the old account.
+    - **Who mail is from:**
+      - Practice mail carries the practice's name, with Reply-To set to the practice's email.
+      - Account emails (`auth.*`: reset, verification, welcome) come from the platform, "Therapysts Desk" (PR #157). Before that PR they also carried the practice's name.
+    - **`MAIL_FROM` must stay set.** When it's unset, the API sends from `no-reply@<TENANT_ROOT_DOMAIN>`, an unverified address after the cutover, and Resend would refuse every email.
+    - **Stale but harmless:** `SMTP_FROM=Unclutter Desk <no-reply@unclutterdesk.com>` (line 41 of `.env`). It's only read when `MAIL_FROM` is unset. Remove it in the stage 2 server cleanup.
+    - The old Resend account can be closed once nothing has sent through it for a while (check its Emails log).
 
 ### Journal (Unclutter Suite)
 
@@ -173,8 +185,8 @@ Pick a quiet hour. Before step 3, rollback is just undoing settings (§3).
    CLOUDFLARE_ZONE_ID=0b58d5b875e210d484b8b82c6a96f968
    CLOUDFLARE_API_TOKEN=<the server token from §1.5>
    CLOUDFLARE_WORKER_SCRIPT=therapysts-tenant-router       # the router's new name in Therapysts
-   MAIL_FROM=<today's sender, unchanged>          # must be set: unset follows TENANT_ROOT_DOMAIN. no-reply@notify.therapysts.com once §1.11 is verified
    ```
+   - **Check, don't change:** `MAIL_FROM` is already `"Therapysts Desk <no-reply@notify.therapysts.com>"` (§1.11). It must stay set, because when it's unset the sender follows `TENANT_ROOT_DOMAIN`.
    - Remove `CLOUDFLARE_SAAS_CNAME_TARGET`.
    - **Remove `CLOUDFLARE_AUTH_EMAIL` and `CLOUDFLARE_API_KEY`.** When both are set, the API uses them instead of the token, and that key can't reach the new zone.
    - Remove `GOOGLE_REDIRECT_URI` if it names the old host (it then follows `API_URL`).
@@ -195,7 +207,7 @@ Pick a quiet hour. Before step 3, rollback is just undoing settings (§3).
    3. **[you] Outside services that call the API:**
       - Paystack webhook → `https://api.therapysts.app/v1/billing/paystack-webhook`
       - Daily.co webhook: I re-run `scripts/create-daily-webhook.mjs` with the new `API_URL`
-      - Resend webhook → `https://api.therapysts.app/v1/webhooks/resend`
+      - Resend webhook (in the new account, §1.11): if its endpoint still names `api.unclutterdesk.com`, change it to `https://api.therapysts.app/v1/webhooks/resend`. The secret stays the same. The old host keeps answering, so this isn't urgent.
 7. **Custom domains** (today only your test domain, `consult.unclutter.com.ng`):
    1. **[you]** In the practice's dashboard, re-save the domain. The API creates it again as a custom hostname on the new zone, plus its router route.
    2. **[you]** At the domain's DNS, change its CNAME to `customers.therapysts.app`.
