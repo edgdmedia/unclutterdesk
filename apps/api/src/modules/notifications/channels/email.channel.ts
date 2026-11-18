@@ -9,6 +9,7 @@ import {
   ChannelPayload,
   DeliveryResult,
   NotificationChannel,
+  isAccountEmail,
 } from './notification.channel';
 
 /**
@@ -46,15 +47,16 @@ export class EmailChannel implements NotificationChannel {
   async send(recipient: ChannelRecipient, payload: ChannelPayload): Promise<DeliveryResult> {
     if (!recipient.email) return { success: false, error: 'Recipient has no email address' };
 
+    const brand = isAccountEmail(payload.type) && !recipient.isClient ? undefined : payload.brand;
     const sender = await this.identity.senderFor({
-      tenantId: recipient.tenantId,
-      practiceName: payload.brand?.practiceName,
-      replyTo: payload.brand?.publicEmail,
+      tenantId: brand ? recipient.tenantId : null,
+      practiceName: brand?.practiceName,
+      replyTo: brand?.publicEmail,
     });
     const result = await this.mail.deliver({
       to: recipient.email,
       subject: payload.title,
-      html: this.render(payload),
+      html: this.render(payload, brand, sender.name),
       text: this.plainText(payload),
       from: { name: sender.name, address: sender.address },
       ...(sender.replyTo ? { replyTo: sender.replyTo } : {}),
@@ -76,11 +78,11 @@ export class EmailChannel implements NotificationChannel {
     return parts.join('\n\n');
   }
 
-  private render(payload: ChannelPayload): string {
-    const brand = payload.brand;
+  /** `name` is the sender's name: the practice's, or the platform's when there is no brand. */
+  private render(payload: ChannelPayload, brand: ChannelPayload['brand'], senderName: string): string {
     const primary = escapeHtml(brand?.primaryColor || '#0F3A53');
     const accent = escapeHtml(brand?.secondaryColor || '#E3B341');
-    const name = escapeHtml(brand?.practiceName || 'Unclutter Desk');
+    const name = escapeHtml(brand?.practiceName || senderName);
     const logo = brand?.logoUrl
       ? `<img src="${escapeHtml(brand.logoUrl)}" alt="${name}" style="height:36px;margin-bottom:16px;" />`
       : `<div style="font-size:18px;font-weight:700;margin-bottom:16px;">${name}</div>`;
@@ -114,7 +116,7 @@ export class EmailChannel implements NotificationChannel {
     const footer = [
       brand?.publicEmail ? brand.publicEmail : null,
       brand?.publicPhone ? brand.publicPhone : null,
-      brand?.practiceName ? `${brand.practiceName}` : 'Unclutter Desk',
+      brand?.practiceName || senderName,
     ]
       .filter(Boolean)
       .map(escapeHtml)

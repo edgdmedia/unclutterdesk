@@ -3,6 +3,7 @@ import type { RichDoc } from '../../common/rich-text';
 import { logoUrlFor } from '../../common/logo-url';
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '../../common/prisma/prisma.service';
+import { isAccountEmail } from './channels/notification.channel';
 import {
   CHANNEL_KEYS,
   ChannelBrand,
@@ -188,6 +189,7 @@ export class NotificationService implements OnModuleInit, OnModuleDestroy {
         profileId: input.profileId ?? null,
         tenantId: input.tenantId ?? null,
         email: input.to,
+        isClient: isAccountEmail(input.type) && input.profileId != null ? await this.isClient(input.profileId) : false,
       },
       {
         type: input.type,
@@ -305,6 +307,11 @@ export class NotificationService implements OnModuleInit, OnModuleDestroy {
       if (value && (key === 'in_app' || this.isChannelWired(key))) effective.push(key);
     }
     return effective;
+  }
+
+  private async isClient(profileId: bigint): Promise<boolean> {
+    const profile = await this.prisma.profile.findUnique({ where: { id: profileId }, select: { role: true } });
+    return profile?.role === 'CLIENT';
   }
 
   async resolveBrand(tenantId: bigint): Promise<ChannelBrand> {
