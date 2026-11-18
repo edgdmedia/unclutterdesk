@@ -183,3 +183,33 @@ describe('originRequest', () => {
     expect(req.headers.get('x-custom')).toBe('kept');
   });
 });
+
+/*
+ * §4.1b: on therapysts.app the platform lives at the bare domain. The bare
+ * domain is the app's Pages custom domain; the router serves the practice
+ * subdomains, and app. and www. 301 to the bare domain, keeping the path.
+ */
+describe('decide, with the app at the bare domain (therapysts.app)', () => {
+  const app = { apexHost: 'therapysts.app', appHost: 'therapysts.app', originHost: 'therapysts-app.pages.dev' };
+
+  it('sends app. and www. to the bare domain, keeping the path', () => {
+    expect(decide('app.therapysts.app', app)).toEqual({ kind: 'redirect', to: 'https://therapysts.app/', keepPath: true });
+    expect(decide('www.therapysts.app', app)).toEqual({ kind: 'redirect', to: 'https://therapysts.app/', keepPath: true });
+  });
+
+  it('serves the bare domain as the app shell if it ever reaches the router, never a practice', () => {
+    expect(decide('therapysts.app', app)).toEqual({ kind: 'serve', indexable: false, checkTenant: false });
+  });
+
+  it('serves practice subdomains and custom domains as before', () => {
+    expect(decide('dr-smith.therapysts.app', app)).toEqual({ kind: 'serve', indexable: true, checkTenant: true });
+    expect(decide('booking.drjanetherapy.com', app)).toEqual({ kind: 'serve', indexable: true, checkTenant: true });
+    expect(decide('admin.therapysts.app', app)).toEqual({ kind: 'serve', indexable: false, checkTenant: false });
+    expect(decide('api.therapysts.app', app)).toEqual({ kind: 'misrouted', host: 'api.therapysts.app' });
+  });
+
+  it("leaves today's layout alone when the app has its own host", () => {
+    expect(decide('app.unclutterdesk.com', { ...config, appHost: 'app.unclutterdesk.com' })).toEqual({ kind: 'serve', indexable: false, checkTenant: false });
+    expect(decide('www.unclutterdesk.com', { ...config, appHost: 'app.unclutterdesk.com' })).toEqual({ kind: 'redirect', to: 'https://unclutterdesk.com/' });
+  });
+});

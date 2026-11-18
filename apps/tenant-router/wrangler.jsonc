@@ -1,6 +1,6 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
-  "name": "unclutterdesk-tenant-router",
+  "name": "therapysts-tenant-router",
   "main": "src/index.ts",
   "compatibility_date": "2026-09-01",
   "observability": { "enabled": true },
@@ -26,13 +26,19 @@
   // Domain config (spec §4.1a): the vars below are this Worker's production
   // addresses. Change them here at the domain move.
   "vars": {
-    "APEX_HOST": "unclutterdesk.com",
-    // Linked from the practice-not-found page.
+    // Practice subdomains are {slug}.therapysts.app (spec §4.1b).
+    "APEX_HOST": "therapysts.app",
+    // The app is the bare domain, served by its Pages custom domain; app. and
+    // www. redirect there (router.ts).
+    "APP_HOST": "therapysts.app",
+    // Linked from the practice-not-found page. Stays on the current marketing
+    // site until apps/landing merges into apps/profiles (therapysts.com).
     "MARKETING_URL": "https://unclutterdesk.com",
-    // The app Pages project's .pages.dev hostname. Verify this matches the
-    // CLOUDFLARE_PAGES_APP_PROJECT secret used by .github/workflows/deploy-app.yml.
-    "ORIGIN_HOST": "app-unclutterdesk.pages.dev",
-    "API_BASE": "https://api.unclutterdesk.com"
+    // The app Pages project's .pages.dev hostname, in the Therapysts account.
+    // Verify this matches the CLOUDFLARE_PAGES_APP_PROJECT secret used by
+    // .github/workflows/deploy-app.yml (docs/runbooks/therapysts-app-move.md).
+    "ORIGIN_HOST": "therapysts-app.pages.dev",
+    "API_BASE": "https://api.therapysts.app"
   }
   // Secret, not a var: ROUTER_PROXY_SECRET, shared with the API for the
   // custom-domain /api proxy (spec §6.16). Set with
