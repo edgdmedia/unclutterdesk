@@ -123,8 +123,9 @@ The router is renamed **`therapysts-tenant-router`** in the Therapysts account (
 
 ### Email
 
-11. **[you] Email sending domain: `notify.therapysts.com`** (recommended 17 Nov 2026; confirm before adding it in Resend).
+11. **[you] Email sending domain: `notify.therapysts.com`** (decided 18 Nov 2026).
     - Mail comes from the brand's permanent domain, `therapysts.com`, not from the app's address. A `notify.` subdomain keeps automated mail's reputation separate from people's own mailboxes on `therapysts.com`.
+    - The existing Resend API key keeps working **only if it has Full access, or Sending access for all domains**. A key restricted to one domain can't send from the new one; create a new key in that case and replace `RESEND_API_KEY` at the cutover.
     - Add `notify.therapysts.com` in Resend, add the DNS records it gives you in the `therapysts.com` zone, and wait for **Verified**.
     - Then `MAIL_FROM=Therapysts <no-reply@notify.therapysts.com>` on the server. The sender's name can stay as it is today until the rename (stage 2).
     - **Until it is verified, the cutover must keep today's sender explicitly.** When `MAIL_FROM` is unset, the API sends from `no-reply@<TENANT_ROOT_DOMAIN>`. Changing the root to `therapysts.app` would then switch the sender to an unverified address, and Resend would refuse every email.
