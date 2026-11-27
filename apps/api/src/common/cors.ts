@@ -61,7 +61,7 @@ export function createCorsOriginHandler(
     // Never a credentialed origin, even though it may match the tenant pattern (§4.3).
     if (isProfilesOrigin(candidate)) return callback(null, false);
 
-    // The app may live at a bare root (therapysts.app), which no subdomain rule matches.
+    // The app may live at a bare root domain, which no subdomain rule matches.
     if (
       configuredOrigins.includes(origin) ||
       ROOT_ORIGINS.includes(candidate) ||
