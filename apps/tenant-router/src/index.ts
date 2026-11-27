@@ -36,6 +36,8 @@ export interface Env {
   ROUTER_PROXY_SECRET?: string;
   /** Only for the local end-to-end test: "http:" to reach a local app server. */
   ORIGIN_PROTOCOL?: string;
+  /** The app's own host (§4.1b): the bare .app domain, which app. and www. redirect to. */
+  APP_HOST?: string;
   /**
    * §6.16: the profiles Worker's PracticeHost entrypoint (service binding).
    * A solo practice's `/` is the owner's profile page, fetched through it.
@@ -49,6 +51,7 @@ export default {
       apexHost: env.APEX_HOST,
       originHost: env.ORIGIN_HOST,
       originProtocol: env.ORIGIN_PROTOCOL === 'http:' ? 'http:' : 'https:',
+      appHost: env.APP_HOST,
     };
 
     const url = new URL(request.url);
@@ -64,8 +67,13 @@ export default {
     const decision = decide(host, config);
 
     switch (decision.kind) {
-      case 'redirect':
-        return Response.redirect(decision.to, 301);
+      case 'redirect': {
+        if (!decision.keepPath) return Response.redirect(decision.to, 301);
+        const to = new URL(decision.to);
+        to.pathname = url.pathname;
+        to.search = url.search;
+        return Response.redirect(to.toString(), 301);
+      }
 
       case 'misrouted':
         // Deliberately not falling back to the SPA: answering an API host with

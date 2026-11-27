@@ -1,4 +1,4 @@
-import { TENANT_ROOT_DOMAIN } from '../../common/origins';
+import { tenantRootOf } from '../../common/origins';
 
 /**
  * Every practice is served at `<slug>.<tenant root domain>`, so a slug is also a
@@ -65,5 +65,5 @@ export function isReservedSlug(slug: string): boolean {
  */
 export function isPlatformHostname(hostname: string): boolean {
   const host = hostname.toLowerCase().trim();
-  return host === TENANT_ROOT_DOMAIN || host.endsWith(`.${TENANT_ROOT_DOMAIN}`) || host === 'localhost';
+  return tenantRootOf(host) !== undefined || host === 'localhost';
 }

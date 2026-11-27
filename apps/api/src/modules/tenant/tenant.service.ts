@@ -9,7 +9,7 @@ import { NotificationService } from '../notifications/notification.service';
 import { DefaultFormsService } from '../intake/default-forms.service';
 import { decryptNoteFields } from '../../common/field-encryption';
 import { isPlatformHostname, isReservedSlug, normalizeSlug } from './reserved-slugs';
-import { apiOrigin, appOrigin, customDomainTarget, TENANT_ROOT_DOMAIN, tenantWebOrigin } from '../../common/origins';
+import { apiOrigin, appOrigin, customDomainTarget, TENANT_ROOT_DOMAIN, tenantRootOf, tenantWebOrigin } from '../../common/origins';
 import { EmergencyContactInput, emergencyContactData, emergencyContactOf, emergencyContactText } from './emergency-contact';
 import { GRANTABLE, PERMISSIONS } from '../../common/permissions';
 import { NEW_PRACTICE_TIER, PLAN_SELECT, PRACTICE_ENTITLEMENTS, practiceEntitlements, requiredTierFor, requiredTierForStaffRole, TIER_NAMES } from '../entitlements/entitlements';
@@ -1449,8 +1449,9 @@ export class TenantService {
  */
 export function practiceKeyFromHost(input: string): string {
   const key = input.toLowerCase().trim().replace(/\.$/, '');
-  const suffix = `.${TENANT_ROOT_DOMAIN}`;
-  if (key.endsWith(suffix)) {
+  const root = tenantRootOf(key);
+  const suffix = `.${root}`;
+  if (root && key.endsWith(suffix)) {
     const label = key.slice(0, -suffix.length);
     // Only a single label is a practice address; a.b.<root> is not.
     if (label && !label.includes('.')) return label;
