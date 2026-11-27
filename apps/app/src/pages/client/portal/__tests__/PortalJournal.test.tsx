@@ -73,6 +73,7 @@ beforeEach(() => {
 afterEach(() => {
   cleanup();
   vi.unstubAllGlobals();
+  vi.restoreAllMocks();
 });
 
 const renderAt = (path: string) =>
@@ -86,15 +87,39 @@ describe('the Journal plan on the recap', () => {
     expect(screen.queryByRole('button', { name: /Add to my Unclutter Journal/ })).toBeNull();
   });
 
-  it('says what is shared before she goes, and sends her to Journal at the time she chose', async () => {
+  it('says what is shared before she goes, and opens Journal in a new tab at the time she chose', async () => {
+    const tab = { opener: {}, location: { href: '' }, close: vi.fn() };
+    vi.spyOn(window, 'open').mockReturnValue(tab as unknown as Window);
     apiPost.mockResolvedValue({ url: 'https://journal.example.test/link/desk?request=abc' });
     renderAt('/portal/sessions/900/recap');
     expect(await screen.findByRole('heading', { name: 'Reflection practice' })).toBeTruthy();
     expect(screen.getByText(/never your words unless you choose to share an entry/)).toBeTruthy();
     fireEvent.change(screen.getByLabelText('Prompt time'), { target: { value: '07:30' } });
     fireEvent.click(screen.getByRole('button', { name: /Add to my Unclutter Journal/ }));
+    expect(window.open).toHaveBeenCalledWith('', '_blank');
     await waitFor(() => expect(apiPost).toHaveBeenCalledWith('/v1/consult/portal/sessions/900/journal/connect', { deliveryTime: '07:30' }));
+    await waitFor(() => expect(tab.location.href).toBe('https://journal.example.test/link/desk?request=abc'));
+    expect(tab.opener).toBeNull();
+    expect(assign).not.toHaveBeenCalled();
+    expect(screen.getByText(/is a free, private space to reflect/)).toBeTruthy();
+  });
+
+  it('goes in the same tab when pop-ups are blocked', async () => {
+    vi.spyOn(window, 'open').mockReturnValue(null);
+    apiPost.mockResolvedValue({ url: 'https://journal.example.test/link/desk?request=abc' });
+    renderAt('/portal/sessions/900/recap');
+    fireEvent.click(await screen.findByRole('button', { name: /Add to my Unclutter Journal/ }));
     await waitFor(() => expect(assign).toHaveBeenCalledWith('https://journal.example.test/link/desk?request=abc'));
+  });
+
+  it('closes the new tab and explains when the link could not be made', async () => {
+    const tab = { opener: {}, location: { href: '' }, close: vi.fn() };
+    vi.spyOn(window, 'open').mockReturnValue(tab as unknown as Window);
+    apiPost.mockRejectedValue(new Error('Unclutter Journal could not be reached. Try again in a moment.'));
+    renderAt('/portal/sessions/900/recap');
+    fireEvent.click(await screen.findByRole('button', { name: /Add to my Unclutter Journal/ }));
+    expect((await screen.findByRole('alert')).textContent).toMatch(/could not be reached/);
+    expect(tab.close).toHaveBeenCalled();
   });
 
   it('adds it straight away once her Journal is connected', async () => {

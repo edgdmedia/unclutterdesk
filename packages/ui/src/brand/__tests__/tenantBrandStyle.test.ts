@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { contrastRatio, tenantBrandStyle } from '../tenantBrandStyle';
+import { PROFILE_THEMES } from '../profileThemes';
 
 describe('tenantBrandStyle', () => {
   it.each([
@@ -29,5 +30,18 @@ describe('tenantBrandStyle', () => {
 
   it('falls back to the Desk default for an invalid colour', () => {
     expect(tenantBrandStyle('not-a-colour', '')['--brand-primary']).toBe('#0F3A53');
+  });
+});
+
+/*
+ * §6.16 / shared-public-page task 6: a solo practice's booking pages take the
+ * owner's profile accent. Whatever the palette, button text and links on the
+ * booking pages must still read at AA.
+ */
+describe('booking pages in every profile palette', () => {
+  it.each(PROFILE_THEMES.map((t) => [t.key, t.colors.accent]))('%s (%s) stays readable', (_key, accent) => {
+    const slots = tenantBrandStyle(accent, '#E3B341');
+    expect(contrastRatio(slots['--brand-on-primary'], slots['--brand-primary'])).toBeGreaterThanOrEqual(4.5);
+    expect(contrastRatio(slots['--brand-ink'], '#FFFFFF')).toBeGreaterThanOrEqual(4.5);
   });
 });

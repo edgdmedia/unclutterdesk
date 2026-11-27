@@ -1,5 +1,6 @@
 import { useEffect, useId, useState } from 'react';
 import { Button, Input, useToast } from '@unclutterdesk/ui';
+import { TENANT_ROOT_DOMAIN } from '../../../config/domains';
 import { profileApi, type BookingInfo, type BookingMode } from './profileApi';
 import { useStartBookingSetup } from './useStartBookingSetup';
 
@@ -34,6 +35,8 @@ export function BookingChoice() {
   const [info, setInfo] = useState<BookingInfo | null>(null);
   const [mode, setMode] = useState<BookingMode>('DESK');
   const [link, setLink] = useState('');
+  // §6.2: the DESK set-up confirms or renames the booking address.
+  const [slug, setSlug] = useState('');
   const [saving, setSaving] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
 
@@ -46,6 +49,7 @@ export function BookingChoice() {
         setInfo(b);
         setMode(b.mode);
         setLink(b.externalBookingUrl ?? '');
+        setSlug(b.deskSlug ?? '');
       })
       .catch((err) => live && setLoadError(errorText(err)));
     return () => {
@@ -57,13 +61,24 @@ export function BookingChoice() {
   if (!info) return <p className="text-[13px] text-[var(--desk-text-muted)]">Loading your booking choice…</p>;
 
   const deskBlocked = mode === 'DESK' && !info.deskReady;
-  const unchanged = mode === info.mode && (mode !== 'EXTERNAL' || link.trim() === (info.externalBookingUrl ?? ''));
+  const slugChanged = slug.trim() !== (info.deskSlug ?? '');
+  const unchanged =
+    mode === info.mode &&
+    (mode !== 'EXTERNAL' || link.trim() === (info.externalBookingUrl ?? '')) &&
+    (mode !== 'DESK' || !slugChanged);
 
   async function save() {
     setSaving(true);
     try {
-      const next = await profileApi.setBooking(mode === 'EXTERNAL' ? { mode, externalBookingUrl: link.trim() } : { mode });
+      const next = await profileApi.setBooking(
+        mode === 'EXTERNAL'
+          ? { mode, externalBookingUrl: link.trim() }
+          : mode === 'DESK'
+            ? { mode, ...(slug.trim() ? { slug: slug.trim() } : {}) }
+            : { mode },
+      );
       setInfo(next);
+      setSlug(next.deskSlug ?? '');
       toast.success('Booking choice saved');
     } catch (err) {
       toast.error(errorText(err));
@@ -107,6 +122,21 @@ export function BookingChoice() {
           value={link}
           onChange={(e: React.ChangeEvent<HTMLInputElement>) => setLink(e.target.value)}
         />
+      )}
+
+      {mode === 'DESK' && info.deskSlug && (
+        <div className="flex flex-col gap-1">
+          <Input
+            label="Your booking address"
+            optionalLabel="(clients book you here)"
+            value={slug}
+            onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSlug(e.target.value)}
+          />
+          <p className="text-[12px] text-[var(--desk-text-muted)]">
+            {(slug.trim() || info.deskSlug)}.{TENANT_ROOT_DOMAIN}/book
+            {slugChanged && ' · the old address keeps working and redirects here'}
+          </p>
+        </div>
       )}
 
       {deskBlocked && (

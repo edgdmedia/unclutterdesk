@@ -87,8 +87,47 @@ export function PortalRecapPage() {
   }
 
   const done = recap.ticks.filter(Boolean).length;
+  // Wide screens: the recap reads in the main column; what she does next
+  // (her Journal plan, any questionnaires) sits beside it. Narrow: one column.
   return (
-    <Page header={<PageHeader eyebrow={brand.name} title="Session recap" />}>
+    <Page
+      layout="main-aside"
+      header={<PageHeader eyebrow={brand.name} title="Session recap" />}
+      aside={
+        <>
+          <PortalJournalCard bookingId={recap.id} notice={search.get('journal')} />
+          {recap.assessments.length ? (
+            <Card padding="p-[22px_24px]" className="space-y-3">
+              <Eyebrow>QUESTIONNAIRES FROM YOUR PRACTITIONER</Eyebrow>
+              <ul className="space-y-2">
+                {recap.assessments.map((a) => (
+                  <li key={a.id} className="flex items-center gap-3 flex-wrap rounded-[14px] border border-[var(--desk-border)] px-4 py-3">
+                    <ClipboardList className="h-4 w-4 text-[var(--desk-text-muted)] shrink-0" aria-hidden />
+                    <div className="flex-1 min-w-0">
+                      <div className="text-[13.5px] font-bold text-[var(--desk-text)]">{a.name}</div>
+                      <div className="text-[12px] text-[var(--desk-text-muted)] font-medium">About {a.estimatedMinutes} minutes · your answers go only to your practitioner</div>
+                    </div>
+                    {a.status === 'COMPLETED' ? (
+                      <span className="inline-flex items-center gap-1 text-[12px] font-bold text-[var(--desk-active)]">
+                        <CheckCircle2 className="h-4 w-4" /> Done
+                      </span>
+                    ) : (
+                      <Link
+                        to={`/portal/assessments/${a.id}`}
+                        className="h-[34px] px-3.5 rounded-[10px] text-white text-[12.5px] font-bold inline-flex items-center"
+                        style={{ backgroundColor: brand.primaryColor || '#0F3A53' }}
+                      >
+                        Start {a.shortName}
+                      </Link>
+                    )}
+                  </li>
+                ))}
+              </ul>
+            </Card>
+          ) : null}
+        </>
+      }
+    >
       {back}
       <Card padding="p-[22px_24px]" className="space-y-4">
         <div className="border-b border-[var(--desk-border)] pb-3">
@@ -105,38 +144,6 @@ export function PortalRecapPage() {
         ) : null}
         {saveError ? <p role="alert" className="text-[12px] font-semibold text-rose-700">{saveError}</p> : null}
       </Card>
-
-      <PortalJournalCard bookingId={recap.id} notice={search.get('journal')} />
-
-      {recap.assessments.length ? (
-        <Card padding="p-[22px_24px]" className="space-y-3">
-          <Eyebrow>QUESTIONNAIRES FROM YOUR PRACTITIONER</Eyebrow>
-          <ul className="space-y-2">
-            {recap.assessments.map((a) => (
-              <li key={a.id} className="flex items-center gap-3 flex-wrap rounded-[14px] border border-[var(--desk-border)] px-4 py-3">
-                <ClipboardList className="h-4 w-4 text-[var(--desk-text-muted)] shrink-0" aria-hidden />
-                <div className="flex-1 min-w-0">
-                  <div className="text-[13.5px] font-bold text-[var(--desk-text)]">{a.name}</div>
-                  <div className="text-[12px] text-[var(--desk-text-muted)] font-medium">About {a.estimatedMinutes} minutes · your answers go only to your practitioner</div>
-                </div>
-                {a.status === 'COMPLETED' ? (
-                  <span className="inline-flex items-center gap-1 text-[12px] font-bold text-[var(--desk-active)]">
-                    <CheckCircle2 className="h-4 w-4" /> Done
-                  </span>
-                ) : (
-                  <Link
-                    to={`/portal/assessments/${a.id}`}
-                    className="h-[34px] px-3.5 rounded-[10px] text-white text-[12.5px] font-bold inline-flex items-center"
-                    style={{ backgroundColor: brand.primaryColor || '#0F3A53' }}
-                  >
-                    Start {a.shortName}
-                  </Link>
-                )}
-              </li>
-            ))}
-          </ul>
-        </Card>
-      ) : null}
     </Page>
   );
 }

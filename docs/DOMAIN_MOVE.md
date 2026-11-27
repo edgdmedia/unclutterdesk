@@ -1,5 +1,7 @@
 # Domain move checklist (spec §4.1a, §4.1b)
 
+> **The step-by-step for the first move (app, API and practices to `therapysts.app`) is `docs/runbooks/therapysts-app-move.md`.** The marketing site follows later, with the landing merge into `apps/profiles`. This page stays the full inventory.
+
 Every production address in the code is a setting with today's address as its default (spec §4.1a table). This page lists what a move to new domains touches: the settings, the files that can't read a setting, and the outside services that hold one of our URLs. Nothing here has been changed yet. Fill in the new values at the move.
 
 ## 0. The new domains live in a different Cloudflare account

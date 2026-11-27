@@ -8,6 +8,7 @@ import {
 } from '@nestjs/common';
 import { PrismaService } from '../../common/prisma/prisma.service';
 import { JournalService } from '../journal/journal.service';
+import { MembershipEndedService } from '../practitioner-profile/membership-ended.service';
 
 /**
  * Days between a practice requesting closure and its data becoming purgeable.
@@ -37,6 +38,7 @@ export class PracticeClosureService {
   constructor(
     private readonly prisma: PrismaService,
     @Optional() private readonly journal?: JournalService,
+    @Optional() private readonly membershipEnded?: MembershipEndedService,
   ) {}
 
   /**
@@ -102,6 +104,8 @@ export class PracticeClosureService {
 
     // A closed practice keeps no links into its clients' Journals.
     await this.journal?.endAllForTenant(tenantId);
+    // §6.14: everyone has left it, so it leaves their public profiles too.
+    await this.membershipEnded?.onPracticeEnded(tenantId);
 
     const purgeableFrom = new Date(
       closureRequestedAt.getTime() + CLOSURE_GRACE_DAYS * 24 * 60 * 60 * 1000,

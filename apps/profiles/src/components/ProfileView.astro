@@ -18,12 +18,19 @@ import { initialsOf, layoutOf } from '../lib/layout';
 import wordmark from '@unclutterdesk/ui/src/brand/therapysts/logos/therapysts-wordmark.min.svg?url';
 import wordmarkOnDark from '@unclutterdesk/ui/src/brand/therapysts/logos/therapysts-wordmark-on-dark.min.svg?url';
 import { profileTheme } from '@unclutterdesk/ui/src/brand/profileThemes';
+import { PRACTICE_LOCAL_ATTR, type PracticeReviews } from '../lib/practice-host';
 
 interface Props {
   profile: PublicProfile;
   config: ProfilesConfig;
+  /**
+   * §6.16: set only when this page is a solo practice's `/`, served on the
+   * practice's own host. Book then goes to that host's /book, and the
+   * practice's published reviews are shown. The profile address never shows reviews (D13).
+   */
+  practice?: { reviews: PracticeReviews };
 }
-const { profile: p, config } = Astro.props;
+const { profile: p, config, practice } = Astro.props;
 const layout = layoutOf(p.layoutKey);
 
 const countryName = (() => {
@@ -49,7 +56,14 @@ const years = (y: { startYear: number | null; endYear: number | null }) =>
 const primary = p.specialties.filter((t) => t.primary);
 const others = p.specialties.filter((t) => !t.primary);
 const hasFacts = p.populations.length > 0 || p.faithIntegration || p.languages.length > 0 || p.yearsInPractice !== null;
-const action = bookUrl
+// §6.9 per-place consent: show each place and whether it takes online bookings.
+// Only shown in DESK mode, since places are only relevant for desk booking.
+const places = p.bookingMode === 'DESK' ? (p.places ?? []) : [];
+const hasPlaces = places.length > 0;
+// On the practice's own address Book stays on that host (it stays a relative link: worker.ts leaves it).
+const action = practice
+  ? { href: '/book', label: 'Book a session', external: false, local: true }
+  : bookUrl
   ? { href: bookUrl, label: 'Book a session', external: true }
   : p.contactEmail
     ? { href: `mailto:${p.contactEmail}`, label: 'Get in touch', external: false }
@@ -84,7 +98,7 @@ const showFees = Boolean(p.feeRangeText) || (layout === 'split' && action !== nu
         {!p.acceptingClients && <p class="badge">Not taking new clients at the moment</p>}
         {action && (
           <p class="actions">
-            <a class="btn" href={action.href} rel={action.external ? 'noopener nofollow' : undefined}>{action.label}</a>
+            <a class="btn" href={action.href} rel={action.external ? 'noopener nofollow' : undefined} {...(action.local ? { [PRACTICE_LOCAL_ATTR]: '' } : {})}>{action.label}</a>
           </p>
         )}
         {modes && <p class="meta small">{modes}</p>}
@@ -149,6 +163,38 @@ const showFees = Boolean(p.feeRangeText) || (layout === 'split' && action !== nu
             )}
           </section>
         )}
+
+        {hasPlaces && (
+          <section aria-labelledby="where-i-practise">
+            <h2 id="where-i-practise">Where I practise</h2>
+            <ul class="places">
+              {places.map((place) => (
+                <li>
+                  <span class="place-name">{place.name}</span>
+                  {!place.takesOnlineBookings && <span class="place-status">Not taking online bookings here right now</span>}
+                </li>
+              ))}
+            </ul>
+          </section>
+        )}
+
+        {practice && practice.reviews.count > 0 && (
+          <section aria-labelledby="reviews" class="reviews">
+            <h2 id="reviews">Reviews</h2>
+            {practice.reviews.averageRating !== null && (
+              <p class="text muted">{`${practice.reviews.averageRating} out of 5 · ${practice.reviews.count} ${practice.reviews.count === 1 ? 'review' : 'reviews'}`}</p>
+            )}
+            <ul class="review-list">
+              {practice.reviews.reviews.map((r) => (
+                <li>
+                  {r.rating !== null && <p class="stars"><span aria-hidden="true">{'★'.repeat(r.rating)}{'☆'.repeat(5 - r.rating)}</span><span class="sr-only">{`${r.rating} out of 5`}</span></p>}
+                  {r.testimonial && <p class="text">{r.testimonial}</p>}
+                  <p class="muted small">{r.displayName}</p>
+                </li>
+              ))}
+            </ul>
+          </section>
+        )}
       </div>
 
       {(showFees || p.contactEmail || social.length > 0) && (
@@ -158,7 +204,7 @@ const showFees = Boolean(p.feeRangeText) || (layout === 'split' && action !== nu
               <h2 id="fees">Sessions and fees</h2>
               {modes && <p class="text muted">{modes}</p>}
               {p.feeRangeText && <p class="text">{p.feeRangeText}</p>}
-              {action && <p class="actions"><a class="btn wide" href={action.href} rel={action.external ? 'noopener nofollow' : undefined}>{action.label}</a></p>}
+              {action && <p class="actions"><a class="btn wide" href={action.href} rel={action.external ? 'noopener nofollow' : undefined} {...(action.local ? { [PRACTICE_LOCAL_ATTR]: '' } : {})}>{action.label}</a></p>}
             </section>
           )}
           {(p.contactEmail || social.length > 0) && (

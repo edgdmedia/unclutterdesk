@@ -8,9 +8,10 @@ import { SubscriptionLapseService } from './subscription-lapse.service';
 import { PrismaService } from '../../common/prisma/prisma.service';
 import { CalendarModule } from '../calendar/calendar.module';
 import { AuthModule } from '../auth/auth.module';
+import { PractitionerProfileModule } from '../practitioner-profile/practitioner-profile.module';
 
 @Module({
-  imports: [CalendarModule, AuthModule],
+  imports: [CalendarModule, AuthModule, PractitionerProfileModule],
   controllers: [BillingController],
   providers: [BillingService, PaystackService, BookingPaymentSettler, PrismaService, BillingCron, SubscriptionLapseService],
   exports: [BillingService, PaystackService, BookingPaymentSettler, SubscriptionLapseService],

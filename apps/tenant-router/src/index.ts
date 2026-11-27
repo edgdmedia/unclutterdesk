@@ -17,6 +17,7 @@ import { decide, isCustomDomainHost, normalizeHost, originRequest, type RouterCo
 import { apiNotFound, apiRequest, apiUnavailable, clientResponse, isAllowedClientRoute, isApiPath, API_TIMEOUT_MS, stripApiPrefix } from './api-proxy';
 import { lookupTenant } from './tenants';
 import { practiceNotFoundResponse } from './not-found';
+import { fetchProfileHome, wantsProfileHome } from './profile-home';
 
 export interface Env {
   /** Pages project hostname serving the app bundle. */
@@ -35,6 +36,13 @@ export interface Env {
   ROUTER_PROXY_SECRET?: string;
   /** Only for the local end-to-end test: "http:" to reach a local app server. */
   ORIGIN_PROTOCOL?: string;
+  /** The app's own host (§4.1b): the bare .app domain, which app. and www. redirect to. */
+  APP_HOST?: string;
+  /**
+   * §6.16: the profiles Worker's PracticeHost entrypoint (service binding).
+   * A solo practice's `/` is the owner's profile page, fetched through it.
+   */
+  PROFILES?: Fetcher;
 }
 
 export default {
@@ -43,6 +51,7 @@ export default {
       apexHost: env.APEX_HOST,
       originHost: env.ORIGIN_HOST,
       originProtocol: env.ORIGIN_PROTOCOL === 'http:' ? 'http:' : 'https:',
+      appHost: env.APP_HOST,
     };
 
     const url = new URL(request.url);
@@ -58,8 +67,13 @@ export default {
     const decision = decide(host, config);
 
     switch (decision.kind) {
-      case 'redirect':
-        return Response.redirect(decision.to, 301);
+      case 'redirect': {
+        if (!decision.keepPath) return Response.redirect(decision.to, 301);
+        const to = new URL(decision.to);
+        to.pathname = url.pathname;
+        to.search = url.search;
+        return Response.redirect(to.toString(), 301);
+      }
 
       case 'misrouted':
         // Deliberately not falling back to the SPA: answering an API host with
@@ -80,6 +94,20 @@ export default {
           // page to clients who already have sessions booked.
           if (!tenant.exists) {
             return practiceNotFoundResponse(host, env.MARKETING_URL);
+          }
+          // §6.2: if the slug is an old one, redirect to the current slug.
+          if (tenant.redirectTo) {
+            const newUrl = new URL(request.url);
+            // Replace the slug part of the hostname with the new slug.
+            const newHost = `${tenant.redirectTo}.${config.apexHost}`;
+            newUrl.hostname = newHost;
+            return Response.redirect(newUrl.toString(), 301);
+          }
+          // §6.16: a solo practice's `/` is its owner's profile page. Any
+          // failure there serves the practice page below instead.
+          if (tenant.profileHome && env.PROFILES && wantsProfileHome(request, url)) {
+            const page = await fetchProfileHome(env.PROFILES, request, url, tenant.profileHome, decision.indexable && isCustomDomainHost(host, env.APEX_HOST));
+            if (page) return page;
           }
         }
 

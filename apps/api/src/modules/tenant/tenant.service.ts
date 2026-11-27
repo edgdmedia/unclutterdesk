@@ -1,5 +1,5 @@
 import { Injectable, BadRequestException, ConflictException, NotFoundException, ForbiddenException, Optional } from '@nestjs/common';
-import { Prisma } from '@prisma/client';
+import { PracticeHomePage, Prisma } from '@prisma/client';
 import { createHash, randomBytes } from 'crypto';
 import { promises as dns } from 'dns';
 import { Logger } from '@nestjs/common';
@@ -9,12 +9,13 @@ import { NotificationService } from '../notifications/notification.service';
 import { DefaultFormsService } from '../intake/default-forms.service';
 import { decryptNoteFields } from '../../common/field-encryption';
 import { isPlatformHostname, isReservedSlug, normalizeSlug } from './reserved-slugs';
-import { apiOrigin, appOrigin, customDomainTarget, TENANT_ROOT_DOMAIN, tenantWebOrigin } from '../../common/origins';
+import { apiOrigin, appOrigin, customDomainTarget, TENANT_ROOT_DOMAIN, tenantRootOf, tenantWebOrigin } from '../../common/origins';
 import { EmergencyContactInput, emergencyContactData, emergencyContactOf, emergencyContactText } from './emergency-contact';
 import { GRANTABLE, PERMISSIONS } from '../../common/permissions';
 import { NEW_PRACTICE_TIER, PLAN_SELECT, PRACTICE_ENTITLEMENTS, practiceEntitlements, requiredTierFor, requiredTierForStaffRole, TIER_NAMES } from '../entitlements/entitlements';
 import { EntitlementError } from '../entitlements/entitlement.error';
 import { PersonFactsService } from '../practitioner-profile/person-facts.service';
+import { themePalette } from '../practitioner-profile/themes';
 import { labelledAnswers } from '../intake/form-answers';
 import { JOIN_OPENS_CHOICES } from '../video/join-window';
 
@@ -127,6 +128,9 @@ export function cleanImageUrl(value: unknown, what: 'logo' | 'photo' = 'logo'): 
 /** Kept so logo callers read as before. */
 export const cleanLogoUrl = (value: unknown): string | null | undefined => cleanImageUrl(value, 'logo');
 
+/** §6.16: what a practice address shows at `/` while the practice is solo. */
+type HomePageChoice = { homePage: PracticeHomePage };
+
 @Injectable()
 export class TenantService {
   private readonly logger = new Logger(TenantService.name);
@@ -159,15 +163,22 @@ export class TenantService {
    * practice has filled in always win. Returns only the filled-in values.
    */
   async withSoloProfile(tenantId: bigint, fields: { welcomeMessage?: unknown; tagline?: unknown; city?: unknown; logoUrl?: unknown }): Promise<Record<string, string>> {
-    if (!this.personFacts) return {};
     const tenant = await this.prisma.tenant.findUnique({ where: { id: tenantId }, select: { useProfileForPractice: true } });
     if (!tenant?.useProfileForPractice) return {};
     const owner = await this.soloOwner(tenantId);
     if (owner === null) return {};
-    const facts = (await this.personFacts.forUsers([owner])).get(owner.toString());
-    if (!facts) return {};
-    const empty = (v: unknown) => v === null || v === undefined || String(v).trim() === '';
     const out: Record<string, string> = {};
+    // §6.16 / shared-public-page task 6: the booking pages take the owner's
+    // profile look, so booking from the profile and from the practice page
+    // looks the same. The profile palette's accent, or the custom colour made
+    // readable exactly as the profile page shows it. The booking pages work
+    // out button and link colours from it (tenantBrandStyle).
+    const look = await this.prisma.practitionerProfile.findUnique({ where: { userId: owner }, select: { themeKey: true, brandColor: true } });
+    if (look) out.primaryColor = themePalette(look.themeKey, look.brandColor).accent;
+    if (!this.personFacts) return out;
+    const facts = (await this.personFacts.forUsers([owner])).get(owner.toString());
+    if (!facts) return out;
+    const empty = (v: unknown) => v === null || v === undefined || String(v).trim() === '';
     if (empty(fields.welcomeMessage) && facts.about) out.welcomeMessage = facts.about;
     if (empty(fields.tagline) && facts.headline) out.tagline = facts.headline;
     if (empty(fields.city) && facts.city) out.city = facts.city;
@@ -283,10 +294,47 @@ export class TenantService {
     const key = practiceKeyFromHost(slugOrDomain);
     const tenant = await this.prisma.tenant.findFirst({
       where: { OR: [{ slug: key }, { customDomain: key, customDomainStatus: 'ACTIVE' }] },
-      select: { isActive: true },
+      select: { id: true, slug: true, isActive: true, homePage: true },
     });
+    if (!tenant) {
+      // §6.2: if the slug is an old one, return the current slug for a 301 redirect.
+      const oldSlug = await this.prisma.tenantSlugHistory.findUnique({
+        where: { slug: key },
+        select: { tenant: { select: { slug: true, isActive: true } } },
+      });
+      if (oldSlug) {
+        return { exists: true, active: Boolean(oldSlug.tenant.isActive), redirectTo: oldSlug.tenant.slug };
+      }
+      return { exists: false, active: false };
+    }
 
-    return { exists: Boolean(tenant), active: Boolean(tenant?.isActive) };
+    return { exists: true, active: Boolean(tenant.isActive), ...(await this.resolvedHomePage(tenant)) };
+  }
+
+  /**
+   * §6.16 "What `/` shows on a practice address": the owner's profile page
+   * when the practice is solo, its owner's profile is published, and the
+   * owner hasn't chosen the practice page. Otherwise the practice page. A
+   * deactivated practice always keeps the practice page, so clients with
+   * sessions booked still reach its inactive-practice screen.
+   */
+  private async resolvedHomePage(tenant: { id: bigint; slug: string; isActive: boolean; homePage: PracticeHomePage | null }): Promise<
+    { homePage: 'PRACTICE' } | { homePage: 'PROFILE'; profileHandle: string; practiceSlug: string }
+  > {
+    const practicePage = { homePage: 'PRACTICE' as const };
+    if (!tenant.isActive || tenant.homePage === 'PRACTICE') return practicePage;
+    const owner = await this.soloOwner(tenant.id);
+    if (owner === null) return practicePage;
+    const profile = await this.prisma.practitionerProfile.findUnique({ where: { userId: owner }, select: { handle: true, status: true } });
+    if (profile?.status !== 'PUBLISHED') return practicePage;
+    return { homePage: 'PROFILE', profileHandle: profile.handle, practiceSlug: tenant.slug };
+  }
+
+  /** §6.16 opt-out: the owner chooses what their practice address shows at `/`. */
+  async setHomePage(tenantId: bigint, value: unknown): Promise<HomePageChoice> {
+    if (value !== 'PROFILE' && value !== 'PRACTICE') throw new BadRequestException('Choose PROFILE or PRACTICE');
+    await this.prisma.tenant.update({ where: { id: tenantId }, data: { homePage: value } });
+    return { homePage: value };
   }
 
   async getPublicTenantInfo(slugOrDomain: string) {
@@ -521,6 +569,8 @@ export class TenantService {
         category: true,
         useProfileForPractice: true,
         joinOpensMinutesBefore: true,
+        // §6.16: what `/` shows while the practice is solo (null means the profile, once published).
+        homePage: true,
       },
     });
 
@@ -858,6 +908,7 @@ export class TenantService {
       avatarUrl: s.avatarUrl,
       isTherapist: !!s.consultTherapistProfile,
       specialty: s.consultTherapistProfile?.specialty,
+      allowProfileBooking: s.consultTherapistProfile?.allowProfileBooking ?? true,
       invitedAt: null as string | null,
       expiresAt: null as string | null,
     }));
@@ -1398,8 +1449,9 @@ export class TenantService {
  */
 export function practiceKeyFromHost(input: string): string {
   const key = input.toLowerCase().trim().replace(/\.$/, '');
-  const suffix = `.${TENANT_ROOT_DOMAIN}`;
-  if (key.endsWith(suffix)) {
+  const root = tenantRootOf(key);
+  const suffix = `.${root}`;
+  if (root && key.endsWith(suffix)) {
     const label = key.slice(0, -suffix.length);
     // Only a single label is a practice address; a.b.<root> is not.
     if (label && !label.includes('.')) return label;

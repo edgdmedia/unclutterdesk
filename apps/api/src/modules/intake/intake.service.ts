@@ -5,6 +5,8 @@ import { listPendingForms } from './default-forms';
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '../../common/prisma/prisma.service';
 import { labelledAnswers } from './form-answers';
+import { JobsService } from '../jobs/jobs.service';
+import { practiceTag, queuePurge } from '../practitioner-profile/profile-purge.job';
 
 type FormField = {
   id?: string;
@@ -33,7 +35,19 @@ export class IntakeService {
   constructor(
     private readonly prisma: PrismaService,
     @Optional() private readonly notifier?: BookingNotifier,
+    @Optional() private readonly jobs?: JobsService,
   ) {}
+
+  /**
+   * §6.16: a solo practice's address shows its published reviews on the
+   * owner's profile page, cached by the profiles Worker under the practice's
+   * tag. Called whenever what a visitor sees there changes.
+   */
+  private async refreshReviewsPage(tenantId: bigint): Promise<void> {
+    if (!this.jobs) return;
+    const tenant = await this.prisma.tenant.findUnique({ where: { id: tenantId }, select: { slug: true } });
+    if (tenant) await queuePurge(this.jobs, [practiceTag(tenant.slug)]);
+  }
 
   private normalizeTargetType(targetType?: string) {
     return (targetType || 'INTAKE').toUpperCase();
@@ -274,6 +288,11 @@ export class IntakeService {
     }
 
     const targetType = this.normalizeTargetType(dto.targetType || existing.targetType);
+    const reviewsChange =
+      (existing.targetType === 'REVIEW' || targetType === 'REVIEW') &&
+      (targetType !== existing.targetType ||
+        dto.schemaJson !== undefined ||
+        (dto.reviewerDisplayMode !== undefined && this.normalizeReviewerDisplayMode(dto.reviewerDisplayMode) !== existing.reviewerDisplayMode));
     const form = await this.prisma.universalForm.update({
       where: { id: formId },
       data: {
@@ -291,6 +310,7 @@ export class IntakeService {
       },
     });
 
+    if (reviewsChange) await this.refreshReviewsPage(tenantId);
     return this.mapForm(form);
   }
 
@@ -432,6 +452,8 @@ export class IntakeService {
       },
     });
 
+    if (status === 'PUBLISHED') await this.refreshReviewsPage(tenantId);
+
     // NOT-05: the practice hears that a form arrived, linked to the client.
     await this.notifier?.notifyFormSubmitted(tenantId, {
       clientProfileId: clientProfile.id,
@@ -534,6 +556,11 @@ export class IntakeService {
       },
       include: { form: true },
     });
+
+    // Only a review going on or off the public page changes what visitors see.
+    if (updated.targetType === 'REVIEW' && submission.status !== normalizedStatus && (submission.status === 'PUBLISHED' || normalizedStatus === 'PUBLISHED')) {
+      await this.refreshReviewsPage(tenantId);
+    }
 
     return {
       id: updated.id.toString(),

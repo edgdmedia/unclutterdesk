@@ -15,7 +15,24 @@ const trimSlash = (value: string) => value.replace(/\/+$/, '');
 const setting = (name: string) => process.env[name]?.trim() || undefined;
 
 /** Practice subdomains are `{slug}.<root>`. TENANT_ROOT_DOMAIN, default unclutterdesk.com. */
-export const TENANT_ROOT_DOMAIN = (setting('TENANT_ROOT_DOMAIN') ?? 'unclutterdesk.com').toLowerCase().replace(/^\.+|\.+$/g, '');
+const normalizeRoot = (value: string) => value.trim().toLowerCase().replace(/^\.+|\.+$/g, '');
+export const TENANT_ROOT_DOMAIN = normalizeRoot(setting('TENANT_ROOT_DOMAIN') ?? 'unclutterdesk.com');
+
+/**
+ * Every root the API answers for: TENANT_ROOT_DOMAIN first (it builds links),
+ * then EXTRA_TENANT_ROOT_DOMAINS (comma list), so the old and new domains both
+ * work through a domain move (§4.1b). Extra roots are accepted, never linked to.
+ */
+export const TENANT_ROOT_DOMAINS = [
+  TENANT_ROOT_DOMAIN,
+  ...(setting('EXTRA_TENANT_ROOT_DOMAINS') ?? '').split(',').map(normalizeRoot).filter(Boolean),
+].filter((root, i, all) => all.indexOf(root) === i);
+
+/** The root a hostname sits on (itself or a subdomain of it), if it is one of ours. */
+export function tenantRootOf(hostname: string): string | undefined {
+  const host = normalizeRoot(hostname);
+  return TENANT_ROOT_DOMAINS.find((root) => host === root || host.endsWith(`.${root}`));
+}
 
 /** The marketing site. MARKETING_URL, default https://unclutterdesk.com. */
 export const MARKETING_ORIGIN = trimSlash(setting('MARKETING_URL') ?? 'https://unclutterdesk.com');
@@ -87,7 +104,7 @@ export const ROOT_ORIGINS = [MARKETING_ORIGIN, MARKETING_ORIGIN.replace(/^https:
  * "https://evil.com/x.<root>" or "https://<root>.evil.com".
  */
 export const TENANT_SUBDOMAIN = new RegExp(
-  `^https:\\/\\/[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\\.${escapeRegex(TENANT_ROOT_DOMAIN)}$`,
+  `^https:\\/\\/[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\\.(?:${TENANT_ROOT_DOMAINS.map(escapeRegex).join('|')})$`,
 );
 
 /** Dev-only. Never consulted when NODE_ENV=production. */
@@ -150,7 +167,7 @@ export function isPlatformOrigin(
 ): boolean {
   const origin = candidate.toLowerCase();
   if (isProfilesOrigin(origin)) return false;
-  if (ROOT_ORIGINS.includes(origin) || TENANT_SUBDOMAIN.test(origin)) return true;
+  if (ROOT_ORIGINS.includes(origin) || TENANT_SUBDOMAIN.test(origin) || origin === appOrigin(isProduction).toLowerCase()) return true;
   if (!isProduction && (LOCAL_ORIGIN.test(origin) || PAGES_PREVIEW_ORIGIN.test(origin))) return true;
   return false;
 }

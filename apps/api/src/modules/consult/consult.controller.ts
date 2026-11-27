@@ -113,6 +113,27 @@ export class ConsultController {
     );
   }
 
+  @Permissions('practice.admin')
+  @Patch('admin/therapists/:profileId/allow-profile-booking')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @ApiBearerAuth('access-token')
+  @ApiOperation({ summary: 'Toggle whether this practice appears as a booking place on the therapist\'s public profile (§6.9)' })
+  setAllowProfileBooking(
+    @Req() req: any,
+    @Param('profileId') profileId: string,
+    @Body() dto: { allowProfileBooking: boolean },
+  ) {
+    const userId = req?.user?.userId;
+    if (!userId) throw new NotFoundException('Authentication required');
+    return this.consultService.setAllowProfileBooking(
+      authenticatedTenantId(req),
+      BigInt(userId),
+      authenticatedProfileId(req),
+      BigInt(profileId),
+      Boolean(dto.allowProfileBooking),
+    );
+  }
+
   // ── Services & Scheduling Endpoints ─────────────────────────────────────
 
   @Get('public/services')

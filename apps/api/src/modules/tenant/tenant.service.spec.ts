@@ -10,10 +10,17 @@ function createPrismaMock() {
       create: vi.fn(),
       update: vi.fn(),
     },
+    tenantSlugHistory: {
+      findUnique: vi.fn().mockResolvedValue(null),
+      upsert: vi.fn(),
+    },
     profile: {
       findFirst: vi.fn(),
       update: vi.fn(),
     },
+    // §6.16 solo check behind the existence probe: no therapists unless a test adds them.
+    consultTherapistProfile: { findMany: vi.fn().mockResolvedValue([]) },
+    practitionerProfile: { findUnique: vi.fn().mockResolvedValue(null) },
   } as any;
 }
 
@@ -157,7 +164,7 @@ describe('TenantService.getPublicTenantExistence', () => {
     prisma.tenant.findFirst.mockResolvedValue({ isActive: true });
     const service = new TenantService(prisma, notificationsMock());
 
-    await expect(service.getPublicTenantExistence('Dr-Smith.unclutterdesk.com')).resolves.toEqual({ exists: true, active: true });
+    await expect(service.getPublicTenantExistence('Dr-Smith.unclutterdesk.com')).resolves.toEqual({ exists: true, active: true, homePage: 'PRACTICE' });
     expect(prisma.tenant.findFirst.mock.calls[0][0].where).toEqual({
       OR: [{ slug: 'dr-smith' }, { customDomain: 'dr-smith', customDomainStatus: 'ACTIVE' }],
     });
@@ -182,6 +189,7 @@ describe('TenantService.getPublicTenantExistence', () => {
     await expect(service.getPublicTenantExistence('dr-smith')).resolves.toEqual({
       exists: true,
       active: true,
+      homePage: 'PRACTICE',
     });
   });
 
@@ -197,6 +205,7 @@ describe('TenantService.getPublicTenantExistence', () => {
     await expect(service.getPublicTenantExistence('paused')).resolves.toEqual({
       exists: true,
       active: false,
+      homePage: 'PRACTICE',
     });
   });
 
@@ -244,14 +253,40 @@ describe('TenantService.getPublicTenantExistence', () => {
     expect(domainClause.customDomainStatus).toBe('ACTIVE');
   });
 
-  test('returns only existence flags, never practice detail', async () => {
+  // §6.16 adds only what the router needs to serve `/` (solo-home.spec.ts covers
+  // the profile case): the resolved home page, never anything else about the practice.
+  test('returns only existence flags and the home page, never practice detail', async () => {
+    const prisma = createPrismaMock();
+    prisma.tenant.findFirst.mockResolvedValue({ id: 1n, slug: 'dr-smith', isActive: true, homePage: null });
+    const service = new TenantService(prisma, notificationsMock());
+
+    const result = await service.getPublicTenantExistence('dr-smith');
+    expect(Object.keys(result).sort()).toEqual(['active', 'exists', 'homePage']);
+    expect(prisma.tenant.findFirst.mock.calls[0][0].select).toEqual({ id: true, slug: true, isActive: true, homePage: true });
+  });
+
+  test('§6.2: returns redirectTo when the slug is an old one', async () => {
+    const prisma = createPrismaMock();
+    prisma.tenant.findFirst.mockResolvedValue(null);
+    prisma.tenantSlugHistory.findUnique.mockResolvedValue({
+      tenant: { slug: 'dr-smith-new', isActive: true },
+    });
+    const service = new TenantService(prisma, notificationsMock());
+
+    const result = await service.getPublicTenantExistence('dr-smith');
+    expect(result).toEqual({ exists: true, active: true, redirectTo: 'dr-smith-new' });
+  });
+
+  test('§6.2: does not redirect when the slug is current', async () => {
     const prisma = createPrismaMock();
     prisma.tenant.findFirst.mockResolvedValue({ isActive: true });
     const service = new TenantService(prisma, notificationsMock());
 
     const result = await service.getPublicTenantExistence('dr-smith');
-    expect(Object.keys(result).sort()).toEqual(['active', 'exists']);
-    expect(prisma.tenant.findFirst.mock.calls[0][0].select).toEqual({ isActive: true });
+    // A current slug: no redirect, just the §6.16 home page (a team-less practice with no published owner profile).
+    expect(result).toEqual({ exists: true, active: true, homePage: 'PRACTICE' });
+    expect(result).not.toHaveProperty('redirectTo');
+    expect(prisma.tenantSlugHistory.findUnique).not.toHaveBeenCalled();
   });
 });
 

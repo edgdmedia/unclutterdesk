@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { BookOpen, CheckCircle2, Loader2 } from 'lucide-react';
+import { BookOpen, CheckCircle2, ExternalLink, Loader2 } from 'lucide-react';
 import { Card, Eyebrow, useBrand } from '@unclutterdesk/ui';
 import { api } from '../../../utils/apiClient';
 
@@ -45,6 +45,12 @@ export function PortalJournalCard({ bookingId, notice }: { bookingId: string; no
 
   useEffect(() => {
     load().catch(() => setJ({ available: false }));
+    // Journal opens in its own tab; coming back here shows what changed there.
+    const refresh = () => {
+      if (document.visibilityState === 'visible') load().catch(() => undefined);
+    };
+    document.addEventListener('visibilitychange', refresh);
+    return () => document.removeEventListener('visibilitychange', refresh);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [bookingId]);
 
@@ -54,6 +60,9 @@ export function PortalJournalCard({ bookingId, notice }: { bookingId: string; no
     if (!j || !j.available) return;
     setBusy('add');
     setError(null);
+    // Opened now, while it is still her click: a tab opened after the request
+    // below would be blocked as a pop-up. Its address is set once Desk answers.
+    const tab = j.connected ? null : window.open('', '_blank');
     try {
       if (j.connected) {
         await api.put(`${base}/plan`, { deliveryTime: time });
@@ -61,10 +70,17 @@ export function PortalJournalCard({ bookingId, notice }: { bookingId: string; no
       } else {
         // To Journal: she signs in there and sees what will be shared before anything is linked.
         const { url } = await api.post<{ url: string }>(`${base}/connect`, { deliveryTime: time });
-        window.location.assign(url);
-        return;
+        if (tab) {
+          tab.opener = null;
+          tab.location.href = url;
+        } else {
+          // Pop-ups blocked: go in this tab instead.
+          window.location.assign(url);
+          return;
+        }
       }
     } catch (err) {
+      tab?.close();
       setError(err instanceof Error ? err.message : 'That did not work. Try again in a moment.');
     }
     setBusy(null);
@@ -152,6 +168,7 @@ export function PortalJournalCard({ bookingId, notice }: { bookingId: string; no
             >
               {busy === 'add' ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
               Add to my Unclutter Journal
+              {j.connected ? null : <ExternalLink className="h-3.5 w-3.5" aria-label="opens in a new tab" />}
             </button>
             {j.connected ? (
               <button type="button" disabled={busy !== null} onClick={() => void disconnect()} className="h-[40px] px-4 rounded-[12px] bg-white border border-[var(--desk-border)] text-[var(--desk-text)] text-[12.5px] font-bold cursor-pointer disabled:opacity-50">
@@ -159,6 +176,11 @@ export function PortalJournalCard({ bookingId, notice }: { bookingId: string; no
               </button>
             ) : null}
           </div>
+          {j.connected ? null : (
+            <p className="text-[12px] text-[var(--desk-text-muted)] leading-relaxed">
+              <span className="font-bold text-[var(--desk-text)]">Unclutter Journal</span> is a free, private space to reflect: one short prompt a day at the time you choose, a gentle reminder, and everything you write kept for you alone. Opens in a new tab.
+            </p>
+          )}
         </div>
       )}
       {error ? <p role="alert" className="text-[12px] font-semibold text-rose-700">{error}</p> : null}

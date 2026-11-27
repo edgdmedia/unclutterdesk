@@ -22,6 +22,12 @@ export interface PublicTerm {
   label: string;
 }
 
+export interface PublicPlace {
+  name: string;
+  takesOnlineBookings: boolean;
+  bookingUrl: string | null;
+}
+
 export interface PublicProfile {
   handle: string;
   displayName: string;
@@ -44,8 +50,10 @@ export interface PublicProfile {
   feeRangeText: string | null;
   bookingMode: 'NONE' | 'DESK' | 'EXTERNAL';
   externalBookingUrl: string | null;
-  /** DESK: the main place's booking page. Null in any other mode, or with no place (shown as contact only). */
+  /** DESK: the first available place's booking page. Null in any other mode, or with no available place. */
   deskBookingUrl: string | null;
+  /** DESK: each place and whether it takes online bookings (§6.9 per-place consent). */
+  places: PublicPlace[];
   contactEmail: string | null;
   socialLinks: SocialLink[];
   themeKey: string;
@@ -82,7 +90,13 @@ export class PublicProfileService {
       include: {
         taxonomy: { include: { term: { select: { kind: true, key: true, label: true, sortOrder: true, isActive: true } } } },
         timeline: { orderBy: { sortOrder: 'asc' } },
-        places: { where: { isMain: true }, select: { tenant: { select: { slug: true, customDomain: true, customDomainStatus: true } } } },
+        places: {
+          orderBy: [{ isMain: 'desc' }, { sortOrder: 'asc' }],
+          include: {
+            tenant: { select: { name: true, slug: true, customDomain: true, customDomainStatus: true, isActive: true } },
+            therapistProfile: { select: { allowProfileBooking: true } },
+          },
+        },
       },
     });
 
@@ -107,6 +121,21 @@ export class PublicProfileService {
     const socialLinks = readSocialLinks(profile.socialLinks).map(describeSocialLink);
     const publicUrl = (key: string | null) => (key && this.storage.configured('public') ? this.storage.publicUrl(key) : null);
 
+    // §6.9 per-place consent: each place shows whether it takes online bookings.
+    // A place is available when the tenant is active AND the therapist profile
+    // allows profile booking there. The primary Book button uses the first
+    // available place (main first, then by sort order).
+    const places: PublicPlace[] = profile.places.map((place) => {
+      const available = place.tenant.isActive && place.therapistProfile.allowProfileBooking;
+      return {
+        name: place.tenant.name,
+        takesOnlineBookings: available,
+        bookingUrl: available ? `${tenantWebOrigin(place.tenant)}/book` : null,
+      };
+    });
+    const firstAvailable = places.find((p) => p.takesOnlineBookings);
+    const deskBookingUrl = profile.bookingMode === 'DESK' && firstAvailable ? firstAvailable.bookingUrl : null;
+
     return {
       profile: {
         handle: profile.handle,
@@ -130,7 +159,8 @@ export class PublicProfileService {
         feeRangeText: profile.feeRangeText,
         bookingMode: profile.bookingMode,
         externalBookingUrl: profile.bookingMode === 'EXTERNAL' && profile.externalBookingUrl?.startsWith('https://') ? profile.externalBookingUrl : null,
-        deskBookingUrl: profile.bookingMode === 'DESK' && profile.places[0] ? `${tenantWebOrigin(profile.places[0].tenant)}/book` : null,
+        deskBookingUrl,
+        places,
         contactEmail: profile.contactEmailPublic,
         socialLinks,
         themeKey: profile.themeKey,

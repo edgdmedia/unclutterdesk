@@ -4,8 +4,9 @@ import { cleanup, fireEvent, renderWithApp, screen, waitFor } from '../../test/r
 
 /* §6.17: a solo practice can use its owner's profile for its page. Only the network is stubbed. */
 let brand: Record<string, unknown> = {};
-const get = vi.fn(async (..._a: unknown[]) => brand);
-const patch = vi.fn(async (..._a: unknown[]) => ({}));
+let own: Record<string, unknown> | null = null;
+const get = vi.fn(async (...a: unknown[]) => (a[0] === '/v1/practitioner-profile/me' ? own : brand));
+const patch = vi.fn(async (..._a: unknown[]): Promise<unknown> => ({}));
 vi.mock('../../utils/apiClient', async (importOriginal) => {
   const real = await importOriginal<typeof import('../../utils/apiClient')>();
   return { ...real, api: { ...real.api, get: (...a: unknown[]) => get(...a), patch: (...a: unknown[]) => patch(...a) } };
@@ -14,7 +15,8 @@ const { PracticeProfilePage } = await import('../practice/settings/PracticeProfi
 
 afterEach(() => {
   cleanup();
-  patch.mockClear();
+  patch.mockReset().mockImplementation(async () => ({}));
+  own = null;
 });
 
 describe('Practice profile for a solo therapist', () => {
@@ -43,5 +45,64 @@ describe('Practice profile for a solo therapist', () => {
     renderWithApp(<PracticeProfilePage />);
     await screen.findByDisplayValue('Calm Clinic');
     expect(screen.queryByText('Use my profile for my practice page')).toBeNull();
+  });
+});
+
+/* §6.16: a solo practice's address shows the owner's profile at / unless they choose the practice page. */
+describe('What a solo practice address shows', () => {
+  const SWITCH = { name: 'Show my profile at my practice address' };
+
+  it('is on by default, and switching it off saves the practice page at once', async () => {
+    brand = { name: 'Ada Practice', solo: true, homePage: null };
+    own = { status: 'PUBLISHED', handle: 'ada-obi', themeKey: 'calm', brandColor: null };
+    renderWithApp(<PracticeProfilePage />);
+    const toggle = await screen.findByRole('switch', SWITCH);
+    expect(toggle.getAttribute('aria-checked')).toBe('true');
+    fireEvent.click(toggle);
+    await waitFor(() => expect(patch).toHaveBeenCalledWith('/v1/tenant/home-page', { homePage: 'PRACTICE' }));
+    expect(screen.getByRole('switch', SWITCH).getAttribute('aria-checked')).toBe('false');
+  });
+
+  it('switches back to the profile', async () => {
+    brand = { name: 'Ada Practice', solo: true, homePage: 'PRACTICE' };
+    own = { status: 'PUBLISHED', handle: 'ada-obi' };
+    renderWithApp(<PracticeProfilePage />);
+    const toggle = await screen.findByRole('switch', SWITCH);
+    expect(toggle.getAttribute('aria-checked')).toBe('false');
+    fireEvent.click(toggle);
+    await waitFor(() => expect(patch).toHaveBeenCalledWith('/v1/tenant/home-page', { homePage: 'PROFILE' }));
+  });
+
+  it('says it starts once the profile is published', async () => {
+    brand = { name: 'Ada Practice', solo: true, homePage: null };
+    own = { status: 'DRAFT', handle: 'ada-obi' };
+    renderWithApp(<PracticeProfilePage />);
+    expect(await screen.findByText(/once your profile is published/i)).toBeTruthy();
+  });
+
+  it('puts the switch back and says why when the change is refused', async () => {
+    brand = { name: 'Ada Practice', solo: true, homePage: null };
+    own = { status: 'PUBLISHED', handle: 'ada-obi' };
+    patch.mockRejectedValueOnce(new Error('Only the practice owner can do that'));
+    renderWithApp(<PracticeProfilePage />);
+    fireEvent.click(await screen.findByRole('switch', SWITCH));
+    expect(await screen.findByText('Only the practice owner can do that')).toBeTruthy();
+    expect(screen.getByRole('switch', SWITCH).getAttribute('aria-checked')).toBe('true');
+  });
+
+  it('is not offered to a practice with a team', async () => {
+    brand = { name: 'Calm Clinic', solo: false, homePage: null };
+    renderWithApp(<PracticeProfilePage />);
+    await screen.findByDisplayValue('Calm Clinic');
+    expect(screen.queryByRole('switch', SWITCH)).toBeNull();
+  });
+
+  it('is never sent with the rest of the practice profile', async () => {
+    brand = { name: 'Ada Practice', solo: true, homePage: 'PRACTICE' };
+    renderWithApp(<PracticeProfilePage />);
+    await screen.findByRole('switch', SWITCH);
+    fireEvent.click(screen.getByRole('button', { name: /Save changes/ }));
+    await waitFor(() => expect(patch).toHaveBeenCalled());
+    expect(patch.mock.calls[0][1]).not.toHaveProperty('homePage');
   });
 });

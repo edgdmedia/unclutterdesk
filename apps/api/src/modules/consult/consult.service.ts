@@ -23,7 +23,11 @@ import { returnPlanSessionOnCancel } from './plan-session-rules';
 import { assertWithinMonthlyLimit, monthlyLimitReached } from './booking-limits';
 import { PLAN_SELECT } from '../entitlements/entitlements';
 import { PersonFactsService } from '../practitioner-profile/person-facts.service';
+import { MembershipEndedService } from '../practitioner-profile/membership-ended.service';
 import { labelledAnswers } from '../intake/form-answers';
+import { AuditService } from '../audit/audit.service';
+import { JobsService } from '../jobs/jobs.service';
+import { profileTag, queuePurge } from '../practitioner-profile/profile-purge.job';
 
 /** A Paystack checkout: the page to send the payer to, and the code its pop-up opens with. */
 type StartedPayment = { url: string; accessCode: string };
@@ -97,6 +101,9 @@ export class ConsultService {
     @Optional() private readonly notifier?: BookingNotifier,
     @Optional() private readonly settler?: BookingPaymentSettler,
     @Optional() private readonly personFacts?: PersonFactsService,
+    @Optional() private readonly membershipEnded?: MembershipEndedService,
+    @Optional() private readonly audit?: AuditService,
+    @Optional() private readonly jobs?: JobsService,
   ) { }
 
   /** §6.17: facts about each therapist come from their profile; the practice record only for someone without one. */
@@ -399,6 +406,11 @@ export class ConsultService {
       throw new ForbiddenException('Only a practice owner or admin can change practitioner status');
     }
 
+    const before = await this.prisma.profile.findFirst({
+      where: { id: profileId, tenantId },
+      select: { status: true },
+    });
+
     // Previously `update({ where: { id: profileId } })` — tenantId was accepted
     // and never used, so any profile on the platform could be deactivated by
     // id. updateMany is used because `update` requires a unique where clause
@@ -422,7 +434,85 @@ export class ConsultService {
       });
     }
 
+    // §6.14: leaving (or rejoining) a practice changes the therapist's public
+    // profile. Only a real change counts, so a repeated toggle sends nothing.
+    if (before?.status !== status) {
+      if (status === 'inactive') await this.membershipEnded?.onMembershipEnded([profileId]);
+      else await this.membershipEnded?.onMembershipReactivated([profileId]);
+    }
+
     return { profileId: updated.id.toString(), status: updated.status };
+  }
+
+  /**
+   * §6.9 per-place consent: the practice owner/admin decides whether this
+   * therapist's profile shows this practice as a booking place. The therapist
+   * cannot change it — only the practice can. Changing the value queues a
+   * profile cache purge so the public page reflects the new state promptly.
+   */
+  async setAllowProfileBooking(
+    tenantId: bigint,
+    actorUserId: bigint,
+    actorProfileId: bigint,
+    profileId: bigint,
+    allow: boolean,
+  ) {
+    if (typeof allow !== 'boolean') {
+      throw new BadRequestException('allowProfileBooking must be a boolean');
+    }
+
+    const actor = await this.prisma.profile.findFirst({
+      where: { id: actorProfileId, tenantId },
+      select: { role: true },
+    });
+    if (!actor || !['OWNER', 'ADMIN'].includes(actor.role)) {
+      throw new ForbiddenException('Only a practice owner or admin can change booking consent');
+    }
+
+    const current = await this.prisma.consultTherapistProfile.findFirst({
+      where: { tenantId, profileId },
+      select: { allowProfileBooking: true },
+    });
+    if (!current) {
+      throw new NotFoundException('Practitioner not found in this practice');
+    }
+    if (current.allowProfileBooking === allow) {
+      return { profileId: profileId.toString(), allowProfileBooking: allow };
+    }
+
+    await this.prisma.consultTherapistProfile.updateMany({
+      where: { tenantId, profileId },
+      data: { allowProfileBooking: allow },
+    });
+
+    if (this.audit) {
+      await this.audit.record({
+        actorUserId,
+        action: 'consult.allow-profile-booking',
+        targetType: 'ConsultTherapistProfile',
+        targetId: profileId,
+        meta: { tenantId: tenantId.toString(), allowProfileBooking: allow },
+      });
+    }
+
+    // Purge the therapist's public profile page so the change shows within a minute.
+    if (this.jobs) {
+      const profile = await this.prisma.profile.findUnique({
+        where: { id: profileId },
+        select: { userId: true },
+      });
+      if (profile?.userId) {
+        const practitionerProfile = await this.prisma.practitionerProfile.findFirst({
+          where: { userId: profile.userId },
+          select: { handle: true },
+        });
+        if (practitionerProfile) {
+          await queuePurge(this.jobs, [profileTag(practitionerProfile.handle)]);
+        }
+      }
+    }
+
+    return { profileId: profileId.toString(), allowProfileBooking: allow };
   }
 
   // ── Services & Scheduling ──────────────────────────────────────────────────

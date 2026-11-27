@@ -116,6 +116,19 @@ export class AuthController {
     return { profile: result.profile, csrfToken };
   }
 
+  @Post('own-booking/claim')
+  @Throttle({ default: { limit: 5, ttl: 60000 } })
+  @ApiOperation({ summary: 'From the emailed link: create a free practice for a therapist with no places left, and sign in (§6.14)' })
+  async claimOwnBooking(
+    @Req() req: TenantRequest,
+    @Body() dto: { token?: string },
+    @Res({ passthrough: true }) res: Response,
+  ) {
+    const result = await this.authService.claimOwnBooking(dto ?? {}, deviceOf(req));
+    const csrfToken = this.setSessionCookies(res, result.accessToken, result.refreshToken);
+    return { profile: result.profile, createdPractice: result.createdPractice, csrfToken };
+  }
+
   @Post('client-signup')
   @Throttle({ default: { limit: 5, ttl: 60000 } })
   @ApiOperation({ summary: 'A client creates their account at this practice' })
@@ -307,14 +320,14 @@ export class AuthController {
       path: '/v1/auth/refresh',
     });
     const csrfToken = randomBytes(32).toString('hex');
-    res.cookie(CSRF_COOKIE, csrfToken, csrfCookieOptions());
+    res.cookie(CSRF_COOKIE, csrfToken, csrfCookieOptions(res.req?.hostname));
     return csrfToken;
   }
 
   private clearSessionCookies(res: Response) {
     res.clearCookie(ACCESS_COOKIE, cookieOptions(0));
     res.clearCookie(REFRESH_COOKIE, { ...cookieOptions(0), path: '/v1/auth/refresh' });
-    res.clearCookie(CSRF_COOKIE, { ...csrfCookieOptions(), maxAge: 0 });
+    res.clearCookie(CSRF_COOKIE, { ...csrfCookieOptions(res.req?.hostname), maxAge: 0 });
   }
 }
 

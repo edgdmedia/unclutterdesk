@@ -115,6 +115,125 @@ describe('ConsultService.adminUpdateTherapistStatus', () => {
 });
 
 /**
+ * §6.9 per-place consent: the practice owner/admin toggles whether a therapist's
+ * profile shows this practice as a booking place. Same authorisation pattern as
+ * adminUpdateTherapistStatus — OWNER/ADMIN only, tenant-scoped.
+ */
+describe('ConsultService.setAllowProfileBooking', () => {
+  const ACTOR_USER = 100n;
+
+  function makeConsentService() {
+    const prisma: any = {
+      profile: {
+        findFirst: vi.fn().mockResolvedValue({ role: 'OWNER' }),
+        findUnique: vi.fn().mockResolvedValue({ userId: 7n }),
+        updateMany: vi.fn(),
+      },
+      consultTherapistProfile: {
+        findFirst: vi.fn().mockResolvedValue({ allowProfileBooking: true }),
+        updateMany: vi.fn().mockResolvedValue({ count: 1 }),
+      },
+      practitionerProfile: { findFirst: vi.fn().mockResolvedValue({ handle: 'adaeze' }) },
+      consultBooking: { findMany: vi.fn().mockResolvedValue([]) },
+      tenant: { findUnique: vi.fn().mockResolvedValue({ joinOpensMinutesBefore: 10 }) },
+    };
+    const audit = { record: vi.fn().mockResolvedValue({}) };
+    const jobs = { enqueue: vi.fn().mockResolvedValue(null), runNow: vi.fn().mockResolvedValue(null) };
+    const service = new ConsultService(
+      prisma, {} as any, {} as any, {} as any, {} as any, {} as any, {} as any,
+      undefined, undefined, undefined, undefined, audit as any, jobs as any,
+    );
+    return { service, prisma, audit, jobs };
+  }
+
+  describe('authorisation', () => {
+    for (const role of ['OWNER', 'ADMIN']) {
+      it(`allows ${role}`, async () => {
+        const { service, prisma } = makeConsentService();
+        prisma.profile.findFirst.mockResolvedValue({ role });
+        await expect(
+          service.setAllowProfileBooking(TENANT, ACTOR_USER, ACTOR, TARGET, false),
+        ).resolves.toBeDefined();
+      });
+    }
+
+    for (const role of ['THERAPIST', 'RECEPTIONIST', 'CLIENT']) {
+      it(`refuses ${role}`, async () => {
+        const { service, prisma } = makeConsentService();
+        prisma.profile.findFirst.mockResolvedValue({ role });
+        await expect(
+          service.setAllowProfileBooking(TENANT, ACTOR_USER, ACTOR, TARGET, false),
+        ).rejects.toThrow(ForbiddenException);
+      });
+    }
+
+    it('looks the actor up within the acting tenant', async () => {
+      const { service, prisma } = makeConsentService();
+      await service.setAllowProfileBooking(TENANT, ACTOR_USER, ACTOR, TARGET, false);
+      expect(prisma.profile.findFirst.mock.calls[0][0].where).toMatchObject({
+        id: ACTOR,
+        tenantId: TENANT,
+      });
+    });
+  });
+
+  describe('tenant scoping', () => {
+    it('scopes the lookup to the tenant', async () => {
+      const { service, prisma } = makeConsentService();
+      await service.setAllowProfileBooking(TENANT, ACTOR_USER, ACTOR, TARGET, false);
+      expect(prisma.consultTherapistProfile.findFirst).toHaveBeenCalledWith({
+        where: { tenantId: TENANT, profileId: TARGET },
+        select: { allowProfileBooking: true },
+      });
+    });
+
+    it('refuses a practitioner from another practice', async () => {
+      const { service, prisma } = makeConsentService();
+      prisma.consultTherapistProfile.findFirst.mockResolvedValue(null);
+      await expect(
+        service.setAllowProfileBooking(TENANT, ACTOR_USER, ACTOR, TARGET, false),
+      ).rejects.toThrow(NotFoundException);
+    });
+  });
+
+  it('updates the allowProfileBooking flag', async () => {
+    const { service, prisma } = makeConsentService();
+    await service.setAllowProfileBooking(TENANT, ACTOR_USER, ACTOR, TARGET, false);
+    expect(prisma.consultTherapistProfile.updateMany).toHaveBeenCalledWith({
+      where: { tenantId: TENANT, profileId: TARGET },
+      data: { allowProfileBooking: false },
+    });
+  });
+
+  it('skips the write when the value is unchanged', async () => {
+    const { service, prisma } = makeConsentService();
+    prisma.consultTherapistProfile.findFirst.mockResolvedValue({ allowProfileBooking: true });
+    await service.setAllowProfileBooking(TENANT, ACTOR_USER, ACTOR, TARGET, true);
+    expect(prisma.consultTherapistProfile.updateMany).not.toHaveBeenCalled();
+  });
+
+  it('audits the change with who, what and the new value', async () => {
+    const { service, audit } = makeConsentService();
+    await service.setAllowProfileBooking(TENANT, ACTOR_USER, ACTOR, TARGET, false);
+    expect(audit.record).toHaveBeenCalledWith(
+      expect.objectContaining({
+        actorUserId: ACTOR_USER,
+        action: 'consult.allow-profile-booking',
+        targetType: 'ConsultTherapistProfile',
+        targetId: TARGET,
+        meta: { tenantId: TENANT.toString(), allowProfileBooking: false },
+      }),
+    );
+  });
+
+  it('queues a profile purge when the value changes', async () => {
+    const { service, jobs } = makeConsentService();
+    await service.setAllowProfileBooking(TENANT, ACTOR_USER, ACTOR, TARGET, false);
+    expect(jobs.enqueue).toHaveBeenCalled();
+  });
+});
+
+/**
  * The portal used to be `GET /v1/consult/public/client-portal?email=...` with no
  * guard, so anyone who knew or guessed an email could read that person's
  * appointment history — and the response carries Jitsi join links, which are

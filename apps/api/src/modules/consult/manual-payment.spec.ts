@@ -33,7 +33,7 @@ describe('the hold on a bank-transfer booking', () => {
 });
 
 describe('practice settings', () => {
-  it('are refused on Starter, whose bookings carry the platform fee', async () => {
+  it('are refused on Free, whose bookings carry the platform fee (Paystack only)', async () => {
     const { service } = manualService({ subscriptionTier: 'FREE', manualPaymentsEnabled: false });
     await expect(service.updateSettings(TENANT, { enabled: true, details: DETAILS })).rejects.toThrow(/Starter plan and above/);
   });
@@ -48,7 +48,7 @@ describe('practice settings', () => {
     expect(await service.available(TENANT)).toBeNull();
   });
 
-  // A practice that drops to Starter keeps its switch, but stops offering transfers.
+  // A practice that drops to Free keeps its switch, but stops offering transfers.
   it('stop applying if the practice drops to the free plan', async () => {
     const { service } = manualService({ subscriptionTier: 'FREE', subscriptionStatus: null });
     expect(await service.available(TENANT)).toBeNull();

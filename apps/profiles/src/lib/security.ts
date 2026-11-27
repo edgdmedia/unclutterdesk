@@ -4,15 +4,18 @@ import type { ProfilesConfig } from './config';
  * Response headers for every page (spec §4.3 #1 and #3). The site never sets
  * cookies, so nothing here varies by visitor.
  */
-export function securityHeaders(config: ProfilesConfig): Record<string, string> {
-  const img = ["'self'", 'data:', config.mediaOrigin].filter(Boolean).join(' ');
+export function securityHeaders(config: ProfilesConfig, options: { practiceHost?: boolean } = {}): Record<string, string> {
+  // §6.16: on a solo practice's own address the same page loads its styles,
+  // fonts and images from this site, so this site's origin is allowed too.
+  const site = options.practiceHost ? `'self' ${config.publicOrigin}` : "'self'";
+  const img = [site, 'data:', config.mediaOrigin].filter(Boolean).join(' ');
   const csp = [
     "default-src 'none'",
-    "script-src 'self'",
-    "style-src 'self'",
+    `script-src ${site}`,
+    `style-src ${site}`,
     `img-src ${img}`,
-    "font-src 'self'",
-    "manifest-src 'self'",
+    `font-src ${site}`,
+    `manifest-src ${site}`,
     `connect-src ${config.apiOrigin}`,
     "frame-ancestors 'none'",
     "base-uri 'none'",

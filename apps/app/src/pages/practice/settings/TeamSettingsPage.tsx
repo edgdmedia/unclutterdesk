@@ -61,6 +61,7 @@ export function TeamSettingsPage({ staff, onRefresh }: TeamSettingsPageProps) {
   const [invitePendingId, setInvitePendingId] = useState<string | null>(null);
   const [rosterNotice, setRosterNotice] = useState<string | null>(null);
   const [permissionsFor, setPermissionsFor] = useState<StaffMember | null>(null);
+  const [consentPendingId, setConsentPendingId] = useState<string | null>(null);
   const { profile: me } = useAuth();
 
   // An invitation is not a team member until it is accepted, so the two are
@@ -142,6 +143,33 @@ export function TeamSettingsPage({ staff, onRefresh }: TeamSettingsPageProps) {
       );
     } finally {
       setStatusPendingId(null);
+    }
+  };
+
+  /**
+   * §6.9 per-place consent: the practice decides whether this therapist's
+   * profile shows this practice as a booking place. Only OWNER/ADMIN can
+   * change it (the route enforces this). The toggle is only shown for
+   * therapists, not receptionists or pending invites.
+   */
+  const toggleProfileBooking = async (member: StaffMember) => {
+    if (member.pending || member.role === 'RECEPTIONIST' || consentPendingId) return;
+    const next = !(member.allowProfileBooking ?? true);
+    setConsentPendingId(member.id);
+    setStatusError(null);
+    try {
+      await api.patch(`/v1/consult/admin/therapists/${member.id}/allow-profile-booking`, {
+        allowProfileBooking: next,
+      });
+      await onRefresh();
+      toast.success(next ? 'This practice now appears on their profile' : 'This practice no longer appears on their profile');
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Could not update booking consent');
+      setStatusError(
+        err instanceof Error ? err.message : `Could not change ${member.name}'s booking consent`,
+      );
+    } finally {
+      setConsentPendingId(null);
     }
   };
 
@@ -257,10 +285,35 @@ export function TeamSettingsPage({ staff, onRefresh }: TeamSettingsPageProps) {
     </span>
   );
 
+  // §6.9 per-place consent: only therapists see this toggle. The practice
+  // cannot edit or hide the therapist's profile; only this toggle exists.
+  const consentCell = (m: StaffMember) => {
+    if (m.pending || m.role === 'RECEPTIONIST') {
+      return <span className="text-[11px] text-[var(--desk-text-muted)]">—</span>;
+    }
+    const allowed = m.allowProfileBooking ?? true;
+    return (
+      <button
+        type="button"
+        role="switch"
+        aria-checked={allowed}
+        aria-label={`Show this practice as a booking place on ${m.name}'s profile`}
+        onClick={() => toggleProfileBooking(m)}
+        disabled={consentPendingId !== null}
+        className={`w-[40px] h-[22px] rounded-full p-[2px] transition-colors block ${
+          allowed ? 'bg-[var(--desk-active)]' : 'bg-[var(--desk-border)]'
+        } ${consentPendingId !== null ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
+      >
+        <div className={`w-[18px] h-[18px] rounded-full bg-white shadow-xs transition-transform ${allowed ? 'translate-x-[18px]' : 'translate-x-0'}`} />
+      </button>
+    );
+  };
+
   // Status stays in view with the member: it is a switch people use, not a detail.
   const columns: Column<StaffMember>[] = [
     { key: 'member', header: 'Member', cell: memberCell, sort: byText((m) => m.name), className: 'w-full max-w-0' },
     { key: 'status', header: 'Status', cell: statusCell },
+    { key: 'consent', header: 'Profile booking', priority: 'md', cell: consentCell },
     { key: 'role', header: 'Role', priority: 'md', cell: roleCell, sort: byText((m) => m.role) },
     { key: 'email', header: 'Email', priority: 'lg', cell: (m) => <span className="text-[13px] font-medium text-[var(--desk-text-body)]">{m.email}</span>, sort: byText((m) => m.email) },
   ];
