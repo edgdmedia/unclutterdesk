@@ -82,6 +82,43 @@ describe('domain settings', () => {
     expect(overridden.csrfCookieOptions().domain).toBe('.example.org');
   });
 
+  describe('both domains during the move (EXTRA_TENANT_ROOT_DOMAINS)', () => {
+    const both = { TENANT_ROOT_DOMAIN: 'unclutterdesk.com', EXTRA_TENANT_ROOT_DOMAINS: ' Therapysts.app ,', APP_URL: 'https://therapysts.app' };
+
+    it('accept practice subdomains on either root, and the bare app origin', async () => {
+      const o = await load(both);
+      expect(o.TENANT_ROOT_DOMAINS).toEqual(['unclutterdesk.com', 'therapysts.app']);
+      expect(o.isPlatformOrigin('https://dr-smith.unclutterdesk.com', true)).toBe(true);
+      expect(o.isPlatformOrigin('https://dr-smith.therapysts.app', true)).toBe(true);
+      expect(o.isPlatformOrigin('https://therapysts.app', true)).toBe(true);
+      expect(o.isPlatformOrigin('https://dr-smith.therapysts.app.evil.com', true)).toBe(false);
+      expect(o.isPlatformOrigin('https://evil-therapysts.app', true)).toBe(false);
+    });
+
+    it('still build links on the main root only', async () => {
+      const o = await load(both);
+      expect(o.tenantWebOrigin({ slug: 'dr-smith' }, true)).toBe('https://dr-smith.unclutterdesk.com');
+    });
+
+    it('give the CSRF cookie the root of the API host the request came in on', async () => {
+      await load({ ...both, NODE_ENV: 'production', COOKIE_DOMAIN: '' });
+      const auth = await import('./auth.config');
+      expect(auth.csrfCookieOptions('api.therapysts.app').domain).toBe('.therapysts.app');
+      expect(auth.csrfCookieOptions('api.unclutterdesk.com').domain).toBe('.unclutterdesk.com');
+      expect(auth.csrfCookieOptions('evil.example').domain).toBe('.unclutterdesk.com');
+      expect(auth.csrfCookieOptions().domain).toBe('.unclutterdesk.com');
+    });
+
+    it('treat both roots as platform hosts, never a custom domain', async () => {
+      vi.resetModules();
+      for (const [k, v] of Object.entries(both)) vi.stubEnv(k, v);
+      const { isPlatformHostname } = await import('../modules/tenant/reserved-slugs');
+      expect(isPlatformHostname('x.therapysts.app')).toBe(true);
+      expect(isPlatformHostname('x.unclutterdesk.com')).toBe(true);
+      expect(isPlatformHostname('therapysts.app.example.com')).toBe(false);
+    });
+  });
+
   describe('the public media origin (R2_PUBLIC_URL)', () => {
     it('accepts an https origin, trailing slash or not', async () => {
       expect((await load({ R2_PUBLIC_URL: 'https://media.therapysts.com/' })).MEDIA_ORIGIN).toBe('https://media.therapysts.com');

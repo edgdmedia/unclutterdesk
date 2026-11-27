@@ -1,6 +1,17 @@
 import type { RichDoc } from '../../../common/rich-text';
 export type ChannelKey = 'in_app' | 'email' | 'push' | 'sms';
 
+/**
+ * Account emails (verification code, welcome, password reset, the unverified
+ * warning) are about the person's own Desk account, not messages from their
+ * practice. For practice staff they come from the platform, with no practice
+ * name, logo, contact details or sending domain in them. A client knows the
+ * practice, not the platform, so a client's account emails keep the practice.
+ */
+export function isAccountEmail(type: string): boolean {
+  return type.startsWith('auth.');
+}
+
 export const CHANNEL_KEYS: readonly ChannelKey[] = ['in_app', 'email', 'push', 'sms'];
 
 export interface ChannelBrand {
@@ -21,6 +32,8 @@ export interface ChannelRecipient {
   email?: string | null;
   phone?: string | null;
   firstName?: string | null;
+  /** A practice's client. Their account emails keep the practice's name (see isAccountEmail). */
+  isClient?: boolean;
 }
 
 /** One labelled line in an email's details block, e.g. "When: Tuesday 6 October at 11:30". */

@@ -1,5 +1,5 @@
 import { randomBytes } from 'crypto';
-import { TENANT_ROOT_DOMAIN } from './origins';
+import { TENANT_ROOT_DOMAIN, tenantRootOf } from './origins';
 
 const IS_PROD = process.env.NODE_ENV === 'production';
 
@@ -7,7 +7,13 @@ const IS_PROD = process.env.NODE_ENV === 'production';
 // root domain (or localhost ports in dev). In production the CSRF cookie is set
 // for the root, so the app can read it on any subdomain. COOKIE_DOMAIN overrides.
 
-const COOKIE_DOMAIN = process.env.COOKIE_DOMAIN || (IS_PROD ? `.${TENANT_ROOT_DOMAIN}` : undefined);
+// The root follows the API host the request came in on, so the old and new
+// domains both work through a move (EXTRA_TENANT_ROOT_DOMAINS).
+function cookieDomain(apiHostname?: string): string | undefined {
+  if (process.env.COOKIE_DOMAIN) return process.env.COOKIE_DOMAIN;
+  if (!IS_PROD) return undefined;
+  return `.${(apiHostname && tenantRootOf(apiHostname)) || TENANT_ROOT_DOMAIN}`;
+}
 
 function resolveSecret(name: string): string {
   const fromEnv = process.env[name];
@@ -51,10 +57,11 @@ export function cookieOptions(maxAgeMs: number, path = '/'): CookieOptions {
   };
 }
 
-export function csrfCookieOptions(): CookieOptions {
+export function csrfCookieOptions(apiHostname?: string): CookieOptions {
+  const domain = cookieDomain(apiHostname);
   return {
     ...cookieOptions(REFRESH_COOKIE_MAX_AGE),
     httpOnly: false,
-    ...(COOKIE_DOMAIN ? { domain: COOKIE_DOMAIN } : {}),
+    ...(domain ? { domain } : {}),
   };
 }

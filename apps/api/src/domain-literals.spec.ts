@@ -37,6 +37,7 @@ const DEPLOYMENT_FILES = [
   'apps/profiles/wrangler.jsonc', // the profiles Worker's vars (spec §0 rule 7)
   'apps/legacy-redirects/wrangler.jsonc', // old → new addresses after the move (spec §4.1b): its whole job
   'apps/app/public/_headers', // static CSP connect-src
+  '.github/workflows/deploy-app.yml', // builds the app for both domains until the swap
   /^deploy\/nginx\//, // server_name and certificate paths
 ];
 

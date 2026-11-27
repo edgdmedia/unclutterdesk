@@ -2,7 +2,7 @@ import { PrismaService } from './prisma/prisma.service';
 // Shared with checkout redirect validation, so the two cannot drift into
 // disagreeing about which hosts are ours.
 import type { CorsOptions } from '@nestjs/common/interfaces/external/cors-options.interface';
-import { LOCAL_ORIGIN, PAGES_PREVIEW_ORIGIN, ROOT_ORIGINS, TENANT_SUBDOMAIN, isProfilesOrigin } from './origins';
+import { LOCAL_ORIGIN, PAGES_PREVIEW_ORIGIN, ROOT_ORIGINS, TENANT_SUBDOMAIN, appOrigin, isProfilesOrigin } from './origins';
 
 // Verified tenant custom domains live in the database, so they are cached rather
 // than queried on every preflight.
@@ -61,10 +61,12 @@ export function createCorsOriginHandler(
     // Never a credentialed origin, even though it may match the tenant pattern (§4.3).
     if (isProfilesOrigin(candidate)) return callback(null, false);
 
+    // The app may live at a bare root domain, which no subdomain rule matches.
     if (
       configuredOrigins.includes(origin) ||
       ROOT_ORIGINS.includes(candidate) ||
-      TENANT_SUBDOMAIN.test(candidate)
+      TENANT_SUBDOMAIN.test(candidate) ||
+      candidate === appOrigin(isProduction).toLowerCase()
     ) {
       return callback(null, true);
     }

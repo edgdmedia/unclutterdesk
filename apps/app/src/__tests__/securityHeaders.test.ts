@@ -27,6 +27,8 @@ describe('production headers for the session room', () => {
     const csp = header('Content-Security-Policy-Report-Only');
     expect(csp).toMatch(/script-src[^;]*https:\/\/c\.daily\.co/);
     expect(csp).toMatch(/connect-src[^;]*https:\/\/\*\.daily\.co[^;]*wss:\/\/\*\.daily\.co/);
+    // §4.1b: the API host the app is built for (VITE_API_URL at the move).
+    expect(csp).toMatch(/connect-src 'self' https:\/\/api\.therapysts\.app /);
     expect(csp).toMatch(/frame-src[^;]*https:\/\/8x8\.vc/);
     expect(csp).toMatch(/media-src[^;]*blob:/);
   });

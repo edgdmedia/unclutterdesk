@@ -232,6 +232,6 @@ export class AdminController {
       ...cookieOptions(REFRESH_COOKIE_MAX_AGE),
       path: '/v1/auth/refresh',
     });
-    res.cookie(CSRF_COOKIE, randomBytes(32).toString('hex'), csrfCookieOptions());
+    res.cookie(CSRF_COOKIE, randomBytes(32).toString('hex'), csrfCookieOptions(res.req?.hostname));
   }
 }
