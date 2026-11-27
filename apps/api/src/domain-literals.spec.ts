@@ -36,6 +36,7 @@ const DEPLOYMENT_FILES = [
   'apps/tenant-router/wrangler.jsonc', // the Worker's route and vars
   'apps/profiles/wrangler.jsonc', // the profiles Worker's vars (spec §0 rule 7)
   'apps/app/public/_headers', // static CSP connect-src
+  '.github/workflows/deploy-app.yml', // builds the app for both domains until the swap
   /^deploy\/nginx\//, // server_name and certificate paths
 ];
 
