@@ -43,25 +43,39 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Build app
+      # Until the swap (docs/runbooks/therapysts-app-move.md) the app is built
+      # and deployed twice: as today to app.unclutterdesk.com in the Unclutter
+      # account, and for therapysts.app in the Therapysts account. After the
+      # swap, drop the old pair. The new addresses are public, so they are
+      # written here rather than kept in settings.
+      - name: Build app (app.unclutterdesk.com)
         env:
           VITE_API_URL: ${{ secrets.VITE_API_URL }}
           VITE_APP_URL: ${{ secrets.VITE_APP_URL }}
-          # Domain config (spec §4.1a). Repository variables, not secrets: these
-          # are public addresses. Unset, the app keeps today's defaults. At the
-          # .app move (docs/runbooks/therapysts-app-move.md) the practice root
-          # must be set, or a practice subdomain on .app finds no practice.
-          VITE_TENANT_ROOT_DOMAIN: ${{ vars.VITE_TENANT_ROOT_DOMAIN }}
-          VITE_MARKETING_URL: ${{ vars.VITE_MARKETING_URL }}
-          VITE_PROFILE_PUBLIC_URL: ${{ vars.VITE_PROFILE_PUBLIC_URL }}
         run: pnpm --filter @unclutterdesk/app build
 
-      - name: Deploy app
+      - name: Deploy app (app.unclutterdesk.com)
         working-directory: apps/app
         env:
-          # The Therapysts account (spec §4.1b): the app's Pages project lives
-          # there with the .app custom domain.
-          CLOUDFLARE_API_TOKEN: ${{ secrets.THERAPYSTS_CLOUDFLARE_API_TOKEN }}
-          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.THERAPYSTS_CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           CF_PAGES_PROJECT: ${{ secrets.CLOUDFLARE_PAGES_APP_PROJECT }}
         run: pnpm dlx wrangler pages deploy dist --project-name="$CF_PAGES_PROJECT"
+
+      # Domain config (spec §4.1a). The practice root must be set, or a
+      # practice subdomain on .app finds no practice.
+      - name: Build app (therapysts.app)
+        env:
+          VITE_API_URL: https://api.therapysts.app
+          VITE_APP_URL: https://therapysts.app
+          VITE_TENANT_ROOT_DOMAIN: therapysts.app
+          VITE_MARKETING_URL: https://unclutterdesk.com
+          VITE_PROFILE_PUBLIC_URL: https://therapysts.com
+        run: pnpm --filter @unclutterdesk/app build
+
+      - name: Deploy app (therapysts.app)
+        working-directory: apps/app
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.THERAPYSTS_CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.THERAPYSTS_CLOUDFLARE_ACCOUNT_ID }}
+        run: pnpm dlx wrangler pages deploy dist --project-name=therapysts-app
