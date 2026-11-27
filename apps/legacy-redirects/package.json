@@ -1,0 +1,17 @@
+{
+  "name": "@unclutterdesk/legacy-redirects",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Permanent redirects from the old practice, app and profile addresses to their new ones after the domain move (spec §4.1b)",
+  "scripts": {
+    "deploy": "wrangler deploy",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^4.20250109.0",
+    "typescript": "^5.5.4",
+    "vitest": "^2.1.9",
+    "wrangler": "^4.128.0"
+  }
+}

@@ -41,6 +41,7 @@ jobs:
           pnpm --filter @unclutterdesk/ui test &&
           pnpm --filter @unclutterdesk/app test &&
           pnpm --filter @unclutterdesk/tenant-router test &&
+          pnpm --filter @unclutterdesk/legacy-redirects test &&
           pnpm --filter @unclutterdesk/profiles test
       # §6.16: the tenant router and the built profiles Worker together in
       # workerd (wrangler dev), joined by the PROFILES service binding; only
