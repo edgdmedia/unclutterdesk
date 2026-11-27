@@ -320,14 +320,14 @@ export class AuthController {
       path: '/v1/auth/refresh',
     });
     const csrfToken = randomBytes(32).toString('hex');
-    res.cookie(CSRF_COOKIE, csrfToken, csrfCookieOptions());
+    res.cookie(CSRF_COOKIE, csrfToken, csrfCookieOptions(res.req?.hostname));
     return csrfToken;
   }
 
   private clearSessionCookies(res: Response) {
     res.clearCookie(ACCESS_COOKIE, cookieOptions(0));
     res.clearCookie(REFRESH_COOKIE, { ...cookieOptions(0), path: '/v1/auth/refresh' });
-    res.clearCookie(CSRF_COOKIE, { ...csrfCookieOptions(), maxAge: 0 });
+    res.clearCookie(CSRF_COOKIE, { ...csrfCookieOptions(res.req?.hostname), maxAge: 0 });
   }
 }
 

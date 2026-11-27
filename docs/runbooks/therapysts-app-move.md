@@ -159,6 +159,10 @@ The router is renamed **`therapysts-tenant-router`** in the Therapysts account (
     5. If the app's consent screen links a privacy policy or terms page on `unclutterdesk.com`, leave them: marketing stays there for now.
     - Changes can take a few minutes to apply. The smoke test in §2.8 includes connecting a calendar.
 
+### Both domains at once (decided 27 Nov 2026)
+
+14. **[you] Once the API has the dual-root code (this PR, released):** add `EXTRA_TENANT_ROOT_DOMAINS=therapysts.app` to the server's `.env` and restart the API. Then both `*.unclutterdesk.com` and `*.therapysts.app` (and the bare `therapysts.app` app, once `APP_URL` names it) are accepted by CORS, and the CSRF cookie takes the root of the API host each request came to. Links in emails keep following `TENANT_ROOT_DOMAIN`. At the swap (§2.2), `TENANT_ROOT_DOMAIN` becomes `therapysts.app` and `EXTRA_TENANT_ROOT_DOMAINS` becomes `unclutterdesk.com`, so the old addresses keep working until the redirects take over.
+
 ---
 
 ## 2. Cutover
