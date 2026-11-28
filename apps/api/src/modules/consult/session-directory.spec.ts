@@ -210,7 +210,7 @@ describe('rescheduleByStaff', () => {
     prisma.$transaction = vi.fn(async (fn: any) => fn(t));
     await service.rescheduleByStaff(TENANT, DESK, 900n, 301n);
     expect(t.consultAvailability.updateMany).toHaveBeenCalledWith({ where: { id: 300n, tenantId: TENANT, createdForBooking: false }, data: { isActive: true } });
-    expect(t.consultAvailability.update).toHaveBeenCalledWith({ where: { id: 301n }, data: { isActive: false } });
+    expect(t.consultAvailability.updateMany).toHaveBeenCalledWith({ where: { id: 301n, tenantId: TENANT, isActive: true }, data: { isActive: false } });
     expect(t.consultBooking.update).toHaveBeenCalledWith({ where: { id: 900n }, data: { availabilityId: 301n } });
   });
   it("gives a moved session a fresh video room when one was made for the old time", async () => {
@@ -288,7 +288,18 @@ describe('rescheduleByStaff', () => {
     const { service, prisma } = make();
     prisma.$transaction = vi.fn(async (fn: any) => fn(t));
     await service.rescheduleByStaff(TENANT, DESK, 900n, 301n);
-    expect(t.consultAvailability.updateMany.mock.calls[0][0].where).toMatchObject({ id: 300n, createdForBooking: false });
+    expect(t.consultAvailability.updateMany).toHaveBeenCalledWith(expect.objectContaining({ where: expect.objectContaining({ id: 300n, createdForBooking: false }) }));
+  });
+
+  // A client may book the time online between the read and the claim; the
+  // claim's own condition must lose that race instead of double-booking.
+  it('refuses a time taken after it was read, and moves nothing', async () => {
+    const t = tx();
+    t.consultAvailability.updateMany.mockResolvedValueOnce({ count: 0 });
+    const { service, prisma } = make();
+    prisma.$transaction = vi.fn(async (fn: any) => fn(t));
+    await expect(service.rescheduleByStaff(TENANT, DESK, 900n, 301n)).rejects.toThrow(/no longer open/i);
+    expect(t.consultBooking.update).not.toHaveBeenCalled();
   });
 
   it('emails the client the new time', async () => {

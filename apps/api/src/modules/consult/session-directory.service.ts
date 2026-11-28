@@ -267,8 +267,11 @@ export class SessionDirectoryService {
       if ((b.format ?? 'ONLINE') === 'ONLINE' && slot.allowsOnline === false) {
         throw new BadRequestException("That time isn't available online. Choose another.");
       }
+      // Claim with the condition in the UPDATE: a client booking this time
+      // online since the read above would otherwise share it (as in book()).
+      const claimed = await tx.consultAvailability.updateMany({ where: { id: slot.id, tenantId, isActive: true }, data: { isActive: false } });
+      if (claimed.count === 0) throw new BadRequestException('That time is no longer open. Choose another.');
       await this.releaseOldTime(tx, tenantId, b.availabilityId);
-      await tx.consultAvailability.update({ where: { id: slot.id }, data: { isActive: false } });
       await tx.consultBooking.update({
         where: { id: b.id },
         data: { availabilityId: slot.id, ...(b.format === 'IN_PERSON' ? { locationId: slot.locationId } : {}), ...roomResetOnMove(b) },
