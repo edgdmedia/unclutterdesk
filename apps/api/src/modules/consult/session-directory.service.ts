@@ -166,10 +166,11 @@ export class SessionDirectoryService {
             ...(actor.clinical ? soapText(note) : {}),
           }
         : null,
-      internalSummary: b.internalSummary,
       clientRecap: b.clientRecap,
-      // Only for clinical staff; never sent to the desk at all.
-      ...(actor.clinical ? { supervisionNotes: decryptField(b.supervisionNotes) } : {}),
+      // Only for clinical staff; never sent to the desk at all (schema: "Seen by clinical roles only").
+      ...(actor.clinical ? { internalSummary: b.internalSummary } : {}),
+      // Supervision points are the practitioner's own reflection: theirs alone, not the owner's or an admin's.
+      ...(actor.clinical && b.availability.providerProfileId === actor.profileId ? { supervisionNotes: decryptField(b.supervisionNotes) } : {}),
       clientRecapSentAt: b.clientRecapSentAt ? b.clientRecapSentAt.toISOString() : null,
       reviewRequestedAt: b.reviewRequestedAt ? b.reviewRequestedAt.toISOString() : null,
       can: {
@@ -267,8 +268,11 @@ export class SessionDirectoryService {
       if ((b.format ?? 'ONLINE') === 'ONLINE' && slot.allowsOnline === false) {
         throw new BadRequestException("That time isn't available online. Choose another.");
       }
+      // Claim with the condition in the UPDATE: a client booking this time
+      // online since the read above would otherwise share it (as in book()).
+      const claimed = await tx.consultAvailability.updateMany({ where: { id: slot.id, tenantId, isActive: true }, data: { isActive: false } });
+      if (claimed.count === 0) throw new BadRequestException('That time is no longer open. Choose another.');
       await this.releaseOldTime(tx, tenantId, b.availabilityId);
-      await tx.consultAvailability.update({ where: { id: slot.id }, data: { isActive: false } });
       await tx.consultBooking.update({
         where: { id: b.id },
         data: { availabilityId: slot.id, ...(b.format === 'IN_PERSON' ? { locationId: slot.locationId } : {}), ...roomResetOnMove(b) },
@@ -565,9 +569,12 @@ export class SessionDirectoryService {
     if ('supervisionNotes' in dto && !actor.clinical) throw new ForbiddenException('Only clinical staff can write supervision notes.');
     const b = await this.prisma.consultBooking.findFirst({
       where: { id: bookingId, tenantId, ...(actor.viewAll ? {} : { availability: { providerProfileId: actor.profileId } }) },
-      select: { id: true },
+      select: { id: true, availability: { select: { providerProfileId: true } } },
     });
     if (!b) throw new NotFoundException('Session not found');
+    if ('supervisionNotes' in dto && b.availability?.providerProfileId !== actor.profileId) {
+      throw new ForbiddenException('Only the practitioner whose session this is can write its supervision notes.');
+    }
     const clean = (v: unknown, what: string) => {
       try {
         return normaliseRichInput(v, what);

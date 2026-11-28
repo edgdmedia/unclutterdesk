@@ -98,14 +98,14 @@ describe('creating a client', () => {
 describe('reading a client', () => {
   it('returns the stored contact', async () => {
     const { service } = makeService({ findFirst: CLIENT_ROW });
-    const client = await service.getClientById(TENANT, 40n);
+    const client = await service.getClientById(TENANT, { profileId: 1n, viewAll: true }, 40n);
     expect(client.emergencyContact).toEqual({ name: 'Tolu Ade', relationship: 'Sister', phone: '+2348010000000' });
     expect(client.emergency).toBe('Tolu Ade (Sister) · +2348010000000');
   });
 
   it('is not found for a missing client', async () => {
     const { service } = makeService({ findFirst: null });
-    await expect(service.getClientById(TENANT, 99n)).rejects.toBeInstanceOf(NotFoundException);
+    await expect(service.getClientById(TENANT, { profileId: 1n, viewAll: true }, 99n)).rejects.toBeInstanceOf(NotFoundException);
   });
 
   describe('their notes', () => {
@@ -123,14 +123,14 @@ describe('reading a client', () => {
       expect(stored.objective).not.toBe('Calm affect');
       const { service, prisma } = makeService({ findFirst: CLIENT_ROW });
       prisma.clinicalNote.findMany.mockResolvedValue([{ id: 7n, bookingId: 900n, isLocked: false, createdAt: new Date('2026-11-05T10:00:00Z'), ...stored }]);
-      const client = await service.getClientById(TENANT, 40n);
+      const client = await service.getClientById(TENANT, { profileId: 1n, viewAll: true }, 40n);
       expect(client.notes[0]).toMatchObject({ subjective: 'Sleeps better', objective: 'Calm affect', assessment: 'Improving', plan: 'Keep the 4-7-8 breath' });
     });
 
     it('says which session each note is for', async () => {
       const { service, prisma } = makeService({ findFirst: CLIENT_ROW });
       prisma.clinicalNote.findMany.mockResolvedValue([{ id: 7n, bookingId: 900n, isLocked: true, createdAt: new Date(), subjective: null, objective: null, assessment: null, plan: null }]);
-      const client = await service.getClientById(TENANT, 40n);
+      const client = await service.getClientById(TENANT, { profileId: 1n, viewAll: true }, 40n);
       expect(client.notes[0].bookingId).toBe('900');
     });
   });

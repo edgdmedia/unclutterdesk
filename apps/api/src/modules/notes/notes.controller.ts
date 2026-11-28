@@ -4,7 +4,8 @@ import { NotesService } from './notes.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { RolesGuard } from '../../common/roles.guard';
 import { Permissions } from '../../common/permissions';
-import { authenticatedProfileId, authenticatedTenantId } from '../../common/authenticated-tenant';
+import { authenticatedTenantId } from '../../common/authenticated-tenant';
+import { clinicalViewer } from '../../common/clinical-access';
 
 @ApiTags('Notes')
 // Clinical notes are the most sensitive records in the product. Before the role
@@ -22,7 +23,7 @@ export class NotesController {
   saveNote(@Req() req: any, @Body() dto: any) {
     return this.notesService.saveSOAPNote(
       authenticatedTenantId(req),
-      authenticatedProfileId(req),
+      clinicalViewer(req),
       dto,
     );
   }
@@ -32,6 +33,7 @@ export class NotesController {
   getClientNotes(@Req() req: any, @Param('clientProfileId') clientProfileId: string) {
     return this.notesService.getClientNotes(
       authenticatedTenantId(req),
+      clinicalViewer(req),
       BigInt(clientProfileId),
     );
   }

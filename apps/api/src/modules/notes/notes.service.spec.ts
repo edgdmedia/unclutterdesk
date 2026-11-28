@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { BadRequestException, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ForbiddenException, NotFoundException } from '@nestjs/common';
 import { NotesService } from './notes.service';
 
 /**
@@ -14,6 +14,10 @@ import { NotesService } from './notes.service';
  */
 const TENANT = 1n;
 const OTHER_TENANT = 2n;
+/** An owner or admin: sees every client's record. Writes as profile 3. */
+const ADMIN = { profileId: 3n, viewAll: true };
+/** A therapist without view-all: only clients they treat. */
+const THERAPIST = { profileId: 3n, viewAll: false };
 
 function makePrisma() {
   return {
@@ -25,6 +29,7 @@ function makePrisma() {
       updateMany: vi.fn().mockResolvedValue({ count: 1 }),
     },
     profile: { findFirst: vi.fn().mockResolvedValue({ id: 9n }) },
+    consultBooking: { findFirst: vi.fn().mockResolvedValue({ id: 7n }) },
   } as any;
 }
 
@@ -32,7 +37,7 @@ const noteRow = {
   id: 5n,
   bookingId: 7n,
   subjective: 's', objective: 'o', assessment: 'a', plan: 'p',
-  diagnosisCode: null, isLocked: false,
+  diagnosisCode: null, isLocked: false, authorProfileId: 3n,
   createdAt: new Date(), updatedAt: new Date(),
 };
 
@@ -47,7 +52,7 @@ describe('NotesService tenant isolation', () => {
 
   describe('getClientNotes', () => {
     it('scopes the read to the tenant', async () => {
-      await service.getClientNotes(TENANT, 9n);
+      await service.getClientNotes(TENANT, ADMIN, 9n);
       expect(prisma.clinicalNote.findMany.mock.calls[0][0].where).toMatchObject({
         tenantId: TENANT,
         clientProfileId: 9n,
@@ -55,7 +60,7 @@ describe('NotesService tenant isolation', () => {
     });
 
     it('never queries without a tenant filter', async () => {
-      await service.getClientNotes(TENANT, 9n);
+      await service.getClientNotes(TENANT, ADMIN, 9n);
       for (const call of prisma.clinicalNote.findMany.mock.calls) {
         expect(call[0].where).toHaveProperty('tenantId');
       }
@@ -99,7 +104,7 @@ describe('NotesService tenant isolation', () => {
 
     it('verifies the client belongs to the tenant before writing', async () => {
       prisma.clinicalNote.create.mockResolvedValue({ ...noteRow, id: 1n });
-      await service.saveSOAPNote(TENANT, 3n, dto);
+      await service.saveSOAPNote(TENANT, ADMIN, dto);
 
       expect(prisma.profile.findFirst.mock.calls[0][0].where).toMatchObject({
         id: 9n,
@@ -111,14 +116,14 @@ describe('NotesService tenant isolation', () => {
     // note could be filed against another practice's client id.
     it('refuses a client from another practice', async () => {
       prisma.profile.findFirst.mockResolvedValue(null);
-      await expect(service.saveSOAPNote(TENANT, 3n, dto)).rejects.toThrow(NotFoundException);
+      await expect(service.saveSOAPNote(TENANT, ADMIN, dto)).rejects.toThrow(NotFoundException);
       expect(prisma.clinicalNote.create).not.toHaveBeenCalled();
       expect(prisma.clinicalNote.update).not.toHaveBeenCalled();
     });
 
     it('scopes the existing-note lookup to the tenant', async () => {
       prisma.clinicalNote.create.mockResolvedValue({ ...noteRow, id: 1n });
-      await service.saveSOAPNote(TENANT, 3n, dto);
+      await service.saveSOAPNote(TENANT, ADMIN, dto);
       expect(prisma.clinicalNote.findFirst.mock.calls[0][0].where).toMatchObject({
         tenantId: TENANT,
         bookingId: 7n,
@@ -127,7 +132,7 @@ describe('NotesService tenant isolation', () => {
 
     it('stamps the tenant on a newly created note', async () => {
       prisma.clinicalNote.create.mockResolvedValue({ ...noteRow, id: 1n });
-      await service.saveSOAPNote(TENANT, 3n, dto);
+      await service.saveSOAPNote(TENANT, ADMIN, dto);
       expect(prisma.clinicalNote.create.mock.calls[0][0].data).toMatchObject({
         tenantId: TENANT,
         clientProfileId: 9n,
@@ -138,14 +143,14 @@ describe('NotesService tenant isolation', () => {
     it('updates only a note it already found within the tenant', async () => {
       prisma.clinicalNote.findFirst.mockResolvedValue(noteRow);
       prisma.clinicalNote.update.mockResolvedValue({ ...noteRow, subjective: 'updated' });
-      await service.saveSOAPNote(TENANT, 3n, dto);
+      await service.saveSOAPNote(TENANT, ADMIN, dto);
       // Safe without tenantId because the row was located by a scoped query.
       expect(prisma.clinicalNote.update.mock.calls[0][0].where).toEqual({ id: noteRow.id });
     });
 
     it('refuses to edit a locked note', async () => {
       prisma.clinicalNote.findFirst.mockResolvedValue({ ...noteRow, isLocked: true });
-      await expect(service.saveSOAPNote(TENANT, 3n, dto)).rejects.toThrow(BadRequestException);
+      await expect(service.saveSOAPNote(TENANT, ADMIN, dto)).rejects.toThrow(BadRequestException);
       expect(prisma.clinicalNote.update).not.toHaveBeenCalled();
     });
 
@@ -156,7 +161,7 @@ describe('NotesService tenant isolation', () => {
         { type: 'paragraph', content: [{ type: 'text', text: 'Background', marks: [{ type: 'bold' }, { type: 'link', attrs: { href: 'javascript:x' } }] }] },
         { type: 'table', content: [] },
       ] });
-      await service.saveSOAPNote(TENANT, 3n, { ...dto, subjective });
+      await service.saveSOAPNote(TENANT, ADMIN, { ...dto, subjective });
       // No key in tests, so the stored text is readable here.
       expect(JSON.parse(prisma.clinicalNote.create.mock.calls[0][0].data.subjective)).toEqual({
         type: 'doc',
@@ -165,7 +170,7 @@ describe('NotesService tenant isolation', () => {
     });
 
     it('refuses a section that is not text', async () => {
-      await expect(service.saveSOAPNote(TENANT, 3n, { ...dto, subjective: { type: 'doc' } as any })).rejects.toThrow(/Subjective must be text/);
+      await expect(service.saveSOAPNote(TENANT, ADMIN, { ...dto, subjective: { type: 'doc' } as any })).rejects.toThrow(/Subjective must be text/);
     });
   });
 
@@ -173,9 +178,9 @@ describe('NotesService tenant isolation', () => {
   // nobody writes a test for it.
   it('every clinicalNote query carries a tenantId', async () => {
     prisma.clinicalNote.create.mockResolvedValue({ ...noteRow, id: 1n });
-    await service.getClientNotes(TENANT, 9n);
+    await service.getClientNotes(TENANT, ADMIN, 9n);
     await service.lockNote(TENANT, 5n);
-    await service.saveSOAPNote(TENANT, 3n, { clientProfileId: '9' });
+    await service.saveSOAPNote(TENANT, ADMIN, { clientProfileId: '9' });
 
     for (const method of ['findFirst', 'findMany', 'updateMany'] as const) {
       for (const call of prisma.clinicalNote[method].mock.calls) {
@@ -185,5 +190,43 @@ describe('NotesService tenant isolation', () => {
     for (const call of prisma.clinicalNote.create.mock.calls) {
       expect(call[0].data).toHaveProperty('tenantId');
     }
+  });
+});
+
+describe('therapists see only their own notes; owners and admins see all', () => {
+  let prisma: any;
+  let service: NotesService;
+  beforeEach(() => {
+    prisma = makePrisma();
+    service = new NotesService(prisma);
+  });
+
+  it("refuses a therapist the notes of a client they don't treat", async () => {
+    prisma.consultBooking.findFirst.mockResolvedValue(null);
+    await expect(service.getClientNotes(TENANT, THERAPIST, 9n)).rejects.toThrow(NotFoundException);
+    expect(prisma.consultBooking.findFirst.mock.calls[0][0].where).toEqual({ tenantId: TENANT, clientProfileId: 9n, availability: { providerProfileId: 3n } });
+    expect(prisma.clinicalNote.findMany).not.toHaveBeenCalled();
+  });
+
+  it('shows a therapist only the notes they wrote, even for a client they treat', async () => {
+    await service.getClientNotes(TENANT, THERAPIST, 9n);
+    expect(prisma.clinicalNote.findMany.mock.calls[0][0].where).toEqual({ tenantId: TENANT, clientProfileId: 9n, authorProfileId: 3n });
+  });
+
+  it('shows an owner or admin every note for the client', async () => {
+    await service.getClientNotes(TENANT, ADMIN, 9n);
+    expect(prisma.clinicalNote.findMany.mock.calls[0][0].where).toEqual({ tenantId: TENANT, clientProfileId: 9n });
+  });
+
+  it("refuses a therapist writing a note for a client they don't treat", async () => {
+    prisma.consultBooking.findFirst.mockResolvedValue(null);
+    await expect(service.saveSOAPNote(TENANT, THERAPIST, { bookingId: '7', clientProfileId: '9' })).rejects.toThrow(NotFoundException);
+    expect(prisma.clinicalNote.create).not.toHaveBeenCalled();
+  });
+
+  it("never lets anyone rewrite another clinician's note, admins included", async () => {
+    prisma.clinicalNote.findFirst.mockResolvedValue({ ...noteRow, authorProfileId: 4n });
+    await expect(service.saveSOAPNote(TENANT, ADMIN, { bookingId: '7', clientProfileId: '9', subjective: 'x' })).rejects.toThrow(ForbiddenException);
+    expect(prisma.clinicalNote.update).not.toHaveBeenCalled();
   });
 });

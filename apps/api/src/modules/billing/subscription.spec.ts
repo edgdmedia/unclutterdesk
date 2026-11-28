@@ -8,7 +8,7 @@ import { SUBSCRIPTION_PLANS, formatNaira } from './subscription-plans';
 
 function makeService() {
   const prisma: any = {
-    tenant: { findUnique: vi.fn(), findMany: vi.fn().mockResolvedValue([]), update: vi.fn(), updateMany: vi.fn() },
+    tenant: { findUnique: vi.fn(), findFirst: vi.fn(), findMany: vi.fn().mockResolvedValue([]), update: vi.fn(), updateMany: vi.fn() },
     profile: { findFirst: vi.fn(), findMany: vi.fn().mockResolvedValue([]), count: vi.fn().mockResolvedValue(0) },
     consultBooking: { updateMany: vi.fn().mockResolvedValue({ count: 1 }) },
   };
@@ -229,6 +229,29 @@ describe('BillingService.handleWebhook — subscriptions', () => {
     expect(prisma.tenant.update.mock.calls[0][0].data).toMatchObject({ complimentaryUntil: null, complimentaryReason: null });
     expect(notifications.cancelRemindersWithPrefix).toHaveBeenCalledWith('complimentary:7:2027-01-24:');
     expect(lapse.stopLapse).toHaveBeenCalledWith(7n);
+  });
+
+  // Paystack charges renewals under its own reference, not ours. A renewal
+  // (or a retry that succeeds after a failed one) must keep the plan and stop
+  // the lapse, or a paying practice is moved to Free on day 21.
+  it("a renewal under Paystack's own reference renews the plan and stops the lapse", async () => {
+    const lapse = { startLapse: vi.fn(), stopLapse: vi.fn().mockResolvedValue(undefined) };
+    service = new BillingService(prisma, {} as any, {} as any, undefined, undefined, undefined, lapse as any);
+    prisma.tenant.findUnique.mockResolvedValue({ complimentaryUntil: null });
+    prisma.tenant.findFirst.mockResolvedValue({ id: 7n });
+    await service.handleWebhook('charge.success', { reference: 'T819352034', plan: { plan_code: 'PLN_clinic' }, customer: { customer_code: 'CUS_1' } });
+    expect(prisma.tenant.findFirst).toHaveBeenCalledWith(expect.objectContaining({ where: { paystackCustomerCode: 'CUS_1' } }));
+    const { where, data } = prisma.tenant.update.mock.calls[0][0];
+    expect(where).toEqual({ id: 7n });
+    expect(data).toMatchObject({ subscriptionTier: 'CLINIC', subscriptionStatus: 'active' });
+    expect(data.subscriptionRenewsAt.getTime()).toBeGreaterThan(Date.now() + 27 * 86_400_000);
+    expect(lapse.stopLapse).toHaveBeenCalledWith(7n);
+  });
+
+  it('a renewal for a customer no practice has changes nothing', async () => {
+    prisma.tenant.findFirst.mockResolvedValue(null);
+    await service.handleWebhook('charge.success', { reference: 'T1', plan: { plan_code: 'PLN_clinic' }, customer: { customer_code: 'CUS_x' } });
+    expect(prisma.tenant.update).not.toHaveBeenCalled();
   });
 
   it('fetches the renewal date from Paystack when subscription.create lacks one', async () => {
