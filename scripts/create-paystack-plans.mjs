@@ -53,7 +53,7 @@ const plans = TIERS.map((tier) => {
   return {
     tier,
     // Namespaced so these are recognisable next to any other plans in the account.
-    paystackName: `Unclutter Desk ${name}`,
+    paystackName: `Therapysts ${name}`,
     amountKobo: Number(amount.replace(/_/g, '')),
     envVar,
   };
@@ -75,7 +75,7 @@ const isLiveKey = secret.startsWith('sk_live_');
 const create = process.argv.includes('--create');
 const verify = process.argv.includes('--verify');
 
-console.log('\nUnclutter Desk — Paystack subscription plans');
+console.log('\nTherapysts — Paystack subscription plans');
 console.log(`Key: ${isLiveKey ? 'LIVE' : 'test'} (sk_${isLiveKey ? 'live' : 'test'}_…)\n`);
 
 for (const p of plans) {

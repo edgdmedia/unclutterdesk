@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Bell, CalendarClock, ChevronDown, Clock, Compass, IdCard, Loader2, LogOut, MessageSquarePlus, ShieldCheck, UserCog } from 'lucide-react';
-import { useBrand, type SidebarMode } from '@unclutterdesk/ui';
+import { useBrand, type SidebarMode } from '@therapysts/ui';
 import { useAuth } from '../../context/AuthContext';
 import { AdminSwitchDialog } from '../AdminSwitchDialog';
 

@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Save, Info } from 'lucide-react';
-import { Eyebrow, Page, PageHeader, PROFILE_THEMES, Toggle, useToast } from '@unclutterdesk/ui';
+import { Eyebrow, Page, PageHeader, PROFILE_THEMES, Toggle, useToast } from '@therapysts/ui';
 import { PaletteSwatches } from '../../practice/profile/AppearancePicker';
 import { api } from '../../../utils/apiClient';
 

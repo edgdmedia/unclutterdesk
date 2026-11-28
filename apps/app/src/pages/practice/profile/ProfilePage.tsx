@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { Page, PageHeader, SegmentedControl } from '@unclutterdesk/ui';
+import { Page, PageHeader, SegmentedControl } from '@therapysts/ui';
 import { usePracticeBrand } from '../../../context/PracticeBrandContext';
 import { MyProfilePage } from '../MyProfilePage';
 import { PublicProfileEditor } from './PublicProfileEditor';

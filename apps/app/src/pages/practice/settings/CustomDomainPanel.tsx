@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { Check, Copy, RefreshCw, ShieldAlert, ShieldCheck, X } from 'lucide-react';
-import { Eyebrow, useToast } from '@unclutterdesk/ui';
+import { Eyebrow, useToast } from '@therapysts/ui';
 import { api } from '../../../utils/apiClient';
 import { useEntitlements } from '../../../utils/entitlements';
 import { Link } from 'react-router-dom';

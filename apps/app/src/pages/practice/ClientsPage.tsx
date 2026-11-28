@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
 import { Download, Plus, ChevronLeft, ChevronRight, X, User, Loader2 } from 'lucide-react';
-import { Eyebrow, Card, StatusBadge, AvatarChip, useToast, Page, PageHeader, Grid, ResponsiveTable, sortRows, byText, byNumber, type Column, type SortState } from '@unclutterdesk/ui';
+import { Eyebrow, Card, StatusBadge, AvatarChip, useToast, Page, PageHeader, Grid, ResponsiveTable, sortRows, byText, byNumber, type Column, type SortState } from '@therapysts/ui';
 import { RouterLink } from '../../components/shell/RouterLink';
-import { useBrand } from '@unclutterdesk/ui';
+import { useBrand } from '@therapysts/ui';
 import { api } from '../../utils/apiClient';
 import type { Client } from '../../App';
 

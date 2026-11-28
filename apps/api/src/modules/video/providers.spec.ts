@@ -68,7 +68,7 @@ describe('Link', () => {
   it('always works and points at a long random meet.jit.si room', async () => {
     const p = new LinkProvider();
     const room = await p.createRoom(900n, window);
-    expect(room).toMatch(/^unclutterdesk-[a-f0-9]{32}$/);
+    expect(room).toMatch(/^therapysts-[a-f0-9]{32}$/);
     expect(await p.credentials(room, therapist, window)).toEqual({ provider: 'LINK', url: `https://meet.jit.si/${room}` });
   });
 });

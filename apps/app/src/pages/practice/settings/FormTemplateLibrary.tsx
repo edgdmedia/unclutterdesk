@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Copy, Eye, Trash2 } from 'lucide-react';
-import { Eyebrow, useToast } from '@unclutterdesk/ui';
+import { Eyebrow, useToast } from '@therapysts/ui';
 import { api } from '../../../utils/apiClient';
 import { TemplateQuestionsDialog, type TemplateQuestions } from '../../../components/TemplateQuestionsDialog';
 

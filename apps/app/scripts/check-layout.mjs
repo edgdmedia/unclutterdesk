@@ -25,7 +25,7 @@ const REPORT = [
 // The admin console shares the shell now (ADM-02); checked in a second pass,
 // signed in as an operator rather than practice staff.
 const ADMIN_REPORT = ['/admin', '/admin/invites'];
-const ADMIN_EMAIL = process.env.LAYOUT_ADMIN_EMAIL ?? 'admin@unclutterdesk.com';
+const ADMIN_EMAIL = process.env.LAYOUT_ADMIN_EMAIL ?? 'admin@therapysts.com';
 const ADMIN_PASSWORD = process.env.LAYOUT_ADMIN_PASSWORD ?? 'password123';
 
 const expectedSidebar = (w) => (w < 768 ? 'none' : w < 1280 ? 'rail' : 'full');

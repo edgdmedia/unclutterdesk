@@ -1,4 +1,4 @@
-/* Unclutter Desk — global CSS entry point.
+/* Therapysts — global CSS entry point.
    Consumers link this one file. @import lines only. */
 
 @import "./fonts.css";

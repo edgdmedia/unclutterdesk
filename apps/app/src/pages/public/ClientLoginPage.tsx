@@ -1,6 +1,6 @@
 import React from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { useBrand } from '@unclutterdesk/ui';
+import { useBrand } from '@therapysts/ui';
 import { APP_BASE_URL } from '../../utils/apiClient';
 import { PracticeLogo } from '../../components/public/PracticeLogo';
 import { ClientAuthPanel } from './ClientAuthPanel';

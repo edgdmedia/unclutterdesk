@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { UserPlus, MoreHorizontal, Info, X, Check, Mail, Loader2 } from 'lucide-react';
-import { Eyebrow, Card, StatusBadge, Button, useToast, Page, PageHeader, ResponsiveTable, byText, type Column } from '@unclutterdesk/ui';
-import { useBrand } from '@unclutterdesk/ui';
+import { Eyebrow, Card, StatusBadge, Button, useToast, Page, PageHeader, ResponsiveTable, byText, type Column } from '@therapysts/ui';
+import { useBrand } from '@therapysts/ui';
 import { useAuth } from '../../../context/AuthContext';
 import { PermissionsDialog } from '../../../components/team/PermissionsDialog';
 import { api } from '../../../utils/apiClient';

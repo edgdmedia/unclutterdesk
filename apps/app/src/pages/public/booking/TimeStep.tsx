@@ -1,6 +1,6 @@
 import React, { useMemo } from 'react';
 import { CalendarX, ChevronLeft, ChevronRight, MapPin } from 'lucide-react';
-import { Button, SegmentedControl } from '@unclutterdesk/ui';
+import { Button, SegmentedControl } from '@therapysts/ui';
 import {
   dayKeyWAT,
   formatOf,

@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { Loader2 } from 'lucide-react';
-import { Card, Page, PageHeader, useBrand } from '@unclutterdesk/ui';
+import { Card, Page, PageHeader, useBrand } from '@therapysts/ui';
 import { api } from '../../../utils/apiClient';
 
 interface LinkResult {

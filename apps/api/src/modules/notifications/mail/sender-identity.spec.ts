@@ -26,7 +26,7 @@ describe('SenderIdentityService', () => {
       saved[k] = process.env[k];
       delete process.env[k];
     }
-    process.env.MAIL_FROM = 'Therapysts <notifications@notify.unclutterdesk.com>';
+    process.env.MAIL_FROM = 'Therapysts <notifications@notify.therapysts.app>';
   });
   afterEach(() => {
     for (const k of ENV_KEYS) {
@@ -39,7 +39,7 @@ describe('SenderIdentityService', () => {
     const { identity, prisma } = make();
     await expect(identity.senderFor({})).resolves.toEqual({
       name: 'Therapysts',
-      address: 'notifications@notify.unclutterdesk.com',
+      address: 'notifications@notify.therapysts.app',
       replyTo: undefined,
     });
     expect(prisma.tenantSendingDomain.findUnique).not.toHaveBeenCalled();
@@ -49,7 +49,7 @@ describe('SenderIdentityService', () => {
     const { identity } = make();
     await expect(identity.senderFor({ tenantId: 7n, practiceName: 'Smith Therapy', replyTo: 'hello@smith.ng' })).resolves.toEqual({
       name: 'Smith Therapy',
-      address: 'notifications@notify.unclutterdesk.com',
+      address: 'notifications@notify.therapysts.app',
       replyTo: 'hello@smith.ng',
     });
   });
@@ -67,18 +67,18 @@ describe('SenderIdentityService', () => {
 
   it("never uses a practice domain through a provider that can't sign for it", async () => {
     const { identity, prisma } = make({ canSignForDomains: false, domain: { domain: 'smith.ng', status: 'VERIFIED', fromLocalPart: 'hello' } });
-    expect((await identity.senderFor({ tenantId: 7n })).address).toBe('notifications@notify.unclutterdesk.com');
+    expect((await identity.senderFor({ tenantId: 7n })).address).toBe('notifications@notify.therapysts.app');
     expect(prisma.tenantSendingDomain.findUnique).not.toHaveBeenCalled();
   });
 
   it.each(['PENDING', 'FAILED', 'NOT_STARTED'])('uses the platform address while the domain is %s', async (status) => {
     const { identity } = make({ domain: { domain: 'smith.ng', status, fromLocalPart: 'hello' } });
-    expect((await identity.senderFor({ tenantId: 7n })).address).toBe('notifications@notify.unclutterdesk.com');
+    expect((await identity.senderFor({ tenantId: 7n })).address).toBe('notifications@notify.therapysts.app');
   });
 
   it('still sends from the platform address if the domain lookup fails', async () => {
     const { identity } = make({ lookupFails: true });
-    expect((await identity.senderFor({ tenantId: 7n })).address).toBe('notifications@notify.unclutterdesk.com');
+    expect((await identity.senderFor({ tenantId: 7n })).address).toBe('notifications@notify.therapysts.app');
   });
 
   it('a practice with no name yet is sent as Therapysts', async () => {
@@ -88,24 +88,24 @@ describe('SenderIdentityService', () => {
 
   describe('the platform sender', () => {
     it('reads MAIL_FROM first, then SMTP_FROM', () => {
-      process.env.SMTP_FROM = 'no-reply@unclutterdesk.com';
-      expect(make().identity.platformAddress()).toBe('notifications@notify.unclutterdesk.com');
+      process.env.SMTP_FROM = 'no-reply@therapysts.app';
+      expect(make().identity.platformAddress()).toBe('notifications@notify.therapysts.app');
       delete process.env.MAIL_FROM;
-      expect(make().identity.platformAddress()).toBe('no-reply@unclutterdesk.com');
+      expect(make().identity.platformAddress()).toBe('no-reply@therapysts.app');
     });
 
-    it('falls back to no-reply@unclutterdesk.com when nothing is set', () => {
+    it('falls back to no-reply@therapysts.app when nothing is set', () => {
       delete process.env.MAIL_FROM;
-      expect(make().identity.platformAddress()).toBe('no-reply@unclutterdesk.com');
+      expect(make().identity.platformAddress()).toBe('no-reply@therapysts.app');
     });
 
     it('names the platform from MAIL_FROM_NAME, then the name in MAIL_FROM, then Therapysts', () => {
-      process.env.MAIL_FROM = 'Therapysts Team <notifications@notify.unclutterdesk.com>';
+      process.env.MAIL_FROM = 'Therapysts Team <notifications@notify.therapysts.app>';
       expect(make().identity.platformName()).toBe('Therapysts Team');
       process.env.MAIL_FROM_NAME = 'Unclutter';
       expect(make().identity.platformName()).toBe('Unclutter');
       delete process.env.MAIL_FROM_NAME;
-      process.env.MAIL_FROM = 'notifications@notify.unclutterdesk.com';
+      process.env.MAIL_FROM = 'notifications@notify.therapysts.app';
       expect(make().identity.platformName()).toBe('Therapysts');
     });
   });

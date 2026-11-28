@@ -1,6 +1,6 @@
 import React, { useRef, useState } from 'react';
 import { Loader2, X } from 'lucide-react';
-import { useFocusTrap, useToast } from '@unclutterdesk/ui';
+import { useFocusTrap, useToast } from '@therapysts/ui';
 import { api } from '../../../utils/apiClient';
 
 /** FRM-01: keep a copy of this form to reuse, and optionally share it. */

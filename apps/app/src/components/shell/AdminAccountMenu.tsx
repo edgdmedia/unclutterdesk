@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, Loader2, LogOut } from 'lucide-react';
-import type { SidebarMode } from '@unclutterdesk/ui';
+import type { SidebarMode } from '@therapysts/ui';
 import { useAuth } from '../../context/AuthContext';
 
 const MENU_ITEM = 'w-full flex items-center gap-2.5 px-3 h-[38px] rounded-[10px] text-[13.5px] font-semibold text-[var(--desk-pine-200)] hover:text-white hover:bg-[var(--desk-sidebar-hover)] cursor-pointer';

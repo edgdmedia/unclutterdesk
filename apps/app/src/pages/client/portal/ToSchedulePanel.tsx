@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { CalendarPlus } from 'lucide-react';
-import { useBrand } from '@unclutterdesk/ui';
+import { useBrand } from '@therapysts/ui';
 import { api } from '../../../utils/apiClient';
 import { RescheduleDialog, type OpenPlanSession } from '../../../components/RescheduleDialog';
 

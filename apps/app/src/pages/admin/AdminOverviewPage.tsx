@@ -12,7 +12,7 @@ import {
   Loader2,
 } from 'lucide-react';
 import { api } from '../../utils/apiClient';
-import { Card, CardHeader, Eyebrow, StatusBadge } from '@unclutterdesk/ui';
+import { Card, CardHeader, Eyebrow, StatusBadge } from '@therapysts/ui';
 import {
   AdminStats,
   AdminTenant,

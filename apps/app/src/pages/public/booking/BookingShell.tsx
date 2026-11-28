@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { AlertCircle, ChevronLeft, Lock, Star } from 'lucide-react';
-import { Button, Eyebrow, UnclutterMark } from '@unclutterdesk/ui';
+import { Button, Eyebrow, UnclutterMark } from '@therapysts/ui';
 import { initialsOf } from '../../../utils/initials';
 import type { Step } from './bookingWizard';
 

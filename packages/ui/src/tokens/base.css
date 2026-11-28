@@ -1,4 +1,4 @@
-/* Unclutter Desk — base resets. Deliberately minimal. */
+/* Therapysts — base resets. Deliberately minimal. */
 
 @layer base {
   *, *::before, *::after { box-sizing: border-box; }

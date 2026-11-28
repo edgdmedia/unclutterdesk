@@ -42,7 +42,7 @@ export class CloudflareSaasService {
   private readonly authEmail = process.env.CLOUDFLARE_AUTH_EMAIL || '';
   private readonly authKey = process.env.CLOUDFLARE_API_KEY || '';
   private readonly zoneId = process.env.CLOUDFLARE_ZONE_ID || '';
-  private readonly workerScript = process.env.CLOUDFLARE_WORKER_SCRIPT || 'unclutterdesk-tenant-router';
+  private readonly workerScript = process.env.CLOUDFLARE_WORKER_SCRIPT || 'therapysts-tenant-router';
   /** The fixed address practices CNAME their domains to (fallback-origin record). */
   private readonly saasCnameTarget = customDomainTarget() || '';
   private readonly apiBase = 'https://api.cloudflare.com/client/v4';

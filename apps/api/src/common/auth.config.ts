@@ -31,9 +31,9 @@ export const REFRESH_SECRET = resolveSecret('REFRESH_SECRET');
 export const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || '15m';
 export const REFRESH_EXPIRES_IN = process.env.REFRESH_EXPIRES_IN || '30d';
 
-export const ACCESS_COOKIE = 'unclutter_access';
-export const REFRESH_COOKIE = 'unclutter_refresh';
-export const CSRF_COOKIE = 'unclutter_csrf';
+export const ACCESS_COOKIE = 'therapysts_access';
+export const REFRESH_COOKIE = 'therapysts_refresh';
+export const CSRF_COOKIE = 'therapysts_csrf';
 
 export const ACCESS_COOKIE_MAX_AGE = 15 * 60 * 1000;
 export const REFRESH_COOKIE_MAX_AGE = 30 * 24 * 60 * 60 * 1000;

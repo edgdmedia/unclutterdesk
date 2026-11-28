@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { BookOpen, CheckCircle2, ExternalLink, Loader2 } from 'lucide-react';
-import { Card, Eyebrow, useBrand } from '@unclutterdesk/ui';
+import { Card, Eyebrow, useBrand } from '@therapysts/ui';
 import { api } from '../../../utils/apiClient';
 
 type PortalJournal =

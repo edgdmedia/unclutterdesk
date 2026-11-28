@@ -1,7 +1,7 @@
 import React from 'react';
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { ToastProvider, useToast } from '@unclutterdesk/ui';
+import { ToastProvider, useToast } from '@therapysts/ui';
 
 function Saver({ fail = false }: { fail?: boolean }) {
   const toast = useToast();

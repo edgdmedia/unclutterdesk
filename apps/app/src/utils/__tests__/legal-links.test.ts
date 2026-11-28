@@ -16,7 +16,7 @@ import { LEGAL_PATHS, LEGAL_URLS } from '../legal';
  * These tests fail the build if either comes back.
  */
 const APP = resolve(__dirname, '../..');
-const LANDING_PAGES = resolve(__dirname, '../../../../landing/src/pages');
+const LANDING_PAGES = resolve(__dirname, '../../../../profiles/src/pages');
 
 function read(relative: string): string {
   return readFileSync(resolve(APP, relative), 'utf8');

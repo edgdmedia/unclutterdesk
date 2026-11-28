@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import useSWR from 'swr';
-import { Button, Card, Eyebrow, Textarea, useToast } from '@unclutterdesk/ui';
+import { Button, Card, Eyebrow, Textarea, useToast } from '@therapysts/ui';
 import { adminProfileContentApi } from './adminProfileContentApi';
 import { ProfileContentTabs } from './ProfileContentTabs';
 import { PROFILE_CONTENT_BASE, SECTION_ORDER, type AdminGuidance } from './profileContentTypes';

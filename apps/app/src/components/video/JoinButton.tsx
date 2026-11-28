@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Video } from 'lucide-react';
-import { joinWindow } from '@unclutterdesk/shared';
+import { joinWindow } from '@therapysts/shared';
 import { useOptionalAuth } from '../../context/AuthContext';
 
 const watTime = (d: Date) => d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', timeZone: 'Africa/Lagos' });

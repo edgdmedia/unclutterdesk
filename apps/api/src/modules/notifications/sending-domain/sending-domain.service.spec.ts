@@ -45,7 +45,7 @@ function setup({ resend = true }: { resend?: boolean } = {}) {
     resend: () => (resend ? client : null),
   };
   const notifications: any = { notify: vi.fn().mockResolvedValue([]) };
-  return { service: new SendingDomainService(prisma, mail, notifications, { platformAddress: () => 'notifications@mail.unclutterdesk.com' } as any), prisma, client, notifications };
+  return { service: new SendingDomainService(prisma, mail, notifications, { platformAddress: () => 'notifications@mail.therapysts.app' } as any), prisma, client, notifications };
 }
 
 describe('validateSendingDomain', () => {
@@ -54,7 +54,7 @@ describe('validateSendingDomain', () => {
     ['unclutter.com.ng', 'unclutter.com.ng'],
   ])('accepts %s', (input, expected) => expect(validateSendingDomain(input)).toBe(expected));
 
-  it.each(['', 'https://drjane.ng', 'hello@drjane.ng', 'drjane', 'app.unclutterdesk.com', 'unclutterdesk.com'])(
+  it.each(['', 'https://drjane.ng', 'hello@drjane.ng', 'drjane', 'therapysts.app', 'therapysts.app'])(
     'rejects %s',
     (input) => expect(() => validateSendingDomain(input)).toThrow(BadRequestException),
   );
@@ -94,7 +94,7 @@ describe('SendingDomainService', () => {
       });
       expect(result.records).toHaveLength(3);
       // Not verified yet, so mail still goes from the platform address.
-      expect(result.sendingFrom).toBe('notifications@mail.unclutterdesk.com');
+      expect(result.sendingFrom).toBe('notifications@mail.therapysts.app');
     });
 
     it('refuses a second domain for the same practice', async () => {

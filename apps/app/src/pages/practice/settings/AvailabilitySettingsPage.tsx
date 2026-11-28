@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Info, Plus, Save } from 'lucide-react';
-import { Button, Card, Eyebrow, Page, PageHeader, SegmentedControl, useToast } from '@unclutterdesk/ui';
+import { Button, Card, Eyebrow, Page, PageHeader, SegmentedControl, useToast } from '@therapysts/ui';
 import { api } from '../../../utils/apiClient';
 import { useSearchParams } from 'react-router-dom';
 import { formatClock } from '../../../utils/displayFormat';

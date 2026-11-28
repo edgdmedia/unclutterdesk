@@ -37,17 +37,17 @@ jobs:
         run: pnpm --recursive run typecheck
       - name: Test
         run: >-
-          pnpm --filter @unclutterdesk/api test &&
-          pnpm --filter @unclutterdesk/ui test &&
-          pnpm --filter @unclutterdesk/app test &&
-          pnpm --filter @unclutterdesk/tenant-router test &&
-          pnpm --filter @unclutterdesk/legacy-redirects test &&
-          pnpm --filter @unclutterdesk/profiles test
+          pnpm --filter @therapysts/api test &&
+          pnpm --filter @therapysts/ui test &&
+          pnpm --filter @therapysts/app test &&
+          pnpm --filter @therapysts/tenant-router test &&
+          pnpm --filter @therapysts/legacy-redirects test &&
+          pnpm --filter @therapysts/profiles test
       # §6.16: the tenant router and the built profiles Worker together in
       # workerd (wrangler dev), joined by the PROFILES service binding; only
       # the API is faked. Builds the profiles Worker first.
       - name: Solo practice home page in the Workers runtime
-        run: pnpm --filter @unclutterdesk/profiles test:workerd
+        run: pnpm --filter @therapysts/profiles test:workerd
 
   accessibility:
     name: Accessibility (Lighthouse ≥ 95, axe no serious/critical)
@@ -68,7 +68,7 @@ jobs:
       - name: Generate Prisma Client
         run: pnpm exec prisma generate --schema prisma/schema.prisma
       - name: Run accessibility tests
-        run: pnpm --filter @unclutterdesk/profiles test:a11y
+        run: pnpm --filter @therapysts/profiles test:a11y
       - name: Upload logs on failure
         if: failure()
         uses: actions/upload-artifact@v4

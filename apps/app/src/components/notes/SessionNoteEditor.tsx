@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { Lock } from 'lucide-react';
-import { useToast } from '@unclutterdesk/ui';
+import { useToast } from '@therapysts/ui';
 import { api } from '../../utils/apiClient';
 import { RichTextEditor } from '../richText/RichTextEditor';
 

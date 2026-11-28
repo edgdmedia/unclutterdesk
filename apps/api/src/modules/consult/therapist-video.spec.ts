@@ -3,7 +3,7 @@ import { BadRequestException } from '@nestjs/common';
 import { ConsultService } from './consult.service';
 
 /**
- * VID-01: a therapist's sessions run in Unclutter Desk's own video room, or in
+ * VID-01: a therapist's sessions run in Therapysts's own video room, or in
  * Google Meet when their Google account is connected. Nothing else is accepted.
  */
 const TENANT = 1n;

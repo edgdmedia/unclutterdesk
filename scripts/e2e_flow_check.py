@@ -116,7 +116,7 @@ def main():
     status, _, _ = call("GET", "/health")
     record("health check", status == 200, f"status {status}")
     if status is None:
-        print("\nAPI is not reachable; start it with `pnpm --filter @unclutterdesk/api dev`.")
+        print("\nAPI is not reachable; start it with `pnpm --filter @therapysts/api dev`.")
         return 1
 
     # ── signup ───────────────────────────────────────────────────────────
@@ -206,7 +206,7 @@ def main():
     # Refresh mints a new CSRF token; the old one must stop working with it.
     if isinstance(body, dict) and body.get("csrfToken"):
         csrf = body["csrfToken"]
-        rotated.setdefault("unclutter_csrf", csrf)
+        rotated.setdefault("therapysts_csrf", csrf)
 
     # ── role boundaries ──────────────────────────────────────────────────
     status, _, _ = call("GET", "/v1/admin/stats", cookies=rotated)
@@ -489,7 +489,7 @@ def practice_flows(session, csrf, payments):
         )
         record(
             "the calendar file carries the current product name",
-            "Unclutter Desk" in body_text and "unclutter.os" not in body_text,
+            "Therapysts" in body_text and "unclutter.os" not in body_text,
             "PRODID and UID",
         )
 

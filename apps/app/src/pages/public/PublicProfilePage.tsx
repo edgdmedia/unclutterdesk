@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { PracticeLogo } from '../../components/public/PracticeLogo';
 import { useNavigate } from 'react-router-dom';
 import { MapPin, Star } from 'lucide-react';
-import { useBrand } from '@unclutterdesk/ui';
+import { useBrand } from '@therapysts/ui';
 import { api, getSubdomainTenantSlug } from '../../utils/apiClient';
 import { PublicProfilePreview, type PublicProfilePreviewProps } from './PublicProfilePreview';
 

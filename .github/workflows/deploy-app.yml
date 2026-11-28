@@ -43,8 +43,7 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      # The app lives on therapysts.app, in the Therapysts account. The old
-      # app.unclutterdesk.com now redirects there (apps/legacy-redirects).
+      # The app lives on therapysts.app, in the Therapysts account.
       # The practice root must be set, or a practice subdomain on .app finds
       # no practice (spec §4.1a).
       - name: Build app (therapysts.app)
@@ -54,7 +53,7 @@ jobs:
           VITE_TENANT_ROOT_DOMAIN: therapysts.app
           VITE_MARKETING_URL: https://therapysts.com
           VITE_PROFILE_PUBLIC_URL: https://therapysts.com
-        run: pnpm --filter @unclutterdesk/app build
+        run: pnpm --filter @therapysts/app build
 
       - name: Deploy app (therapysts.app)
         working-directory: apps/app

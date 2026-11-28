@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Bell, Calendar, CheckCircle2, CreditCard, FileText, Loader2 } from 'lucide-react';
-import { Card, Page, PageHeader } from '@unclutterdesk/ui';
+import { Card, Page, PageHeader } from '@therapysts/ui';
 import { api } from '../../utils/apiClient';
 
 /**

@@ -5,7 +5,7 @@ import { SenderIdentityService } from '../mail/sender-identity.service';
 function make() {
   const mail: any = { deliver: vi.fn().mockResolvedValue({ sent: true, messageId: 'm1' }) };
   const identity: any = {
-    senderFor: vi.fn(async (i: any) => ({ name: i.practiceName || 'Unclutter Desk', address: 'notifications@notify.unclutterdesk.com', replyTo: i.replyTo || undefined })),
+    senderFor: vi.fn(async (i: any) => ({ name: i.practiceName || 'Therapysts', address: 'notifications@notify.unclutterdesk.com', replyTo: i.replyTo || undefined })),
   };
   return { channel: new EmailChannel(mail, identity), mail, identity };
 }
@@ -95,10 +95,10 @@ describe('EmailChannel', () => {
     });
   });
 
-  it('sends platform mail (no practice) as Unclutter Desk', async () => {
+  it('sends platform mail (no practice) as Therapysts', async () => {
     const { channel, mail } = make();
     await channel.send({ profileId: null, tenantId: null, email: 'a@x.com' }, { type: 't', title: 'Reset your password', message: 'M' });
-    expect(mail.deliver.mock.calls[0][0].from).toEqual({ name: 'Unclutter Desk', address: 'notifications@notify.unclutterdesk.com' });
+    expect(mail.deliver.mock.calls[0][0].from).toEqual({ name: 'Therapysts', address: 'notifications@notify.unclutterdesk.com' });
   });
 
   it('turns an in-app path into a full address, so the email link opens', async () => {

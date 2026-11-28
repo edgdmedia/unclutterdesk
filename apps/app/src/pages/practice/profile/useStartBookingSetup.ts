@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useToast } from '@unclutterdesk/ui';
+import { useToast } from '@therapysts/ui';
 import { useOptionalAuth } from '../../../context/AuthContext';
 import { api } from '../../../utils/apiClient';
 

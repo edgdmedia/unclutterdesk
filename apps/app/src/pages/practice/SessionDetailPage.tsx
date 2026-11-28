@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { JoinButton } from '../../components/video/JoinButton';
 import { Link, useLocation, useParams, useSearchParams } from 'react-router-dom';
 import { CalendarClock, CheckCircle2, Download, FileText, Loader2, PencilLine, Star } from 'lucide-react';
-import { Card, Eyebrow, Page, PageHeader, SegmentedControl, StatTile, StatusBadge, useToast } from '@unclutterdesk/ui';
+import { Card, Eyebrow, Page, PageHeader, SegmentedControl, StatTile, StatusBadge, useToast } from '@therapysts/ui';
 import { PaymentChip } from '../../components/booking/PaymentChip';
 import { EditSessionDialog } from '../../components/booking/EditSessionDialog';
 import { SessionNoteEditor } from '../../components/notes/SessionNoteEditor';

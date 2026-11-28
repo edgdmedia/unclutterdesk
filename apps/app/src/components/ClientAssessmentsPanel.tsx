@@ -2,7 +2,7 @@ import type { ReactNode } from 'react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { AlertTriangle, Copy, Send, X } from 'lucide-react';
-import { Card, useToast } from '@unclutterdesk/ui';
+import { Card, useToast } from '@therapysts/ui';
 import { api } from '../utils/apiClient';
 import {
   severityStyle,

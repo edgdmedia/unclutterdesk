@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import type { LinkLikeProps } from '@unclutterdesk/ui';
+import type { LinkLikeProps } from '@therapysts/ui';
 
 /** Shared navigation renders links through this, so moving between pages never reloads the app. */
 export function RouterLink({ href, children, ...rest }: LinkLikeProps) {

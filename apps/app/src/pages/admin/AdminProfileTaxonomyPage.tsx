@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import useSWR from 'swr';
 import { ArrowDown, ArrowUp, Plus } from 'lucide-react';
-import { Badge, Button, Card, Eyebrow, Input, Toggle, useToast } from '@unclutterdesk/ui';
+import { Badge, Button, Card, Eyebrow, Input, Toggle, useToast } from '@therapysts/ui';
 import { adminProfileContentApi } from './adminProfileContentApi';
 import { ProfileContentTabs } from './ProfileContentTabs';
 import { PROFILE_CONTENT_BASE, TAXONOMY_KINDS, TAXONOMY_KIND_LABELS, TAXONOMY_KIND_SINGULAR, type AdminTaxonomyTerm, type TaxonomyKind } from './profileContentTypes';

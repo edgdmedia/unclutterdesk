@@ -5,10 +5,10 @@ set -euo pipefail
 
 TARGET_DIR="$(cd "$(dirname "$0")" && pwd)"
 
-BACKUP_DIR="${BACKUP_DIR:-$HOME/backups/unclutterdesk}"
+BACKUP_DIR="${BACKUP_DIR:-$HOME/backups/therapysts}"
 BACKUP_RETENTION_DAYS="${BACKUP_RETENTION_DAYS:-14}"
 
-echo "🚀 Starting Unclutter Desk Production Deployment at $TARGET_DIR..."
+echo "🚀 Starting Therapysts Production Deployment at $TARGET_DIR..."
 
 cd $TARGET_DIR
 
@@ -75,7 +75,7 @@ npx prisma generate
 # nest build needs more than Node's ~2 GB default heap on this codebase;
 # without it the deploy dies with an OOM abort (exit 134).
 echo "🔨 Building NestJS API..."
-NODE_OPTIONS="--max-old-space-size=3072${NODE_OPTIONS:+ $NODE_OPTIONS}" pnpm --filter @unclutterdesk/api run build
+NODE_OPTIONS="--max-old-space-size=3072${NODE_OPTIONS:+ $NODE_OPTIONS}" pnpm --filter @therapysts/api run build
 
 # 5. Back up the database BEFORE touching the schema.
 # This holds real clinical records, so a deploy that cannot produce a restore
@@ -169,7 +169,7 @@ RUNNING_SCRIPT="$(pm2 jlist 2>/dev/null | node -e '
   process.stdin.on("data", (c) => (raw += c));
   process.stdin.on("end", () => {
     try {
-      const app = JSON.parse(raw).find((a) => a.name === "unclutterdesk-api");
+      const app = JSON.parse(raw).find((a) => a.name === "therapysts-api");
       process.stdout.write(app?.pm2_env?.pm_exec_path ?? "");
     } catch { process.stdout.write(""); }
   });
@@ -177,7 +177,7 @@ RUNNING_SCRIPT="$(pm2 jlist 2>/dev/null | node -e '
 
 if [ -n "$RUNNING_SCRIPT" ] && [ "$RUNNING_SCRIPT" != "$EXPECTED_SCRIPT" ]; then
     echo "   ! PM2 was running $RUNNING_SCRIPT; recreating from ecosystem.config.js"
-    pm2 delete unclutterdesk-api || true
+    pm2 delete therapysts-api || true
     pm2 start ecosystem.config.js --env production
 fi
 
@@ -202,10 +202,10 @@ for attempt in $(seq 1 "$HEALTH_TRIES"); do
     if [ "$attempt" = "$HEALTH_TRIES" ]; then
         echo "❌ API did not become healthy within $(( $(date +%s) - HEALTH_START ))s. Recent logs:"
         # Both streams: Nest's startup errors and its "started" line go to stdout.
-        pm2 logs unclutterdesk-api --lines 60 --nostream || true
+        pm2 logs therapysts-api --lines 60 --nostream || true
         exit 1
     fi
     sleep 2
 done
 
-echo "✅ Unclutter Desk API deployed successfully."
+echo "✅ Therapysts API deployed successfully."

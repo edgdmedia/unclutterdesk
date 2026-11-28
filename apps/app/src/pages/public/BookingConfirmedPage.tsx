@@ -3,7 +3,7 @@ import { API_BASE } from '../../utils/apiClient';
 import { initialsOf } from '../../utils/initials';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { Check, ArrowLeft, User } from 'lucide-react';
-import { useBrand } from '@unclutterdesk/ui';
+import { useBrand } from '@therapysts/ui';
 import { TransferDetails, type ManualPayment } from '../../components/payments/TransferDetails';
 import { JoinButton } from '../../components/video/JoinButton';
 

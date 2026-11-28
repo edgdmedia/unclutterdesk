@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { initialsOf } from '../../utils/initials';
 import { Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { Check, Copy, ArrowRight, ArrowLeft, Loader2, Sparkles, Building2, Calendar, ShieldCheck, ExternalLink, Palette, Mail, Phone, MapPin, Globe, Settings, CreditCard, Landmark } from 'lucide-react';
-import { UnclutterLockup, Eyebrow } from '@unclutterdesk/ui';
+import { UnclutterLockup, Eyebrow } from '@therapysts/ui';
 import { useAuth } from '../../context/AuthContext';
 import { api, getBookingUrl } from '../../utils/apiClient';
 import { formatFee, useEntitlements } from '../../utils/entitlements';
@@ -627,7 +627,7 @@ function OnboardingWizard({ tenantId }: { tenantId: string }) {
           </div>
           <button
             onClick={() => {
-              sessionStorage.setItem('unclutter_skip_onboarding', 'true');
+              sessionStorage.setItem('therapysts_skip_onboarding', 'true');
               navigate('/dashboard');
             }}
             className="text-xs font-bold text-[var(--desk-text-muted)] hover:text-[var(--desk-text)] transition-colors cursor-pointer px-3 py-1.5 bg-[var(--desk-surface-muted)] rounded-full border border-[var(--desk-border)]"

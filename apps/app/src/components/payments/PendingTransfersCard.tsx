@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Landmark } from 'lucide-react';
-import { Card, useToast } from '@unclutterdesk/ui';
+import { Card, useToast } from '@therapysts/ui';
 import { api } from '../../utils/apiClient';
 
 interface PendingTransfer {

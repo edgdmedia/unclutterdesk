@@ -13,7 +13,7 @@
 # Off-host upload targets any S3-compatible store (Cloudflare R2, Backblaze B2,
 # AWS S3) via the aws CLI. Configure with:
 #
-#   BACKUP_S3_BUCKET     e.g. unclutterdesk-backups
+#   BACKUP_S3_BUCKET     e.g. therapysts-backups
 #   BACKUP_S3_ENDPOINT   e.g. https://<account>.r2.cloudflarestorage.com
 #   BACKUP_ENCRYPTION_PASSPHRASE
 #                        Encrypts the dump before it leaves the machine. Keep it
@@ -30,7 +30,7 @@ set -euo pipefail
 TARGET_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$TARGET_DIR"
 
-BACKUP_DIR="${BACKUP_DIR:-$HOME/backups/unclutterdesk}"
+BACKUP_DIR="${BACKUP_DIR:-$HOME/backups/therapysts}"
 LOCAL_RETENTION_DAYS="${LOCAL_RETENTION_DAYS:-14}"
 REMOTE_RETENTION_DAYS="${REMOTE_RETENTION_DAYS:-90}"
 

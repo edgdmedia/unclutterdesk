@@ -39,16 +39,16 @@ describe('the public-profile site is untrusted (§4.3)', () => {
   });
 
   it('keeps credentialed CORS for the platform itself', async () => {
-    const options = await corsFor('https://app.unclutterdesk.com', '/v1/auth/status');
+    const options = await corsFor('https://therapysts.app', '/v1/auth/status');
     expect(options.credentials).toBe(true);
-    expect(await originAllowed(options, 'https://app.unclutterdesk.com')).toBe(true);
+    expect(await originAllowed(options, 'https://therapysts.app')).toBe(true);
     expect(await originAllowed(options, PROFILES)).toBe(false);
   });
 
   it('is never a platform origin or a redirect target, though it matches the subdomain pattern', () => {
     expect(isPlatformOrigin(PROFILES, true)).toBe(false);
     expect(isAllowedRedirectTarget(`${PROFILES}/x`, { isProduction: true })).toBe(false);
-    expect(isPlatformOrigin('https://dr-smith.unclutterdesk.com', true)).toBe(true);
+    expect(isPlatformOrigin('https://dr-smith.therapysts.app', true)).toBe(true);
   });
 
   it('cannot act on a session, even with a matching CSRF token', () => {
@@ -61,7 +61,7 @@ describe('the public-profile site is untrusted (§4.3)', () => {
         }),
       }) as any;
     expect(() => guard.canActivate(ctx(PROFILES))).toThrow(ForbiddenException);
-    expect(guard.canActivate(ctx('https://app.unclutterdesk.com'))).toBe(true);
+    expect(guard.canActivate(ctx('https://therapysts.app'))).toBe(true);
     // A public, cookie-free call from the profiles site (the report form) is fine.
     expect(guard.canActivate(ctx(PROFILES, {}))).toBe(true);
   });

@@ -68,7 +68,7 @@ const PUBLISHED: Profile = { userId: 7n, handle: 'ada-obi', status: 'PUBLISHED' 
 describe('what / shows on a practice address (§6.16)', () => {
   it("shows the owner's profile for a solo practice whose owner has published", async () => {
     const { service } = world({ tenant: SOLO, members: [OWNER], profiles: [PUBLISHED] });
-    await expect(service.getPublicTenantExistence('ada.unclutterdesk.com')).resolves.toEqual({
+    await expect(service.getPublicTenantExistence('ada.therapysts.app')).resolves.toEqual({
       exists: true,
       active: true,
       homePage: 'PROFILE',

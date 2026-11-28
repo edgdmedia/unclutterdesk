@@ -1,8 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { AlertTriangle, ShieldCheck, X } from 'lucide-react';
-import { Card, Eyebrow, Page, PageHeader, useToast } from '@unclutterdesk/ui';
+import { Card, Eyebrow, Page, PageHeader, useToast } from '@therapysts/ui';
 import { ManualPaymentSettingsCard } from '../../../components/payments/ManualPaymentSettingsCard';
-import { useBrand } from '@unclutterdesk/ui';
+import { useBrand } from '@therapysts/ui';
 import { api } from '../../../utils/apiClient';
 
 type PayoutAccount = { bankCode: string; bankName: string; accountNumber: string; accountName: string; isVerified: boolean } | null;

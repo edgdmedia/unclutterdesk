@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { Page, PageHeader } from '@unclutterdesk/ui';
+import { Page, PageHeader } from '@therapysts/ui';
 import { api } from '../../../utils/apiClient';
 import { usePracticeBrand } from '../../../context/PracticeBrandContext';
 import { BookingLinkCard } from '../../../components/settings/BookingLinkCard';

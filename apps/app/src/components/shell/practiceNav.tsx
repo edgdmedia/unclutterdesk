@@ -2,7 +2,7 @@ import {
   BarChart3, Bell, Calendar, CalendarClock, ClipboardCheck, ClipboardList, CreditCard, FileText, Globe,
   Home, IdCard, LayoutDashboard, Mail, MapPin, Palette, Settings, UserCog, Users, type LucideIcon,
 } from 'lucide-react';
-import type { SidebarSection } from '@unclutterdesk/ui';
+import type { SidebarSection } from '@therapysts/ui';
 import { includesFeature, TIER_NAMES, type EntitlementSummary, type GatedFeature } from '../../utils/entitlements';
 
 export interface NavProfile {

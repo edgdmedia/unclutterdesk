@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { lazy } from 'react';
 import { Outlet, Route } from 'react-router-dom';
-import { BrandProvider, type TenantBrandConfig } from '@unclutterdesk/ui';
+import { BrandProvider, type TenantBrandConfig } from '@therapysts/ui';
 import { api, getAppType, getSubdomainTenantSlug } from '../utils/apiClient';
 
 const ClientShell = lazy(() => import('../components/shell/ClientShell').then((m) => ({ default: m.ClientShell })));

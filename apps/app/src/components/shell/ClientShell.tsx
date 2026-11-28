@@ -1,6 +1,6 @@
 import { useMemo, useState, type ReactNode } from 'react';
 import { useLocation } from 'react-router-dom';
-import { AppShell, useBrand } from '@unclutterdesk/ui';
+import { AppShell, useBrand } from '@therapysts/ui';
 import { useAuth } from '../../context/AuthContext';
 import { PracticeLogo } from '../public/PracticeLogo';
 import { PortalDataProvider, usePortalData } from '../../pages/client/portal/PortalDataContext';

@@ -1,6 +1,6 @@
 import React from 'react';
 import { Check } from 'lucide-react';
-import { UnclutterLockup } from '@unclutterdesk/ui';
+import { UnclutterLockup } from '@therapysts/ui';
 
 export type AuthStat = { value: string; label: string };
 

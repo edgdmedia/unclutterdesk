@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Save } from 'lucide-react';
-import { Eyebrow, Page, PageHeader, useToast } from '@unclutterdesk/ui';
+import { Eyebrow, Page, PageHeader, useToast } from '@therapysts/ui';
 import { api } from '../../utils/apiClient';
 import { Link } from 'react-router-dom';
 
