@@ -9,6 +9,7 @@ import { RolesGuard } from '../../common/roles.guard';
 import { Permissions } from '../../common/permissions';
 import { authenticatedTenantId } from '../../common/authenticated-tenant';
 import { PlatformAdminGuard } from '../admin/platform-admin.guard';
+import { clinicalViewer } from '../../common/clinical-access';
 
 @ApiTags('Tenant')
 @Controller('v1/tenant')
@@ -256,7 +257,7 @@ export class TenantController {
   @ApiBearerAuth('access-token')
   @ApiOperation({ summary: 'Get a single client with bookings, notes, and intake' })
   getClientById(@Req() req: any, @Param('profileId') profileId: string) {
-    return this.tenantService.getClientById(authenticatedTenantId(req), BigInt(profileId));
+    return this.tenantService.getClientById(authenticatedTenantId(req), clinicalViewer(req), BigInt(profileId));
   }
 
   @Permissions('practice.staff')

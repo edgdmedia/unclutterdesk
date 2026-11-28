@@ -210,7 +210,7 @@ describe('rescheduleByStaff', () => {
     prisma.$transaction = vi.fn(async (fn: any) => fn(t));
     await service.rescheduleByStaff(TENANT, DESK, 900n, 301n);
     expect(t.consultAvailability.updateMany).toHaveBeenCalledWith({ where: { id: 300n, tenantId: TENANT, createdForBooking: false }, data: { isActive: true } });
-    expect(t.consultAvailability.update).toHaveBeenCalledWith({ where: { id: 301n }, data: { isActive: false } });
+    expect(t.consultAvailability.updateMany).toHaveBeenCalledWith({ where: { id: 301n, tenantId: TENANT, isActive: true }, data: { isActive: false } });
     expect(t.consultBooking.update).toHaveBeenCalledWith({ where: { id: 900n }, data: { availabilityId: 301n } });
   });
   it("gives a moved session a fresh video room when one was made for the old time", async () => {
@@ -288,7 +288,18 @@ describe('rescheduleByStaff', () => {
     const { service, prisma } = make();
     prisma.$transaction = vi.fn(async (fn: any) => fn(t));
     await service.rescheduleByStaff(TENANT, DESK, 900n, 301n);
-    expect(t.consultAvailability.updateMany.mock.calls[0][0].where).toMatchObject({ id: 300n, createdForBooking: false });
+    expect(t.consultAvailability.updateMany).toHaveBeenCalledWith(expect.objectContaining({ where: expect.objectContaining({ id: 300n, createdForBooking: false }) }));
+  });
+
+  // A client may book the time online between the read and the claim; the
+  // claim's own condition must lose that race instead of double-booking.
+  it('refuses a time taken after it was read, and moves nothing', async () => {
+    const t = tx();
+    t.consultAvailability.updateMany.mockResolvedValueOnce({ count: 0 });
+    const { service, prisma } = make();
+    prisma.$transaction = vi.fn(async (fn: any) => fn(t));
+    await expect(service.rescheduleByStaff(TENANT, DESK, 900n, 301n)).rejects.toThrow(/no longer open/i);
+    expect(t.consultBooking.update).not.toHaveBeenCalled();
   });
 
   it('emails the client the new time', async () => {
@@ -455,13 +466,24 @@ describe('summaries', () => {
     await expect(service.setSummary(TENANT, DESK, 900n, { supervisionNotes: 'x' })).rejects.toBeInstanceOf(ForbiddenException);
   });
 
-  it('gives supervision notes to clinical staff and never to the desk', async () => {
+  it("keeps supervision notes the session practitioner's alone, even from an owner or admin", async () => {
     withKey();
-    const { service } = make({ booking: { supervisionNotes: encryptField('Check readiness before going deeper.') } });
+    const { service } = make({ booking: { supervisionNotes: encryptField('My own reflection.') } });
+    const admin = { profileId: 1n, viewAll: true, clinical: true };
+    const seen = await service.getSession(TENANT, admin, 900n);
+    expect(seen).not.toHaveProperty('supervisionNotes');
+    await expect(service.setSummary(TENANT, admin, 900n, { supervisionNotes: 'x' })).rejects.toBeInstanceOf(ForbiddenException);
+  });
+
+  it('gives supervision notes and the internal summary to clinical staff, never to the desk', async () => {
+    withKey();
+    const { service } = make({ booking: { supervisionNotes: encryptField('Check readiness before going deeper.'), internalSummary: 'worked on grounding' } });
     const clinical = await service.getSession(TENANT, { profileId: ACTOR, viewAll: false, clinical: true }, 900n);
     expect(clinical.supervisionNotes).toBe('Check readiness before going deeper.');
+    expect(clinical.internalSummary).toBe('worked on grounding');
     const desk = await service.getSession(TENANT, DESK, 900n);
     expect(desk).not.toHaveProperty('supervisionNotes');
+    expect(desk).not.toHaveProperty('internalSummary');
   });
 
 });

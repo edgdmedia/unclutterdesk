@@ -1,7 +1,8 @@
-import { Injectable, BadRequestException, NotFoundException } from '@nestjs/common';
+import { Injectable, BadRequestException, ForbiddenException, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../../common/prisma/prisma.service';
 import { decryptNoteFields, encryptNoteFields } from '../../common/field-encryption';
 import { normaliseRichInput } from '../../common/rich-text';
+import { assertTreatsClient, ClinicalViewer, readableNotes } from '../../common/clinical-access';
 
 /** The four SOAP sections as they are stored: formatted documents cleaned to the allowed shape (common/rich-text.ts). */
 function soapSections(dto: { subjective?: string; objective?: string; assessment?: string; plan?: string }) {
@@ -21,7 +22,7 @@ function soapSections(dto: { subjective?: string; objective?: string; assessment
 export class NotesService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async saveSOAPNote(tenantId: bigint, authorProfileId: bigint, dto: {
+  async saveSOAPNote(tenantId: bigint, viewer: ClinicalViewer, dto: {
     bookingId?: string;
     clientProfileId: string;
     subjective?: string;
@@ -30,6 +31,7 @@ export class NotesService {
     plan?: string;
     diagnosisCode?: string;
   }) {
+    const authorProfileId = viewer.profileId;
     const clientProfileId = BigInt(dto.clientProfileId);
     const bookingId = dto.bookingId ? BigInt(dto.bookingId) : null;
 
@@ -42,6 +44,7 @@ export class NotesService {
     if (!client) {
       throw new NotFoundException('Client not found in this practice');
     }
+    await assertTreatsClient(this.prisma, tenantId, viewer, clientProfileId);
 
     // Check if an existing unlocked note exists for this booking
     let note = bookingId
@@ -54,6 +57,10 @@ export class NotesService {
 
     if (note && note.isLocked) {
       throw new BadRequestException('This clinical note has been locked and cannot be edited');
+    }
+    // A note is its author's record: nobody else rewrites it, admins included.
+    if (note && note.authorProfileId !== authorProfileId) {
+      throw new ForbiddenException('Only the clinician who wrote this note can change it');
     }
 
     if (note) {
@@ -91,9 +98,10 @@ export class NotesService {
     };
   }
 
-  async getClientNotes(tenantId: bigint, clientProfileId: bigint) {
+  async getClientNotes(tenantId: bigint, viewer: ClinicalViewer, clientProfileId: bigint) {
+    await assertTreatsClient(this.prisma, tenantId, viewer, clientProfileId);
     const notes = await this.prisma.clinicalNote.findMany({
-      where: { tenantId, clientProfileId },
+      where: { tenantId, clientProfileId, ...readableNotes(viewer) },
       orderBy: { createdAt: 'desc' },
     });
 

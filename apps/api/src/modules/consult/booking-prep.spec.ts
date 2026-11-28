@@ -57,6 +57,13 @@ describe("a session's prep", () => {
     expect(prep.sessionNote).toBeNull();
   });
 
+  it("preps from the caller's own last note, never a colleague's", async () => {
+    const { service, prisma } = make({});
+    await service.getBookingPrep(TENANT, PROVIDER, BOOKING);
+    const last = prisma.clinicalNote.findFirst.mock.calls.find((c: any[]) => c[0].where.NOT);
+    expect(last[0].where).toMatchObject({ tenantId: TENANT, authorProfileId: PROVIDER });
+  });
+
   it("looks for this session's note by booking, in this practice", async () => {
     const { service, prisma } = make({});
     await service.getBookingPrep(TENANT, PROVIDER, BOOKING);

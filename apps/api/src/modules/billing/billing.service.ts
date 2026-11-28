@@ -507,6 +507,22 @@ export class BillingService {
       return;
     }
 
+    // Renewals (and a retry that succeeds after a failed renewal). Paystack
+    // charges these under its own reference, so only the plan and the
+    // customer, both in Paystack's signed payload, say whose they are.
+    const renewalPlan: string | undefined = data?.plan?.plan_code ?? data?.plan_object?.plan_code;
+    const customerCode: string | undefined = data?.customer?.customer_code;
+    if (event === 'charge.success' && renewalPlan && customerCode && !reference?.startsWith('booking-')) {
+      const tier = (Object.keys(SUBSCRIPTION_PLANS) as SubscriptionTier[]).find((t) => planCodeFor(t) === renewalPlan);
+      const tenant = await this.prisma.tenant.findFirst({ where: { paystackCustomerCode: customerCode }, select: { id: true } });
+      if (!tier || !tenant) {
+        this.logger.error(`Renewal ${reference} for customer ${customerCode} (plan ${renewalPlan}) matched no practice or plan; nothing changed`);
+        return;
+      }
+      await this.applyPaidSubscription(tenant.id, tier, data);
+      return;
+    }
+
     if (event === 'subscription.create') {
       const customerCode: string | undefined = data?.customer?.customer_code;
       if (!customerCode) return;
