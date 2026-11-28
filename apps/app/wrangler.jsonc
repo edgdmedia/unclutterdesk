@@ -1,0 +1,18 @@
+{
+  "$schema": "../../node_modules/wrangler/config-schema.json",
+  // The app on therapysts.app, in the Therapysts account: a Worker that only
+  // serves the built files (Workers Static Assets). No code runs here.
+  // app.unclutterdesk.com stays on its Pages project until the swap
+  // (docs/runbooks/therapysts-app-move.md); `wrangler pages deploy` ignores this file.
+  "name": "therapysts-app",
+  "compatibility_date": "2026-11-01",
+  "assets": {
+    "directory": "./dist",
+    // Any path that isn't a file gets index.html, so client routes load.
+    "not_found_handling": "single-page-application"
+  },
+  // The tenant router fetches the app shell for practice subdomains from
+  // therapysts-app.therapysts.workers.dev (ORIGIN_HOST in apps/tenant-router).
+  "workers_dev": true,
+  "routes": [{ "pattern": "therapysts.app", "custom_domain": true }]
+}

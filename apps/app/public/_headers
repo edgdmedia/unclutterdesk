@@ -1,4 +1,4 @@
-# Cloudflare Pages security headers for therapysts.app (the app) and every
+# Security headers for therapysts.app (the app) and every
 # <tenant>.therapysts.app booking surface (spec §4.1b). The old API host stays
 # listed until the redirects take over (docs/runbooks/therapysts-app-move.md).
 #
@@ -7,10 +7,9 @@
 # apps/api/src/domain-literals.spec.ts.
 #
 # Files in public/ are copied verbatim into dist/, which is what wrangler
-# deploys. `_headers` is parsed by Pages and never served as an asset.
-#
-# NOTE: these do not apply to Pages Functions responses. This project has no
-# functions/ directory, so every response is a static asset and is covered.
+# deploys. `_headers` is read by Pages (app.unclutterdesk.com) and by Workers
+# Static Assets (therapysts.app) and never served. No code runs on either, so
+# every response is a static asset and is covered.
 
 /*
   X-Frame-Options: DENY
