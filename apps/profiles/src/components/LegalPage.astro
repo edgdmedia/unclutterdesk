@@ -1,0 +1,29 @@
+---
+/*
+ * Privacy and Terms, moved here from the old marketing site with the copy
+ * unchanged. SitePage gives the Therapysts top bar and footer.
+ */
+import SitePage from './SitePage.astro';
+import { config as loadConfig } from '../lib/env';
+import { PAGE_CACHE } from '../lib/security';
+
+interface Props {
+  title: string;
+  subtitle: string;
+  effectiveDate: string;
+  description: string;
+}
+const { title, subtitle, effectiveDate, description } = Astro.props;
+const config = loadConfig();
+Astro.response.headers.set('Cache-Control', PAGE_CACHE);
+---
+<SitePage title={`${title} · Therapysts`} description={description} canonical={`${config.publicOrigin}${Astro.url.pathname}`} fullNav>
+  <main id="main" class="legal-page">
+    <p class="legal-kicker">{subtitle}</p>
+    <h1>{title}</h1>
+    <p class="legal-date">Effective {effectiveDate}</p>
+    <div class="legal">
+      <slot />
+    </div>
+  </main>
+</SitePage>

@@ -12,15 +12,18 @@
   // (docs/runbooks/therapysts-app-move.md). Unlike the router, this Worker owns
   // its route: nothing else creates routes on this zone after the move.
   // `api.<root>` keeps its more specific route with Worker = None, so the API
-  // is never redirected. The bare domain is the marketing site (Pages).
-  "routes": [{ "pattern": "*.unclutterdesk.com/*", "zone_name": "unclutterdesk.com" }],
+  // is never redirected. The bare domain and www go to the marketing site,
+  // now on therapysts.com.
+  "routes": [
+    { "pattern": "*.unclutterdesk.com/*", "zone_name": "unclutterdesk.com" },
+    { "pattern": "unclutterdesk.com/*", "zone_name": "unclutterdesk.com" }
+  ],
 
   "vars": {
     "OLD_ROOT": "unclutterdesk.com",
     "NEW_PRACTICE_ROOT": "therapysts.app",
     "APP_URL": "https://therapysts.app",
     "PROFILES_URL": "https://therapysts.com",
-    // Change when the marketing site moves to the profile site.
-    "MARKETING_URL": "https://unclutterdesk.com"
+    "MARKETING_URL": "https://therapysts.com"
   }
 }
