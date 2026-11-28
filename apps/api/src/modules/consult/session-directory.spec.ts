@@ -466,6 +466,15 @@ describe('summaries', () => {
     await expect(service.setSummary(TENANT, DESK, 900n, { supervisionNotes: 'x' })).rejects.toBeInstanceOf(ForbiddenException);
   });
 
+  it("keeps supervision notes the session practitioner's alone, even from an owner or admin", async () => {
+    withKey();
+    const { service } = make({ booking: { supervisionNotes: encryptField('My own reflection.') } });
+    const admin = { profileId: 1n, viewAll: true, clinical: true };
+    const seen = await service.getSession(TENANT, admin, 900n);
+    expect(seen).not.toHaveProperty('supervisionNotes');
+    await expect(service.setSummary(TENANT, admin, 900n, { supervisionNotes: 'x' })).rejects.toBeInstanceOf(ForbiddenException);
+  });
+
   it('gives supervision notes and the internal summary to clinical staff, never to the desk', async () => {
     withKey();
     const { service } = make({ booking: { supervisionNotes: encryptField('Check readiness before going deeper.'), internalSummary: 'worked on grounding' } });

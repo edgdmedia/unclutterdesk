@@ -168,7 +168,9 @@ export class SessionDirectoryService {
         : null,
       clientRecap: b.clientRecap,
       // Only for clinical staff; never sent to the desk at all (schema: "Seen by clinical roles only").
-      ...(actor.clinical ? { internalSummary: b.internalSummary, supervisionNotes: decryptField(b.supervisionNotes) } : {}),
+      ...(actor.clinical ? { internalSummary: b.internalSummary } : {}),
+      // Supervision points are the practitioner's own reflection: theirs alone, not the owner's or an admin's.
+      ...(actor.clinical && b.availability.providerProfileId === actor.profileId ? { supervisionNotes: decryptField(b.supervisionNotes) } : {}),
       clientRecapSentAt: b.clientRecapSentAt ? b.clientRecapSentAt.toISOString() : null,
       reviewRequestedAt: b.reviewRequestedAt ? b.reviewRequestedAt.toISOString() : null,
       can: {
@@ -567,9 +569,12 @@ export class SessionDirectoryService {
     if ('supervisionNotes' in dto && !actor.clinical) throw new ForbiddenException('Only clinical staff can write supervision notes.');
     const b = await this.prisma.consultBooking.findFirst({
       where: { id: bookingId, tenantId, ...(actor.viewAll ? {} : { availability: { providerProfileId: actor.profileId } }) },
-      select: { id: true },
+      select: { id: true, availability: { select: { providerProfileId: true } } },
     });
     if (!b) throw new NotFoundException('Session not found');
+    if ('supervisionNotes' in dto && b.availability?.providerProfileId !== actor.profileId) {
+      throw new ForbiddenException('Only the practitioner whose session this is can write its supervision notes.');
+    }
     const clean = (v: unknown, what: string) => {
       try {
         return normaliseRichInput(v, what);
