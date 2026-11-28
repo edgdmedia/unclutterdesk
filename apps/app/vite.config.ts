@@ -14,6 +14,8 @@ export default defineConfig({
         // On the app's own host, / and /pricing are the Desk home (src/edge/worker.ts),
         // not the app shell, so they always come from the network.
         navigateFallbackDenylist: [/^\/api(\/|$)/, /^\/(pricing\/?)?$/],
+        // Otherwise the precache answers / with index.html before the denylist is checked.
+        directoryIndex: null,
       },
       includeAssets: ['favicon.svg', 'favicon.ico', 'apple-touch-icon.png'],
       manifest: {
