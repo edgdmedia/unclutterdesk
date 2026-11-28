@@ -3,6 +3,7 @@ import SitePage from '../components/SitePage.astro';
 import { config as loadConfig } from '../lib/env';
 import { PAGE_CACHE, MISS_CACHE } from '../lib/security';
 import { PLAN_BLURBS, fetchPlans, planFeatures, type Plan } from '../lib/plans';
+import { isDeskHost } from '../lib/config';
 
 /*
  * Pricing, on this site (no hop to another domain). Plans come from the API's
@@ -11,6 +12,8 @@ import { PLAN_BLURBS, fetchPlans, planFeatures, type Plan } from '../lib/plans';
  * practice gets.
  */
 const config = loadConfig();
+// Plans are the Desk's: this site sends its old /pricing there.
+if (!isDeskHost(Astro.url, config)) return Astro.redirect(`${config.appOrigin}/pricing`, 301);
 let plans: Plan[] | null = null;
 try {
   plans = await fetchPlans(config);
@@ -24,8 +27,9 @@ const popular: Plan['tier'] = 'PRO';
 <SitePage
   title="Pricing · Therapysts"
   description="Start with a free therapist profile and online booking. Paid plans when your practice grows."
-  canonical={`${config.publicOrigin}/pricing`}
+  canonical={`${config.appOrigin}/pricing`}
   fullNav
+  desk
 >
   <main id="main" class="pricing">
     <header class="pricing-head">
@@ -45,15 +49,15 @@ const popular: Plan['tier'] = 'PRO';
             <ul class="plan-features">
               {planFeatures(p).map((f) => <li>{f}</li>)}
             </ul>
-            <a class={p.tier === popular ? 'btn wide' : 'btn secondary wide'} href="/join">{p.monthlyKobo > 0 ? `Start free, then ${p.name}` : 'Start free'}</a>
+            <a class={p.tier === popular ? 'btn wide' : 'btn secondary wide'} href="/signup">{p.monthlyKobo > 0 ? `Start free, then ${p.name}` : 'Start free'}</a>
           </li>
         ))}
       </ul>
     ) : (
       <div class="card notice-page">
         <h2>Prices are not available right now</h2>
-        <p class="muted">Please try again in a few minutes. You can still create your free profile.</p>
-        <p><a class="btn" href="/join">Create your free profile</a></p>
+        <p class="muted">Please try again in a few minutes. You can still start free.</p>
+        <p><a class="btn" href="/signup">Start free</a></p>
       </div>
     )}
 

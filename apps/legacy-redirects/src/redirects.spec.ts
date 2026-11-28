@@ -13,7 +13,7 @@ const ENV: Env = {
   NEW_PRACTICE_ROOT: 'therapysts.app',
   APP_URL: 'https://therapysts.app',
   PROFILES_URL: 'https://therapysts.com',
-  MARKETING_URL: 'https://therapysts.com',
+  MARKETING_URL: 'https://therapysts.app',
 };
 const to = (url: string) => redirectTarget(new URL(url), ENV);
 
@@ -36,9 +36,11 @@ describe('where each old address goes', () => {
     expect(to('https://profiles.unclutterdesk.com/ada-obi')).toBe('https://therapysts.com/ada-obi');
   });
 
-  it('sends the bare domain and www to the marketing site on therapysts.com', () => {
+  it('sends the bare domain and www to the Desk home, and the legal pages to therapysts.com', () => {
+    expect(to('https://unclutterdesk.com/')).toBe('https://therapysts.app/');
+    expect(to('https://www.unclutterdesk.com/pricing')).toBe('https://therapysts.app/pricing');
     expect(to('https://unclutterdesk.com/privacy?x=1')).toBe('https://therapysts.com/privacy?x=1');
-    expect(to('https://www.unclutterdesk.com/pricing')).toBe('https://therapysts.com/pricing');
+    expect(to('https://www.unclutterdesk.com/terms')).toBe('https://therapysts.com/terms');
   });
 
   it('never redirects the API, other services, or hosts it does not issue', () => {

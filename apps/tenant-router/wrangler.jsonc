@@ -32,7 +32,7 @@
     // www. redirect there (router.ts).
     "APP_HOST": "therapysts.app",
     // Linked from the practice-not-found page.
-    "MARKETING_URL": "https://therapysts.com",
+    "MARKETING_URL": "https://therapysts.app",
     // The app Worker's workers.dev hostname, in the Therapysts account
     // (apps/app/wrangler.jsonc).
     "ORIGIN_HOST": "therapysts-app.therapysts.workers.dev",
