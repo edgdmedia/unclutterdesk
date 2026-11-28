@@ -1,6 +1,6 @@
 /**
  * apiClient.ts
- * Thin fetch wrapper for the Unclutter Desk NestJS API.
+ * Thin fetch wrapper for the Therapysts NestJS API.
  *
  * SECURITY (httpOnly cookie auth):
  * - The access & refresh tokens live in httpOnly cookies set by the API.

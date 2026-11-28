@@ -43,7 +43,7 @@ export function SaveAsTemplateDialog({ formId, onClose }: { formId: string; onCl
         </p>
         <label className="flex items-start gap-2.5 text-[13px] text-[var(--desk-text)] cursor-pointer">
           <input type="checkbox" className={box} checked={share} onChange={(e) => setShare(e.target.checked)} />
-          <span>Share with other practices on Unclutter Desk (reviewed by our team first)</span>
+          <span>Share with other practices on Therapysts (reviewed by our team first)</span>
         </label>
         {share ? (
           <label className="flex items-start gap-2.5 pl-6 text-[13px] text-[var(--desk-text)] cursor-pointer">

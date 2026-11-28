@@ -347,7 +347,7 @@ function AppLayout() {
   const privateDataError = clientsError || sessionsError || staffError;
 
   const practiceBrand = useMemo(() => ({
-    name: savedBrand?.name || profile?.practiceName || (profile?.firstName ? `${profile.firstName}'s Practice` : 'Unclutter Desk Practice'),
+    name: savedBrand?.name || profile?.practiceName || (profile?.firstName ? `${profile.firstName}'s Practice` : 'Therapysts Practice'),
     slug: savedBrand?.slug || profile?.tenantSlug || getSubdomainTenantSlug() || 'practice',
     logoUrl: savedBrand?.logoUrl ?? null,
     primaryColor,

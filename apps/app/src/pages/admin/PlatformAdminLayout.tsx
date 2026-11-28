@@ -70,7 +70,7 @@ export function PlatformAdminLayout() {
             <UnclutterMark size={28} showBadge={false} className="shrink-0 rounded-[9px]" />
             {mode === 'rail' ? null : (
               <div className="flex items-center gap-1.5 min-w-0">
-                <span className="font-semibold text-[16px] tracking-[-0.02em] text-[var(--ds-on-band)] truncate">Unclutter Desk</span>
+                <span className="font-semibold text-[16px] tracking-[-0.02em] text-[var(--ds-on-band)] truncate">Therapysts</span>
                 <span className="h-[18px] px-2 rounded-full text-[9px] font-extrabold tracking-[0.08em] bg-[var(--ds-sky)] text-[var(--desk-text)] flex items-center justify-center uppercase shrink-0">Admin</span>
               </div>
             )}

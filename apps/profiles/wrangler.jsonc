@@ -28,9 +28,10 @@
   // Domain config (spec §4.1a): this site's addresses.
   "vars": {
     "PROFILE_PUBLIC_URL": "https://therapysts.com",
-    "API_URL": "https://api.unclutterdesk.com",
-    "APP_URL": "https://app.unclutterdesk.com",
-    "MARKETING_URL": "https://unclutterdesk.com",
-    "MEDIA_URL": "https://media.therapysts.com"
+    "API_URL": "https://api.therapysts.app",
+    "APP_URL": "https://therapysts.app",
+    "MEDIA_URL": "https://media.therapysts.com",
+    // support@, privacy@ and security@ on the legal pages and Contact.
+    "CONTACT_EMAIL_DOMAIN": "therapysts.com"
   }
 }

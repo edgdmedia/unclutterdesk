@@ -119,8 +119,8 @@ export function PublicProfilePreview({
     <div className="min-h-screen bg-[var(--desk-surface)] flex flex-col font-sans">
       <header className="sticky top-0 z-50 h-[56px] md:h-[64px] px-4 md:px-10 flex items-center justify-between bg-white/95 backdrop-blur-[18px] border-b border-[var(--desk-border)]">
         <div className="flex items-center gap-2.5 min-w-0">
-          <PracticeLogo name={practiceName || 'Unclutter Desk'} logoUrl={tenant?.logoUrl} size={34} color={primaryColor} />
-          <span className="text-[15px] font-bold tracking-[-0.01em] text-[var(--desk-text)] truncate">{practiceName || 'Unclutter Desk'}</span>
+          <PracticeLogo name={practiceName || 'Therapysts'} logoUrl={tenant?.logoUrl} size={34} color={primaryColor} />
+          <span className="text-[15px] font-bold tracking-[-0.01em] text-[var(--desk-text)] truncate">{practiceName || 'Therapysts'}</span>
         </div>
         <a
           href="/login"
@@ -386,7 +386,7 @@ export function PublicProfilePreview({
       </>
 
       <footer className="bg-[var(--desk-sidebar)] p-5 md:p-[40px] text-center text-[11px] md:text-[12px] text-[var(--desk-text-subtle)] border-t border-white/10">
-        © 2026 {practiceName}. Powered by <span className="text-[var(--desk-pine-300)]">unclutter desk</span>.
+        © 2026 {practiceName}. Powered by <span className="text-[var(--desk-pine-300)]">Therapysts</span>.
       </footer>
     </div>
   );

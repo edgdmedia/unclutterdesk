@@ -65,7 +65,7 @@ async function bootstrap() {
   );
 
   const config = new DocumentBuilder()
-    .setTitle('Unclutter Desk Multi-Tenant API')
+    .setTitle('Therapysts Multi-Tenant API')
     .setDescription('B2B Practice Management & White-Label Telehealth API')
     .setVersion('1.0.0')
     .addBearerAuth({ type: 'http', scheme: 'bearer', bearerFormat: 'JWT' }, 'access-token')
@@ -78,7 +78,7 @@ async function bootstrap() {
 
   app.getHttpAdapter().get('/', (_req: unknown, res: { json: (body: unknown) => void }) => {
     res.json({
-      name: 'Unclutter Desk API',
+      name: 'Therapysts API',
       status: 'ok',
       version: '1.0.0',
       ...(isProduction ? {} : { docs: '/docs' }),
@@ -87,7 +87,7 @@ async function bootstrap() {
 
   const port = process.env.PORT || 3050;
   await app.listen(port);
-  console.log(`🚀 Unclutter Desk API running on port ${port}`);
+  console.log(`🚀 Therapysts API running on port ${port}`);
 }
 
 bootstrap();

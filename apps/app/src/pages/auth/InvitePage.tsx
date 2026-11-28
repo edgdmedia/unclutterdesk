@@ -185,7 +185,7 @@ export function InvitePage() {
             <div className="text-white text-base font-bold tracking-[-0.01em]">
               {invite.practiceName}
             </div>
-            <div className="text-[var(--desk-text-muted)] text-[11.5px]">Unclutter Desk practice</div>
+            <div className="text-[var(--desk-text-muted)] text-[11.5px]">Therapysts practice</div>
           </div>
         </div>
 
@@ -216,7 +216,7 @@ export function InvitePage() {
 
         <div className="flex items-center gap-[9px] text-[var(--desk-text-body)] text-[11.5px] relative z-[2]">
           <UnclutterMark size={20} showBadge={false} className="rounded-[6px] opacity-70" />
-          <span>Powered by Unclutter Desk · {expiresIn(invite.expiresAt)}</span>
+          <span>Powered by Therapysts · {expiresIn(invite.expiresAt)}</span>
         </div>
       </div>
 
@@ -339,7 +339,7 @@ export function InvitePage() {
             {/* Named the documents without linking to either of them. */}
             <p className="mt-[14px] text-[11.5px] text-[var(--desk-text-subtle)] text-center leading-[1.6]">
               By joining you agree to the{' '}
-              <a href={LEGAL_URLS.terms} target="_blank" rel="noopener noreferrer" className="font-bold text-[var(--desk-text-body)] hover:underline">Unclutter Desk terms</a>
+              <a href={LEGAL_URLS.terms} target="_blank" rel="noopener noreferrer" className="font-bold text-[var(--desk-text-body)] hover:underline">Therapysts terms</a>
               {' '}and{' '}
               <a href={LEGAL_URLS.privacy} target="_blank" rel="noopener noreferrer" className="font-bold text-[var(--desk-text-body)] hover:underline">privacy policy</a>,
               {' '}and to the clinic&apos;s own data-handling policy.

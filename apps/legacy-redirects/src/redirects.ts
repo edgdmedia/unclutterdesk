@@ -11,7 +11,7 @@ export interface RedirectConfig {
   APP_URL: string;
   /** Public profiles. */
   PROFILES_URL: string;
-  /** The marketing site, which hasn't moved yet: www still goes there. */
+  /** The marketing site, now on the profiles domain: the bare old domain and www go there. */
   MARKETING_URL: string;
 }
 
@@ -26,6 +26,7 @@ const trim = (v: string) => v.replace(/\/+$/, '');
 export function redirectTarget(url: URL, config: RedirectConfig): string | null {
   const host = url.hostname.toLowerCase();
   const root = config.OLD_ROOT.toLowerCase();
+  if (host === root) return `${trim(config.MARKETING_URL)}${url.pathname}${url.search}`;
   if (!host.endsWith(`.${root}`)) return null;
   const label = host.slice(0, -(root.length + 1));
   if (!LABEL.test(label) || NEVER.has(label)) return null;

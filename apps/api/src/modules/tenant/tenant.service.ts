@@ -1053,7 +1053,7 @@ export class TenantService {
         type: 'tenant.staff_invite',
         title: `${tenant.name} invited you to join their practice`,
         message:
-          `You have been invited to join ${tenant.name} on Unclutter Desk as ` +
+          `You have been invited to join ${tenant.name} on Therapysts as ` +
           `${describeRole(dto.role || 'THERAPIST')}. Open the link below to set your own ` +
           `password and get started. The invitation expires in seven days.`,
         link: inviteUrl,

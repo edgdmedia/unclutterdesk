@@ -257,7 +257,7 @@ export class AuthService {
   private async sendVerificationCode(
     userId: bigint,
     profile: { id: bigint; email: string; tenantId: bigint | null },
-    message = 'Welcome to Unclutter Desk! Enter this code in the app to activate your account. It expires in 30 minutes.',
+    message = 'Welcome to Therapysts! Enter this code in the app to activate your account. It expires in 30 minutes.',
   ): Promise<boolean> {
     const code = await this.createEmailVerificationCode(userId);
     try {
@@ -527,7 +527,7 @@ export class AuthService {
         await this.notifications.sendEmail({
           to: profile.email,
           type: 'auth.welcome',
-          title: 'Welcome to Unclutter Desk',
+          title: 'Welcome to Therapysts',
           message: `Your email has been verified and your practice workspace is active. You can now sign in and start booking clients, writing SOAP notes, and more. Get started at ${appOrigin().replace(/^https?:\/\//, '')}.`,
           tenantId: profile.tenantId,
           profileId: profile.id,
@@ -560,7 +560,7 @@ export class AuthService {
         to: email,
         type: 'auth.email_verification',
         title: 'Verify your email address',
-        message: `Welcome to Unclutter Desk! Enter this code in the app to activate your account. It expires in 30 minutes.`,
+        message: `Welcome to Therapysts! Enter this code in the app to activate your account. It expires in 30 minutes.`,
         code,
         tenantId: profile.tenantId,
         profileId: profile.id,
@@ -578,7 +578,7 @@ export class AuthService {
     const user = await this.prisma.user.findUnique({ where: { email } });
 
     // Always answer the same way so the endpoint can't be used to enumerate
-    // which emails have Unclutter Desk accounts.
+    // which emails have Therapysts accounts.
     const generic = {
       message: 'If an account exists for this email, a reset link has been sent.',
       success: true,
@@ -602,7 +602,7 @@ export class AuthService {
         to: email,
         type: 'auth.password_reset',
         title: 'Reset your password',
-        message: `We received a request to reset the password for your Unclutter Desk account. Click the button below to choose a new one. This link expires in 1 hour.`,
+        message: `We received a request to reset the password for your Therapysts account. Click the button below to choose a new one. This link expires in 1 hour.`,
         link: resetLink,
         actionLabel: 'Reset password',
         tenantId: profile?.tenantId ?? null,

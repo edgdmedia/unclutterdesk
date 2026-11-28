@@ -32,7 +32,7 @@
   /* Product literals — the naming rename lives here so generated strings
      never hard-code the old product name. Defaults for design specimens only;
      the apps read their domains from their own config (spec §4.1a). */
-  --product-name:   "Unclutter Desk";         /* @kind other */
+  --product-name:   "Therapysts";             /* @kind other */
   --booking-host:   "unclutterdesk.com";      /* @kind other */
   --cname-host:     "customers.unclutterdesk.com";/* @kind other */
   --booking-prefix: "UDK";                    /* @kind other */

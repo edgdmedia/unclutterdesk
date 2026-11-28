@@ -31,9 +31,8 @@
     // The app is the bare domain, served by the app Worker's custom domain; app. and
     // www. redirect there (router.ts).
     "APP_HOST": "therapysts.app",
-    // Linked from the practice-not-found page. Stays on the current marketing
-    // site until apps/landing merges into apps/profiles (therapysts.com).
-    "MARKETING_URL": "https://unclutterdesk.com",
+    // Linked from the practice-not-found page.
+    "MARKETING_URL": "https://therapysts.com",
     // The app Worker's workers.dev hostname, in the Therapysts account
     // (apps/app/wrangler.jsonc).
     "ORIGIN_HOST": "therapysts-app.therapysts.workers.dev",

@@ -94,7 +94,7 @@ export function AnalyticsPage({ clients = [], sessions = [] }: AnalyticsPageProp
    */
   function downloadReport() {
     const rows = [
-      ['Unclutter Desk — practice analytics'],
+      ['Therapysts — practice analytics'],
       ['Range', RANGES[range].label],
       ['Generated', new Date().toISOString()],
       [],

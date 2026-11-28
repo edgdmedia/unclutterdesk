@@ -13,12 +13,12 @@ export default defineConfig({
         // (an iCal download, say) must reach it, not the app's index.html.
         navigateFallbackDenylist: [/^\/api(\/|$)/],
       },
-      includeAssets: ['favicon.svg', 'favicon.ico', 'apple-touch-icon.png', 'unclutterdesk-mark.svg', 'unclutterdesk-lockup.svg'],
+      includeAssets: ['favicon.svg', 'favicon.ico', 'apple-touch-icon.png'],
       manifest: {
-        name: 'Unclutter Desk',
-        short_name: 'Unclutter',
+        name: 'Therapysts',
+        short_name: 'Therapysts',
         description: 'Mental health practice management platform',
-        theme_color: '#1C4E3F',
+        theme_color: '#2A56A8',
         background_color: '#F8FAFC',
         display: 'standalone',
         icons: [

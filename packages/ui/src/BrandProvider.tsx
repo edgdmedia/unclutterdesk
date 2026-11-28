@@ -15,7 +15,7 @@ export interface TenantBrandConfig {
 }
 
 const DEFAULT_BRAND: TenantBrandConfig = {
-  name: 'Unclutter Desk',
+  name: 'Therapysts',
   slug: 'default',
   primaryColor: '#0F3A53',
   secondaryColor: '#E3B341',

@@ -25,7 +25,7 @@ const inputCls =
   'w-full h-[44px] px-3.5 rounded-[14px] bg-[var(--desk-surface)] border border-[var(--desk-border)] text-[13px] font-medium text-[var(--desk-text)] outline-none focus:border-[var(--desk-border-strong)]';
 const labelCls = 'text-[11.5px] font-bold text-[var(--desk-text-body)]';
 
-/** Ask Unclutter Desk for something (a feature, an assessment, a service) or send feedback, and follow it. */
+/** Ask Therapysts for something (a feature, an assessment, a service) or send feedback, and follow it. */
 export function RequestsPage() {
   const toast = useToast();
   const brand = useBrand();
@@ -131,7 +131,7 @@ export function RequestsPage() {
                   <p className="text-[11.5px] text-[var(--desk-text-subtle)] font-medium">
                     {REQUEST_KIND_LABEL[r.type]} · {new Date(r.createdAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
                   </p>
-                  {r.adminNote ? <p className="mt-1 text-xs text-[var(--desk-text-body)]"><strong>Unclutter Desk:</strong> {r.adminNote}</p> : null}
+                  {r.adminNote ? <p className="mt-1 text-xs text-[var(--desk-text-body)]"><strong>Therapysts:</strong> {r.adminNote}</p> : null}
                 </li>
               ))}
             </ul>

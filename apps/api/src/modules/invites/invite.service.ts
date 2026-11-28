@@ -147,7 +147,7 @@ export class InviteService {
       : '';
     const body = [
       message,
-      `You've been invited to Unclutter Desk, practice management for therapists. This invite gives your practice the ${plan} plan free for ${invite.durationDays} days.${deadline}`,
+      `You've been invited to Therapysts, practice management for therapists. This invite gives your practice the ${plan} plan free for ${invite.durationDays} days.${deadline}`,
       'Create your practice with the button below, or enter the code when you sign up.',
     ]
       .filter(Boolean)
@@ -158,7 +158,7 @@ export class InviteService {
       const result = await this.notifications.sendEmail({
         to: email,
         type: 'platform.invite',
-        title: "You're invited to Unclutter Desk",
+        title: "You're invited to Therapysts",
         message: body,
         code: invite.code,
         codeLabel: 'Invite code',
