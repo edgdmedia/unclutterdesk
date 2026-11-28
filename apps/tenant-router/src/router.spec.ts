@@ -190,7 +190,7 @@ describe('originRequest', () => {
  * subdomains, and app. and www. 301 to the bare domain, keeping the path.
  */
 describe('decide, with the app at the bare domain (therapysts.app)', () => {
-  const app = { apexHost: 'therapysts.app', appHost: 'therapysts.app', originHost: 'therapysts-app.pages.dev' };
+  const app = { apexHost: 'therapysts.app', appHost: 'therapysts.app', originHost: 'therapysts-app.therapysts.workers.dev' };
 
   it('sends app. and www. to the bare domain, keeping the path', () => {
     expect(decide('app.therapysts.app', app)).toEqual({ kind: 'redirect', to: 'https://therapysts.app/', keepPath: true });

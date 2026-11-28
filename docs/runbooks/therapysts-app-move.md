@@ -59,13 +59,15 @@ Do these in any order, days before the cutover.
 
 6. **[you] An API token for GitHub deploys** in the Therapysts account, with these permissions:
    - Account → Workers Scripts: Edit
-   - Account → Cloudflare Pages: Edit
    - Zone `therapysts.app` → Workers Routes: Edit
    - Account → Account Settings: Read
 
    **Decided:** the router and app deploys reuse the existing `THERAPYSTS_CLOUDFLARE_API_TOKEN` (the profiles deploy's token). If it lacks one of these permissions, the first release fails at that deploy step, before anything changes for visitors; add the permission to the token in the dashboard and re-run the workflow.
 
-### Pages project for the app
+### The app Worker
+
+**Changed 28 Nov 2026:** the app on therapysts.app is a Worker with static assets (`apps/app/wrangler.jsonc`), not Pages, as Cloudflare advises for new projects. It is `therapysts-app`, at `therapysts-app.therapysts.workers.dev` (the router's `ORIGIN_HOST`), with `therapysts.app` as its Workers custom domain. `deploy-app.yml` runs `wrangler deploy`, so the token needs no Pages permission. The Pages project below is no longer used. Item 7 is kept as a record.
+
 
 7. **[Claude] Create the Pages project.** **Done 17 Nov 2026:** `therapysts-app` exists in the Therapysts account, at exactly `therapysts-app.pages.dev`, which matches `ORIGIN_HOST`.
    - It is a classic Pages project, like `app-unclutterdesk`, because `deploy-app.yml` runs `wrangler pages deploy`. Newer Wrangler versions create Pages projects as Workers unless `--force` is passed, so it was created with `wrangler pages project create therapysts-app --production-branch main --force`, from a folder with no wrangler config.
@@ -201,7 +203,7 @@ Pick a quiet hour. Before step 3, rollback is just undoing settings (§3).
    - and the API and profiles as usual.
 
    The old router and old app keep serving the `unclutterdesk.com` addresses from the Unclutter account in the meantime, so nothing goes dark.
-4. **[you] Pages custom domain:** add `therapysts.app` to the `therapysts-app` project. Wait for it to be Active.
+4. **Done 28 Nov 2026:** `therapysts.app` is the app Worker's custom domain, set by `wrangler deploy` from `apps/app/wrangler.jsonc`.
 5. **[Claude] Check the router's route.** Within 5 minutes the API's custom-domain job creates `*.therapysts.app/*` in the new zone. I'll confirm it exists, then run the smoke tests in §2.8.
 6. **[you, with me watching] Switch the old addresses over to the redirects:**
    1. In the **Unclutter** account, delete the router's routes on `unclutterdesk.com`: `*.unclutterdesk.com/*` and each custom domain's route.
