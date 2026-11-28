@@ -123,7 +123,7 @@ const TENANT_ROOT_DOMAIN = new URL(config.appOrigin).hostname;
     includes a limited number of bookings each month, and a platform fee is
     deducted from client payments made online. Paid plans (Starter, Pro and
     Clinic) are sold as subscriptions. Current plans, limits, fees and prices are
-    on our <a href="/#pricing">pricing page</a>. There is no free trial of the
+    on our <a href={`${config.appOrigin}/pricing`}>pricing page</a>. There is no free trial of the
     paid plans.
   </p>
   <ul>

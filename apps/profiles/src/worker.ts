@@ -8,6 +8,9 @@
  *   page, with the practice's reviews and links that work from the practice's
  *   host. Workers Caching keys by entrypoint, path and query, so these pages
  *   are cached apart from the profile site's, one copy per practice.
+ * - DeskSite: reachable only through the app Worker's binding. It serves the
+ *   Desk's home and pricing on the app's domain. Its own entrypoint, so its
+ *   cached `/` is never the profile site's `/` (the cache key has no host).
  */
 import { handle } from '@astrojs/cloudflare/handler';
 import { WorkerEntrypoint } from 'cloudflare:workers';
@@ -19,6 +22,12 @@ export default {
     return handle(publicRequest(request), env, ctx);
   },
 } satisfies ExportedHandler<Env>;
+
+export class DeskSite extends WorkerEntrypoint<Env> {
+  fetch(request: Request): Promise<Response> {
+    return handle(publicRequest(request), this.env, this.ctx);
+  }
+}
 
 export class PracticeHost extends WorkerEntrypoint<Env> {
   async fetch(request: Request): Promise<Response> {

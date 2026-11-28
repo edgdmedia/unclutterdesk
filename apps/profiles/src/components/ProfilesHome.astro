@@ -1,0 +1,88 @@
+---
+import SitePage from './SitePage.astro';
+import { config as loadConfig } from '../lib/env';
+import { PAGE_CACHE } from '../lib/security';
+
+/*
+ * The profiles site's home: the free therapist profile, and (once there are
+ * enough of them) the place clients find a therapist. The practice software
+ * has its own home on the app's domain (DeskHome); each home points to the other.
+ */
+const config = loadConfig();
+const address = config.publicOrigin.replace(/^https:\/\//, '');
+const desk = config.appOrigin.replace(/^https:\/\//, '');
+Astro.response.headers.set('Cache-Control', PAGE_CACHE);
+
+const reasons = [
+  { t: 'One link for everything', d: 'Who you are, your training, how you work and what you charge, on a page you can send anywhere.' },
+  { t: 'Looks like you', d: 'A template for your kind of practice, with a layout and colour palette you choose.' },
+  { t: 'Clients trust it', d: 'Qualifications and registration shown clearly, so a new client knows who they are talking to.' },
+];
+---
+<SitePage
+  title="Therapysts · Professional profiles for therapists"
+  description="A free professional profile for therapists, counsellors and psychologists: one link that tells clients who you are and how to reach you."
+  canonical={`${config.publicOrigin}/`}
+  fullNav
+>
+  <main id="main" class="home">
+    <section class="home-hero" aria-labelledby="hero-title">
+      <div class="home-hero-copy">
+        <p class="eyebrow">For therapists, counsellors and psychologists</p>
+        <h1 id="hero-title">A professional profile clients can find and trust.</h1>
+        <p class="lead">One free link that tells clients who you are, your training and how you work. Send it instead of an Instagram page, and be ready when clients start searching here.</p>
+        <p class="cta-row">
+          <a class="btn btn-lg" href="/join">Create your free profile</a>
+          <a class="btn btn-lg secondary" href="#desk">Taking bookings?</a>
+        </p>
+        <p class="muted small">Free, forever · No card needed · Your address: {address}/yourname</p>
+      </div>
+      <div class="home-hero-art" aria-hidden="true">
+        <div class="mock-card">
+          <span class="mock-band"></span>
+          <span class="mock-photo"></span>
+          <span class="mock-name">Dr. Folake Adeyemi</span>
+          <span class="mock-kind">Clinical Psychologist · Lagos</span>
+          <span class="mock-line">Helping adults through anxiety, burnout and big life changes.</span>
+          <span class="mock-chips"><span>Anxiety</span><span>Burnout</span><span>Grief</span></span>
+          <span class="mock-btn">Book a session</span>
+        </div>
+      </div>
+    </section>
+
+    <section id="features" class="band" aria-labelledby="features-title">
+      <div class="band-inner">
+        <p class="eyebrow">Why a profile</p>
+        <h2 id="features-title">The first thing a new client sees, done properly.</h2>
+        <ol class="feature-grid">
+          {reasons.map((f, i) => (
+            <li>
+              <span class="step-n" aria-hidden="true">{i + 1}</span>
+              <h3>{f.t}</h3>
+              <p class="muted">{f.d}</p>
+            </li>
+          ))}
+        </ol>
+      </div>
+    </section>
+
+    <section id="profile" class="home-profile" aria-labelledby="profile-title">
+      <div class="home-profile-copy">
+        <p class="eyebrow">Ten minutes · free</p>
+        <h2 id="profile-title">Make yours today</h2>
+        <ol class="steps">
+          <li><span class="step-n" aria-hidden="true">1</span><span><b>Pick a template</b> for your kind of practice, with prompts for every section.</span></li>
+          <li><span class="step-n" aria-hidden="true">2</span><span><b>Make it look like you</b> with a layout and colour palette.</span></li>
+          <li><span class="step-n" aria-hidden="true">3</span><span><b>Share your link</b> on WhatsApp, Instagram, a QR code or your email signature.</span></li>
+        </ol>
+        <p class="cta-row"><a class="btn btn-lg" href="/join">Create your free profile</a></p>
+      </div>
+    </section>
+
+    <section id="desk" class="home-close" aria-labelledby="desk-title">
+      <h2 id="desk-title">Ready to take bookings?</h2>
+      <p class="lead">Desk adds online booking, payments in naira, video sessions and client notes to your profile. Clients book and pay from the same page. It's at {desk}.</p>
+      <p class="cta-row"><a class="btn btn-lg btn-sky" href={`${config.appOrigin}/`}>See Therapysts Desk</a></p>
+    </section>
+  </main>
+</SitePage>

@@ -21,12 +21,16 @@ const LABEL = /^[a-z0-9](?:[a-z0-9-]{0,48}[a-z0-9])?$/;
 // own route (Worker = None) and is listed here in case that route is missing.
 const NEVER = new Set(['api', 'mail', 'cdn', 'assets', 'static', 'status']);
 
+const LEGAL = /^\/(terms|privacy)\/?$/;
+
 const trim = (v: string) => v.replace(/\/+$/, '');
 
 export function redirectTarget(url: URL, config: RedirectConfig): string | null {
   const host = url.hostname.toLowerCase();
   const root = config.OLD_ROOT.toLowerCase();
-  if (host === root) return `${trim(config.MARKETING_URL)}${url.pathname}${url.search}`;
+  // The old marketing site was the Desk's; its legal pages now live with the profiles.
+  const home = LEGAL.test(url.pathname) ? config.PROFILES_URL : config.MARKETING_URL;
+  if (host === root) return `${trim(home)}${url.pathname}${url.search}`;
   if (!host.endsWith(`.${root}`)) return null;
   const label = host.slice(0, -(root.length + 1));
   if (!LABEL.test(label) || NEVER.has(label)) return null;
@@ -41,7 +45,7 @@ export function redirectTarget(url: URL, config: RedirectConfig): string | null 
     case 'profiles':
       return `${trim(config.PROFILES_URL)}${rest}`;
     case 'www':
-      return `${trim(config.MARKETING_URL)}${rest}`;
+      return `${trim(home)}${rest}`;
     default:
       return `https://${label}.${config.NEW_PRACTICE_ROOT.toLowerCase()}${rest}`;
   }
