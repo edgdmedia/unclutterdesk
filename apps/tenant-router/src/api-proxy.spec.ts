@@ -304,7 +304,7 @@ describe('the Worker on /api', () => {
 describe('app. and www. on therapysts.app (§4.1b)', () => {
   it('301 to the bare domain with the path and query kept', async () => {
     vi.stubGlobal('caches', { default: { match: vi.fn().mockResolvedValue(undefined), put: vi.fn().mockResolvedValue(undefined) } });
-    const env: Env = { ...ENV, APEX_HOST: 'therapysts.app', APP_HOST: 'therapysts.app', ORIGIN_HOST: 'therapysts-app.pages.dev', API_BASE: 'https://api.therapysts.app' };
+    const env: Env = { ...ENV, APEX_HOST: 'therapysts.app', APP_HOST: 'therapysts.app', ORIGIN_HOST: 'therapysts-app.therapysts.workers.dev', API_BASE: 'https://api.therapysts.app' };
     const res = await worker.fetch(new Request('https://app.therapysts.app/dashboard/clients?tab=active'), env);
     expect(res.status).toBe(301);
     expect(res.headers.get('location')).toBe('https://therapysts.app/dashboard/clients?tab=active');

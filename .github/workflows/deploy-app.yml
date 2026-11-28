@@ -24,7 +24,7 @@ jobs:
   deploy:
     # Checks ran on dev (ci.yml); main only deploys. Manual runs redeploy too.
     timeout-minutes: 30
-    name: Deploy App To Cloudflare Pages
+    name: Deploy App To Cloudflare
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -78,4 +78,5 @@ jobs:
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.THERAPYSTS_CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.THERAPYSTS_CLOUDFLARE_ACCOUNT_ID }}
-        run: pnpm dlx wrangler pages deploy dist --project-name=therapysts-app
+        # A Worker with static assets (apps/app/wrangler.jsonc), not Pages.
+        run: pnpm dlx wrangler deploy
