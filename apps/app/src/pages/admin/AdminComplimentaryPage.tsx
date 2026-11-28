@@ -2,7 +2,7 @@ import React from 'react';
 import { Link } from 'react-router-dom';
 import useSWR from 'swr';
 import { Loader2 } from 'lucide-react';
-import { Card, Eyebrow } from '@unclutterdesk/ui';
+import { Card, Eyebrow } from '@therapysts/ui';
 import { describePlan, type PlanView } from './ComplimentaryPlanForm';
 
 type Row = PlanView & { id: string; name: string; slug: string };

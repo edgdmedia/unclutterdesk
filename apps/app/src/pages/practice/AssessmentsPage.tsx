@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { AlertTriangle, ClipboardCheck, Lock, Send } from 'lucide-react';
-import { Card, Page, PageHeader, useBrand, useToast } from '@unclutterdesk/ui';
+import { Card, Page, PageHeader, useBrand, useToast } from '@therapysts/ui';
 import { api } from '../../utils/apiClient';
 import { useAuth } from '../../context/AuthContext';
 import { PLAN_LABEL, severityStyle, type LibraryEntry, type PracticeAssignment } from '../../utils/assessments';

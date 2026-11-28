@@ -1,5 +1,5 @@
 import { ClipboardList, CreditCard, FileText, Home, UserRound, type LucideIcon } from 'lucide-react';
-import type { SidebarSection } from '@unclutterdesk/ui';
+import type { SidebarSection } from '@therapysts/ui';
 
 interface ClientNavEntry {
   href: string;

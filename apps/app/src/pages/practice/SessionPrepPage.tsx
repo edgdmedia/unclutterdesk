@@ -3,7 +3,7 @@ import { JoinButton } from '../../components/video/JoinButton';
 import { RichTextView } from '../../components/richText/RichTextView';
 import { useNavigate, useParams } from 'react-router-dom';
 import { ArrowLeft, Video } from 'lucide-react';
-import { Eyebrow, Page, PageHeader } from '@unclutterdesk/ui';
+import { Eyebrow, Page, PageHeader } from '@therapysts/ui';
 import { api } from '../../utils/apiClient';
 import { formatWhen } from '../../utils/displayFormat';
 

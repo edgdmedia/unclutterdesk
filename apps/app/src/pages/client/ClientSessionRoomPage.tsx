@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
 import { ShieldCheck } from 'lucide-react';
-import { useBrand } from '@unclutterdesk/ui';
+import { useBrand } from '@therapysts/ui';
 import { PracticeLogo } from '../../components/public/PracticeLogo';
 import { VideoStage } from '../../components/video/VideoStage';
 import { api } from '../../utils/apiClient';

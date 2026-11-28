@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, afterEach } from 'vitest';
 import React from 'react';
 import { Route, Routes } from 'react-router-dom';
-import { joinState, joinWindow } from '@unclutterdesk/shared';
+import { joinState, joinWindow } from '@therapysts/shared';
 import { renderWithApp, screen, cleanup, act } from '../../../test/renderWithApp';
 import { JoinButton } from '../JoinButton';
 

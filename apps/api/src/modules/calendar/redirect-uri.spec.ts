@@ -8,7 +8,7 @@ describe('Google Calendar redirect URI', () => {
   it('is the API host in production', () => {
     vi.stubEnv('GOOGLE_REDIRECT_URI', '');
     vi.stubEnv('NODE_ENV', 'production');
-    expect(CalendarService.redirectUri()).toBe('https://api.unclutterdesk.com/v1/calendar/google/callback');
+    expect(CalendarService.redirectUri()).toBe('https://api.therapysts.app/v1/calendar/google/callback');
   });
 
   it('can be set in the environment without a code change', () => {

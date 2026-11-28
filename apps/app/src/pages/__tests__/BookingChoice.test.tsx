@@ -82,14 +82,14 @@ describe('how clients book', () => {
       fireEvent.click(await screen.findByRole('radio', { name: /Clients book through Therapysts/ }));
       const field = (await screen.findByLabelText(/Your booking address/)) as HTMLInputElement;
       expect(field.value).toBe('folake');
-      expect(screen.getByText(/folake\.unclutterdesk\.com\/book/)).toBeTruthy();
+      expect(screen.getByText(/folake\.therapysts\.app\/book/)).toBeTruthy();
     });
 
     it('sends the new address with the DESK switch', async () => {
       booking = info({ deskReady: true, deskMissing: [], deskSlug: 'folake' });
       auth = { profile: { onboardingIntent: 'PRACTICE' } };
       put.mockResolvedValue(
-        info({ mode: 'DESK', deskReady: true, deskMissing: [], deskSlug: 'folake-therapy', deskBookingUrl: 'https://folake-therapy.unclutterdesk.com/book' }),
+        info({ mode: 'DESK', deskReady: true, deskMissing: [], deskSlug: 'folake-therapy', deskBookingUrl: 'https://folake-therapy.therapysts.app/book' }),
       );
       renderWithApp(<BookingChoice />);
       fireEvent.click(await screen.findByRole('radio', { name: /Clients book through Therapysts/ }));

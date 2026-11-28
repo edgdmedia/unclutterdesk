@@ -5,7 +5,7 @@
  * runtime as in one Cloudflare account. Only the API (and the app's Pages
  * origin) is faked, by a local HTTP server.
  *
- * Run with `pnpm --filter @unclutterdesk/profiles test:workerd`, which builds
+ * Run with `pnpm --filter @therapysts/profiles test:workerd`, which builds
  * the profiles Worker first. Not part of `pnpm test`: it starts workerd.
  *
  * Not covered here: purging. Workers Caching's purge isn't available in the

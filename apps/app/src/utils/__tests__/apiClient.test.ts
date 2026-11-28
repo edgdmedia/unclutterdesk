@@ -16,7 +16,7 @@ describe('practiceBookingUrl', () => {
   const port = window.location.port;
   const subdomain = `http://calm-harbor.localhost${port ? `:${port}` : ''}`;
 
-  // Staff use app.unclutterdesk.com, whose host carries no practice slug.
+  // Staff use therapysts.app, whose host carries no practice slug.
   it('builds from the session slug, not the page host', () => {
     expect(practiceBookingUrl('calm-harbor')).toBe(subdomain);
   });
@@ -47,9 +47,9 @@ describe('the API base on a practice custom domain (spec §6.16)', () => {
   });
 
   it.each([
-    'dr-smith.unclutterdesk.com',
-    'app.unclutterdesk.com',
-    'unclutterdesk.com',
+    'dr-smith.therapysts.app',
+    'therapysts.app',
+    'therapysts.app',
     'localhost',
     'dr-smith.localhost',
     '127.0.0.1',
@@ -63,7 +63,7 @@ describe('the API base on a practice custom domain (spec §6.16)', () => {
 
   it('is case-insensitive about the host', async () => {
     const { isPracticeCustomDomain } = await load();
-    expect(isPracticeCustomDomain('DR-Smith.UnclutterDesk.com')).toBe(false);
+    expect(isPracticeCustomDomain('DR-Smith.Therapysts.App')).toBe(false);
     expect(isPracticeCustomDomain('Chente.COM')).toBe(true);
   });
 });

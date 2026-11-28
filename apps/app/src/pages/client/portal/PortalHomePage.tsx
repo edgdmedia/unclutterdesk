@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Calendar, ChevronRight, ClipboardList } from 'lucide-react';
-import { Card, Grid, MetricTile, Page, PageHeader, useBrand, useToast } from '@unclutterdesk/ui';
+import { Card, Grid, MetricTile, Page, PageHeader, useBrand, useToast } from '@therapysts/ui';
 import { api, API_BASE } from '../../../utils/apiClient';
 import { useAuth } from '../../../context/AuthContext';
 import { RescheduleDialog } from '../../../components/RescheduleDialog';

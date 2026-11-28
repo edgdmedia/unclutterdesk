@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { api } from '../../utils/apiClient';
-import { useToast } from '@unclutterdesk/ui';
+import { useToast } from '@therapysts/ui';
 
 type LapseSession = { id: string; startsAt: string; clientName: string; practitionerName: string };
 type LapseStatus =

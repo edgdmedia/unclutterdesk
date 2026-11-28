@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Check, Clock, FileText, MapPin } from 'lucide-react';
 import { AddToCalendar } from './AddToCalendar';
-import { Eyebrow } from '@unclutterdesk/ui';
+import { Eyebrow } from '@therapysts/ui';
 import { formatOf, whenLabel } from './bookingSlots';
 import { naira } from './BookingShell';
 

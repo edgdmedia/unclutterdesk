@@ -1,6 +1,6 @@
 import type { APIRoute } from 'astro';
-import { normaliseHex } from '@unclutterdesk/ui/src/brand/brandTokens';
-import { profileTheme } from '@unclutterdesk/ui/src/brand/profileThemes';
+import { normaliseHex } from '@therapysts/ui/src/brand/brandTokens';
+import { profileTheme } from '@therapysts/ui/src/brand/profileThemes';
 
 /*
  * A custom brand colour (design system; Starter and up) as a stylesheet:

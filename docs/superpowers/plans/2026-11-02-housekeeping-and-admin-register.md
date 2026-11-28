@@ -15,7 +15,7 @@
 - Start: `git checkout dev && git pull --ff-only && git checkout -b phase1/admin-register`. **Never push to `main`** (a push there deploys to production). Open the PR into `dev`.
 - **Run `git pull --ff-only` before you start, and report only what is in the code.** The last review found claimed work that wasn't there.
 - One commit per task, message prefix `Phase 1:`. Push after each.
-- Tests: `pnpm --filter @unclutterdesk/api test`; typecheck: `pnpm typecheck`. Both must pass.
+- Tests: `pnpm --filter @therapysts/api test`; typecheck: `pnpm typecheck`. Both must pass.
 - **Don't edit the spec** except the one checkbox in Task 1. Spec Claude owns the rest of it and is editing §6 in parallel.
 - Another branch (Spec Claude's profile work) is open at the same time. Stay out of `prisma/schema.prisma` and `apps/api/src/modules/tenant/reserved-slugs.ts`.
 

@@ -5,7 +5,7 @@ import { homePathFor } from './utils/homePath';
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { SWRConfig } from 'swr';
 import useSWR from 'swr';
-import { BrandProvider } from '@unclutterdesk/ui';
+import { BrandProvider } from '@therapysts/ui';
 import { PracticeShell } from './components/shell/PracticeShell';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { PracticeBrandProvider, usePracticeBrand } from './context/PracticeBrandContext';

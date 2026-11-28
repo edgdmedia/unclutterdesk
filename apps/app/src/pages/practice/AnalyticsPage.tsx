@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import { Download, TrendingUp } from 'lucide-react';
-import { Eyebrow, Card, SegmentedControl, Page, PageHeader, Grid, StatTile } from '@unclutterdesk/ui';
+import { Eyebrow, Card, SegmentedControl, Page, PageHeader, Grid, StatTile } from '@therapysts/ui';
 
 interface AnalyticsPageProps {
   clients?: Array<{ status?: string }>;

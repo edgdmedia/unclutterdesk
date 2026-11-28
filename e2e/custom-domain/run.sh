@@ -53,7 +53,7 @@ pnpm exec prisma migrate deploy --schema prisma/schema.prisma > "$LOGS/migrate.l
 node e2e/custom-domain/fixtures.mjs
 
 echo "── API (production mode)"
-NODE_OPTIONS="--max-old-space-size=4096" pnpm --filter @unclutterdesk/api exec nest build > "$LOGS/api-build.log" 2>&1
+NODE_OPTIONS="--max-old-space-size=4096" pnpm --filter @therapysts/api exec nest build > "$LOGS/api-build.log" 2>&1
 (
   cd apps/api
   NODE_ENV=production PORT="$API_PORT" \

@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { Check } from 'lucide-react';
-import { Page, PageHeader, SegmentedControl, useBrand } from '@unclutterdesk/ui';
+import { Page, PageHeader, SegmentedControl, useBrand } from '@therapysts/ui';
 import { RescheduleDialog } from '../../../components/RescheduleDialog';
 import { usePortalData } from './PortalDataContext';
 import { PortalSessionCard } from './PortalSessionCard';

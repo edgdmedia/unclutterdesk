@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Bell, CalendarCheck, ClipboardList, CreditCard, FileText, Video, type LucideIcon } from 'lucide-react';
-import { Button } from '@unclutterdesk/ui';
+import { Button } from '@therapysts/ui';
 import { useOptionalAuth } from '../../../context/AuthContext';
 import { useEntitlements } from '../../../utils/entitlements';
 import { useStartBookingSetup } from './useStartBookingSetup';

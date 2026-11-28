@@ -1,4 +1,4 @@
-import type { StatusTone } from '@unclutterdesk/ui';
+import type { StatusTone } from '@therapysts/ui';
 
 /**
  * What a session's status means right now, in plain words. The stored status

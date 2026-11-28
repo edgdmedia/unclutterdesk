@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Loader2, X } from 'lucide-react';
-import { useFocusTrap } from '@unclutterdesk/ui';
+import { useFocusTrap } from '@therapysts/ui';
 
 type Question = { id?: string; label?: string; type?: string; required?: boolean };
 export type TemplateQuestions = { title: string; description?: string | null; practiceName?: string; schemaJson?: Question[] };

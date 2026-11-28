@@ -30,11 +30,11 @@ describe('reserved slugs', () => {
   });
 
   test('no custom domain may sit under the platform apex', () => {
-    expect(isPlatformHostname('unclutterdesk.com')).toBe(true);
-    expect(isPlatformHostname('api.unclutterdesk.com')).toBe(true);
-    expect(isPlatformHostname('another-practice.unclutterdesk.com')).toBe(true);
+    expect(isPlatformHostname('therapysts.app')).toBe(true);
+    expect(isPlatformHostname('api.therapysts.app')).toBe(true);
+    expect(isPlatformHostname('another-practice.therapysts.app')).toBe(true);
     expect(isPlatformHostname('booking.drjane.com')).toBe(false);
-    expect(isPlatformHostname('notunclutterdesk.com')).toBe(false);
+    expect(isPlatformHostname('nottherapysts.app')).toBe(false);
   });
 });
 

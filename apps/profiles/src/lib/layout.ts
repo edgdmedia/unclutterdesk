@@ -1,4 +1,4 @@
-import { PROFILE_LAYOUTS, type ProfileLayoutKey } from '@unclutterdesk/ui/src/brand/profileThemes';
+import { PROFILE_LAYOUTS, type ProfileLayoutKey } from '@therapysts/ui/src/brand/profileThemes';
 
 /** A stored layout key, or the default when it's missing or unknown (§6.5). */
 export function layoutOf(key: string | null | undefined): ProfileLayoutKey {

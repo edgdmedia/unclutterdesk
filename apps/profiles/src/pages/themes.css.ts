@@ -1,6 +1,6 @@
 import type { APIRoute } from 'astro';
-import { PROFILE_THEMES } from '@unclutterdesk/ui/src/brand/profileThemes';
-import { therapystsCssVars } from '@unclutterdesk/ui/src/brand/therapysts';
+import { PROFILE_THEMES } from '@therapysts/ui/src/brand/profileThemes';
+import { therapystsCssVars } from '@therapysts/ui/src/brand/therapysts';
 
 // The five palettes (spec §6.5) as classes, from the same tokens as the editor's
 // preview. A file, not inline styles, because the CSP allows only 'self' styles.

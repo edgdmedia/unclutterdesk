@@ -23,9 +23,8 @@ export const PROFILE_SITE_PATHS = [
 ] as const;
 
 /**
- * Marketing paths (§6.2). The landing page and profiles will share one domain
- * (§4.1b), so they share one path space: a marketing page and a handle can't
- * both be `/pricing`. handles.spec.ts fails if a landing page isn't covered.
+ * Marketing paths (§6.2). Kept reserved although the Desk's marketing now
+ * lives on the app's domain: a handle here could still be confused for one.
  */
 export const MARKETING_PATHS = [
   'pricing', 'features', 'about', 'blog', 'help', 'support', 'contact', 'login', 'signin', 'signup',

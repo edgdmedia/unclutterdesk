@@ -70,7 +70,7 @@ describe('TenantService custom domain flow', () => {
  * it must be proven to reach us first.
  */
 describe('TenantService custom domain verification', () => {
-  const TARGET = 'customers.unclutterdesk.com';
+  const TARGET = 'customers.therapysts.app';
 
   function setup({ cname = [TARGET + '.'], https = true, target = TARGET as string | null } = {}) {
     if (target) vi.stubEnv('CUSTOM_DOMAIN_TARGET', target);
@@ -164,7 +164,7 @@ describe('TenantService.getPublicTenantExistence', () => {
     prisma.tenant.findFirst.mockResolvedValue({ isActive: true });
     const service = new TenantService(prisma, notificationsMock());
 
-    await expect(service.getPublicTenantExistence('Dr-Smith.unclutterdesk.com')).resolves.toEqual({ exists: true, active: true, homePage: 'PRACTICE' });
+    await expect(service.getPublicTenantExistence('Dr-Smith.therapysts.app')).resolves.toEqual({ exists: true, active: true, homePage: 'PRACTICE' });
     expect(prisma.tenant.findFirst.mock.calls[0][0].where).toEqual({
       OR: [{ slug: 'dr-smith' }, { customDomain: 'dr-smith', customDomainStatus: 'ACTIVE' }],
     });

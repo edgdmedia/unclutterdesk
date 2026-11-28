@@ -15,7 +15,7 @@
 - Start: `git checkout dev && git pull --ff-only && git checkout -b phase1/admin-profile-content`. **Never push to `main`.** Open the PR into `dev`.
 - **Report only what is in the code.** Run `git pull --ff-only` before you start.
 - One commit per task, prefix `Phase 1:`. Push after each.
-- Tests: `pnpm --filter @unclutterdesk/api test`, `pnpm --filter @unclutterdesk/app test`; `pnpm typecheck`. All must pass.
+- Tests: `pnpm --filter @therapysts/api test`, `pnpm --filter @therapysts/app test`; `pnpm typecheck`. All must pass.
 - **No schema changes** (no edits to `prisma/schema.prisma`, no migrations). Spec Claude has a migration open.
 - **Don't edit the spec**, and don't edit `apps/api/src/modules/admin/admin.controller.ts`. Spec Claude is adding a profile reports controller in parallel; keep your code in the new files named here.
 - Every write goes through `AuditService.record` (`apps/api/src/modules/audit/audit.service.ts`): actions `profile-template.create`, `profile-template.update`, `profile-template.activate`, `profile-template.deactivate`, `taxonomy.create`, `taxonomy.rename`, `taxonomy.activate`, `taxonomy.deactivate`, `taxonomy.reorder`, `profile-guidance.update`. `meta` holds the before and after values that changed.

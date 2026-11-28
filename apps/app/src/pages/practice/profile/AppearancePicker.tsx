@@ -12,7 +12,7 @@ import {
   type BrandAccent,
   type ProfileLayoutKey,
   type ProfileTheme,
-} from '@unclutterdesk/ui';
+} from '@therapysts/ui';
 import { profilePath } from '../../../config/domains';
 
 /**

@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate, Navigate, Link } from 'react-router-dom';
 import { Copy, Check, Link2, Calendar, FileText, Video, Globe, Palette, Sparkles, TrendingUp, CheckCircle2, ArrowRight } from 'lucide-react';
-import { Button, Page, PageHeader, Grid, MetricTile } from '@unclutterdesk/ui';
+import { Button, Page, PageHeader, Grid, MetricTile } from '@therapysts/ui';
 import { useAuth } from '../../context/AuthContext';
 import { PendingTransfersCard } from '../../components/payments/PendingTransfersCard';
 import { ImageField } from '../../components/settings/ImageField';
@@ -145,7 +145,7 @@ function PracticeToday(props: DashboardPageProps) {
         const nothingBookable =
           dashSummaryRes.value.hasService === false || dashSummaryRes.value.hasAvailability === false;
         if (dashSummaryRes.value.onboardingCompleted === false && nothingBookable) {
-          const skipped = sessionStorage.getItem('unclutter_skip_onboarding') === 'true';
+          const skipped = sessionStorage.getItem('therapysts_skip_onboarding') === 'true';
           if (!skipped) {
             navigate('/onboarding');
           }

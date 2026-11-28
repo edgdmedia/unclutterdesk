@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { api } from '../../utils/apiClient';
-import { useToast } from '@unclutterdesk/ui';
+import { useToast } from '@therapysts/ui';
 import { TIER_NAMES, type Tier } from '../../utils/entitlements';
 import { formatDate } from './adminTypes';
 

@@ -2,9 +2,9 @@ import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import { render, screen, cleanup } from '@testing-library/react';
-import { AppShell } from '@unclutterdesk/ui';
+import { AppShell } from '@therapysts/ui';
 import { AuthProvider } from '../../context/AuthContext';
-import { BrandProvider } from '@unclutterdesk/ui';
+import { BrandProvider } from '@therapysts/ui';
 
 // Mock the API client
 const get = vi.fn();
@@ -61,7 +61,7 @@ const sidebar = {
 };
 const bottomNav = { items: [{ key: '/a', label: 'Today', icon: <svg />, href: '/a' }] };
 
-// matchMedia helper for jsdom (copied from @unclutterdesk/ui/test/matchMedia)
+// matchMedia helper for jsdom (copied from @therapysts/ui/test/matchMedia)
 let _viewportWidth = 1280;
 const _listeners = new Set<() => void>();
 function installMatchMedia(initial = 1280) {

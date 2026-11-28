@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { Outlet, useLocation } from 'react-router-dom';
 import { BadgePercent, BookOpen, Building2, ClipboardList, FileText, Flag, Inbox, LayoutDashboard, ShieldCheck, Tags, Ticket, Video } from 'lucide-react';
-import { AppShell, UnclutterMark, type SidebarSection } from '@unclutterdesk/ui';
+import { AppShell, UnclutterMark, type SidebarSection } from '@therapysts/ui';
 import { RouterLink } from '../../components/shell/RouterLink';
 import { AdminAccountMenu } from '../../components/shell/AdminAccountMenu';
 import { activeNavKey } from '../../components/shell/practiceNav';

@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { ArrowLeft, GripVertical, Trash2, Plus } from 'lucide-react';
-import { Eyebrow, Page, PageHeader, useToast } from '@unclutterdesk/ui';
+import { Eyebrow, Page, PageHeader, useToast } from '@therapysts/ui';
 import { api } from '../../../utils/apiClient';
 import { SaveAsTemplateDialog } from './SaveAsTemplateDialog';
 

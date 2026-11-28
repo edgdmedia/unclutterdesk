@@ -1,7 +1,7 @@
 import * as React from 'react';
 
 /**
- * The Unclutter Desk mark and lockup.
+ * The Therapysts mark and lockup.
  *
  * The "unclutter" wordmark is deliberately shared with the wider Unclutter
  * family; the DESK badge is what makes it this product. The badge is mint

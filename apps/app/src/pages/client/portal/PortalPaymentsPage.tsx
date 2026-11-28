@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { Page, PageHeader, useBrand } from '@unclutterdesk/ui';
+import { Page, PageHeader, useBrand } from '@therapysts/ui';
 import { api } from '../../../utils/apiClient';
 import { BookSessionButton } from './BookSessionButton';
 import { formatDay, formatMoney, paymentState } from './portalFormat';

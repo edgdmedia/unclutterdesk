@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useReducer, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { Button, tenantBrandStyle } from '@unclutterdesk/ui';
+import { Button, tenantBrandStyle } from '@therapysts/ui';
 import { API_BASE, api, getSubdomainTenantSlug } from '../../../utils/apiClient';
 import { useAuth } from '../../../context/AuthContext';
 import { STEP_PARAM, canContinue, initialState, stepFromUrl, wizardReducer, type Step } from './bookingWizard';

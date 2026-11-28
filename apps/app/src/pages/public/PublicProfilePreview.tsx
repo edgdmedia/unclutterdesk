@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { PracticeLogo } from '../../components/public/PracticeLogo';
 import { MapPin, Star } from 'lucide-react';
-import { useBrand } from '@unclutterdesk/ui';
+import { useBrand } from '@therapysts/ui';
 
 type PublicTenantInfo = {
   id: string;

@@ -7,7 +7,7 @@ import { join, relative, resolve } from 'path';
  * your free trial" button left behind promises something the product doesn't
  * do, so trial phrases fail the build. Saying there is no trial is fine.
  */
-const ROOTS = [resolve(__dirname, '..'), resolve(__dirname, '../../../landing/src')];
+const ROOTS = [resolve(__dirname, '..'), resolve(__dirname, '../../../profiles/src')];
 const PHRASES = [
   /(?<!\bno )free[- ]trial/i,
   /start (your )?(free )?trial/i,

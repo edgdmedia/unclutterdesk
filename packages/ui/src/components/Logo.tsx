@@ -4,7 +4,7 @@ import React from 'react';
 const MARK = 'assets/unclutterdesk-mark.svg';
 
 /**
- * The Unclutter Desk mark and lockup. `assetBase` is the relative path from
+ * The Therapysts mark and lockup. `assetBase` is the relative path from
  * the consuming page to the design system root — the SVGs live in assets/.
  *
  * The "unclutter" wordmark is deliberately shared with the wider Unclutter
@@ -16,7 +16,7 @@ export function Logo({ variant = 'lockup', size = 30, assetBase = '', onDark = t
 
   if (variant === 'mark') {
     return (
-      <img src={src} alt="Unclutter Desk" width={size} height={size}
+      <img src={src} alt="Therapysts" width={size} height={size}
            style={{ borderRadius: Math.round(size * 0.3), display: 'block', ...style }} {...rest} />
     );
   }
@@ -25,7 +25,7 @@ export function Logo({ variant = 'lockup', size = 30, assetBase = '', onDark = t
     return (
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, ...style }} {...rest}>
         <img src={src} alt="" width={16} height={16} style={{ borderRadius: 5, opacity: 0.6, display: 'block' }} />
-        <span style={{ fontSize: 10.5, color: 'var(--desk-text-subtle)' }}>Booking powered by Unclutter Desk</span>
+        <span style={{ fontSize: 10.5, color: 'var(--desk-text-subtle)' }}>Booking powered by Therapysts</span>
       </div>
     );
   }

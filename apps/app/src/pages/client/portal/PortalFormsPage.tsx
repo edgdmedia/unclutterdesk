@@ -1,7 +1,7 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { Check, ChevronRight } from 'lucide-react';
-import { Card, Eyebrow, Page, PageHeader, useBrand } from '@unclutterdesk/ui';
+import { Card, Eyebrow, Page, PageHeader, useBrand } from '@therapysts/ui';
 import { usePortalData } from './PortalDataContext';
 import { formatDay } from './portalFormat';
 

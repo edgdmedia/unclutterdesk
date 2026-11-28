@@ -17,7 +17,7 @@
 - Tests use the real code paths; only the network is faked (Vitest `vi.stubGlobal('fetch', …)` as the existing specs already do). No skipped tests, no `it.only`.
 - Match the surrounding style: explanatory doc comments on exported functions, the short why-comments the files already use, and no new dependencies.
 - The router's `x-ud-*` header names and `/api` prefix don't change.
-- Test commands: `pnpm --filter @unclutterdesk/tenant-router test`, `pnpm --filter @unclutterdesk/api test`, `pnpm --filter @unclutterdesk/app test`; typecheck with `pnpm typecheck`.
+- Test commands: `pnpm --filter @therapysts/tenant-router test`, `pnpm --filter @therapysts/api test`, `pnpm --filter @therapysts/app test`; typecheck with `pnpm typecheck`.
 - One commit per task, with a message starting `PR #55 review:`. Push after each task.
 
 ## Review Focus
@@ -58,7 +58,7 @@ it('keeps a port given in originHost (the local e2e setup)', () => {
 });
 ```
 
-- [ ] **Step 2: Run them:** `pnpm --filter @unclutterdesk/tenant-router test -- router.spec`. Expected: the first test FAILS (the port `8443` is kept).
+- [ ] **Step 2: Run them:** `pnpm --filter @therapysts/tenant-router test -- router.spec`. Expected: the first test FAILS (the port `8443` is kept).
 - [ ] **Step 3: Implement.** After `url.host = config.originHost`, clear the port when `originHost` has no `:` (`url.port = ''`). Update the comment above it to say why.
 - [ ] **Step 4: Run them again.** Expected: PASS, along with the rest of `router.spec`.
 - [ ] **Step 5: Commit:** `PR #55 review: origin request drops the visitor's port (M1)`
@@ -171,7 +171,7 @@ it('classifies every public route: proxied, or deliberately never proxied', () =
 });
 ```
 
-- [ ] **Step 2: Run it:** `pnpm --filter @unclutterdesk/api test -- client-api-routes`. If it fails, the output lists the unclassified routes.
+- [ ] **Step 2: Run it:** `pnpm --filter @therapysts/api test -- client-api-routes`. If it fails, the output lists the unclassified routes.
 - [ ] **Step 3: Classify each listed route.**
   - If `apps/app/src` calls it from booking, portal, pay, intake, assessment or video pages, add it to `client-api-routes.json`.
   - Otherwise add it to `NEVER_PROXIED` with a trailing `//` reason (for example `// staff only`, `// health check`).

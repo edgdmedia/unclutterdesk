@@ -1,7 +1,7 @@
 import { useMemo, useState, type ReactNode } from 'react';
 import { useEntitlements } from '../../utils/entitlements';
 import { useLocation } from 'react-router-dom';
-import { AppShell } from '@unclutterdesk/ui';
+import { AppShell } from '@therapysts/ui';
 import { NotificationBell } from './NotificationBell';
 import { useAuth } from '../../context/AuthContext';
 import { activeNavKey, bottomNavFor, practiceSections } from './practiceNav';

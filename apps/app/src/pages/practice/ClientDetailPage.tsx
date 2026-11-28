@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Link, useParams, useSearchParams } from 'react-router-dom';
 import { Download, ChevronRight, FileText, Printer, Lock, Plus, X, Loader2, CalendarPlus } from 'lucide-react';
-import { Eyebrow, Card, StatusBadge, Button, useToast, Page, PageHeader, Grid, StatTile, ResponsiveTable, type Column } from '@unclutterdesk/ui';
-import { useBrand } from '@unclutterdesk/ui';
+import { Eyebrow, Card, StatusBadge, Button, useToast, Page, PageHeader, Grid, StatTile, ResponsiveTable, type Column } from '@therapysts/ui';
+import { useBrand } from '@therapysts/ui';
 import { RichTextEditor } from '../../components/richText/RichTextEditor';
 import { RichTextView } from '../../components/richText/RichTextView';
 import { hasRichText, richPreview } from '../../components/richText/richDoc';

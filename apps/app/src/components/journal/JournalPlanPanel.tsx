@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { BookOpen, Loader2, Plus, Trash2, Wand2 } from 'lucide-react';
-import { Card, Eyebrow, useToast } from '@unclutterdesk/ui';
+import { Card, Eyebrow, useToast } from '@therapysts/ui';
 import { api } from '../../utils/apiClient';
 import {
   MAX_INTRO_CHARS,

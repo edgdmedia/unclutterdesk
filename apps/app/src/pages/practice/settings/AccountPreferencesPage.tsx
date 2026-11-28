@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { AlertCircle, Check, Info, Loader2, Monitor, Save } from 'lucide-react';
-import { Eyebrow, Page, PageHeader, useToast } from '@unclutterdesk/ui';
+import { Eyebrow, Page, PageHeader, useToast } from '@therapysts/ui';
 import { api } from '../../../utils/apiClient';
 import { useAuth } from '../../../context/AuthContext';
 import { mutate } from 'swr';

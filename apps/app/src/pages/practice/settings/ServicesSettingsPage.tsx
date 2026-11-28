@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Plus, Pencil, Power, PowerOff, Clock } from 'lucide-react';
-import { Card, Eyebrow, Page, PageHeader, useBrand, useToast } from '@unclutterdesk/ui';
+import { Card, Eyebrow, Page, PageHeader, useBrand, useToast } from '@therapysts/ui';
 import { api } from '../../../utils/apiClient';
 
 type ServiceFormat = { format: 'ONLINE' | 'IN_PERSON'; priceKobo: string; isActive: boolean };

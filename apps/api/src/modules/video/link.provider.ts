@@ -7,6 +7,6 @@ import { JoinCredentials, Participant, RoomWindow, VideoProvider } from './video
 export class LinkProvider implements VideoProvider {
   readonly key = 'LINK' as const;
   available() { return true; }
-  async createRoom(_bookingId: bigint, _window: RoomWindow) { return `unclutterdesk-${randomBytes(16).toString('hex')}`; }
+  async createRoom(_bookingId: bigint, _window: RoomWindow) { return `therapysts-${randomBytes(16).toString('hex')}`; }
   async credentials(roomName: string, _who: Participant, _window: RoomWindow): Promise<JoinCredentials> { return { provider: 'LINK', url: `https://meet.jit.si/${roomName}` }; }
 }

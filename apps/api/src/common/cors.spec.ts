@@ -23,13 +23,13 @@ function allows(origin: string | undefined, options?: Parameters<typeof handler>
 
 describe('CORS origin handler', () => {
   it('allows the marketing site and the app subdomain', async () => {
-    await expect(allows('https://unclutterdesk.com')).resolves.toBe(true);
-    await expect(allows('https://www.unclutterdesk.com')).resolves.toBe(true);
-    await expect(allows('https://app.unclutterdesk.com')).resolves.toBe(true);
+    await expect(allows('https://therapysts.app')).resolves.toBe(true);
+    await expect(allows('https://www.therapysts.app')).resolves.toBe(true);
+    await expect(allows('https://therapysts.app')).resolves.toBe(true);
   });
 
   it('allows tenant booking subdomains', async () => {
-    await expect(allows('https://dr-smith.unclutterdesk.com')).resolves.toBe(true);
+    await expect(allows('https://dr-smith.therapysts.app')).resolves.toBe(true);
   });
 
   it('allows explicitly configured origins', async () => {
@@ -57,11 +57,11 @@ describe('CORS origin handler', () => {
       'https://anything.some-project.pages.dev',
       'https://localhost.attacker.com',
       'http://localhost.evil.example.com',
-      'https://unclutterdesk.com.attacker.com',
-      'https://attacker.com/x.unclutterdesk.com',
-      'https://evil-unclutterdesk.com',
-      'https://a.b.unclutterdesk.com.evil.io',
-      'http://app.unclutterdesk.com',
+      'https://therapysts.app.attacker.com',
+      'https://attacker.com/x.therapysts.app',
+      'https://evil-therapysts.app',
+      'https://a.b.therapysts.app.evil.io',
+      'http://therapysts.app',
     ];
 
     for (const origin of attacks) {

@@ -151,7 +151,7 @@ DNS level. Detail in `docs/CLOUDFLARE_SETUP.md` §1.
       existing token may only carry Pages permissions.
 
 - [x] **[you] Deploy the Worker** — automatic on merge, or
-      `pnpm --filter @unclutterdesk/tenant-router deploy`.
+      `pnpm --filter @therapysts/tenant-router deploy`.
 
 - [x] **[you] Add the wildcard DNS record:** `CNAME` `*` →
       `app-unclutterdesk.pages.dev`, **Proxied**. Worker routes only fire on a

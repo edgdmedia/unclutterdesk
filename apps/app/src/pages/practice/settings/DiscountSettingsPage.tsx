@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Pencil, Tag, Plus, Trash2, X, Power, PowerOff } from 'lucide-react';
-import { Eyebrow, useBrand, useToast, Page, PageHeader, Grid, ResponsiveTable, byDate, byNumber, byText, type Column } from '@unclutterdesk/ui';
+import { Eyebrow, useBrand, useToast, Page, PageHeader, Grid, ResponsiveTable, byDate, byNumber, byText, type Column } from '@therapysts/ui';
 import { api } from '../../../utils/apiClient';
 
 interface DiscountCode {

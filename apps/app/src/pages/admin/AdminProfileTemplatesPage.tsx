@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import useSWR from 'swr';
-import { Button, Card, Eyebrow, Input, Textarea, Toggle, useToast } from '@unclutterdesk/ui';
+import { Button, Card, Eyebrow, Input, Textarea, Toggle, useToast } from '@therapysts/ui';
 import { adminProfileContentApi } from './adminProfileContentApi';
 import { ProfileContentTabs } from './ProfileContentTabs';
 import { formatDate } from './adminTypes';

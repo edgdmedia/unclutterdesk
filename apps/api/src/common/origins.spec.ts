@@ -21,26 +21,26 @@ afterEach(() => {
 
 describe('what counts as one of our origins', () => {
   it('accepts the marketing site', () => {
-    expect(isPlatformOrigin('https://unclutterdesk.com', true)).toBe(true);
-    expect(isPlatformOrigin('https://www.unclutterdesk.com', true)).toBe(true);
+    expect(isPlatformOrigin('https://therapysts.app', true)).toBe(true);
+    expect(isPlatformOrigin('https://www.therapysts.app', true)).toBe(true);
   });
 
   it('accepts a practice subdomain', () => {
-    expect(isPlatformOrigin('https://drjane.unclutterdesk.com', true)).toBe(true);
+    expect(isPlatformOrigin('https://drjane.therapysts.app', true)).toBe(true);
   });
 
   // The suffix and prefix tricks, which a naive endsWith or includes allows.
   it('rejects a host that merely contains our domain', () => {
-    expect(isPlatformOrigin('https://unclutterdesk.com.evil.com', true)).toBe(false);
-    expect(isPlatformOrigin('https://notunclutterdesk.com', true)).toBe(false);
+    expect(isPlatformOrigin('https://therapysts.app.evil.com', true)).toBe(false);
+    expect(isPlatformOrigin('https://nottherapysts.app', true)).toBe(false);
   });
 
   it('rejects a nested subdomain, which is not a practice site', () => {
-    expect(isPlatformOrigin('https://a.b.unclutterdesk.com', true)).toBe(false);
+    expect(isPlatformOrigin('https://a.b.therapysts.app', true)).toBe(false);
   });
 
   it('rejects plain http in production', () => {
-    expect(isPlatformOrigin('http://drjane.unclutterdesk.com', true)).toBe(false);
+    expect(isPlatformOrigin('http://drjane.therapysts.app', true)).toBe(false);
   });
 
   it('allows localhost only outside production', () => {
@@ -51,7 +51,7 @@ describe('what counts as one of our origins', () => {
 
 describe('a redirect target', () => {
   it('accepts a page on a practice subdomain', () => {
-    expect(isAllowedRedirectTarget('https://drjane.unclutterdesk.com/booking/confirmed', PROD)).toBe(
+    expect(isAllowedRedirectTarget('https://drjane.therapysts.app/booking/confirmed', PROD)).toBe(
       true,
     );
   });
@@ -89,11 +89,11 @@ describe('a redirect target', () => {
   });
 
   /*
-   * "https://drjane.unclutterdesk.com@evil.com" is a request to evil.com with a
+   * "https://drjane.therapysts.app@evil.com" is a request to evil.com with a
    * username. Someone skimming the address bar reads the part before the @.
    */
   it('rejects credentials used to disguise the real host', () => {
-    expect(isAllowedRedirectTarget('https://drjane.unclutterdesk.com@evil.com/', PROD)).toBe(false);
+    expect(isAllowedRedirectTarget('https://drjane.therapysts.app@evil.com/', PROD)).toBe(false);
   });
 
   it('rejects something that is not an absolute URL', () => {
@@ -120,12 +120,12 @@ describe('the address a practice payer returns to', () => {
         { slug: 'drjane', customDomain: 'booking.drjane.ng', customDomainStatus: 'PENDING' },
         true,
       ),
-    ).toBe('https://drjane.unclutterdesk.com');
+    ).toBe('https://drjane.therapysts.app');
   });
 
   it('is the subdomain when there is no custom domain', () => {
     expect(tenantWebOrigin({ slug: 'drjane', customDomain: null }, true)).toBe(
-      'https://drjane.unclutterdesk.com',
+      'https://drjane.therapysts.app',
     );
   });
 
@@ -137,8 +137,8 @@ describe('the address a practice payer returns to', () => {
 
 describe('the workspace origin', () => {
   it('follows APP_URL when it is set', () => {
-    process.env.APP_URL = 'https://app.unclutterdesk.com/';
-    expect(appOrigin(true)).toBe('https://app.unclutterdesk.com');
+    process.env.APP_URL = 'https://therapysts.app/';
+    expect(appOrigin(true)).toBe('https://therapysts.app');
   });
 
   it('has a production default this platform would accept', () => {

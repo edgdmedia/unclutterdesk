@@ -1,7 +1,7 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { LogOut } from 'lucide-react';
-import { Card, Eyebrow, Page, PageHeader, useBrand } from '@unclutterdesk/ui';
+import { Card, Eyebrow, Page, PageHeader, useBrand } from '@therapysts/ui';
 import { useAuth } from '../../../context/AuthContext';
 
 /** POR-03: who you are signed in as, platform preferences, and sign out. */

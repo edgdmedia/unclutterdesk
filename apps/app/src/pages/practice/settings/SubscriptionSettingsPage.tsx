@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Check, TrendingUp } from 'lucide-react';
-import { Eyebrow, Page, PageHeader, useToast } from '@unclutterdesk/ui';
-import { useBrand } from '@unclutterdesk/ui';
+import { Eyebrow, Page, PageHeader, useToast } from '@therapysts/ui';
+import { useBrand } from '@therapysts/ui';
 import { api } from '../../../utils/apiClient';
 import { formatFee, TIER_NAMES, useEntitlements, type Tier } from '../../../utils/entitlements';
 

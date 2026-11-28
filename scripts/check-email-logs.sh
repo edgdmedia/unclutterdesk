@@ -5,8 +5,8 @@
 #
 # Run from your machine:  ssh <user>@<server> 'bash -s' < scripts/check-email-logs.sh
 set -u
-APP=/home/unclutterdesk/app
-PROC=unclutterdesk-api
+APP=/home/therapysts/app
+PROC=therapysts-api
 
 echo "== API process =="
 pm2 describe "$PROC" 2>/dev/null | grep -E "status|uptime|restarts|out log path|error log path" || echo "pm2 process $PROC not found"
