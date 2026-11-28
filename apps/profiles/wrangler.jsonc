@@ -30,6 +30,8 @@
     "PROFILE_PUBLIC_URL": "https://therapysts.com",
     "API_URL": "https://api.therapysts.app",
     "APP_URL": "https://therapysts.app",
-    "MEDIA_URL": "https://media.therapysts.com"
+    "MEDIA_URL": "https://media.therapysts.com",
+    // support@, privacy@ and security@ on the legal pages and Contact.
+    "CONTACT_EMAIL_DOMAIN": "therapysts.com"
   }
 }
