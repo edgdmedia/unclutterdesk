@@ -11,7 +11,9 @@ export default defineConfig({
         // On a practice's custom domain the client API is served at /api by
         // the tenant router (spec §6.16). A link that opens an /api address
         // (an iCal download, say) must reach it, not the app's index.html.
-        navigateFallbackDenylist: [/^\/api(\/|$)/],
+        // On the app's own host, / and /pricing are the Desk home (src/edge/worker.ts),
+        // not the app shell, so they always come from the network.
+        navigateFallbackDenylist: [/^\/api(\/|$)/, /^\/(pricing\/?)?$/],
       },
       includeAssets: ['favicon.svg', 'favicon.ico', 'apple-touch-icon.png'],
       manifest: {

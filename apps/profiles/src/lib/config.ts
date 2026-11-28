@@ -37,3 +37,12 @@ export function profilesConfig(env: ProfilesEnv): ProfilesConfig {
     contactEmail: `support@${(env.CONTACT_EMAIL_DOMAIN || 'unclutterdesk.com').trim()}`,
   };
 }
+
+/**
+ * True when the page is being served for the app's own host: the app Worker
+ * hands its `/` and `/pricing` to the DeskSite entrypoint, so the Desk's
+ * marketing lives on the app's domain and this site keeps to profiles.
+ */
+export function isDeskHost(url: URL, config: ProfilesConfig): boolean {
+  return url.hostname === new URL(config.appOrigin).hostname;
+}
