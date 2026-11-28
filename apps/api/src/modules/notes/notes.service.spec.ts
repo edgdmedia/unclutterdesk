@@ -193,7 +193,7 @@ describe('NotesService tenant isolation', () => {
   });
 });
 
-describe('clinical notes are for the clients a clinician treats', () => {
+describe('therapists see only their own notes; owners and admins see all', () => {
   let prisma: any;
   let service: NotesService;
   beforeEach(() => {
@@ -208,9 +208,14 @@ describe('clinical notes are for the clients a clinician treats', () => {
     expect(prisma.clinicalNote.findMany).not.toHaveBeenCalled();
   });
 
-  it('shows a therapist the notes of a client they treat', async () => {
+  it('shows a therapist only the notes they wrote, even for a client they treat', async () => {
     await service.getClientNotes(TENANT, THERAPIST, 9n);
-    expect(prisma.clinicalNote.findMany).toHaveBeenCalled();
+    expect(prisma.clinicalNote.findMany.mock.calls[0][0].where).toEqual({ tenantId: TENANT, clientProfileId: 9n, authorProfileId: 3n });
+  });
+
+  it('shows an owner or admin every note for the client', async () => {
+    await service.getClientNotes(TENANT, ADMIN, 9n);
+    expect(prisma.clinicalNote.findMany.mock.calls[0][0].where).toEqual({ tenantId: TENANT, clientProfileId: 9n });
   });
 
   it("refuses a therapist writing a note for a client they don't treat", async () => {

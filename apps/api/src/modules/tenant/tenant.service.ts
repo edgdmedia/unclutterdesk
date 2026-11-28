@@ -8,7 +8,7 @@ import { CloudflareSaasService } from './cloudflare-saas.service';
 import { NotificationService } from '../notifications/notification.service';
 import { DefaultFormsService } from '../intake/default-forms.service';
 import { decryptNoteFields } from '../../common/field-encryption';
-import { assertTreatsClient, ClinicalViewer } from '../../common/clinical-access';
+import { assertTreatsClient, ClinicalViewer, readableNotes } from '../../common/clinical-access';
 import { isPlatformHostname, isReservedSlug, normalizeSlug } from './reserved-slugs';
 import { apiOrigin, appOrigin, customDomainTarget, TENANT_ROOT_DOMAIN, tenantRootOf, tenantWebOrigin } from '../../common/origins';
 import { EmergencyContactInput, emergencyContactData, emergencyContactOf, emergencyContactText } from './emergency-contact';
@@ -1239,7 +1239,7 @@ export class TenantService {
     await assertTreatsClient(this.prisma, tenantId, viewer, clientProfileId);
 
     const notes = await this.prisma.clinicalNote.findMany({
-      where: { tenantId, clientProfileId },
+      where: { tenantId, clientProfileId, ...readableNotes(viewer) },
       orderBy: { createdAt: 'desc' },
     });
 

@@ -166,10 +166,9 @@ export class SessionDirectoryService {
             ...(actor.clinical ? soapText(note) : {}),
           }
         : null,
-      internalSummary: b.internalSummary,
       clientRecap: b.clientRecap,
-      // Only for clinical staff; never sent to the desk at all.
-      ...(actor.clinical ? { supervisionNotes: decryptField(b.supervisionNotes) } : {}),
+      // Only for clinical staff; never sent to the desk at all (schema: "Seen by clinical roles only").
+      ...(actor.clinical ? { internalSummary: b.internalSummary, supervisionNotes: decryptField(b.supervisionNotes) } : {}),
       clientRecapSentAt: b.clientRecapSentAt ? b.clientRecapSentAt.toISOString() : null,
       reviewRequestedAt: b.reviewRequestedAt ? b.reviewRequestedAt.toISOString() : null,
       can: {

@@ -2,7 +2,7 @@ import { Injectable, BadRequestException, ForbiddenException, NotFoundException 
 import { PrismaService } from '../../common/prisma/prisma.service';
 import { decryptNoteFields, encryptNoteFields } from '../../common/field-encryption';
 import { normaliseRichInput } from '../../common/rich-text';
-import { assertTreatsClient, ClinicalViewer } from '../../common/clinical-access';
+import { assertTreatsClient, ClinicalViewer, readableNotes } from '../../common/clinical-access';
 
 /** The four SOAP sections as they are stored: formatted documents cleaned to the allowed shape (common/rich-text.ts). */
 function soapSections(dto: { subjective?: string; objective?: string; assessment?: string; plan?: string }) {
@@ -101,7 +101,7 @@ export class NotesService {
   async getClientNotes(tenantId: bigint, viewer: ClinicalViewer, clientProfileId: bigint) {
     await assertTreatsClient(this.prisma, tenantId, viewer, clientProfileId);
     const notes = await this.prisma.clinicalNote.findMany({
-      where: { tenantId, clientProfileId },
+      where: { tenantId, clientProfileId, ...readableNotes(viewer) },
       orderBy: { createdAt: 'desc' },
     });
 

@@ -4,8 +4,8 @@ import { effectivePermissions } from './permissions';
 
 /**
  * Who is reading a clinical record. `viewAll` (owners, admins) sees every
- * client's; any other clinician sees only the clients they treat, matching
- * session prep, which shows a treating therapist the client's last note.
+ * note in the practice. Any other clinician sees only the clients they treat,
+ * and of those only the notes they wrote themselves.
  */
 export type ClinicalViewer = { profileId: bigint; viewAll: boolean };
 
@@ -27,4 +27,9 @@ export async function assertTreatsClient(
     select: { id: true },
   });
   if (!treated) throw new NotFoundException('Client not found');
+}
+
+/** The notes a viewer may read: every note with view-all, otherwise only their own. */
+export function readableNotes(viewer: ClinicalViewer): { authorProfileId?: bigint } {
+  return viewer.viewAll ? {} : { authorProfileId: viewer.profileId };
 }

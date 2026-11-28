@@ -2143,9 +2143,11 @@ export class ConsultService {
     // locked today's editor whenever last week's note was signed.
     const [latestNote, sessionNote, submissions, nextBooking] = await Promise.all([
       this.prisma.clinicalNote.findFirst({
+        // Prep is "where you left off": the caller's own last note, never a colleague's.
         where: {
           tenantId,
           clientProfileId: booking.clientProfileId,
+          authorProfileId: providerProfileId,
           NOT: { bookingId },
         },
         orderBy: { createdAt: 'desc' },
