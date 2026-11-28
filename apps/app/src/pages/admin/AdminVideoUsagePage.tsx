@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import useSWR from 'swr';
-import { Card, Eyebrow } from '@unclutterdesk/ui';
+import { Card, Eyebrow } from '@therapysts/ui';
 
 type VideoUsageReport = {
   month: string;

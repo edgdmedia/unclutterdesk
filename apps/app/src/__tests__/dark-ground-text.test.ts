@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { contrastRatio } from '@unclutterdesk/ui';
+import { contrastRatio } from '@therapysts/ui';
 
 /*
  * index.css switches the muted text tokens to light values inside dark

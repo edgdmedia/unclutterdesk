@@ -1,5 +1,5 @@
 import { useEffect, useId, useState } from 'react';
-import { Button, Input, useToast } from '@unclutterdesk/ui';
+import { Button, Input, useToast } from '@therapysts/ui';
 import { TENANT_ROOT_DOMAIN } from '../../../config/domains';
 import { profileApi, type BookingInfo, type BookingMode } from './profileApi';
 import { useStartBookingSetup } from './useStartBookingSetup';

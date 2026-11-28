@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Bell } from 'lucide-react';
-import { useFocusTrap } from '@unclutterdesk/ui';
+import { useFocusTrap } from '@therapysts/ui';
 import { useUnreadNotifications, type NotificationItem } from './useUnreadNotifications';
 
 function timeAgo(iso: string): string {

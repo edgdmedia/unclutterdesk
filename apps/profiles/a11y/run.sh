@@ -6,7 +6,7 @@
 # or critical violations) over the home page, pricing and every one of the
 # 4 layouts x 5 palettes.
 #
-#   pnpm --filter @unclutterdesk/profiles test:a11y
+#   pnpm --filter @therapysts/profiles test:a11y
 #
 # CI runs this as-is (.github/workflows/ci.yml).
 set -euo pipefail

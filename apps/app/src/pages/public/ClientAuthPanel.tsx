@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { ShieldCheck } from 'lucide-react';
-import { Button } from '@unclutterdesk/ui';
+import { Button } from '@therapysts/ui';
 import { api } from '../../utils/apiClient';
 import { useAuth } from '../../context/AuthContext';
 

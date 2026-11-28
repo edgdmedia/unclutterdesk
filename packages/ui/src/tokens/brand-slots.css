@@ -1,5 +1,5 @@
 /* ═══════════════════════════════════════════════
-   UNCLUTTER DESK — WHITE-LABEL TENANT SLOTS
+   THERAPYSTS — WHITE-LABEL TENANT SLOTS
 
    The product's central idea: one pair of tenant colors drives the
    entire public booking experience. A therapist picks a primary and a
@@ -10,7 +10,7 @@
    Override per tenant on any ancestor:
      <html data-tenant="dr-smith" style="--brand-primary:#007BFF; --brand-secondary:#6F42C1">
 
-   Defaults are the Unclutter Desk house palette, so a tenant who never
+   Defaults are the Therapysts house palette, so a tenant who never
    opens Brand Settings still gets a finished page.
 
    THE SIDEBAR SHELL STAYS SLATE IN EVERY TENANCY. Tenant color enters

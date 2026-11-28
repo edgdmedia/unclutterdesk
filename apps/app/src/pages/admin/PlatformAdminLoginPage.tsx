@@ -3,7 +3,7 @@ import { useNavigate, Link } from 'react-router-dom';
 import { ArrowRight, Eye, EyeOff, Loader2, Lock, Mail, ShieldCheck } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { AuthField, authInputCls } from '../../components/AuthField';
-import { UnclutterMark } from '@unclutterdesk/ui';
+import { UnclutterMark } from '@therapysts/ui';
 import { TENANT_ROOT_DOMAIN } from '../../config/domains';
 
 export function PlatformAdminLoginPage() {

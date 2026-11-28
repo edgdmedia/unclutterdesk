@@ -29,7 +29,7 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
       - name: Test
-        run: pnpm --filter @unclutterdesk/legacy-redirects test
+        run: pnpm --filter @therapysts/legacy-redirects test
       - name: Deploy Worker
         working-directory: apps/legacy-redirects
         env:

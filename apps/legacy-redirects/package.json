@@ -1,5 +1,5 @@
 {
-  "name": "@unclutterdesk/legacy-redirects",
+  "name": "@therapysts/legacy-redirects",
   "version": "0.1.0",
   "private": true,
   "description": "Permanent redirects from the old practice, app and profile addresses to their new ones after the domain move (spec §4.1b)",

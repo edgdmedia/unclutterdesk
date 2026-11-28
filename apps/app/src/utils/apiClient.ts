@@ -6,7 +6,7 @@
  * - The access & refresh tokens live in httpOnly cookies set by the API.
  *   JS can never read them (immune to XSS via document.cookie).
  * - State-changing requests carry an X-CSRF-Token header sourced from a
- *   readable `unclutter_csrf` cookie (double-submit pattern).
+ *   readable `therapysts_csrf` cookie (double-submit pattern).
  * - On a 401 the client tries POST /v1/auth/refresh (single-flight) and
  *   replays the original request once; if refresh fails, the session is
  *   torn down via a session-expired handler.
@@ -87,7 +87,7 @@ export function getSubdomainTenantSlug(): string | null {
   }
 
   // Custom domains: the same test that picks the API base, so the two agree
-  if (isPracticeCustomDomain(host) && host !== MARKETING_HOST && host !== APP_HOST) {
+  if (isPracticeCustomDomain(host) && host !== MARKETING_HOST && host !== `www.${MARKETING_HOST}` && host !== APP_HOST) {
     return host; // The backend should resolve the custom domain to a tenant slug
   }
 
@@ -134,7 +134,7 @@ export function practiceBookingUrl(
   return getBookingUrl(slug || TENANT_SLUG);
 }
 
-const CSRF_COOKIE = 'unclutter_csrf';
+const CSRF_COOKIE = 'therapysts_csrf';
 
 const SAFE_METHODS = new Set(['GET', 'HEAD', 'OPTIONS']);
 // Requests that never refresh-and-retry on a 401: a wrong password is not an

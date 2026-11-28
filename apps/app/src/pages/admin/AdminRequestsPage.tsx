@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import useSWR from 'swr';
 import { api } from '../../utils/apiClient';
-import { Card, Eyebrow, useToast } from '@unclutterdesk/ui';
+import { Card, Eyebrow, useToast } from '@therapysts/ui';
 import { formatDate } from './adminTypes';
 import {
   REQUEST_KIND_LABEL,

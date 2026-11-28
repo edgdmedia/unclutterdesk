@@ -25,7 +25,7 @@ describe('formatSender / addressOf', () => {
   });
 
   it('reads the address from either form', () => {
-    expect(addressOf('Unclutter Desk <no-reply@unclutterdesk.com>')).toBe('no-reply@unclutterdesk.com');
+    expect(addressOf('Therapysts <no-reply@unclutterdesk.com>')).toBe('no-reply@unclutterdesk.com');
     expect(addressOf(' hello@x.ng ')).toBe('hello@x.ng');
   });
 });

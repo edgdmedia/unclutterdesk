@@ -1,8 +1,8 @@
 {
-  "name": "@unclutterdesk/shared",
+  "name": "@therapysts/shared",
   "version": "0.1.0",
   "private": true,
-  "description": "Unclutter Desk Shared Types, DTOs & API Services",
+  "description": "Therapysts Shared Types, DTOs & API Services",
   "main": "./src/index.ts",
   "module": "./src/index.ts",
   "types": "./src/index.ts",

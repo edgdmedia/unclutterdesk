@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import useSWR from 'swr';
 import { api } from '../../utils/apiClient';
-import { Card, Eyebrow, useToast } from '@unclutterdesk/ui';
+import { Card, Eyebrow, useToast } from '@therapysts/ui';
 import { formatDate } from './adminTypes';
 
 interface StoredInstrument {

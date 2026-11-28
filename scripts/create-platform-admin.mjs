@@ -4,7 +4,7 @@
  *   node --env-file=.env scripts/create-platform-admin.mjs someone@example.com
  *
  * - New account: a strong password is generated and printed once. Sign in at
- *   https://app.unclutterdesk.com/admin/login and change it from there.
+ *   https://therapysts.app/admin/login and change it from there.
  * - Existing account (e.g. already a practice owner): only the admin role is
  *   added. Their password is left exactly as it is.
  * - ADMIN_PASSWORD=... sets the password explicitly, in either case.

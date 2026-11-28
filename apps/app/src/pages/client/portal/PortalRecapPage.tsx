@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Link, useParams, useSearchParams } from 'react-router-dom';
 import { ArrowLeft, CheckCircle2, ClipboardList, Loader2 } from 'lucide-react';
-import { Card, Eyebrow, Page, PageHeader, useBrand } from '@unclutterdesk/ui';
+import { Card, Eyebrow, Page, PageHeader, useBrand } from '@therapysts/ui';
 import { api } from '../../../utils/apiClient';
 import { RichTextView } from '../../../components/richText/RichTextView';
 import { PortalJournalCard } from './PortalJournalCard';

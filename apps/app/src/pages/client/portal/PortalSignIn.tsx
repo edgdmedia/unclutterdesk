@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { Button, Card, Eyebrow, useBrand } from '@unclutterdesk/ui';
+import { Button, Card, Eyebrow, useBrand } from '@therapysts/ui';
 import { CalendarDays, ClipboardList, CreditCard, FileText } from 'lucide-react';
 import { PracticeLogo } from '../../../components/public/PracticeLogo';
 

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
-import { Button, Card, Input, useToast } from '@unclutterdesk/ui';
+import { Button, Card, Input, useToast } from '@therapysts/ui';
 import { profilePath } from '../../../config/domains';
 import { ENTITLEMENT_REQUIRED_EVENT, api, apiDownload } from '../../../utils/apiClient';
 import { PROFILE_FEATURE_TIERS, useProfileEntitlements } from '../../../utils/entitlements';

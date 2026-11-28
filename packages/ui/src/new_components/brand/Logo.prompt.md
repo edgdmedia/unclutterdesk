@@ -6,4 +6,4 @@
 <Logo variant="poweredBy" assetBase="../../" />                 {/* booking footer */}
 ```
 
-"Booking powered by Unclutter Desk" is the ONLY Desk branding permitted on a tenant's public page.
+"Booking powered by Therapysts" is the ONLY Desk branding permitted on a tenant's public page.

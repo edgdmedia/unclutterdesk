@@ -1,7 +1,7 @@
 import type { ReactElement, ReactNode } from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import { render, type RenderResult } from '@testing-library/react';
-import { BrandProvider, ToastProvider, type TenantBrandConfig } from '@unclutterdesk/ui';
+import { BrandProvider, ToastProvider, type TenantBrandConfig } from '@therapysts/ui';
 
 export * from '@testing-library/react';
 

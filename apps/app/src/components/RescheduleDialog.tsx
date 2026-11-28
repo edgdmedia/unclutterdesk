@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { AlertCircle, Loader2, X } from 'lucide-react';
 import { api } from '../utils/apiClient';
-import { useToast } from '@unclutterdesk/ui';
+import { useToast } from '@therapysts/ui';
 import { formatClock } from '../utils/displayFormat';
 import { SlotDayPicker } from './booking/SlotDayPicker';
 

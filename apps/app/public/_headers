@@ -7,7 +7,7 @@
 # apps/api/src/domain-literals.spec.ts.
 #
 # Files in public/ are copied verbatim into dist/, which is what wrangler
-# deploys. `_headers` is read by Pages (app.unclutterdesk.com) and by Workers
+# deploys. `_headers` is read by Workers
 # Static Assets (therapysts.app) and never served. No code runs on either, so
 # every response is a static asset and is covered.
 

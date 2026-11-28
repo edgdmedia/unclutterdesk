@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Palette, Sparkles } from 'lucide-react';
-import { Card, Eyebrow, Page, PageHeader, BookingLinkField, useToast, ScaledPreview } from '@unclutterdesk/ui';
+import { Card, Eyebrow, Page, PageHeader, BookingLinkField, useToast, ScaledPreview } from '@therapysts/ui';
 import { BookingWizardPage } from '../../public/booking/BookingWizardPage';
 import { BookingConfirmedPage } from '../../public/BookingConfirmedPage';
 import { api, practiceBookingUrl } from '../../../utils/apiClient';

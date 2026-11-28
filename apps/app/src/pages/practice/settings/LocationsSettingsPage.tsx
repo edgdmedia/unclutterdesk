@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { MapPin, Pencil, Plus } from 'lucide-react';
-import { Button, Card, Eyebrow, Page, PageHeader, useToast } from '@unclutterdesk/ui';
+import { Button, Card, Eyebrow, Page, PageHeader, useToast } from '@therapysts/ui';
 import { api } from '../../../utils/apiClient';
 
 type Location = {

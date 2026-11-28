@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { useLocation } from 'react-router-dom';
-import { useBrand, useToast } from '@unclutterdesk/ui';
+import { useBrand, useToast } from '@therapysts/ui';
 import { renderWithApp, screen, fireEvent } from './renderWithApp';
 
 function Probe() {

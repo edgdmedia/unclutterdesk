@@ -13,7 +13,7 @@
 const API = 'https://api.daily.co/v1';
 const key = process.env.DAILY_API_KEY;
 const hmac = process.env.DAILY_WEBHOOK_SECRET;
-const url = process.env.DAILY_WEBHOOK_URL || `${(process.env.API_URL || 'https://api.unclutterdesk.com').replace(/\/$/, '')}/v1/video/webhooks/daily`;
+const url = process.env.DAILY_WEBHOOK_URL || `${(process.env.API_URL || 'https://api.therapysts.app').replace(/\/$/, '')}/v1/video/webhooks/daily`;
 
 if (!key || !hmac) {
   console.error('Set DAILY_API_KEY and DAILY_WEBHOOK_SECRET first (see docs/VPS_PREPARATION.md).');

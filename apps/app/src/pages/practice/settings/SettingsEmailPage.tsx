@@ -1,5 +1,5 @@
 import React from 'react';
-import { Page, PageHeader } from '@unclutterdesk/ui';
+import { Page, PageHeader } from '@therapysts/ui';
 import { SendingDomainCard } from '../../../components/email/SendingDomainCard';
 
 /** GEN-04: everything about the address practice email goes out from. */

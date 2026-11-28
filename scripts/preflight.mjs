@@ -133,7 +133,7 @@ env.NODE_ENV === 'production'
 
 env.CORS_ORIGINS
   ? pass('CORS_ORIGINS set', env.CORS_ORIGINS)
-  : warn('CORS_ORIGINS', 'unset — only *.unclutterdesk.com origins will be allowed');
+  : warn('CORS_ORIGINS', 'unset — only *.therapysts.app origins will be allowed');
 
 // Stripe was removed; a lingering key means a stale environment.
 const stripeLeftovers = Object.keys(env).filter((k) => k.startsWith('STRIPE_'));
@@ -291,7 +291,7 @@ if (skipDb) {
 
 // ── Report ───────────────────────────────────────────────────────────────────
 const icon = { pass: '✓', warn: '!', fail: '✗' };
-console.log('\nUnclutter Desk — pre-deploy checks\n');
+console.log('\nTherapysts — pre-deploy checks\n');
 for (const r of results) {
   console.log(`  ${icon[r.level]} ${r.name}${r.detail ? `  — ${r.detail}` : ''}`);
 }

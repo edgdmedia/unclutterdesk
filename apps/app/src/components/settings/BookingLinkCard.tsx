@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Card, Eyebrow, useToast } from '@unclutterdesk/ui';
+import { Card, Eyebrow, useToast } from '@therapysts/ui';
 import { api, getBookingUrl } from '../../utils/apiClient';
 
 const inputCls = 'w-full h-[44px] px-3.5 rounded-[14px] bg-[var(--desk-surface)] border border-[var(--desk-border)] text-[13px] font-mono font-bold text-[var(--desk-text)] outline-none';

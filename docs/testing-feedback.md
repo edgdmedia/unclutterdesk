@@ -623,7 +623,7 @@ A running log of what shows up in testing, what we decide about it, and when it'
 - **Type:** Bug · **Priority:** P1 · **Status:** Fixed
 - **Observed:** The portal's Join button shows whenever a room link exists and goes straight to meet.jit.si.
 - **Feedback / decision:** Decided 2 Oct 2026. The room opens 15 minutes before the session and closes 60 minutes after it ends (as in the VID-01 plan). Before that the button reads "Opens at 9:45 AM". Comes with VID-01's in-app room.
-- **Fix:** `5b3cd06`. One `JoinButton` everywhere (portal, confirmation page, session page, session prep): before the room opens it reads "Opens at 9:45 AM" and does nothing, it becomes Join at that minute without a reload, and disappears after. The window comes from `@unclutterdesk/shared` and matches the server's check (a test fails if they differ). Clients no longer receive a provider link.
+- **Fix:** `5b3cd06`. One `JoinButton` everywhere (portal, confirmation page, session page, session prep): before the room opens it reads "Opens at 9:45 AM" and does nothing, it becomes Join at that minute without a reload, and disappears after. The window comes from `@therapysts/shared` and matches the server's check (a test fails if they differ). Clients no longer receive a provider link.
 - **Verified:** 2 Oct 2026, locally: a session starting in 10 minutes showed **Join session**; tomorrow's showed "Opens at 3:15 PM", and its room said "This room opens at 3:15 PM." with **Check again**.
 
 ## General / design system

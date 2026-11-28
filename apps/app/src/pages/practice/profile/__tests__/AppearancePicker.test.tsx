@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import React from 'react';
-import { brandTokens } from '@unclutterdesk/ui';
+import { brandTokens } from '@therapysts/ui';
 import { cleanup, fireEvent, renderWithApp, screen } from '../../../../test/renderWithApp';
 import { AppearancePicker } from '../AppearancePicker';
 

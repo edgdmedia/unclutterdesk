@@ -308,7 +308,7 @@ model ConsultTherapistProfile {
   languages             String[] @default([])
   isPublic              Boolean  @default(true)
   acceptsGeneralBooking Boolean  @default(true)
-  videoProvider         String?  @default("BUILT_IN") // "BUILT_IN" (Unclutter Desk video) or "GOOGLE_MEET"
+  videoProvider         String?  @default("BUILT_IN") // "BUILT_IN" (Therapysts video) or "GOOGLE_MEET"
   dailyApiKey           String?
   googleRefreshToken    String?
   isVerified            Boolean  @default(true)

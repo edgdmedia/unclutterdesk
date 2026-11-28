@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Page, PageHeader, ResponsiveTable, StatusBadge, type Column } from '@unclutterdesk/ui';
+import { Page, PageHeader, ResponsiveTable, StatusBadge, type Column } from '@therapysts/ui';
 import { api } from '../../utils/apiClient';
 import { RouterLink } from '../../components/shell/RouterLink';
 import { PaymentChip } from '../../components/booking/PaymentChip';

@@ -3,7 +3,7 @@ import { Link, useParams } from 'react-router-dom';
 import useSWR from 'swr';
 import { ArrowLeft, Loader2, Mail, Phone, MapPin } from 'lucide-react';
 import { api } from '../../utils/apiClient';
-import { Card, CardHeader, Eyebrow, StatusBadge, AvatarChip, useToast } from '@unclutterdesk/ui';
+import { Card, CardHeader, Eyebrow, StatusBadge, AvatarChip, useToast } from '@therapysts/ui';
 import { AdminTenantDetail, formatNaira, formatDate } from './adminTypes';
 import { ComplimentaryPlanForm, describePlan, type PlanView } from './ComplimentaryPlanForm';
 import { TIER_NAMES, type Tier } from '../../utils/entitlements';

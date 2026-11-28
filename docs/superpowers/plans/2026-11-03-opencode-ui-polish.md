@@ -6,7 +6,7 @@
 
 ## Tasks
 
-- [ ] **1. One page header everywhere.** These pages still draw their own header. Move each to the shared `PageHeader` from `@unclutterdesk/ui`, so the notification bell appears there (it's passed in automatically by `AppShell`):
+- [ ] **1. One page header everywhere.** These pages still draw their own header. Move each to the shared `PageHeader` from `@therapysts/ui`, so the notification bell appears there (it's passed in automatically by `AppShell`):
   - Practice pages: `AssessmentsPage`, `MyProfilePage`, `NotificationsPage`, `RequestsPage`, `SchedulePage`, `SessionPrepPage`, `SubmissionsPage`.
   - Settings pages: `AccountPreferencesPage` (Preferences), `PayoutSettingsPage`, `PracticeProfilePage`, `BrandSettingsPage` (Brand & bookings), `ServicesSettingsPage`, `SubscriptionSettingsPage`, `FormsManagerPage`, `FormEditorPage`, `SettingsPage`.
   - Leave out `OnboardingWizardPage` and `TelehealthVideoRoomPage`, which are full-screen.
@@ -17,7 +17,7 @@
 - [ ] **3. "Forms & assessments" in the sidebar does nothing when clicked.** It's a collapsible group (`practiceNav.tsx`, key `forms`). Clicking the label must expand or collapse it, by keyboard too (`aria-expanded`). Find why the toggle doesn't fire in `packages/ui` `Sidebar`, fix it there, and add a test.
 - [ ] **4. Public profile preview.**
   - Reuse the Brand page's live scaled preview pane (find its component; don't copy it). Give it a phone, tablet and desktop width switch, and a "View full screen" button that opens the real preview at full size.
-  - Make it a shared component in `@unclutterdesk/ui` if both pages need it.
+  - Make it a shared component in `@therapysts/ui` if both pages need it.
 
 ## Out of scope (Spec Claude has these)
 

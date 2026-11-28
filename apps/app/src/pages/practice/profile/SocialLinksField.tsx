@@ -1,6 +1,6 @@
 import { useId } from 'react';
 import { Plus, X } from 'lucide-react';
-import { Button } from '@unclutterdesk/ui';
+import { Button } from '@therapysts/ui';
 import { MAX_SOCIAL_LINKS } from './profileApi';
 import { linkLabel } from './socialPlatform';
 

@@ -1,7 +1,7 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { CalendarPlus } from 'lucide-react';
-import { useBrand } from '@unclutterdesk/ui';
+import { useBrand } from '@therapysts/ui';
 import { getAppType, getBookingUrl } from '../../../utils/apiClient';
 
 /**

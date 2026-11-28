@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { MessageSquarePlus } from 'lucide-react';
-import { Card, Page, PageHeader, useBrand, useToast } from '@unclutterdesk/ui';
+import { Card, Page, PageHeader, useBrand, useToast } from '@therapysts/ui';
 import { api } from '../../utils/apiClient';
 import {
   REQUEST_STATUS_LABEL,

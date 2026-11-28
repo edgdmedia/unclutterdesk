@@ -22,9 +22,7 @@ const DOMAIN = /unclutterdesk\.com|therapysts\.(?:com|app)/i;
 const CONFIG_FILES = [
   'apps/api/src/common/origins.ts',
   'apps/app/src/config/domains.ts',
-  'apps/landing/src/config/domains.ts',
   'apps/profiles/src/lib/config.ts',
-  'apps/landing/astro.config.mjs', // `site`, the same setting as the landing config
   'packages/ui/src/tokens/brand-slots.css', // design-specimen defaults, not used by the apps
 ];
 

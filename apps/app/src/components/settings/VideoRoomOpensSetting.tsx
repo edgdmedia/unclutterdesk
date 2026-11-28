@@ -1,6 +1,6 @@
 import { useState } from 'react';
-import { useToast } from '@unclutterdesk/ui';
-import { JOIN_OPENS_CHOICES, DEFAULT_JOIN_OPENS_MINUTES } from '@unclutterdesk/shared';
+import { useToast } from '@therapysts/ui';
+import { JOIN_OPENS_CHOICES, DEFAULT_JOIN_OPENS_MINUTES } from '@therapysts/shared';
 import { useOptionalAuth } from '../../context/AuthContext';
 import { api } from '../../utils/apiClient';
 

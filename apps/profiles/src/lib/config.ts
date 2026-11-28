@@ -31,10 +31,10 @@ const trim = (v: string) => v.replace(/\/+$/, '');
 export function profilesConfig(env: ProfilesEnv): ProfilesConfig {
   return {
     publicOrigin: trim(env.PROFILE_PUBLIC_URL || 'https://therapysts.com'),
-    apiOrigin: trim(env.API_URL || 'https://api.unclutterdesk.com'),
-    appOrigin: trim(env.APP_URL || 'https://app.unclutterdesk.com'),
+    apiOrigin: trim(env.API_URL || 'https://api.therapysts.app'),
+    appOrigin: trim(env.APP_URL || 'https://therapysts.app'),
     mediaOrigin: env.MEDIA_URL ? trim(env.MEDIA_URL) : null,
-    contactEmail: `support@${(env.CONTACT_EMAIL_DOMAIN || 'unclutterdesk.com').trim()}`,
+    contactEmail: `support@${(env.CONTACT_EMAIL_DOMAIN || 'therapysts.com').trim()}`,
   };
 }
 

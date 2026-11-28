@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import useSWR from 'swr';
 import { Loader2, Building2, Search } from 'lucide-react';
 import { api } from '../../utils/apiClient';
-import { Card, Eyebrow, StatusBadge, useToast } from '@unclutterdesk/ui';
+import { Card, Eyebrow, StatusBadge, useToast } from '@therapysts/ui';
 import { AdminTenant, formatNaira, formatDate } from './adminTypes';
 import { TENANT_ROOT_DOMAIN } from '../../config/domains';
 

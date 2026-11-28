@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { cardPadding } from '@unclutterdesk/ui';
+import { cardPadding } from '@therapysts/ui';
 
 /*
  * Card applies padding as an inline style. Pages pass Tailwind-style values,

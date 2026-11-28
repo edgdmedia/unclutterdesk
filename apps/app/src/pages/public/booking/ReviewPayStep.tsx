@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Clock, Plus } from 'lucide-react';
-import { Button, Eyebrow } from '@unclutterdesk/ui';
+import { Button, Eyebrow } from '@therapysts/ui';
 import { api } from '../../../utils/apiClient';
 import { slotFormats, whenLabel, type Slot } from './bookingSlots';
 import type { WizardAction, WizardState } from './bookingWizard';

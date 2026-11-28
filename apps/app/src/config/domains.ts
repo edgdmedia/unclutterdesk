@@ -10,16 +10,16 @@
 const trimSlash = (value: string) => value.replace(/\/+$/, '');
 
 /** Practice subdomains are `{slug}.<root>`. VITE_TENANT_ROOT_DOMAIN. */
-export const TENANT_ROOT_DOMAIN = String(import.meta.env.VITE_TENANT_ROOT_DOMAIN || 'unclutterdesk.com').toLowerCase();
+export const TENANT_ROOT_DOMAIN = String(import.meta.env.VITE_TENANT_ROOT_DOMAIN || 'therapysts.app').toLowerCase();
 
 /** The API in production. VITE_API_URL, which also overrides it in development. */
-export const PRODUCTION_API_ORIGIN = 'https://api.unclutterdesk.com';
+export const PRODUCTION_API_ORIGIN = 'https://api.therapysts.app';
 
 /** The app in production: its own setting, never derived from the root domain. VITE_APP_URL. */
-export const PRODUCTION_APP_ORIGIN = trimSlash(String(import.meta.env.VITE_APP_URL || 'https://app.unclutterdesk.com'));
+export const PRODUCTION_APP_ORIGIN = trimSlash(String(import.meta.env.VITE_APP_URL || 'https://therapysts.app'));
 
 /** The marketing site in production. VITE_MARKETING_URL. */
-export const PRODUCTION_MARKETING_ORIGIN = 'https://unclutterdesk.com';
+export const PRODUCTION_MARKETING_ORIGIN = 'https://therapysts.com';
 
 const hostOf = (origin: string) => {
   try {

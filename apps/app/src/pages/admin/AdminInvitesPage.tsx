@@ -4,7 +4,7 @@ import { Link } from 'react-router-dom';
 import useSWR from 'swr';
 import { Copy, Check, Loader2, Mail, Ticket } from 'lucide-react';
 import { api, APP_BASE_URL } from '../../utils/apiClient';
-import { Card, Eyebrow, useToast } from '@unclutterdesk/ui';
+import { Card, Eyebrow, useToast } from '@therapysts/ui';
 import { formatDate } from './adminTypes';
 
 interface InvitePractice {

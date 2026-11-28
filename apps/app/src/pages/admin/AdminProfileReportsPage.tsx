@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import useSWR from 'swr';
-import { Card, Eyebrow, useToast } from '@unclutterdesk/ui';
+import { Card, Eyebrow, useToast } from '@therapysts/ui';
 import { api } from '../../utils/apiClient';
 import { profilePath } from '../../config/domains';
 import { formatDate } from './adminTypes';

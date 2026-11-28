@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Clock, Download, FileText, Pencil, Target, Trash2 } from 'lucide-react';
-import { Card, Eyebrow, useBrand, useToast, Page, PageHeader, ResponsiveTable, byDate, byNumber, byText, type Column } from '@unclutterdesk/ui';
+import { Card, Eyebrow, useBrand, useToast, Page, PageHeader, ResponsiveTable, byDate, byNumber, byText, type Column } from '@therapysts/ui';
 import { api, apiDownload } from '../../utils/apiClient';
 
 type Category = 'DIRECT_CLIENT' | 'GROUP' | 'SUPERVISION' | 'INDIRECT' | 'OTHER';

@@ -8,10 +8,10 @@ Run the **full** suites and the root typecheck, not only the tests for the files
 
 ```
 pnpm typecheck                      # every package
-pnpm --filter @unclutterdesk/api test
-pnpm --filter @unclutterdesk/app test
-pnpm --filter @unclutterdesk/ui test
-pnpm --filter @unclutterdesk/profiles test
+pnpm --filter @therapysts/api test
+pnpm --filter @therapysts/app test
+pnpm --filter @therapysts/ui test
+pnpm --filter @therapysts/profiles test
 ```
 
 Post the totals (test files, tests, failures) in the PR or the hand-off message. **Do not ask for review with a failing suite.** If a failure exists on `dev` already, say so and name it.
@@ -28,6 +28,6 @@ Post the totals (test files, tests, failures) in the PR or the hand-off message.
 
 ## Code rules
 
-- **Enterprise grade, no workarounds.** Use the real shared components (`@unclutterdesk/ui`). Tests fake only the network; never stub our own pages, components or services.
+- **Enterprise grade, no workarounds.** Use the real shared components (`@therapysts/ui`). Tests fake only the network; never stub our own pages, components or services.
 - **No hard-coded production domains** in code or comments (`apps/api/src/domain-literals.spec.ts` enforces this; spec files are exempt).
 - **Every admin write is audited** with who, what, which record and why. The change and its audit entry go in the same transaction (`AuditService.record(entry, tx)`).

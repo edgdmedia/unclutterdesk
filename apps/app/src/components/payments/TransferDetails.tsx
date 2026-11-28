@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Copy, Landmark } from 'lucide-react';
-import { useToast } from '@unclutterdesk/ui';
+import { useToast } from '@therapysts/ui';
 import { api } from '../../utils/apiClient';
 
 export interface ManualPayment {

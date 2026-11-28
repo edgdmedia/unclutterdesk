@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { CheckCircle2, EyeOff, MessageSquare, ShieldAlert, Sparkles, Star } from 'lucide-react';
-import { Eyebrow, Page, PageHeader, useToast } from '@unclutterdesk/ui';
+import { Eyebrow, Page, PageHeader, useToast } from '@therapysts/ui';
 import { api } from '../../utils/apiClient';
 import { formatWhen } from '../../utils/displayFormat';
 

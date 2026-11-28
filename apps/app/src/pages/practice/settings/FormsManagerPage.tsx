@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Plus, FileText, Activity, ShieldCheck, MessageSquare, Edit2 } from 'lucide-react';
-import { Eyebrow, Page, PageHeader, useToast } from '@unclutterdesk/ui';
+import { Eyebrow, Page, PageHeader, useToast } from '@therapysts/ui';
 import { api } from '../../../utils/apiClient';
 import { FormTemplateLibrary } from './FormTemplateLibrary';
 

@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { X } from 'lucide-react';
-import { useFocusTrap } from '@unclutterdesk/ui';
+import { useFocusTrap } from '@therapysts/ui';
 import { ENTITLEMENT_REQUIRED_EVENT, type EntitlementRequired } from '../../utils/apiClient';
 import { TIER_NAMES, type Tier } from '../../utils/entitlements';
 

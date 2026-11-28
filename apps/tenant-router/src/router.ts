@@ -3,7 +3,7 @@
 export interface RouterConfig {
   /** The zone apex (APEX_HOST in wrangler.jsonc). */
   apexHost: string;
-  /** Where the app bundle actually lives, e.g. "app-unclutterdesk.pages.dev". */
+  /** Where the app bundle actually lives, e.g. "therapysts-app.therapysts.workers.dev". */
   originHost: string;
   /** "https:" in production; "http:" only for the local end-to-end test. */
   originProtocol?: 'https:' | 'http:';

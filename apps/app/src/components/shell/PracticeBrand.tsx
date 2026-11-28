@@ -1,4 +1,4 @@
-import { UnclutterLockup, useBrand, type SidebarMode } from '@unclutterdesk/ui';
+import { UnclutterLockup, useBrand, type SidebarMode } from '@therapysts/ui';
 
 export function PracticeBrand({ mode }: { mode: SidebarMode }) {
   const brand = useBrand();

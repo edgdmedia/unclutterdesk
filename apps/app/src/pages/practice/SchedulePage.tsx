@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ChevronLeft, ChevronRight, Plus, Settings, X, Calendar, Clock, User, Trash2, CheckCircle2, CalendarPlus } from 'lucide-react';
-import { Page, PageHeader, useBrand, useToast } from '@unclutterdesk/ui';
+import { Page, PageHeader, useBrand, useToast } from '@therapysts/ui';
 import { StaffBookingDialog } from '../../components/booking/StaffBookingDialog';
 import { api } from '../../utils/apiClient';
 

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Tour, type TourStep } from '@unclutterdesk/ui';
+import { Tour, type TourStep } from '@therapysts/ui';
 import { api } from '../../utils/apiClient';
 import { useAuth } from '../../context/AuthContext';
 

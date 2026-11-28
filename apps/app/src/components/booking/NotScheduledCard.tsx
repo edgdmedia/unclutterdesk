@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { CalendarPlus, X } from 'lucide-react';
-import { Card, Eyebrow, useToast } from '@unclutterdesk/ui';
+import { Card, Eyebrow, useToast } from '@therapysts/ui';
 import { api } from '../../utils/apiClient';
 import { formatWhen } from '../../utils/displayFormat';
 import { MoveSessionPanel } from './MoveSessionPanel';

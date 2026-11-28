@@ -1,6 +1,6 @@
 import React from 'react';
 import { PauseCircle, Mail, ArrowLeft } from 'lucide-react';
-import { useBrand } from '@unclutterdesk/ui';
+import { useBrand } from '@therapysts/ui';
 
 export function InactivePracticePage() {
   const brand = useBrand();

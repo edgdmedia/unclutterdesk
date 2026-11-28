@@ -1,9 +1,9 @@
 module.exports = {
   apps: [
     {
-      name: 'unclutterdesk-api',
+      name: 'therapysts-api',
       script: './apps/api/dist/src/main.js',
-      cwd: '/home/unclutterdesk/app',
+      cwd: '/home/therapysts/app',
 
       // Stays at a single instance ON PURPOSE. The rate limiter uses
       // @nestjs/throttler's in-memory store, so each additional worker would get

@@ -5,7 +5,7 @@ import { describe, expect, test } from 'vitest';
 /**
  * Product name and dead links, checked across every app.
  *
- * The product is Unclutter Desk. "unclutterOS" and "Unclutter OS" survived in
+ * The product is Therapysts. "unclutterOS" and "Unclutter OS" survived in
  * the auth shell, both platform admin screens, the invite page, the login
  * footer — which also claimed an "Inc." that does not exist — the legal pages,
  * and inside every calendar invite sent to a client.
@@ -16,7 +16,7 @@ import { describe, expect, test } from 'vitest';
 const APPS = resolve(__dirname, '../../../..');
 // packages/ui holds the shared logo components, and was the one place the old
 // pill survived because it was never scanned.
-const SOURCE_DIRS = ['app/src', 'landing/src', 'api/src', '../packages/ui/src'];
+const SOURCE_DIRS = ['app/src', 'profiles/src', 'api/src', '../packages/ui/src'];
 const CODE = /\.(ts|tsx|astro|js|jsx)$/;
 
 function sourceFiles(dir: string): string[] {
@@ -75,12 +75,3 @@ describe('the product has one name', () => {
   });
 });
 
-describe('links go somewhere', () => {
-  test('the landing footer has no placeholder anchors', () => {
-    const landing = readFileSync(
-      resolve(APPS, 'landing/src/components/LandingPage.tsx'),
-      'utf8',
-    );
-    expect(landing).not.toContain('href="#"');
-  });
-});

@@ -76,7 +76,7 @@ async function main() {
   const userPlatformAdmin = await prisma.user.create({
     data: {
       id: 3,
-      email: 'admin@unclutterdesk.com',
+      email: 'admin@therapysts.com',
       username: 'platformadmin',
       password: hashedPassword,
       platformRole: 'SUPER_ADMIN',

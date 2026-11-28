@@ -20,8 +20,8 @@ async function call(page: Page, method: string, path: string, opts: { body?: unk
     async ({ method, path, body, csrf }) => {
       const token = document.cookie
         .split('; ')
-        .find((c) => c.startsWith('unclutter_csrf='))
-        ?.slice('unclutter_csrf='.length);
+        .find((c) => c.startsWith('therapysts_csrf='))
+        ?.slice('therapysts_csrf='.length);
       const res = await fetch(path, {
         method,
         credentials: 'include',
@@ -54,12 +54,12 @@ test('a client signs up, stays signed in and books through the custom-domain pro
   // under /api, and the CSRF cookie readable by the page.
   const cookies = await context.cookies();
   const named = (n: string) => cookies.find((c) => c.name === n);
-  for (const name of ['unclutter_access', 'unclutter_refresh', 'unclutter_csrf']) {
+  for (const name of ['therapysts_access', 'therapysts_refresh', 'therapysts_csrf']) {
     expect(named(name), `${name} was not stored for ${host}`).toBeDefined();
     expect(named(name)!.domain).toBe(host);
   }
-  expect(named('unclutter_refresh')!.path).toBe('/api/v1/auth/refresh');
-  expect(await page.evaluate(() => document.cookie)).toContain('unclutter_csrf=');
+  expect(named('therapysts_refresh')!.path).toBe('/api/v1/auth/refresh');
+  expect(await page.evaluate(() => document.cookie)).toContain('therapysts_csrf=');
 
   // ── Still signed in after a moment and after a reload (the old bug) ──
   await page.waitForTimeout(2000);
@@ -104,6 +104,6 @@ test('a client signs up, stays signed in and books through the custom-domain pro
   const out = await call(page, 'POST', '/api/v1/auth/logout');
   expect(out.status).toBeLessThan(300);
   const left = (await context.cookies()).map((c) => c.name);
-  expect(left).not.toContain('unclutter_access');
-  expect(left).not.toContain('unclutter_refresh');
+  expect(left).not.toContain('therapysts_access');
+  expect(left).not.toContain('therapysts_refresh');
 });

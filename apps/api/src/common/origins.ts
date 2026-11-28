@@ -14,9 +14,9 @@
 const trimSlash = (value: string) => value.replace(/\/+$/, '');
 const setting = (name: string) => process.env[name]?.trim() || undefined;
 
-/** Practice subdomains are `{slug}.<root>`. TENANT_ROOT_DOMAIN, default unclutterdesk.com. */
+/** Practice subdomains are `{slug}.<root>`. TENANT_ROOT_DOMAIN, default therapysts.app. */
 const normalizeRoot = (value: string) => value.trim().toLowerCase().replace(/^\.+|\.+$/g, '');
-export const TENANT_ROOT_DOMAIN = normalizeRoot(setting('TENANT_ROOT_DOMAIN') ?? 'unclutterdesk.com');
+export const TENANT_ROOT_DOMAIN = normalizeRoot(setting('TENANT_ROOT_DOMAIN') ?? 'therapysts.app');
 
 /**
  * Every root the API answers for: TENANT_ROOT_DOMAIN first (it builds links),
@@ -34,12 +34,12 @@ export function tenantRootOf(hostname: string): string | undefined {
   return TENANT_ROOT_DOMAINS.find((root) => host === root || host.endsWith(`.${root}`));
 }
 
-/** The marketing site. MARKETING_URL, default https://unclutterdesk.com. */
-export const MARKETING_ORIGIN = trimSlash(setting('MARKETING_URL') ?? 'https://unclutterdesk.com');
+/** The marketing site. MARKETING_URL, default https://therapysts.app. */
+export const MARKETING_ORIGIN = trimSlash(setting('MARKETING_URL') ?? 'https://therapysts.app');
 
 /** Production defaults for the app and API. Their own settings, never derived from the root domain. */
-const DEFAULT_APP_ORIGIN = 'https://app.unclutterdesk.com';
-const DEFAULT_API_ORIGIN = 'https://api.unclutterdesk.com';
+const DEFAULT_APP_ORIGIN = 'https://therapysts.app';
+const DEFAULT_API_ORIGIN = 'https://api.therapysts.app';
 
 /**
  * Public profile pages (spec §4.1, §4.1b). PROFILE_PUBLIC_URL. Profiles went
@@ -89,6 +89,7 @@ export const FALLBACK_SENDER_ADDRESS = `no-reply@${TENANT_ROOT_DOMAIN}`;
  * subscribed calendar matches events by UID, so changing it at a domain move
  * would show every existing booking twice.
  */
+// Never change: calendars match events by UID, so a new domain would duplicate every event.
 export const ICAL_UID_DOMAIN = 'unclutterdesk.com';
 
 const escapeRegex = (value: string) => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');

@@ -1,5 +1,3 @@
-import { readdirSync } from 'node:fs';
-import { resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { HANDLE_PATTERN, RESERVED_HANDLES, handleProblem, normalizeHandle, suggestHandle } from './handles';
 
@@ -42,15 +40,5 @@ describe('profile handles (§6.2)', () => {
       expect(suggestHandle(name)).toBe(handle);
       expect(HANDLE_PATTERN.test(handle)).toBe(true);
     });
-  });
-
-  it('reserves every page the marketing site serves, so a handle never shadows one', () => {
-    // Landing and profiles share one domain after the move (§4.1b).
-    const pages = resolve(__dirname, '../../../../landing/src/pages');
-    const paths = readdirSync(pages)
-      .map((f) => f.replace(/\.(astro|ts|md|mdx)$/, ''))
-      .filter((p) => p !== 'index' && p !== '404' && !p.startsWith('['));
-    const unreserved = paths.filter((p) => !RESERVED_HANDLES.has(p));
-    expect(unreserved).toEqual([]);
   });
 });

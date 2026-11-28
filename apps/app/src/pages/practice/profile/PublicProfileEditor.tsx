@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Button, Card, Input, ProgressRow, Textarea, useToast } from '@unclutterdesk/ui';
+import { Button, Card, Input, ProgressRow, Textarea, useToast } from '@therapysts/ui';
 import { AppearancePicker } from './AppearancePicker';
 import { BookingChoice } from './BookingChoice';
 import { BookingNudge } from './BookingNudge';
