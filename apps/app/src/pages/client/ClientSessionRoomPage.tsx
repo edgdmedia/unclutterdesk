@@ -47,7 +47,7 @@ export function ClientSessionRoomPage() {
     <div className="min-h-screen bg-[var(--desk-sidebar)] text-white font-outfit flex flex-col p-4 sm:p-6 gap-4">
       <header className="min-h-[66px] border border-white/10 rounded-[20px] px-4 sm:px-6 py-3 flex flex-wrap items-center justify-between gap-3 shrink-0" style={{ backgroundColor: primary }}>
         <div className="flex items-center gap-3 min-w-0">
-          <PracticeLogo name={brand.name || 'Unclutter Desk'} logoUrl={brand.logoUrl} size={32} color="#E3B341" />
+          <PracticeLogo name={brand.name || 'Therapysts'} logoUrl={brand.logoUrl} size={32} color="#E3B341" />
           <div className="min-w-0">
             <h1 className="text-[15px] font-semibold leading-tight truncate">
               {session ? `${session.serviceTitle} with ${session.therapistName}` : brand.name || 'Your session'}

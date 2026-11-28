@@ -82,7 +82,7 @@ export function LoginPage() {
       variant="login"
       headline="Practice management for modern therapists"
       tagline="Log in to manage your bookings, clinical SOAP notes, telehealth rooms, and practice branding."
-      footer="© 2026 Unclutter Desk"
+      footer="© 2026 Therapysts"
       stats={[
         { value: '₦0', label: 'to start, with a free profile' },
         { value: '0%', label: 'platform fee from Starter up' },

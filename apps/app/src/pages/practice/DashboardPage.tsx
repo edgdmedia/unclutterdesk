@@ -174,7 +174,7 @@ function PracticeToday(props: DashboardPageProps) {
   };
 
   const presetSwatches = [
-    { name: 'Unclutter Desk navy', primary: '#0F3A53', secondary: '#E3B341' },
+    { name: 'Therapysts navy', primary: '#0F3A53', secondary: '#E3B341' },
     { name: 'Signal blue', primary: '#007BFF', secondary: '#6F42C1' },
     { name: 'Calm teal', primary: '#0E7490', secondary: '#F59E0B' },
     { name: 'Deep violet', primary: '#7C3AED', secondary: '#EC4899' },

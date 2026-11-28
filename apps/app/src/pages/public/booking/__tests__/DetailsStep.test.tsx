@@ -13,7 +13,7 @@ describe('DetailsStep', () => {
     renderWithApp(<DetailsStep me={null} onSignOut={() => {}} note="" onNote={() => {}} onSignedIn={() => {}} therapistName="Dr. Smith" />);
     expect(screen.getByRole('button', { name: 'Create account' })).toBeTruthy();
     expect(screen.getByRole('button', { name: 'Sign in' })).toBeTruthy();
-    expect(screen.getByText(/One Unclutter Desk account works with every practice/)).toBeTruthy();
+    expect(screen.getByText(/One Therapysts account works with every practice/)).toBeTruthy();
   });
 
   it('shows who is booking, and lets them switch account', () => {

@@ -62,7 +62,7 @@ export function ClientAuthPanel({ onDone, initialMode = 'create' }: { onDone: ()
       </div>
       <p className="flex gap-2 text-[13px] leading-[1.5] text-[var(--desk-text-body)]">
         <ShieldCheck className="h-4 w-4 text-[var(--desk-active)] shrink-0 mt-0.5" aria-hidden="true" />
-        One Unclutter Desk account works with every practice. Each practice sees only its own records with you.
+        One Therapysts account works with every practice. Each practice sees only its own records with you.
       </p>
       {mode === 'create' ? (
         <div className="grid grid-cols-2 gap-3">

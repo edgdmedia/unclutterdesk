@@ -2,7 +2,7 @@ import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest';
 import React from 'react';
 import { cleanup, fireEvent, renderWithApp, screen, waitFor } from '../../test/renderWithApp';
 
-/** VID-01: a therapist chooses Unclutter Desk video or, with Google connected, Google Meet. */
+/** VID-01: a therapist chooses Therapysts video or, with Google connected, Google Meet. */
 const get = vi.fn();
 const post = vi.fn();
 vi.mock('../../utils/apiClient', async (importOriginal) => {
@@ -30,7 +30,7 @@ describe('video sessions on my profile', () => {
   it('offers built-in video and Google Meet, with Meet unavailable until Google is connected', async () => {
     serve({ googleConnected: false });
     renderWithApp(<MyProfilePage />);
-    const builtIn = (await screen.findByRole('radio', { name: /Unclutter Desk video/ })) as HTMLInputElement;
+    const builtIn = (await screen.findByRole('radio', { name: /Therapysts video/ })) as HTMLInputElement;
     const meet = screen.getByRole('radio', { name: /Google Meet/ }) as HTMLInputElement;
     expect(builtIn.checked).toBe(true);
     expect(meet.disabled).toBe(true);
@@ -40,7 +40,7 @@ describe('video sessions on my profile', () => {
   it('saves the choice', async () => {
     serve({ googleConnected: true, videoProvider: 'GOOGLE_MEET' });
     renderWithApp(<MyProfilePage />);
-    fireEvent.click(await screen.findByRole('radio', { name: /Unclutter Desk video/ }));
+    fireEvent.click(await screen.findByRole('radio', { name: /Therapysts video/ }));
     fireEvent.click(screen.getByRole('button', { name: /save/i }));
     await waitFor(() =>
       expect(post).toHaveBeenCalledWith('/v1/consult/therapist/profile', expect.objectContaining({ videoProvider: 'BUILT_IN' })),

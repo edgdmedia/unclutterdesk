@@ -45,7 +45,7 @@ describe('ClientAuthPanel', () => {
     renderWithApp(<ClientAuthPanel onDone={() => {}} />);
     // Said once, in the booking design's words (BKG-04).
     expect(await screen.findAllByText(/account works with every practice|same account with any practice/)).toHaveLength(1);
-    expect(screen.getByText('One Unclutter Desk account works with every practice. Each practice sees only its own records with you.')).toBeTruthy();
+    expect(screen.getByText('One Therapysts account works with every practice. Each practice sees only its own records with you.')).toBeTruthy();
   });
   it('signs in through the shared login', async () => {
     const onDone = vi.fn();
@@ -61,7 +61,7 @@ describe('ClientAuthPanel', () => {
   it('asks for a phone number when creating an account, and says one account works everywhere', async () => {
     const onDone = vi.fn();
     renderWithApp(<ClientAuthPanel onDone={onDone} />);
-    expect(screen.getByText(/One Unclutter Desk account works with every practice/)).toBeTruthy();
+    expect(screen.getByText(/One Therapysts account works with every practice/)).toBeTruthy();
     fireEvent.change(screen.getByLabelText('First name'), { target: { value: 'Ada' } });
     fireEvent.change(screen.getByLabelText('Email'), { target: { value: 'ada@x.com' } });
     fireEvent.change(screen.getByLabelText('Phone'), { target: { value: '0801 234 5678' } });

@@ -54,10 +54,10 @@ export function InactivePracticePage() {
           </a>
         </div>
 
-        {/* Powered by Unclutter Desk Footer */}
+        {/* Powered by Therapysts Footer */}
         <div className="pt-4 border-t border-[var(--desk-border-soft)] flex items-center gap-2 justify-center opacity-60">
           <span className="text-[10.5px] font-semibold text-[var(--desk-text-subtle)]">Powered by</span>
-          <span className="text-[10.5px] font-extrabold text-[var(--desk-pine-600)]">Unclutter Desk</span>
+          <span className="text-[10.5px] font-extrabold text-[var(--desk-pine-600)]">Therapysts</span>
         </div>
       </div>
     </div>
