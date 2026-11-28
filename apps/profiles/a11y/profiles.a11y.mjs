@@ -7,7 +7,9 @@ import { HANDLES } from './fixtures.mjs';
  * palette (spec §6.5). Serious and critical violations fail the run; minor and
  * moderate ones are reported but do not, so the gate stays about real barriers.
  */
-const URLS = ['/', '/pricing', ...HANDLES.map((h) => `/${h}`)];
+// No /pricing: on this site it only redirects to the Desk's pricing in
+// production, and wrangler dev can't serve a page as the app's host.
+const URLS = ['/', ...HANDLES.map((h) => `/${h}`)];
 const BLOCKING = new Set(['serious', 'critical']);
 
 for (const path of URLS) {
