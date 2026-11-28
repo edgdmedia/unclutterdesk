@@ -120,7 +120,7 @@ export function SignupPage() {
   return (
     <AuthSplitShell
       variant="signup"
-      headline="Start free with Unclutter Desk"
+      headline="Start free with Therapysts"
       tagline="Build your white-label booking portal, manage clients, write clinical SOAP notes, and hold telehealth sessions."
       footer="Free to start, no card needed. Upgrade to Starter or Pro when you're ready."
       bullets={[

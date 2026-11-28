@@ -36,7 +36,7 @@ export function PlatformAdminLoginPage() {
         <div className="flex items-center gap-2.5 mb-8 justify-center">
           <UnclutterMark size={36} showBadge={false} className="rounded-[12px]" />
           <div className="flex items-center gap-1.5">
-            <span className="font-bold text-[19px] tracking-[-0.02em] text-[var(--ds-on-band)]">Unclutter Desk</span>
+            <span className="font-bold text-[19px] tracking-[-0.02em] text-[var(--ds-on-band)]">Therapysts</span>
             <span className="h-[18px] px-2 rounded-full text-[9px] font-extrabold tracking-[0.08em] bg-[var(--ds-sky)] text-[var(--desk-text)] flex items-center justify-center uppercase">
               Admin
             </span>
@@ -52,7 +52,7 @@ export function PlatformAdminLoginPage() {
           </div>
           <div className="text-[26px] font-bold tracking-[-0.03em]">Admin sign in</div>
           <p className="mt-[6px] text-[13.5px] text-[var(--desk-text-muted)] leading-[1.6]">
-            Restricted to Unclutter Desk staff managing practice tenants.
+            Restricted to Therapysts staff managing practice tenants.
           </p>
 
           <form onSubmit={handleLogin} className="mt-[26px]">

@@ -4,7 +4,7 @@ import { MailService } from './mail.service';
 import { addressOf, nameOf, type Sender } from './outgoing-email';
 import { FALLBACK_SENDER_ADDRESS } from '../../../common/origins';
 
-const PLATFORM_NAME = 'Unclutter Desk';
+const PLATFORM_NAME = 'Therapysts';
 
 export interface SenderIdentity extends Sender {
   replyTo?: string;

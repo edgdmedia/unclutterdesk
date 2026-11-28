@@ -4,7 +4,7 @@ import { SenderIdentityService } from './sender-identity.service';
 /**
  * The one place that decides who an email is from. Whatever delivers it
  * (Resend, SMTP, or a provider added later), the name and address follow the
- * same rules: the practice's name for practice mail, Unclutter Desk otherwise;
+ * same rules: the practice's name for practice mail, Therapysts otherwise;
  * the practice's own verified domain only when the provider can sign for it.
  */
 const ENV_KEYS = ['MAIL_FROM', 'SMTP_FROM', 'MAIL_FROM_NAME', 'SMTP_FROM_NAME'];
@@ -26,7 +26,7 @@ describe('SenderIdentityService', () => {
       saved[k] = process.env[k];
       delete process.env[k];
     }
-    process.env.MAIL_FROM = 'Unclutter Desk <notifications@notify.unclutterdesk.com>';
+    process.env.MAIL_FROM = 'Therapysts <notifications@notify.unclutterdesk.com>';
   });
   afterEach(() => {
     for (const k of ENV_KEYS) {
@@ -35,10 +35,10 @@ describe('SenderIdentityService', () => {
     }
   });
 
-  it('sends platform mail as Unclutter Desk from the platform address', async () => {
+  it('sends platform mail as Therapysts from the platform address', async () => {
     const { identity, prisma } = make();
     await expect(identity.senderFor({})).resolves.toEqual({
-      name: 'Unclutter Desk',
+      name: 'Therapysts',
       address: 'notifications@notify.unclutterdesk.com',
       replyTo: undefined,
     });
@@ -81,9 +81,9 @@ describe('SenderIdentityService', () => {
     expect((await identity.senderFor({ tenantId: 7n })).address).toBe('notifications@notify.unclutterdesk.com');
   });
 
-  it('a practice with no name yet is sent as Unclutter Desk', async () => {
+  it('a practice with no name yet is sent as Therapysts', async () => {
     const { identity } = make();
-    expect((await identity.senderFor({ tenantId: 7n, practiceName: '   ' })).name).toBe('Unclutter Desk');
+    expect((await identity.senderFor({ tenantId: 7n, practiceName: '   ' })).name).toBe('Therapysts');
   });
 
   describe('the platform sender', () => {
@@ -99,14 +99,14 @@ describe('SenderIdentityService', () => {
       expect(make().identity.platformAddress()).toBe('no-reply@unclutterdesk.com');
     });
 
-    it('names the platform from MAIL_FROM_NAME, then the name in MAIL_FROM, then Unclutter Desk', () => {
-      process.env.MAIL_FROM = 'Unclutter Desk Team <notifications@notify.unclutterdesk.com>';
-      expect(make().identity.platformName()).toBe('Unclutter Desk Team');
+    it('names the platform from MAIL_FROM_NAME, then the name in MAIL_FROM, then Therapysts', () => {
+      process.env.MAIL_FROM = 'Therapysts Team <notifications@notify.unclutterdesk.com>';
+      expect(make().identity.platformName()).toBe('Therapysts Team');
       process.env.MAIL_FROM_NAME = 'Unclutter';
       expect(make().identity.platformName()).toBe('Unclutter');
       delete process.env.MAIL_FROM_NAME;
       process.env.MAIL_FROM = 'notifications@notify.unclutterdesk.com';
-      expect(make().identity.platformName()).toBe('Unclutter Desk');
+      expect(make().identity.platformName()).toBe('Therapysts');
     });
   });
 });

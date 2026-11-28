@@ -9,7 +9,6 @@ export interface ProfilesEnv {
   API_URL?: string;
   APP_URL?: string;
   MEDIA_URL?: string;
-  MARKETING_URL?: string;
   /** The domain of the published contact mailboxes, as on the marketing site. */
   CONTACT_EMAIL_DOMAIN?: string;
 }
@@ -23,7 +22,6 @@ export interface ProfilesConfig {
   appOrigin: string;
   /** Public R2 files (photos, preview images). Null until R2 is set up. */
   mediaOrigin: string | null;
-  marketingOrigin: string;
   /** The support mailbox (Contact, and the Clinic plan's "Talk to us"). */
   contactEmail: string;
 }
@@ -36,7 +34,6 @@ export function profilesConfig(env: ProfilesEnv): ProfilesConfig {
     apiOrigin: trim(env.API_URL || 'https://api.unclutterdesk.com'),
     appOrigin: trim(env.APP_URL || 'https://app.unclutterdesk.com'),
     mediaOrigin: env.MEDIA_URL ? trim(env.MEDIA_URL) : null,
-    marketingOrigin: trim(env.MARKETING_URL || 'https://unclutterdesk.com'),
     contactEmail: `support@${(env.CONTACT_EMAIL_DOMAIN || 'unclutterdesk.com').trim()}`,
   };
 }

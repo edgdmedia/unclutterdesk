@@ -129,7 +129,7 @@ export function ReviewPayStep({
         <div className="flex flex-col gap-2.5" role="radiogroup" aria-label="How would you like to meet?">
           <Eyebrow>How would you like to meet?</Eyebrow>
           <PayOption checked={state.format === 'ONLINE'} onChoose={() => dispatch({ type: 'chooseFormat', format: 'ONLINE' })} title={`Online — ${naira(formatPriceKobo(service, 'ONLINE'))}`}>
-            A secure video link, opened inside Unclutter Desk.
+            A secure video link, opened inside Therapysts.
           </PayOption>
           <PayOption checked={state.format === 'IN_PERSON'} onChoose={() => dispatch({ type: 'chooseFormat', format: 'IN_PERSON' })} title={`In person — ${naira(formatPriceKobo(service, 'IN_PERSON'))}`}>
             At {slot.location ? `${slot.location.name}, ${slot.location.city}` : 'the practice'}.{slot.location ? ' You get the full address and directions after booking.' : ''}

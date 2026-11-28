@@ -27,7 +27,7 @@ export function ClientLoginPage() {
     <div className="min-h-screen bg-[var(--desk-surface)] flex items-center justify-center p-6">
       <div className="w-full max-w-[440px] space-y-4">
         <div className="flex items-center justify-center gap-2.5">
-          <PracticeLogo name={brand.name || 'Unclutter Desk'} logoUrl={brand.logoUrl} size={40} color={primary} />
+          <PracticeLogo name={brand.name || 'Therapysts'} logoUrl={brand.logoUrl} size={40} color={primary} />
           <span className="text-[16px] font-bold text-[var(--desk-text)]">{brand.name}</span>
         </div>
         <div className="rounded-[22px] bg-white border border-[var(--desk-border)] p-6 space-y-4">

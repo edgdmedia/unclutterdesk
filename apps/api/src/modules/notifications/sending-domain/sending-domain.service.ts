@@ -46,7 +46,7 @@ export function validateSendingDomain(input: string | undefined | null): string 
     throw new BadRequestException('Enter a domain only, e.g. mail.yourpractice.com, without http:// or an email address');
   }
   if (isPlatformHostname(value)) {
-    throw new BadRequestException('That domain belongs to Unclutter Desk. Use a domain your practice owns.');
+    throw new BadRequestException('That domain belongs to Therapysts. Use a domain your practice owns.');
   }
   if (!HOSTNAME.test(value)) throw new BadRequestException('Enter a valid domain, e.g. mail.yourpractice.com');
   return value;
@@ -178,7 +178,7 @@ export class SendingDomainService {
 
     if (event.type === 'domain.deleted') {
       await this.prisma.tenantSendingDomain.delete({ where: { id: row.id } });
-      await this.tellAdmins(row.tenantId, 'Your sending domain was removed', `Email now goes out from Unclutter Desk's address instead of ${row.domain}.`);
+      await this.tellAdmins(row.tenantId, 'Your sending domain was removed', `Email now goes out from Therapysts's address instead of ${row.domain}.`);
       return { handled: true };
     }
     if (event.type === 'domain.updated' || event.type === 'domain.created') {
@@ -215,7 +215,7 @@ export class SendingDomainService {
       await this.tellAdmins(
         row.tenantId,
         `Email from ${row.domain} has paused`,
-        `The DNS records for ${row.domain} are no longer found, so email is going out from Unclutter Desk's address until they are fixed. Check the records in Brand settings.`,
+        `The DNS records for ${row.domain} are no longer found, so email is going out from Therapysts's address until they are fixed. Check the records in Brand settings.`,
       );
     }
     return updated;
@@ -274,7 +274,7 @@ export class SendingDomainService {
   private requireResend() {
     const resend = this.mail.resend();
     if (!resend) {
-      throw new ServiceUnavailableException('Sending from your own domain is not available yet. Email still goes out from Unclutter Desk.');
+      throw new ServiceUnavailableException('Sending from your own domain is not available yet. Email still goes out from Therapysts.');
     }
     return resend;
   }

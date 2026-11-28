@@ -412,7 +412,7 @@ export class CalendarService {
       'VERSION:2.0',
       // Written into the client's own calendar, where it outlives the
       // booking — so it carries the product's real name and domain.
-      'PRODID:-//Unclutter Desk//Calendar//EN',
+      'PRODID:-//Therapysts//Calendar//EN',
       'CALSCALE:GREGORIAN',
       'METHOD:PUBLISH',
       'BEGIN:VEVENT',

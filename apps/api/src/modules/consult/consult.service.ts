@@ -259,7 +259,7 @@ export class ConsultService {
     let videoProvider: 'BUILT_IN' | 'GOOGLE_MEET' | undefined;
     if (dto.videoProvider !== undefined) {
       const wanted = ['JITSI', 'DAILY'].includes(String(dto.videoProvider)) ? 'BUILT_IN' : String(dto.videoProvider);
-      if (wanted !== 'BUILT_IN' && wanted !== 'GOOGLE_MEET') throw new BadRequestException('Choose Unclutter Desk video or Google Meet.');
+      if (wanted !== 'BUILT_IN' && wanted !== 'GOOGLE_MEET') throw new BadRequestException('Choose Therapysts video or Google Meet.');
       const current = await this.prisma.consultTherapistProfile.findUnique({
         where: { tenantId_profileId: { tenantId, profileId } },
         select: { videoProvider: true, googleRefreshToken: true },

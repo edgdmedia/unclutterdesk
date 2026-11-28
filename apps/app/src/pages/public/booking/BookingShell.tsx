@@ -264,7 +264,7 @@ export function PoweredBy() {
   return (
     <p className="flex items-center justify-center gap-1.5 text-[11.5px] text-[var(--desk-text-subtle)]">
       <span style={{ opacity: 0.6 }}><UnclutterMark size={16} showBadge={false} /></span>
-      Booking powered by Unclutter Desk
+      Booking powered by Therapysts
     </p>
   );
 }

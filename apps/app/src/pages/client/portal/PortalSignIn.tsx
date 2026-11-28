@@ -26,7 +26,7 @@ export function PortalSignIn() {
     <div className="min-h-screen bg-[var(--desk-surface)] flex items-center justify-center p-4 sm:p-6">
       <div className="w-full max-w-[520px] space-y-5">
         <div className="flex items-center justify-center gap-2.5">
-          <PracticeLogo name={brand.name || 'Unclutter Desk'} logoUrl={brand.logoUrl} size={40} color={primary} />
+          <PracticeLogo name={brand.name || 'Therapysts'} logoUrl={brand.logoUrl} size={40} color={primary} />
           <span className="text-[16px] font-bold text-[var(--desk-text)]">{brand.name}</span>
         </div>
         <Card padding="p-5 sm:p-7" className="space-y-5">

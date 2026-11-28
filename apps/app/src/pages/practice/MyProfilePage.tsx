@@ -188,7 +188,7 @@ export function MyProfilePage({
                     <legend className="block text-[11.5px] font-bold text-[var(--desk-text-body)] mb-1.5">Video sessions</legend>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                       {[
-                        { value: 'BUILT_IN', title: 'Unclutter Desk video (recommended)', text: 'Sessions run inside Unclutter Desk. Nothing to install.', disabled: false },
+                        { value: 'BUILT_IN', title: 'Therapysts video (recommended)', text: 'Sessions run inside Therapysts. Nothing to install.', disabled: false },
                         { value: 'GOOGLE_MEET', title: 'Google Meet', text: 'Uses your connected Google account. Opens in a new tab.', disabled: !profile.googleConnected },
                       ].map((o) => {
                         const checked = (profile.videoProvider === 'GOOGLE_MEET' ? 'GOOGLE_MEET' : 'BUILT_IN') === o.value;

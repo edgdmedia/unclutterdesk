@@ -17,7 +17,7 @@ export function practiceNotFoundResponse(host: string, marketingUrl: string): Re
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="robots" content="noindex, nofollow">
-<title>Practice not found &middot; Unclutter Desk</title>
+<title>Practice not found &middot; Therapysts</title>
 <style>
   :root { color-scheme: light; }
   body {
@@ -55,7 +55,7 @@ export function practiceNotFoundResponse(host: string, marketingUrl: string): Re
     <h1>We couldn't find that practice</h1>
     <div class="host">${safeHost}</div>
     <p>No practice is using this address. The link may be out of date, or the address may have a typo in it.</p>
-    <a class="btn" href="${escapeHtml(marketingUrl)}">Go to Unclutter Desk</a>
+    <a class="btn" href="${escapeHtml(marketingUrl)}">Go to Therapysts</a>
   </main>
 </body>
 </html>`;
