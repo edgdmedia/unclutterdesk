@@ -8,6 +8,7 @@ import { CloudflareSaasService } from './cloudflare-saas.service';
 import { NotificationService } from '../notifications/notification.service';
 import { DefaultFormsService } from '../intake/default-forms.service';
 import { decryptNoteFields } from '../../common/field-encryption';
+import { assertTreatsClient, ClinicalViewer } from '../../common/clinical-access';
 import { isPlatformHostname, isReservedSlug, normalizeSlug } from './reserved-slugs';
 import { apiOrigin, appOrigin, customDomainTarget, TENANT_ROOT_DOMAIN, tenantRootOf, tenantWebOrigin } from '../../common/origins';
 import { EmergencyContactInput, emergencyContactData, emergencyContactOf, emergencyContactText } from './emergency-contact';
@@ -1223,7 +1224,7 @@ export class TenantService {
     });
   }
 
-  async getClientById(tenantId: bigint, clientProfileId: bigint) {
+  async getClientById(tenantId: bigint, viewer: ClinicalViewer, clientProfileId: bigint) {
     const client = await this.prisma.profile.findFirst({
       where: { id: clientProfileId, tenantId, role: 'CLIENT' },
       include: {
@@ -1235,6 +1236,7 @@ export class TenantService {
     });
 
     if (!client) throw new NotFoundException('Client not found');
+    await assertTreatsClient(this.prisma, tenantId, viewer, clientProfileId);
 
     const notes = await this.prisma.clinicalNote.findMany({
       where: { tenantId, clientProfileId },
